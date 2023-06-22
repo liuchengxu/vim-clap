@@ -244,21 +244,6 @@ g:clap_no_matches_msg                                    *g:clap_no_matches_msg*
   This message will be used when there is no matches found.
 
 
-g:clap_dispatcher_drop_cache                      *g:clap_dispatcher_drop_cache*
-
-  Type: |Bool|
-  Default: `v:true`
-
-  Normally when the external async job returns thousands of results, we won't
-  view them all. By default only the first N items will be actually remembered
-  and the others will only be counted.
-
-  Set this variable to `v:true` to save all the results, and then when you
-  reach the end of the display window, the cached results will be loaded
-  automatically. However, it may have some performance loss to cache all the
-  results especially when there are hundreds of thousands of results.
-
-
 g:clap_insert_mode_only                            *g:clap_insert_mode_only*
 
   Type: |Bool|
@@ -400,20 +385,6 @@ g:clap_search_box_border_style                  *g:clap_search_box_border_style*
   Set this variable to `nil` to disable the search box border symbol.
 
 
-g:clap_default_external_filter                  *g:clap_default_external_filter*
-
-  Type: |String| or |v:null|
-  Default: `'maple' | 'fzy' | 'fzf' | 'sk' | v:null`
-
-  The default provider's async implementation is based on these external
-  filter programs in the following order:
-
-  `maple` - actually using the algorithm of skim, with the highlight of matched indices.
-  `fzy` - no highlight of matched indices.
-  `fzf` - no highlight of matched indices.
-  `sk` - no highlight of matched indices.
-
-
 g:clap_prompt_format                             *g:clap_prompt_format*
 
   Type: |String|
@@ -535,20 +506,6 @@ g:clap_builtin_fuzzy_filter_threshold     *g:clap_builtin_fuzzy_filter_threshold
   let g:clap_builtin_fuzzy_filter_threshold = 0
 <
 
-g:clap_cache_threshold                                   *g:clap_cache_threshold*
-
-  Type: |Number|
-  Default: `100000`
-
-  When the number of execution results of some command exceeds this variable,
-  the output will be wrote to a cache file, which will be reused next time
-  when you invoke the same command against the same directory.
-
-  If you want to run the command without using the cache or want to rebuild
-  the cache, append `!` to the provider argument in `:Clap` command, e.g.,
-  `:Clap files!` .
-
-
 g:clap_preview_size                                         *g:clap_preview_size*
 
   Type: |Number| or |Dict|
@@ -581,6 +538,7 @@ g:clap_enable_background_shadow                 *g:clap_enable_background_shadow
   - https://github.com/liuchengxu/vim-clap/issues/670,
   - https://github.com/liuchengxu/vim-clap/issues/836
 
+
 g:clap_background_shadow_blend                  *g:clap_background_shadow_blend*
 
   Type: |Number|
@@ -591,27 +549,6 @@ g:clap_background_shadow_blend                  *g:clap_background_shadow_blend*
   >
   " Lighter shadow
   let g:clap_background_shadow_blend = 75
-<
-
-g:clap_force_matchfuzzy                                *g:clap_force_matchfuzzy*
-
-  Type: |Number|
-  Default: `Undefined`
-
-  Force use |matchfuzzypos()| as the sync filter engine, otherwise vim-clap
-  will try to use the other sync implementation in the order of Lua>Python>VimL.
-
-
-g:clap_force_python                                        *g:clap_force_python*
-
-  Type: |Bool|
-  Default: `Undefined`
-
-  Force use Python as the sync filter engine. Some matching improvements are
-  only implemented on the Rust end, you also need to compile the Python dynamic
-  module to use that.
-
-  Ref https://github.com/liuchengxu/vim-clap/pull/614
 
 
 -------------------------------------------------------------------------------
@@ -858,22 +795,8 @@ g:clap_provider_tags_force_vista           *g:clap_provider_tags_force_vista*
 7. Commands                                                     *clap-commands*
 
   >
-  :Clap[!] [provider_id_or_alias] [++opt] [+opt]
+  :Clap [provider_id_or_alias]
 <
-
-All the opts are accessible via `g:clap.context[opt]`.
-
-The form of `[++opt]` is `++{optname}={value}`, where {optname} is one of:
-
-  - `++externalfilter=fzf` or `++ef=fzf`.
-
-`[+opt]` is used for the bool arguments:
-
- - `+async`
- - `+ignorecase`: case-insensitive search.
-
-`Clap! [provider_id_or_alias]` is equal to `Clap [provider_id_or_alias] +async` .
-
 
 ===============================================================================
 8. Movement/Keybindings                                       *clap-movement*

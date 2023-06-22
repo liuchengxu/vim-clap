@@ -105,19 +105,6 @@ Vim-clap is utterly easy to use, just type, press Ctrl-J/K to locate the wanted 
 
 The paradigm is `Clap [provider_id_or_alias] {provider_args}`, where the `provider_id_or_alias` is obviously either the name or alias of provider. Technically the `provider_id` can be anything that can be used a key of a Dict, but I recommend you using an _identifier_ like name as the provider id, and use the alias rule if you prefer a special name.
 
-<details>
-  <summary>cache is no longer necessary since v0.37.</summary>
-
-You can use `+no-cache` option to disable/refresh the cache, e.g., `:Clap files +no-cache ~` for searching files under the home directory without cache, the shortcut for `+no-cache` option:
-
-- `:Clap!! [provider_id_or_alias] {provider_args}`, e.g, `:Clap!! files ~`.
-- `:Clap [provider_id_or_alias][!] {provider_args}`, e.g, `:Clap files! ~`. (Recommended)
-
-Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forerunner_status_sign` to configure it.
-
-<img width="561" alt="cache spinner" src="https://user-images.githubusercontent.com/8850248/78767291-fafe3e00-79bc-11ea-91a8-e17518e7a1b2.png">
-</details>
-
 #### Providers
 
 | Command                                | List                                                   | Requirement                                                             |
@@ -156,7 +143,6 @@ Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forer
 | `Clap proj_tags`                       | Tags in the current project                            | **[maple][maple]** and **[universal-ctags][universal-ctags]** (`+json`) |
 | `Clap recent_files`                    | Persistent ordered history of recent files             | **[maple][maple]**                                                      |
 
-[fd]: https://github.com/sharkdp/fd
 [rg]: https://github.com/BurntSushi/ripgrep
 [git]: https://github.com/git/git
 [maple]: https://github.com/liuchengxu/vim-clap/blob/master/INSTALL.md#maple-binary
