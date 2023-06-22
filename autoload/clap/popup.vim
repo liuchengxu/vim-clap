@@ -400,8 +400,6 @@ function! clap#popup#open() abort
   call g:clap.provider.on_enter()
 
   silent doautocmd <nomodeline> User ClapOnEnter
-
-  call g:clap.provider.apply_query()
 endfunction
 
 function! clap#popup#close() abort
