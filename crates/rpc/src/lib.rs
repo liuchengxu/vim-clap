@@ -254,14 +254,14 @@ async fn loop_write(
             let msg_size = s.len();
             match msg {
                 RpcMessage::Request(request) => {
-                    tracing::trace!(method = request.method, msg_size, "=> Vim Request")
+                    tracing::trace!(method = ?request.method, msg_size, "=> Vim Request")
                 }
                 RpcMessage::Response(response) => {
                     tracing::trace!(id = response.id(), msg_size, "=> Vim Response")
                 }
                 RpcMessage::Notification(notification) => {
                     tracing::trace!(
-                        method = notification.method,
+                        method = ?notification.method,
                         msg_size,
                         "=> Vim Notification"
                     )

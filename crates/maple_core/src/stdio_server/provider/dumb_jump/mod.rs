@@ -281,7 +281,7 @@ impl DumbJumpProvider {
 impl ClapProvider for DumbJumpProvider {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         let cwd = ctx.vim.working_dir().await?;
-        let source_file_extension = ctx.start_buffer_extension()?;
+        let source_file_extension = ctx.start_buffer_extension()?.to_string();
 
         tokio::task::spawn({
             let cwd = cwd.clone();
@@ -382,7 +382,7 @@ impl ClapProvider for DumbJumpProvider {
         let search_worker = SearchWorker {
             cwd,
             query_info: query_info.clone(),
-            source_file_extension: ctx.start_buffer_extension()?,
+            source_file_extension: ctx.start_buffer_extension()?.to_string(),
         };
         let search_results = self.start_search(search_worker, query, query_info).await?;
 

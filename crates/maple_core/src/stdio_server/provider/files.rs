@@ -2,16 +2,28 @@ use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
 use anyhow::Result;
 use clap::Parser;
 use matcher::{Bonus, MatchScope};
+use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use types::Query;
 
+use super::BaseArgs;
+
 #[derive(Debug, Parser, PartialEq, Eq, Default)]
 struct FilesArgs {
+    #[clap(flatten)]
+    base: BaseArgs,
+
+    /// Whether to search hidden files.
     #[clap(long)]
     hidden: bool,
+
+    /// Whether to match the file name only.
     #[clap(long)]
     name_only: bool,
+
+    #[clap(long)]
+    path: Option<PathBuf>,
 }
 
 #[derive(Debug)]
@@ -22,16 +34,24 @@ pub struct FilesProvider {
 
 impl FilesProvider {
     pub async fn new(ctx: &Context) -> Result<Self> {
-        let raw_args = ctx.vim.provider_raw_args().await?;
-        let args =
-            FilesArgs::try_parse_from(std::iter::once("".to_string()).chain(raw_args.into_iter()))
-                .map_err(|err| {
-                    let _ = ctx.vim.echo_warn(format!(
-                        "using default {:?} due to {err}",
-                        FilesArgs::default()
-                    ));
-                })
-                .unwrap_or_default();
+        let mut args: FilesArgs = ctx.parse_provider_args().await?;
+        ctx.handle_base_args(&args.base).await?;
+
+        let mut ignore_path_arg = false;
+        if let Some(path) = &args.path {
+            if !path.try_exists().unwrap_or(false) {
+                ignore_path_arg = true;
+                let _ = ctx.vim.echo_warn(format!(
+                    "Ignore `--path {:?}` as it does not exist",
+                    path.display()
+                ));
+            }
+        }
+
+        if ignore_path_arg {
+            args.path.take();
+        }
+
         Ok(Self {
             args,
             searcher_control: None,
@@ -63,7 +83,10 @@ impl FilesProvider {
             let stop_signal = Arc::new(AtomicBool::new(false));
 
             let join_handle = {
-                let search_context = ctx.search_context(stop_signal.clone());
+                let mut search_context = ctx.search_context(stop_signal.clone());
+                if let Some(dir) = &self.args.path {
+                    search_context.paths = vec![dir.clone()];
+                }
                 let vim = ctx.vim.clone();
                 let hidden = self.args.hidden;
                 tokio::spawn(async move {
@@ -120,6 +143,8 @@ mod tests {
         assert_eq!(
             FilesArgs::parse_from(["", "--hidden", "--name-only"]),
             FilesArgs {
+                base: BaseArgs::default(),
+                path: None,
                 hidden: true,
                 name_only: true
             }
@@ -128,6 +153,8 @@ mod tests {
         assert_eq!(
             FilesArgs::parse_from(["", "--hidden"]),
             FilesArgs {
+                base: BaseArgs::default(),
+                path: None,
                 hidden: true,
                 name_only: false
             }
@@ -136,6 +163,18 @@ mod tests {
         assert_eq!(
             FilesArgs::parse_from(["", "--name-only"]),
             FilesArgs {
+                base: BaseArgs::default(),
+                path: None,
+                hidden: false,
+                name_only: true
+            }
+        );
+
+        assert_eq!(
+            FilesArgs::parse_from(["", "--path=/Users", "--name-only"]),
+            FilesArgs {
+                base: BaseArgs::default(),
+                path: Some(PathBuf::from("~")),
                 hidden: false,
                 name_only: true
             }

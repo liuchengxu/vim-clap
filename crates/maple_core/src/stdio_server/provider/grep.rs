@@ -2,18 +2,20 @@ use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
 use anyhow::Result;
 use clap::Parser;
 use matcher::MatchScope;
-use serde_json::json;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use types::Query;
 
+use super::BaseArgs;
+
 #[derive(Debug, Parser, PartialEq, Eq, Default)]
 struct GrepArgs {
+    #[clap(flatten)]
+    base: BaseArgs,
+
     #[clap(long)]
-    query: String,
-    #[clap(long)]
-    path: Vec<PathBuf>,
+    paths: Vec<PathBuf>,
 }
 
 #[derive(Debug)]
@@ -23,11 +25,11 @@ pub struct GrepProvider {
 }
 
 impl GrepProvider {
-    pub fn new() -> Self {
-        Self {
+    pub async fn new(_ctx: &Context) -> Result<Self> {
+        Ok(Self {
             paths: Vec::new(),
             searcher_control: None,
-        }
+        })
     }
 
     fn process_query(&mut self, query: String, ctx: &Context) {
@@ -68,29 +70,11 @@ impl GrepProvider {
 #[async_trait::async_trait]
 impl ClapProvider for GrepProvider {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        let raw_args = ctx.vim.provider_raw_args().await?;
-        let GrepArgs { query, path } =
-            GrepArgs::try_parse_from(std::iter::once(String::from("")).chain(raw_args.into_iter()))
-                .map_err(|err| {
-                    let _ = ctx.vim.echo_warn(format!(
-                        "using default {:?} due to {err}",
-                        GrepArgs::default()
-                    ));
-                })
-                .unwrap_or_default();
-        let query = if query.is_empty() {
-            ctx.vim.input_get().await?
-        } else {
-            let query = match query.as_str() {
-                "@visual" => ctx.vim.bare_call("clap#util#get_visual_selection").await?,
-                _ => ctx.vim.call("clap#util#expand", json!([query])).await?,
-            };
-            ctx.vim.call("set_initial_query", json!([query])).await?;
-            query
-        };
-        self.paths.extend(path);
-        if !query.is_empty() {
-            self.process_query(query, ctx);
+        let GrepArgs { base, paths } = ctx.parse_provider_args().await?;
+        self.paths.extend(paths);
+        let initial_query = ctx.handle_base_args(&base).await?;
+        if !initial_query.is_empty() {
+            self.process_query(initial_query, ctx);
         }
         Ok(())
     }
