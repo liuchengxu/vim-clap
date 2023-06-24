@@ -140,13 +140,21 @@ function! s:api.show_lines_in_preview(lines) abort
 endfunction
 
 function! s:api.set_initial_query(query) abort
-  if s:is_nvim
-    call feedkeys(a:query)
+  if a:query ==# '@visual'
+    let query = clap#util#get_visual_selection()
   else
-    call g:clap.input.set(a:query)
+    let query = clap#util#expand(a:query)
+  endif
+
+  if s:is_nvim
+    call feedkeys(query)
+  else
+    call g:clap.input.set(query)
     " Move the cursor to the end.
     call feedkeys("\<C-E>", 'xt')
   endif
+
+  return query
 endfunction
 
 function! clap#api#call(method, args) abort

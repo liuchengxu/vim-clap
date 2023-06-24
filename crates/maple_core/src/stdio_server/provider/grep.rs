@@ -108,24 +108,30 @@ mod tests {
         assert_eq!(
             GrepArgs::parse_from(["", "--query=@visual", "--path=~/.vim/plugged/vim-clap"]),
             GrepArgs {
-                query: String::from("@visual"),
-                path: vec![PathBuf::from("~/.vim/plugged/vim-clap")]
+                base: BaseArgs {
+                    query: Some(String::from("@visual")),
+                    ..Default::default()
+                },
+                paths: vec![PathBuf::from("~/.vim/plugged/vim-clap")]
             }
         );
 
         assert_eq!(
             GrepArgs::parse_from(["", "--query=@visual"]),
             GrepArgs {
-                query: String::from("@visual"),
-                path: vec![]
+                base: BaseArgs {
+                    query: Some(String::from("@visual")),
+                    ..Default::default()
+                },
+                paths: vec![]
             }
         );
 
         assert_eq!(
             GrepArgs::parse_from([""]),
             GrepArgs {
-                query: String::default(),
-                path: vec![]
+                base: BaseArgs::default(),
+                paths: vec![]
             }
         );
     }

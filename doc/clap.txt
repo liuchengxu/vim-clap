@@ -41,14 +41,11 @@ to work everywhere out of the box, with fast response.
 2. Features                                                      *clap-features*
 
 
-- Pure vimscript.
-- Work out of the box, without any extra dependency.
-- Extensible, easy to add new source providers.
-- Find or dispatch anything on the fly, with smart cache strategy.
-- Untouch your current window layout, less eye movement.
-- Support multi-selection, use vim's regexp as filter by default.
-- Support the preview functionality when navigating the result list.
-- Support builtin match and external fuzzy filter tools.
+- Blazingly fast thanks to the powerful Rust backend.
+- Consistent command interface with [clap-rs/clap](https://github.com/clap-rs/clap)
+- Support writing new providers in both Vimscript and Rust.
+- Support [the search syntax borrowed from fzf](https://github.com/junegunn/fzf#search-syntax) and more.
+- Flexible UI layout.
 
 
 ===============================================================================

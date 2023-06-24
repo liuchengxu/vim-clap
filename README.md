@@ -56,7 +56,8 @@ Vim-clap is a modern generic performant finder using the `floating_win` of neovi
 - [x] ~~Work out of the box, without any extra dependency~~.
   - The Rust binary is required to have a decent user experience.
 - [x] Blazingly fast thanks to the powerful Rust backend.
-- [x] Extensible, easy to add new providers.
+- [x] Consistent command interface with [clap-rs/clap](https://github.com/clap-rs/clap)
+- [x] Support writing new providers in both Vimscript and Rust.
 - [x] Support [the search syntax borrowed from fzf](https://github.com/junegunn/fzf#search-syntax) and more.
 - [x] Flexible UI layout.
 - [ ] Support searching by multiple providers simultaneously.
@@ -151,10 +152,10 @@ The paradigm is `Clap [provider_id_or_alias] {provider_args}`, where the `provid
 - The command with a superscript `!` means that it is not yet implemented or not tested.
 - The command with a superscript `+` means that it supports multi-selection via <kbd>Tab</kbd>.
 - `:Clap grep`
-  - Use `:Clap grep ++query=<cword>` to grep the word under cursor.
-  - Use `:Clap grep ++query=@visual` to grep the visual selection.
+  - Use `:Clap grep --query=<cword>` to grep the word under cursor.
+  - Use `:Clap grep --query=@visual` to grep the visual selection.
   - `cwd` will be searched by default, specify the extra paths in the end to search multiple directories.
-    - `:Clap grep ~/.vim/plugged/ale` with `cwd` is `~/.vim/plugged/vim-clap` will both search vim-clap and ale.
+    - `:Clap grep --path ~/.vim/plugged/ale` with `cwd` is `~/.vim/plugged/vim-clap` will both search vim-clap and ale.
 
 [Send a pull request](https://github.com/liuchengxu/vim-clap/pulls) if you want to get your provider listed here.
 
