@@ -67,6 +67,10 @@ function! s:api.display_getcurline() abort
   return [g:clap.display.getcurline(), get(g:, '__clap_icon_added_by_maple', v:false)]
 endfunction
 
+function! s:api.display_set_lines(lines) abort
+  call g:clap.display.set_lines(a:lines)
+endfunction
+
 function! s:api.provider_source() abort
   if has_key(g:clap.provider, 'source_type') && has_key(g:clap.provider._(), 'source')
     if g:clap.provider.source_type == g:__t_string

@@ -10,6 +10,8 @@ use types::Query;
 use super::BaseArgs;
 
 #[derive(Debug, Parser, PartialEq, Eq, Default)]
+#[command(name = ":Clap files")]
+#[command(about = "files provider", long_about = None)]
 struct FilesArgs {
     #[clap(flatten)]
     base: BaseArgs,

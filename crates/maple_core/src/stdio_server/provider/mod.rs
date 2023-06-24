@@ -377,14 +377,26 @@ impl Context {
 
     pub async fn parse_provider_args<T: clap::Parser + Default + Debug>(&self) -> Result<T> {
         let raw_args = self.vim.provider_raw_args().await?;
+
         let provider_args = if raw_args.is_empty() {
             T::default()
         } else {
             T::try_parse_from(std::iter::once(String::from("")).chain(raw_args.into_iter()))
                 .map_err(|err| {
-                    let _ = self
-                        .vim
-                        .echo_warn(format!("using default {:?} due to {err}", T::default()));
+                    match err.kind() {
+                        clap::error::ErrorKind::DisplayHelp => {
+                            // Show help in the display window.
+                            let err_msg = err.to_string();
+                            let lines = err_msg.split('\n').collect::<Vec<_>>();
+                            let _ = self.vim.exec("display_set_lines", json!([lines]));
+                        }
+                        _ => {
+                            let _ = self.vim.echo_warn(format!(
+                                "using default {:?} due to {err}",
+                                T::default()
+                            ));
+                        }
+                    }
                 })
                 .unwrap_or_default()
         };

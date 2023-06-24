@@ -10,12 +10,20 @@ use types::Query;
 use super::BaseArgs;
 
 #[derive(Debug, Parser, PartialEq, Eq, Default)]
+#[command(name = ":Clap grep")]
+#[command(about = "grep provider", long_about = None)]
 struct GrepArgs {
     #[clap(flatten)]
     base: BaseArgs,
 
+    /*
+    /// Do not search the current working directory and search this path only.
     #[clap(long)]
-    paths: Vec<PathBuf>,
+    path_only: Option<PathBuf>,
+    */
+    /// Specify additional search paths apart from the current working directory.
+    #[clap(long)]
+    path: Vec<PathBuf>,
 }
 
 #[derive(Debug)]
@@ -70,8 +78,12 @@ impl GrepProvider {
 #[async_trait::async_trait]
 impl ClapProvider for GrepProvider {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        let GrepArgs { base, paths } = ctx.parse_provider_args().await?;
-        self.paths.extend(paths);
+        let GrepArgs { base, path } = ctx.parse_provider_args().await?;
+        for p in path {
+            if let Ok(path) = ctx.vim.expand(p.to_string_lossy()).await {
+                self.paths.push(path.into());
+            }
+        }
         let initial_query = ctx.handle_base_args(&base).await?;
         if !initial_query.is_empty() {
             self.process_query(initial_query, ctx);
@@ -112,7 +124,7 @@ mod tests {
                     query: Some(String::from("@visual")),
                     ..Default::default()
                 },
-                paths: vec![PathBuf::from("~/.vim/plugged/vim-clap")]
+                path: vec![PathBuf::from("~/.vim/plugged/vim-clap")]
             }
         );
 
@@ -123,7 +135,7 @@ mod tests {
                     query: Some(String::from("@visual")),
                     ..Default::default()
                 },
-                paths: vec![]
+                path: vec![]
             }
         );
 
@@ -131,7 +143,7 @@ mod tests {
             GrepArgs::parse_from([""]),
             GrepArgs {
                 base: BaseArgs::default(),
-                paths: vec![]
+                path: vec![]
             }
         );
     }
