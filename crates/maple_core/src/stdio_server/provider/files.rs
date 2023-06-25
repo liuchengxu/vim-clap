@@ -173,7 +173,7 @@ mod tests {
         );
 
         assert_eq!(
-            FilesArgs::parse_from(["", "--path=/Users", "--name-only"]),
+            FilesArgs::parse_from(["", "--path=~", "--name-only"]),
             FilesArgs {
                 base: BaseArgs::default(),
                 path: Some(PathBuf::from("~")),
