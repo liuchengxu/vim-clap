@@ -351,7 +351,7 @@ function! s:get_config_preview(height) abort
     endif
   endif
 
-  if has('nvim-0.9')
+  if has('nvim-0.9') && g:clap_popup_border !=? 'nil'
     let opts = clap#preview#inject_title_opt(opts, opts.width)
   endif
 
