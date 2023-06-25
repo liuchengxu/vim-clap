@@ -30,17 +30,10 @@ pub struct GrepProvider {
 impl GrepProvider {
     pub async fn new(ctx: &Context) -> Result<Self> {
         let GrepArgs { base, paths } = ctx.parse_provider_args().await?;
-        let mut expanded_paths = Vec::with_capacity(paths.len());
-        for p in paths {
-            if let Ok(path) = ctx.vim.expand(p.to_string_lossy()).await {
-                expanded_paths.push(path.into());
-            }
-        }
-
         Ok(Self {
             args: GrepArgs {
                 base,
-                paths: expanded_paths,
+                paths: ctx.expanded_paths(&paths).await?,
             },
             searcher_control: None,
         })

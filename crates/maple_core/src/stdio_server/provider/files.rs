@@ -24,8 +24,9 @@ struct FilesArgs {
     #[clap(long)]
     name_only: bool,
 
-    #[clap(long)]
-    path: Option<PathBuf>,
+    /// Specify additional search paths apart from the current working directory.
+    #[clap(long = "path")]
+    paths: Vec<PathBuf>,
 }
 
 #[derive(Debug)]
@@ -36,26 +37,15 @@ pub struct FilesProvider {
 
 impl FilesProvider {
     pub async fn new(ctx: &Context) -> Result<Self> {
-        let mut args: FilesArgs = ctx.parse_provider_args().await?;
+        let args: FilesArgs = ctx.parse_provider_args().await?;
         ctx.handle_base_args(&args.base).await?;
 
-        let mut ignore_path_arg = false;
-        if let Some(path) = &args.path {
-            if !path.try_exists().unwrap_or(false) {
-                ignore_path_arg = true;
-                let _ = ctx.vim.echo_warn(format!(
-                    "Ignore `--path {:?}` as it does not exist",
-                    path.display()
-                ));
-            }
-        }
-
-        if ignore_path_arg {
-            args.path.take();
-        }
-
+        let expanded_paths = ctx.expanded_paths(&args.paths).await?;
         Ok(Self {
-            args,
+            args: FilesArgs {
+                paths: expanded_paths,
+                ..args
+            },
             searcher_control: None,
         })
     }
@@ -86,8 +76,10 @@ impl FilesProvider {
 
             let join_handle = {
                 let mut search_context = ctx.search_context(stop_signal.clone());
-                if let Some(dir) = &self.args.path {
-                    search_context.paths = vec![dir.clone()];
+                if self.args.base.no_cwd {
+                    search_context.paths = self.args.paths.clone();
+                } else {
+                    search_context.paths.extend_from_slice(&self.args.paths);
                 }
                 let vim = ctx.vim.clone();
                 let hidden = self.args.hidden;

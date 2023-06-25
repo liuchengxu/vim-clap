@@ -419,6 +419,16 @@ impl Context {
         Ok(query)
     }
 
+    pub async fn expanded_paths(&self, paths: &[PathBuf]) -> Result<Vec<PathBuf>> {
+        let mut expanded_paths = Vec::with_capacity(paths.len());
+        for p in paths {
+            if let Ok(path) = self.vim.expand(p.to_string_lossy()).await {
+                expanded_paths.push(path.into());
+            }
+        }
+        Ok(expanded_paths)
+    }
+
     pub fn set_provider_source(&self, new: ProviderSource) {
         let mut provider_source = self.provider_source.write();
         *provider_source = new;
