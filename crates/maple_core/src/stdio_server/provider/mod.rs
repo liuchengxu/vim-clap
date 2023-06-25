@@ -40,9 +40,13 @@ pub struct BaseArgs {
     #[clap(long)]
     query: Option<String>,
 
-    /// Specify the working directory for all providers opend in this session.
+    /// Specify the working directory for this provider and all subsequent providers.
     #[clap(long)]
     cwd: Option<PathBuf>,
+
+    /// Skip the default working directory in searching.
+    #[clap(long)]
+    no_cwd: bool,
 }
 
 pub async fn create_provider(provider_id: &str, ctx: &Context) -> Result<Box<dyn ClapProvider>> {
@@ -404,7 +408,7 @@ impl Context {
     }
 
     pub async fn handle_base_args(&self, base: &BaseArgs) -> Result<String> {
-        let BaseArgs { query, cwd: _ } = base;
+        let BaseArgs { query, .. } = base;
 
         let query = if let Some(query) = query {
             self.vim.call("set_initial_query", json!([query])).await?

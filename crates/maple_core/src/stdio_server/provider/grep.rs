@@ -16,26 +16,32 @@ struct GrepArgs {
     #[clap(flatten)]
     base: BaseArgs,
 
-    /*
-    /// Do not search the current working directory and search this path only.
-    #[clap(long)]
-    path_only: Option<PathBuf>,
-    */
     /// Specify additional search paths apart from the current working directory.
-    #[clap(long)]
-    path: Vec<PathBuf>,
+    #[clap(long = "path")]
+    paths: Vec<PathBuf>,
 }
 
 #[derive(Debug)]
 pub struct GrepProvider {
-    paths: Vec<PathBuf>,
+    args: GrepArgs,
     searcher_control: Option<SearcherControl>,
 }
 
 impl GrepProvider {
-    pub async fn new(_ctx: &Context) -> Result<Self> {
+    pub async fn new(ctx: &Context) -> Result<Self> {
+        let GrepArgs { base, paths } = ctx.parse_provider_args().await?;
+        let mut expanded_paths = Vec::with_capacity(paths.len());
+        for p in paths {
+            if let Ok(path) = ctx.vim.expand(p.to_string_lossy()).await {
+                expanded_paths.push(path.into());
+            }
+        }
+
         Ok(Self {
-            paths: Vec::new(),
+            args: GrepArgs {
+                base,
+                paths: expanded_paths,
+            },
             searcher_control: None,
         })
     }
@@ -58,7 +64,11 @@ impl GrepProvider {
             let vim = ctx.vim.clone();
             let mut search_context = ctx.search_context(stop_signal.clone());
             // cwd + extra paths
-            search_context.paths.extend_from_slice(&self.paths);
+            if self.args.base.no_cwd {
+                search_context.paths = self.args.paths.clone();
+            } else {
+                search_context.paths.extend_from_slice(&self.args.paths);
+            }
             let join_handle = tokio::spawn(async move {
                 let _ = vim.bare_exec("clap#spinner#set_busy");
                 crate::searcher::grep::search(query, matcher, search_context).await;
@@ -78,13 +88,7 @@ impl GrepProvider {
 #[async_trait::async_trait]
 impl ClapProvider for GrepProvider {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        let GrepArgs { base, path } = ctx.parse_provider_args().await?;
-        for p in path {
-            if let Ok(path) = ctx.vim.expand(p.to_string_lossy()).await {
-                self.paths.push(path.into());
-            }
-        }
-        let initial_query = ctx.handle_base_args(&base).await?;
+        let initial_query = ctx.handle_base_args(&self.args.base).await?;
         if !initial_query.is_empty() {
             self.process_query(initial_query, ctx);
         }
@@ -124,7 +128,7 @@ mod tests {
                     query: Some(String::from("@visual")),
                     ..Default::default()
                 },
-                path: vec![PathBuf::from("~/.vim/plugged/vim-clap")]
+                paths: vec![PathBuf::from("~/.vim/plugged/vim-clap")]
             }
         );
 
@@ -135,7 +139,7 @@ mod tests {
                     query: Some(String::from("@visual")),
                     ..Default::default()
                 },
-                path: vec![]
+                paths: vec![]
             }
         );
 
@@ -143,7 +147,7 @@ mod tests {
             GrepArgs::parse_from([""]),
             GrepArgs {
                 base: BaseArgs::default(),
-                path: vec![]
+                paths: vec![]
             }
         );
     }

@@ -4,8 +4,6 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-let s:ALWAYS_ASYNC = exists('g:clap_builtin_fuzzy_filter_threshold') && g:clap_builtin_fuzzy_filter_threshold == 0
-
 let s:blines = {}
 
 function! s:format(lines) abort
