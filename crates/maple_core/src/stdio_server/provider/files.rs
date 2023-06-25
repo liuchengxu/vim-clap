@@ -138,9 +138,9 @@ mod tests {
             FilesArgs::parse_from(["", "--hidden", "--name-only"]),
             FilesArgs {
                 base: BaseArgs::default(),
-                path: None,
                 hidden: true,
-                name_only: true
+                name_only: true,
+                paths: vec![],
             }
         );
 
@@ -148,9 +148,9 @@ mod tests {
             FilesArgs::parse_from(["", "--hidden"]),
             FilesArgs {
                 base: BaseArgs::default(),
-                path: None,
                 hidden: true,
-                name_only: false
+                name_only: false,
+                paths: vec![],
             }
         );
 
@@ -158,9 +158,9 @@ mod tests {
             FilesArgs::parse_from(["", "--name-only"]),
             FilesArgs {
                 base: BaseArgs::default(),
-                path: None,
                 hidden: false,
-                name_only: true
+                name_only: true,
+                paths: vec![],
             }
         );
 
@@ -168,9 +168,9 @@ mod tests {
             FilesArgs::parse_from(["", "--path=~", "--name-only"]),
             FilesArgs {
                 base: BaseArgs::default(),
-                path: Some(PathBuf::from("~")),
                 hidden: false,
-                name_only: true
+                name_only: true,
+                paths: vec![PathBuf::from("~")],
             }
         );
     }
