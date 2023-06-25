@@ -54,7 +54,7 @@ Vim-clap is a modern generic performant finder using the `floating_win` of neovi
 - [x] ~~Pure vimscript~~.
   - Pin to some early version of vim-clap if you prefer the pure vimscript plugin.
 - [x] ~~Work out of the box, without any extra dependency~~.
-  - The Rust binary is required to have a decent user experience.
+  - The Rust binary is now a must-have to make everything work smoothly.
 - [x] Blazingly fast thanks to the powerful Rust backend.
 - [x] Consistent command interface with [clap-rs/clap](https://github.com/clap-rs/clap)
 - [x] Support writing new providers in both Vimscript and Rust.
@@ -303,7 +303,8 @@ User config file is loaded from:
 
 ```toml
 [matcher]
-# There are four sort keys for results: score, begin, end, length, you can specify how the records are sorted using `tiebreak`.
+# There are four sort keys for results: score, begin, end, length,
+# you can specify how the records are sorted using `tiebreak`.
 tiebreak = "score,-begin,-end,-length"
 ```
 
