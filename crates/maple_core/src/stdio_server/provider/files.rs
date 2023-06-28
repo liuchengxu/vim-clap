@@ -32,6 +32,7 @@ struct FilesArgs {
 #[derive(Debug)]
 pub struct FilesProvider {
     args: FilesArgs,
+    recent_files_bonus: Bonus,
     searcher_control: Option<SearcherControl>,
 }
 
@@ -41,11 +42,18 @@ impl FilesProvider {
         ctx.handle_base_args(&args.base).await?;
 
         let expanded_paths = ctx.expanded_paths(&args.paths).await?;
+
+        let recent_files = crate::datastore::RECENT_FILES_IN_MEMORY
+            .lock()
+            .recent_n_files(100);
+        let recent_files_bonus = Bonus::RecentFiles(recent_files.into());
+
         Ok(Self {
             args: FilesArgs {
                 paths: expanded_paths,
                 ..args
             },
+            recent_files_bonus,
             searcher_control: None,
         })
     }
@@ -57,10 +65,6 @@ impl FilesProvider {
             });
         }
 
-        let recent_files = crate::datastore::RECENT_FILES_IN_MEMORY
-            .lock()
-            .recent_n_files(50);
-        let recent_files_bonus = Bonus::RecentFiles(recent_files.into());
         let matcher = ctx
             .matcher_builder()
             .match_scope(if self.args.name_only {
@@ -68,7 +72,7 @@ impl FilesProvider {
             } else {
                 MatchScope::Full
             })
-            .bonuses(vec![recent_files_bonus])
+            .bonuses(vec![self.recent_files_bonus.clone()])
             .build(Query::from(&query));
 
         let new_control = {
