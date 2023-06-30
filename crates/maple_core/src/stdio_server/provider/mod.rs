@@ -380,12 +380,12 @@ impl Context {
     }
 
     pub async fn parse_provider_args<T: clap::Parser + Default + Debug>(&self) -> Result<T> {
-        let raw_args = self.vim.provider_raw_args().await?;
+        let args = self.vim.provider_args().await?;
 
-        let provider_args = if raw_args.is_empty() {
+        let provider_args = if args.is_empty() {
             T::default()
         } else {
-            T::try_parse_from(std::iter::once(String::from("")).chain(raw_args.into_iter()))
+            T::try_parse_from(std::iter::once(String::from("")).chain(args.into_iter()))
                 .map_err(|err| {
                     match err.kind() {
                         clap::error::ErrorKind::DisplayHelp => {

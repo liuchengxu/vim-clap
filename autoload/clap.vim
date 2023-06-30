@@ -335,10 +335,10 @@ function! clap#(bang, ...) abort
     if a:1 ==# '!'
       let g:clap.context['no-cache'] = v:true
       let provider_id_or_alias = a:2
-      let g:clap.provider.raw_args = a:000[2:]
+      let g:clap.provider.args = a:000[2:]
     else
       let provider_id_or_alias = a:1
-      let g:clap.provider.raw_args = a:000[1:]
+      let g:clap.provider.args = a:000[1:]
     endif
   endif
 

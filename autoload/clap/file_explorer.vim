@@ -37,6 +37,7 @@ function! clap#file_explorer#init_current_dir() abort
     return current_dir
   endif
 
+  " TODO: Specify --path
   let maybe_dir = g:clap.provider.args[0]
   " %:p:h, % is actually g:clap.start.bufnr
   if maybe_dir =~# '^%.\+'
