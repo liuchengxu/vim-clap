@@ -8,8 +8,7 @@
 
 ### Changed
 
-- `++opt` and `+opt` have been replaced with `--opt value` and `--opt` in a consistent way. Ref to #981 for upgrade guide.
-
+- `++opt` and `+opt` have been replaced with `--opt value`/`--opt=value` and `--opt` in a consistent way. Ref to #981 for upgrade guide.
 
 ## [0.44] 2023-05-27
 
@@ -22,6 +21,7 @@
 ## [0.40] 2023-01-27
 
 ## [0.39] 2023-01-13
+
 ## [0.38] 2023-01-08
 
 ### Added
