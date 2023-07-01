@@ -2,6 +2,9 @@
 
 ## [unreleased]
 
+
+## [0.45] 2023-07-01
+
 ### Removed
 
 - Remove a bunch of deprecated flags: `g:clap_maple_delay`, `g:clap_dispatcher_drop_cache`, `g:clap_default_external_filter`, `g:clap_builtin_fuzzy_filter_threshold`, `g:clap_cache_threshold`, `g:clap_force_matchfuzzy`, `g:clap_force_python`. They are unused now and I believe most of them are hardly really used by users.
