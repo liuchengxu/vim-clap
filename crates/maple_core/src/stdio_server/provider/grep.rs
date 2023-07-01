@@ -1,23 +1,42 @@
 use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
 use anyhow::Result;
+use clap::Parser;
 use matcher::MatchScope;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use types::Query;
 
+use super::BaseArgs;
+
+#[derive(Debug, Parser, PartialEq, Eq, Default)]
+#[command(name = ":Clap grep")]
+#[command(about = "grep provider", long_about = None)]
+struct GrepArgs {
+    #[clap(flatten)]
+    base: BaseArgs,
+
+    /// Specify additional search paths apart from the current working directory.
+    #[clap(long = "path")]
+    paths: Vec<PathBuf>,
+}
+
 #[derive(Debug)]
 pub struct GrepProvider {
-    paths: Vec<PathBuf>,
+    args: GrepArgs,
     searcher_control: Option<SearcherControl>,
 }
 
 impl GrepProvider {
-    pub fn new() -> Self {
-        Self {
-            paths: Vec::new(),
+    pub async fn new(ctx: &Context) -> Result<Self> {
+        let GrepArgs { base, paths } = ctx.parse_provider_args().await?;
+        Ok(Self {
+            args: GrepArgs {
+                base,
+                paths: ctx.expanded_paths(&paths).await?,
+            },
             searcher_control: None,
-        }
+        })
     }
 
     fn process_query(&mut self, query: String, ctx: &Context) {
@@ -38,7 +57,11 @@ impl GrepProvider {
             let vim = ctx.vim.clone();
             let mut search_context = ctx.search_context(stop_signal.clone());
             // cwd + extra paths
-            search_context.paths.extend_from_slice(&self.paths);
+            if self.args.base.no_cwd {
+                search_context.paths = self.args.paths.clone();
+            } else {
+                search_context.paths.extend_from_slice(&self.args.paths);
+            }
             let join_handle = tokio::spawn(async move {
                 let _ = vim.bare_exec("clap#spinner#set_busy");
                 crate::searcher::grep::search(query, matcher, search_context).await;
@@ -58,17 +81,9 @@ impl GrepProvider {
 #[async_trait::async_trait]
 impl ClapProvider for GrepProvider {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        let raw_args = ctx.vim.provider_raw_args().await?;
-        for args in &raw_args {
-            let abs_path = ctx.vim.fnamemodify(args, ":p").await?;
-            let abs_path = PathBuf::from(abs_path);
-            if abs_path.is_absolute() {
-                self.paths.push(abs_path);
-            }
-        }
-        let query = ctx.vim.context_query_or_input().await?;
-        if !query.is_empty() {
-            self.process_query(query, ctx);
+        let initial_query = ctx.handle_base_args(&self.args.base).await?;
+        if !initial_query.is_empty() {
+            self.process_query(initial_query, ctx);
         }
         Ok(())
     }
@@ -90,5 +105,43 @@ impl ClapProvider for GrepProvider {
             tokio::task::spawn_blocking(move || control.kill());
         }
         ctx.signify_terminated(session_id);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_files_args() {
+        assert_eq!(
+            GrepArgs::parse_from(["", "--query=@visual", "--path=~/.vim/plugged/vim-clap"]),
+            GrepArgs {
+                base: BaseArgs {
+                    query: Some(String::from("@visual")),
+                    ..Default::default()
+                },
+                paths: vec![PathBuf::from("~/.vim/plugged/vim-clap")]
+            }
+        );
+
+        assert_eq!(
+            GrepArgs::parse_from(["", "--query=@visual"]),
+            GrepArgs {
+                base: BaseArgs {
+                    query: Some(String::from("@visual")),
+                    ..Default::default()
+                },
+                paths: vec![]
+            }
+        );
+
+        assert_eq!(
+            GrepArgs::parse_from([""]),
+            GrepArgs {
+                base: BaseArgs::default(),
+                paths: vec![]
+            }
+        );
     }
 }

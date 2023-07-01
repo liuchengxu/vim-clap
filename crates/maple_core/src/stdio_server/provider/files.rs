@@ -1,26 +1,59 @@
-use crate::stdio_server::handler::initialize_provider;
 use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
 use anyhow::Result;
+use clap::Parser;
 use matcher::{Bonus, MatchScope};
+use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use types::Query;
 
+use super::BaseArgs;
+
+#[derive(Debug, Parser, PartialEq, Eq, Default)]
+#[command(name = ":Clap files")]
+#[command(about = "files provider", long_about = None)]
+struct FilesArgs {
+    #[clap(flatten)]
+    base: BaseArgs,
+
+    /// Whether to search hidden files.
+    #[clap(long)]
+    hidden: bool,
+
+    /// Whether to match the file name only.
+    #[clap(long)]
+    name_only: bool,
+
+    /// Specify additional search paths apart from the current working directory.
+    #[clap(long = "path")]
+    paths: Vec<PathBuf>,
+}
+
 #[derive(Debug)]
 pub struct FilesProvider {
-    hidden: bool,
-    name_only: bool,
+    args: FilesArgs,
+    recent_files_bonus: Bonus,
     searcher_control: Option<SearcherControl>,
 }
 
 impl FilesProvider {
     pub async fn new(ctx: &Context) -> Result<Self> {
-        let provider_args = ctx.vim.provider_args().await?;
-        let hidden = provider_args.iter().any(|s| s == "--hidden");
-        let name_only = ctx.vim.files_name_only().await?;
+        let args: FilesArgs = ctx.parse_provider_args().await?;
+        ctx.handle_base_args(&args.base).await?;
+
+        let expanded_paths = ctx.expanded_paths(&args.paths).await?;
+
+        let recent_files = crate::datastore::RECENT_FILES_IN_MEMORY
+            .lock()
+            .recent_n_files(100);
+        let recent_files_bonus = Bonus::RecentFiles(recent_files.into());
+
         Ok(Self {
-            hidden,
-            name_only,
+            args: FilesArgs {
+                paths: expanded_paths,
+                ..args
+            },
+            recent_files_bonus,
             searcher_control: None,
         })
     }
@@ -32,27 +65,28 @@ impl FilesProvider {
             });
         }
 
-        let recent_files = crate::datastore::RECENT_FILES_IN_MEMORY
-            .lock()
-            .recent_n_files(50);
-        let recent_files_bonus = Bonus::RecentFiles(recent_files.into());
         let matcher = ctx
             .matcher_builder()
-            .match_scope(if self.name_only {
+            .match_scope(if self.args.name_only {
                 MatchScope::FileName
             } else {
                 MatchScope::Full
             })
-            .bonuses(vec![recent_files_bonus])
+            .bonuses(vec![self.recent_files_bonus.clone()])
             .build(Query::from(&query));
 
         let new_control = {
             let stop_signal = Arc::new(AtomicBool::new(false));
 
             let join_handle = {
-                let search_context = ctx.search_context(stop_signal.clone());
+                let mut search_context = ctx.search_context(stop_signal.clone());
+                if self.args.base.no_cwd {
+                    search_context.paths = self.args.paths.clone();
+                } else {
+                    search_context.paths.extend_from_slice(&self.args.paths);
+                }
                 let vim = ctx.vim.clone();
-                let hidden = self.hidden;
+                let hidden = self.args.hidden;
                 tokio::spawn(async move {
                     let _ = vim.bare_exec("clap#spinner#set_busy");
                     crate::searcher::files::search(query, hidden, matcher, search_context).await;
@@ -74,11 +108,8 @@ impl FilesProvider {
 impl ClapProvider for FilesProvider {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.context_query_or_input().await?;
-        if !query.is_empty() {
-            self.process_query(query, ctx);
-        } else {
-            initialize_provider(ctx).await?;
-        }
+        // All files will be collected if query is empty
+        self.process_query(query, ctx);
         Ok(())
     }
 
@@ -98,5 +129,53 @@ impl ClapProvider for FilesProvider {
             tokio::task::spawn_blocking(move || control.kill());
         }
         ctx.signify_terminated(session_id);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_files_args() {
+        assert_eq!(
+            FilesArgs::parse_from(["", "--hidden", "--name-only"]),
+            FilesArgs {
+                base: BaseArgs::default(),
+                hidden: true,
+                name_only: true,
+                paths: vec![],
+            }
+        );
+
+        assert_eq!(
+            FilesArgs::parse_from(["", "--hidden"]),
+            FilesArgs {
+                base: BaseArgs::default(),
+                hidden: true,
+                name_only: false,
+                paths: vec![],
+            }
+        );
+
+        assert_eq!(
+            FilesArgs::parse_from(["", "--name-only"]),
+            FilesArgs {
+                base: BaseArgs::default(),
+                hidden: false,
+                name_only: true,
+                paths: vec![],
+            }
+        );
+
+        assert_eq!(
+            FilesArgs::parse_from(["", "--path=~", "--name-only"]),
+            FilesArgs {
+                base: BaseArgs::default(),
+                hidden: false,
+                name_only: true,
+                paths: vec![PathBuf::from("~")],
+            }
+        );
     }
 }

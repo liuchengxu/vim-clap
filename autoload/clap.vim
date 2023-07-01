@@ -297,41 +297,6 @@ function! clap#for(provider_id_or_alias) abort
   call clap#indicator#render()
 endfunction
 
-function! s:parse_opts(args) abort
-  let idx = 0
-  let g:clap.provider.raw_args = a:args
-  " TODO: Switch the argument parsing to CLI interface?
-  let g:clap.provider.args = []
-  for arg in a:args
-    if arg ==# '--'
-      let g:clap.context.query = join(a:args[idx+1 :], ' ')
-      break
-    endif
-    if arg =~? '^++\w*=\w*'
-      let matched = matchlist(arg, '^++\(\w*\)=\(\S*\)')
-      let [k, v] = [matched[1], matched[2]]
-      if has_key(g:clap.context, k)
-        let g:clap.context[k] .= ' '.v
-      else
-        let g:clap.context[k] = v
-      endif
-    elseif arg =~? '^+\w*'
-      let opt = arg[1:]
-      let g:clap.context[opt] = v:true
-    else
-      call add(g:clap.provider.args, arg)
-    endif
-    let idx += 1
-  endfor
-  if has_key(g:clap.context, 'query')
-    if g:clap.context.query ==# '@visual'
-      let g:clap.context.query = clap#util#get_visual_selection()
-    else
-      let g:clap.context.query = clap#util#expand(g:clap.context.query)
-    endif
-  endif
-endfunction
-
 function! clap#(bang, ...) abort
   if !exists('g:clap')
     call clap#init#()
@@ -370,16 +335,11 @@ function! clap#(bang, ...) abort
     if a:1 ==# '!'
       let g:clap.context['no-cache'] = v:true
       let provider_id_or_alias = a:2
-      call s:parse_opts(a:000[2:])
+      let g:clap.provider.args = a:000[2:]
     else
       let provider_id_or_alias = a:1
-      call s:parse_opts(a:000[1:])
+      let g:clap.provider.args = a:000[1:]
     endif
-  endif
-
-  if provider_id_or_alias =~# '!$'
-    let g:clap.context['no-cache'] = v:true
-    let provider_id_or_alias = provider_id_or_alias[:-2]
   endif
 
   call clap#for(provider_id_or_alias)

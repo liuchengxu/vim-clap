@@ -377,20 +377,6 @@ function! s:init_provider() abort
     endif
   endfunction
 
-  function! provider.apply_query() abort
-    if has_key(g:clap.context, 'query')
-      if s:is_nvim
-        call feedkeys(g:clap.context.query)
-      else
-        call g:clap.input.set(g:clap.context.query)
-        " Move the cursor to the end.
-        call feedkeys("\<C-E>", 'xt')
-      endif
-      call clap#indicator#set_none()
-      call g:clap.provider.on_typed()
-    endif
-  endfunction
-
   function! provider._apply_source() abort
     let Source = self._().source
 

@@ -388,21 +388,12 @@ impl Vim {
         self.eval("g:clap.provider.id").await
     }
 
-    pub async fn provider_raw_args(&self) -> Result<Vec<String>> {
-        self.bare_call("provider_raw_args").await
-    }
-
     pub async fn working_dir(&self) -> Result<AbsPathBuf> {
         self.bare_call("clap#rooter#working_dir").await
     }
 
     pub async fn context_query_or_input(&self) -> Result<String> {
         self.bare_call("context_query_or_input").await
-    }
-
-    pub async fn files_name_only(&self) -> Result<bool> {
-        let context: HashMap<String, Value> = self.eval("g:clap.context").await?;
-        Ok(context.contains_key("name-only"))
     }
 
     pub async fn current_buffer_path(&self) -> Result<String> {
@@ -422,6 +413,10 @@ impl Vim {
     /////////////////////////////////////////////////////////////////
     pub fn echo_info(&self, msg: impl AsRef<str>) -> Result<()> {
         self.exec("clap#helper#echo_info", json!([msg.as_ref()]))
+    }
+
+    pub fn echo_warn(&self, msg: impl AsRef<str>) -> Result<()> {
+        self.exec("clap#helper#echo_warn", json!([msg.as_ref()]))
     }
 
     pub async fn current_winid(&self) -> Result<usize> {

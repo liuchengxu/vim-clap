@@ -67,6 +67,10 @@ function! s:api.display_getcurline() abort
   return [g:clap.display.getcurline(), get(g:, '__clap_icon_added_by_maple', v:false)]
 endfunction
 
+function! s:api.display_set_lines(lines) abort
+  call g:clap.display.set_lines(a:lines)
+endfunction
+
 function! s:api.provider_source() abort
   if has_key(g:clap.provider, 'source_type') && has_key(g:clap.provider._(), 'source')
     if g:clap.provider.source_type == g:__t_string
@@ -96,10 +100,6 @@ endfunction
 
 function! s:api.provider_args() abort
   return get(g:clap.provider, 'args', [])
-endfunction
-
-function! s:api.provider_raw_args() abort
-  return get(g:clap.provider, 'raw_args', [])
 endfunction
 
 function! s:api.input_set(value) abort
@@ -137,6 +137,24 @@ function! s:api.show_lines_in_preview(lines) abort
   else
     call g:clap.preview.show(a:lines)
   endif
+endfunction
+
+function! s:api.set_initial_query(query) abort
+  if a:query ==# '@visual'
+    let query = clap#util#get_visual_selection()
+  else
+    let query = clap#util#expand(a:query)
+  endif
+
+  if s:is_nvim
+    call feedkeys(query)
+  else
+    call g:clap.input.set(query)
+    " Move the cursor to the end.
+    call feedkeys("\<C-E>", 'xt')
+  endif
+
+  return query
 endfunction
 
 function! clap#api#call(method, args) abort

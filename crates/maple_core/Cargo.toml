@@ -14,6 +14,7 @@ async-trait = "0.1"
 base64 = "0.13"
 bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
 chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4.2", features = ["derive"] }
 directories = "4.0"
 futures = "0.3"
 # ripgrep for global search

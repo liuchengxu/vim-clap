@@ -1054,6 +1054,7 @@ dependencies = [
  "base64 0.13.1",
  "bytecount",
  "chrono",
+ "clap",
  "directories",
  "dumb_analyzer",
  "filter",

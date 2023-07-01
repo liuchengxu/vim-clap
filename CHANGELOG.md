@@ -2,6 +2,13 @@
 
 ## [unreleased]
 
+### Removed
+
+- Remove a bunch of deprecated flags: `g:clap_maple_delay`, `g:clap_dispatcher_drop_cache`, `g:clap_default_external_filter`, `g:clap_builtin_fuzzy_filter_threshold`, `g:clap_cache_threshold`, `g:clap_force_matchfuzzy`, `g:clap_force_python`. They are unused now and I believe most of them are hardly really used by users.
+
+### Changed
+
+- `++opt` and `+opt` have been replaced with `--opt value`/`--opt=value` and `--opt` in a consistent way. Ref to #981 for upgrade guide.
 
 ## [0.44] 2023-05-27
 
@@ -14,6 +21,7 @@
 ## [0.40] 2023-01-27
 
 ## [0.39] 2023-01-13
+
 ## [0.38] 2023-01-08
 
 ### Added

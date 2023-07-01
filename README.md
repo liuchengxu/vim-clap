@@ -54,9 +54,10 @@ Vim-clap is a modern generic performant finder using the `floating_win` of neovi
 - [x] ~~Pure vimscript~~.
   - Pin to some early version of vim-clap if you prefer the pure vimscript plugin.
 - [x] ~~Work out of the box, without any extra dependency~~.
-  - The Rust binary is required to have a decent user experience.
+  - The Rust binary is now a must-have to make everything work smoothly.
 - [x] Blazingly fast thanks to the powerful Rust backend.
-- [x] Extensible, easy to add new providers.
+- [x] Consistent command interface with [clap-rs/clap](https://github.com/clap-rs/clap)
+- [x] Support writing new providers in both Vimscript and Rust.
 - [x] Support [the search syntax borrowed from fzf](https://github.com/junegunn/fzf#search-syntax) and more.
 - [x] Flexible UI layout.
 - [ ] Support searching by multiple providers simultaneously.
@@ -105,19 +106,6 @@ Vim-clap is utterly easy to use, just type, press Ctrl-J/K to locate the wanted 
 
 The paradigm is `Clap [provider_id_or_alias] {provider_args}`, where the `provider_id_or_alias` is obviously either the name or alias of provider. Technically the `provider_id` can be anything that can be used a key of a Dict, but I recommend you using an _identifier_ like name as the provider id, and use the alias rule if you prefer a special name.
 
-<details>
-  <summary>cache is no longer necessary since v0.37.</summary>
-
-You can use `+no-cache` option to disable/refresh the cache, e.g., `:Clap files +no-cache ~` for searching files under the home directory without cache, the shortcut for `+no-cache` option:
-
-- `:Clap!! [provider_id_or_alias] {provider_args}`, e.g, `:Clap!! files ~`.
-- `:Clap [provider_id_or_alias][!] {provider_args}`, e.g, `:Clap files! ~`. (Recommended)
-
-Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forerunner_status_sign` to configure it.
-
-<img width="561" alt="cache spinner" src="https://user-images.githubusercontent.com/8850248/78767291-fafe3e00-79bc-11ea-91a8-e17518e7a1b2.png">
-</details>
-
 #### Providers
 
 | Command                                | List                                                   | Requirement                                                             |
@@ -156,7 +144,6 @@ Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forer
 | `Clap proj_tags`                       | Tags in the current project                            | **[maple][maple]** and **[universal-ctags][universal-ctags]** (`+json`) |
 | `Clap recent_files`                    | Persistent ordered history of recent files             | **[maple][maple]**                                                      |
 
-[fd]: https://github.com/sharkdp/fd
 [rg]: https://github.com/BurntSushi/ripgrep
 [git]: https://github.com/git/git
 [maple]: https://github.com/liuchengxu/vim-clap/blob/master/INSTALL.md#maple-binary
@@ -165,10 +152,10 @@ Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forer
 - The command with a superscript `!` means that it is not yet implemented or not tested.
 - The command with a superscript `+` means that it supports multi-selection via <kbd>Tab</kbd>.
 - `:Clap grep`
-  - Use `:Clap grep ++query=<cword>` to grep the word under cursor.
-  - Use `:Clap grep ++query=@visual` to grep the visual selection.
+  - Use `:Clap grep --query=<cword>` to grep the word under cursor.
+  - Use `:Clap grep --query=@visual` to grep the visual selection.
   - `cwd` will be searched by default, specify the extra paths in the end to search multiple directories.
-    - `:Clap grep ~/.vim/plugged/ale` with `cwd` is `~/.vim/plugged/vim-clap` will both search vim-clap and ale.
+    - `:Clap grep --path ~/.vim/plugged/ale` with `cwd` is `~/.vim/plugged/vim-clap` will both search vim-clap and ale.
 
 [Send a pull request](https://github.com/liuchengxu/vim-clap/pulls) if you want to get your provider listed here.
 
@@ -316,7 +303,8 @@ User config file is loaded from:
 
 ```toml
 [matcher]
-# There are four sort keys for results: score, begin, end, length, you can specify how the records are sorted using `tiebreak`.
+# There are four sort keys for results: score, begin, end, length,
+# you can specify how the records are sorted using `tiebreak`.
 tiebreak = "score,-begin,-end,-length"
 ```
 
