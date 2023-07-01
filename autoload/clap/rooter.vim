@@ -21,23 +21,7 @@ endfunction
 " each provider context.
 function! clap#rooter#try_set_cwd() abort
   if !exists('g:__clap_provider_cwd')
-    if !empty(get(g:clap.provider, 'args', []))
-      let dir = g:clap.provider.args[-1]
-
-      " %:p:h, % is actually g:clap.start.bufnr
-      if dir =~# '^%.\+'
-        let m = matchstr(dir, '^%\zs\(.*\)')
-        let target_dir = fnamemodify(bufname(g:clap.start.bufnr), m)
-        call s:set_provider_cwd(target_dir)
-        let g:clap.provider.args = g:clap.provider.args[:-2]
-        return
-      endif
-
-      if isdirectory(expand(dir))
-        call s:set_provider_cwd(dir)
-        let g:clap.provider.args = g:clap.provider.args[:-2]
-      endif
-    elseif clap#should_use_raw_cwd()
+    if clap#should_use_raw_cwd()
       let g:__clap_provider_cwd = getcwd()
     else
       let g:__clap_provider_cwd = clap#path#project_root_or_default(g:clap.start.bufnr)
@@ -101,23 +85,23 @@ endfunction
 
 " This is used for the sink/sink* function, with the proper cwd considered.
 "
-" Argument: `sink_args`/`sink_args`
-function! clap#rooter#run_sink_or_sink_star(Run, ...) abort
+" Argument: `sink_args`/`sink_star_args`
+function! clap#rooter#run_sink_or_sink_star(Run, args) abort
   if exists('g:__clap_provider_cwd')
-    return s:run_from_target_dir(g:__clap_provider_cwd, a:Run, a:1)
+    return s:run_from_target_dir(g:__clap_provider_cwd, a:Run, a:args)
   elseif clap#should_use_raw_cwd()
-    return call(a:Run, a:1)
+    return a:Run(a:args)
   endif
 
   let project_root = clap#path#find_project_root(g:clap.start.bufnr)
 
   if empty(project_root)
-    let result = call(a:Run, a:1)
+    let result = a:Run(a:args)
   else
     let save_cwd = getcwd()
     try
       execute 'lcd' project_root
-      let l:result = call(a:Run, a:1)
+      let l:result = a:Run(a:args)
     finally
       " Here we could use a naive heuristic approach to
       " not restore the old cwd when the current working
