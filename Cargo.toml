@@ -14,7 +14,7 @@ description = "Rust backend for the vim plugin vim-clap"
 
 [dependencies]
 clap = { version = "4.2", features = ["derive"] }
-tokio = { version = "1.23", features = ["rt"] }
+tokio = { version = "1.29", features = ["rt"] }
 
 cli = { path = "crates/cli" }
 upgrade = { path = "crates/upgrade" }
