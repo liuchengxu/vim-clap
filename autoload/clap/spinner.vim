@@ -66,12 +66,12 @@ if has('nvim')
 else
   function! clap#spinner#set(text) abort
     let s:current_prompt = s:fill_in_placeholders(a:text)
-    call popup_settext(g:clap_spinner_winid, s:current_prompt)
+    call popup_settext(g:__clap_spinner_winid, s:current_prompt)
     call clap#popup#shrink_spinner()
   endfunction
 
   function! s:set_spinner() abort
-    if exists('g:clap_spinner_winid')
+    if exists('g:__clap_spinner_winid')
       let s:current_prompt = s:generate_prompt()
       call clap#spinner#set(s:current_prompt)
     endif

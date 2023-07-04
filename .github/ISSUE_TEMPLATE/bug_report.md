@@ -8,11 +8,10 @@ assignees: ''
 ---
 
 _Instructions: Replace the template text and remove irrelevant text (including this line)_
-**Warning: if you don't fill this issue template and provide the reproducible steps the issue could be closed directly.**
+**Warning: if you don't fill this issue template and provide the info of `:Clap debug` the issue could be closed directly.**
 
 **Environment (please complete the following information):**
  - OS: ???
- - (Neo)Vim version: ???
  - vim-clap version: ???
  - Have you reproduced with a minimal vimrc: ???
  - Have you updated to the latest plugin version: ???

@@ -216,7 +216,7 @@ function! s:create_spinner() abort
     let s:spinner_winid = popup_create(clap#spinner#get(), pos)
     call popup_hide(s:spinner_winid)
     call win_execute(s:spinner_winid, 'setlocal nonumber')
-    let g:clap_spinner_winid = s:spinner_winid
+    let g:__clap_spinner_winid = s:spinner_winid
   endif
 endfunction
 
@@ -386,7 +386,7 @@ function! clap#popup#open() abort
   call s:open_popup()
   call s:adjust_spinner()
 
-  let g:clap_indicator_winid = s:indicator_winid
+  let g:__clap_indicator_winid = s:indicator_winid
 
   call clap#_init()
 

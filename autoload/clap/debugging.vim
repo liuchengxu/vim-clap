@@ -21,6 +21,7 @@ function! s:get_global_variables() abort
   call filter(variable_list, 'v:val !~# ''^clap#icon#''')
   call filter(variable_list, 'v:val !~# ''clap#floating_win''')
   call filter(variable_list, 'v:val !~# ''clap#display_win''')
+  call filter(variable_list, 'v:val !~# ''clap#popup''')
   call filter(variable_list, 'v:val !~# ''clap#themes#''')
 
   call sort(variable_list)
@@ -37,6 +38,14 @@ endfunction
 function! clap#debugging#info() abort
   let third_party_providers = string(s:get_third_party_providers())
   let global_variables = s:get_global_variables()
+
+  if has('nvim')
+    echohl Type   | echo '               NeoVim: '                  | echohl NONE
+    echohl Normal | echon split(execute('version'), '\n')[0]     | echohl NONE
+  else
+    echohl Type   | echo '                  Vim: '                            | echohl NONE
+    echohl Normal | echon join(split(execute('version'), '\n')[:1])     | echohl NONE
+  endif
 
   echohl Type   | echo '            has ctags: '                | echohl NONE
   if executable('ctags')

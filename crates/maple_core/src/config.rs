@@ -30,10 +30,7 @@ pub fn load_config_on_startup(
         .and_then(|contents| {
             toml::from_str(&contents).map_err(|err| {
                 maybe_config_err.replace(err);
-                std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Error occurred in config.toml"),
-                )
+                std::io::Error::new(std::io::ErrorKind::Other, "Error occurred in config.toml")
             })
         })
         .unwrap_or_default();
