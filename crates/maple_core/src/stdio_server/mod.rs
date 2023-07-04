@@ -24,7 +24,14 @@ use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::Instant;
 
 // Do the initialization on startup.
-async fn initialize(vim: Vim) -> Result<()> {
+async fn initialize(vim: Vim, config_err: Option<toml::de::Error>) -> Result<()> {
+    if let Some(err) = config_err {
+        vim.echo_warn(format!(
+            "Using default Config due to the error in {}: {err}",
+            crate::config::config_file().display()
+        ))?;
+    }
+
     // The output of `autocmd filetypedetect` could be incomplete as the
     // filetype won't be instantly initialized, thus the current workaround
     // is to introduce some delay.
@@ -47,7 +54,7 @@ async fn initialize(vim: Vim) -> Result<()> {
 }
 
 /// Starts and keep running the server on top of stdio.
-pub async fn start() {
+pub async fn start(config_err: Option<toml::de::Error>) {
     // TODO: setup test framework using vim_message_sender.
     let (vim_message_sender, vim_message_receiver) = tokio::sync::mpsc::unbounded_channel();
 
@@ -62,7 +69,7 @@ pub async fn start() {
     tokio::spawn({
         let vim = vim.clone();
         async move {
-            if let Err(e) = initialize(vim).await {
+            if let Err(e) = initialize(vim, config_err).await {
                 tracing::error!(error = ?e, "Failed to initialize Client")
             }
         }

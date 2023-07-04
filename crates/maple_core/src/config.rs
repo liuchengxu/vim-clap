@@ -6,12 +6,16 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 static CONFIG_FILE: OnceCell<PathBuf> = OnceCell::new();
+// TODO: reload-config
+static CONFIG: OnceCell<Config> = OnceCell::new();
 
-// Should be only initialized once.
-pub fn initialize_config_file(specified_file: Option<PathBuf>) {
-    let config_file = specified_file.unwrap_or_else(|| {
+pub fn load_config_on_startup(
+    specified_config_file: Option<PathBuf>,
+) -> (&'static Config, Option<toml::de::Error>) {
+    let config_file = specified_config_file.unwrap_or_else(|| {
         // Linux: ~/.config/vimclap/config.toml
         // macOS: ~/Library/Application\ Support/org.vim.Vim-Clap/config.toml
+        // Windows: ~\AppData\Roaming\Vim\Vim Clap\config\config.toml
         let config_file_path = PROJECT_DIRS.config_dir().join("config.toml");
 
         if !config_file_path.exists() {
@@ -21,34 +25,36 @@ pub fn initialize_config_file(specified_file: Option<PathBuf>) {
         config_file_path
     });
 
-    CONFIG_FILE.set(config_file).ok();
+    let mut maybe_config_err = None;
+    let loaded_config = std::fs::read_to_string(&config_file)
+        .and_then(|contents| {
+            toml::from_str(&contents).map_err(|err| {
+                maybe_config_err.replace(err);
+                std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Error occurred in config.toml"),
+                )
+            })
+        })
+        .unwrap_or_default();
+
+    CONFIG_FILE
+        .set(config_file)
+        .expect("Failed to initialize Config file");
+
+    CONFIG
+        .set(loaded_config)
+        .expect("Failed to initialize Config");
+
+    (config(), maybe_config_err)
+}
+
+pub fn config() -> &'static Config {
+    CONFIG.get().expect("Config must be initialized")
 }
 
 pub fn config_file() -> &'static PathBuf {
     CONFIG_FILE.get().expect("Config file uninitialized")
-}
-
-// TODO: reload-config
-pub fn config() -> &'static Config {
-    static CONFIG: OnceCell<Config> = OnceCell::new();
-
-    CONFIG.get_or_init(|| {
-        std::fs::read_to_string(CONFIG_FILE.get().expect("Config file uninitialized!"))
-            .and_then(|contents| {
-                toml::from_str(&contents).map_err(|err| {
-                    // TODO: Notify the config error.
-                    tracing::debug!(
-                        ?err,
-                        "Error while deserializing config.toml, using the default config"
-                    );
-                    std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!("Error occurred at reading config.toml: {err}"),
-                    )
-                })
-            })
-            .unwrap_or_default()
-    })
 }
 
 #[derive(Serialize, Deserialize, Debug)]
