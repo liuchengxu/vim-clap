@@ -42,29 +42,31 @@ impl ProviderSession {
     }
 
     pub fn start_event_loop(self) {
+        let debounce_delay =
+            crate::config::config().provider_debounce(self.ctx.env.provider_id.as_str());
+
         tracing::debug!(
             provider_session_id = self.provider_session_id,
             provider_id = %self.ctx.provider_id(),
-            debounce = self.ctx.env.debounce,
+            debounce_delay,
             "Spawning a new provider session task",
         );
 
         tokio::spawn(async move {
-            if self.ctx.env.debounce {
-                self.run_event_loop_with_debounce().await;
+            if debounce_delay > 0 {
+                self.run_event_loop_with_debounce(debounce_delay).await;
             } else {
                 self.run_event_loop_without_debounce().await;
             }
         });
     }
 
-    async fn run_event_loop_with_debounce(mut self) {
-        // https://github.com/denoland/deno/blob/1fb5858009f598ce3f917f9f49c466db81f4d9b0/cli/lsp/diagnostics.rs#L141
-        //
-        // Debounce timer delay. 150ms between keystrokes is about 45 WPM, so we
-        // want something that is longer than that, but not too long to
-        // introduce detectable UI delay; 200ms is a decent compromise.
-        const DELAY: Duration = Duration::from_millis(200);
+    // https://github.com/denoland/deno/blob/1fb5858009f598ce3f917f9f49c466db81f4d9b0/cli/lsp/diagnostics.rs#L141
+    //
+    // Debounce timer delay. 150ms between keystrokes is about 45 WPM, so we
+    // want something that is longer than that, but not too long to
+    // introduce detectable UI delay; 200ms is a decent compromise.
+    async fn run_event_loop_with_debounce(mut self, debounce_delay: u64) {
         // If the debounce timer isn't active, it will be set to expire "never",
         // which is actually just 1 year in the future.
         const NEVER: Duration = Duration::from_secs(365 * 24 * 60 * 60);
@@ -83,7 +85,7 @@ impl ProviderSession {
         // |    ----     |  ---- | ----   | ----  |
         // |     filter  | 413us | 12ms   | 75ms  |
         // | par_filter  | 327us |  3ms   | 20ms  |
-        let mut on_typed_delay = DELAY;
+        let mut on_typed_delay = Duration::from_millis(debounce_delay);
         let on_typed_timer = tokio::time::sleep(NEVER);
         tokio::pin!(on_typed_timer);
 

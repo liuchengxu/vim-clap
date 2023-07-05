@@ -134,6 +134,32 @@ pub struct IgnoreConfig {
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct ProviderConfig {
+    /// Delay in milliseconds before the user query will be handled actually.
+    ///
+    /// When enabled and not-zero, some intermediate inputs will be dropped if user types too fast.
+    ///
+    /// # Config example
+    ///
+    /// ```toml
+    /// [provider.debounce]
+    /// # Set debounce to 200ms for all providers by default.
+    /// "*" = 200
+    ///
+    /// # Set debounce to 100ms for files provider specifically.
+    /// "files" = 100
+    /// ```
+    pub debounce: HashMap<String, u64>,
+
+    /// Ignore configuration per provider.
+    ///
+    /// Priorities of the ignore config:
+    ///   provider_ignores > provider_ignores > global_ignore
+    pub ignore: HashMap<String, IgnoreConfig>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct InputHistoryConfig {
     /// Whether to share the input history of each provider.
     pub share_all_inputs: bool,
@@ -151,6 +177,9 @@ pub struct Config {
     /// Plugin configuration.
     pub plugin: PluginConfig,
 
+    /// Provider configuration.
+    pub provider: ProviderConfig,
+
     /// Global ignore configuration.
     pub global_ignore: IgnoreConfig,
 
@@ -159,23 +188,33 @@ pub struct Config {
     /// The project path must be specified as absolute path or a path relative to the home directory.
     pub project_ignore: HashMap<AbsPathBuf, IgnoreConfig>,
 
-    /// Ignore configuration per provider.
-    ///
-    /// Priorities of the ignore config:
-    ///   provider_ignores > provider_ignores > global_ignore
-    pub provider_ignore: HashMap<String, IgnoreConfig>,
-
     /// Input history configuration
     pub input_history: InputHistoryConfig,
 }
 
 impl Config {
     pub fn ignore_config(&self, provider_id: &str, project_dir: &AbsPathBuf) -> &IgnoreConfig {
-        self.provider_ignore.get(provider_id).unwrap_or_else(|| {
+        self.provider.ignore.get(provider_id).unwrap_or_else(|| {
             self.project_ignore
                 .get(project_dir)
                 .unwrap_or(&self.global_ignore)
         })
+    }
+
+    pub fn provider_debounce(&self, provider_id: &str) -> u64 {
+        const DEFAULT_DEBOUNCE: u64 = 200;
+
+        self.provider
+            .debounce
+            .get(provider_id)
+            .copied()
+            .unwrap_or_else(|| {
+                self.provider
+                    .debounce
+                    .get("*")
+                    .copied()
+                    .unwrap_or(DEFAULT_DEBOUNCE)
+            })
     }
 }
 
@@ -186,15 +225,6 @@ mod tests {
     #[test]
     fn test_load_config() {
         let toml_content = r#"
-          [global-ignore]
-          file-path-pattern = ["test", "build"]
-
-          # [project-ignore."~/src/github.com/subspace/subspace"]
-          # comment-line = true
-
-          [provider-ignore.dumb_jump]
-          comment-line = true
-
           [log]
           max-level = "trace"
           log-file = "/tmp/clap.log"
@@ -204,9 +234,23 @@ mod tests {
 
           [plugin.highlight-cursor-word]
           enable = true
+
+          [provider.debounce]
+          "*" = 200
+          "files" = 100
+
+          [global-ignore]
+          file-path-pattern = ["test", "build"]
+
+          # [project-ignore."~/src/github.com/subspace/subspace"]
+          # comment-line = true
+
+          [provider.ignore.dumb_jump]
+          comment-line = true
 "#;
-        let user_config: Config = toml::from_str(toml_content).unwrap();
-        println!("{user_config:?}");
+        let user_config: Config =
+            toml::from_str(toml_content).expect("Failed to deserialize config");
+        println!("{:#?}", user_config);
         println!("{}", toml::to_string(&user_config).unwrap());
     }
 }

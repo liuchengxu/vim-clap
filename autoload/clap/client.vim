@@ -88,7 +88,6 @@ function! clap#client#notify_on_init(...) abort
         \   'display': { 'bufnr': g:clap.display.bufnr, 'winid': g:clap.display.winid },
         \   'cwd': clap#rooter#working_dir(),
         \   'icon': g:clap_enable_icon ? get(g:clap.provider._(), 'icon', 'Null') : 'Null',
-        \   'debounce': get(g:clap.provider._(), 'debounce', v:true),
         \   'no_cache': has_key(g:clap.context, 'no-cache') ? v:true : v:false,
         \   'start_buffer_path': expand('#'.g:clap.start.bufnr.':p'),
         \ }
