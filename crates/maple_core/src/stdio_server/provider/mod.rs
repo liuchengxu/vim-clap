@@ -39,7 +39,7 @@ use types::{ClapItem, MatchedItem};
 use super::input::{InternalProviderEvent, ProviderEvent};
 
 /// [`BaseArgs`] represents the arguments common to all the providers.
-#[derive(Debug, clap::Parser, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, clap::Parser, PartialEq, Eq, Default)]
 pub struct BaseArgs {
     /// Specify the initial query.
     #[clap(long)]
@@ -62,7 +62,7 @@ pub async fn create_provider(provider_id: &str, ctx: &Context) -> Result<Box<dyn
         "files" => Box::new(files::FilesProvider::new(ctx).await?),
         "grep" => Box::new(grep::GrepProvider::new(ctx).await?),
         "igrep" => Box::new(igrep::IgrepProvider::new(ctx).await?),
-        "recent_files" => Box::new(recent_files::RecentFilesProvider::new(ctx)),
+        "recent_files" => Box::new(recent_files::RecentFilesProvider::new(ctx).await?),
         "tagfiles" => Box::new(tagfiles::TagfilesProvider::new()),
         _ => Box::new(generic_provider::GenericProvider::new()),
     };
