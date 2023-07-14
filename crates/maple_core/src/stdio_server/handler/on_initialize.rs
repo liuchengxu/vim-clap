@@ -100,10 +100,10 @@ async fn initialize_provider_source(ctx: &Context) -> Result<ProviderSource> {
 
                 const DIRECT_CREATE_NEW_SOURCE: &[&str] = &["files"];
 
-                let direct_create_new_source =
+                let create_new_source_directly =
                     DIRECT_CREATE_NEW_SOURCE.contains(&ctx.provider_id());
 
-                let provider_source = if direct_create_new_source || ctx.env.no_cache {
+                let provider_source = if create_new_source_directly || ctx.env.no_cache {
                     execute_and_write_cache(&shell_cmd.command, cache_file).await?
                 } else {
                     match shell_cmd.cache_digest() {

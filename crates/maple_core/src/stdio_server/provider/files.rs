@@ -132,8 +132,10 @@ impl ClapProvider for FilesProvider {
         // }
         // }
 
-        // // All files will be collected if query is empty
-        // self.process_query(query, ctx);
+        // All files will be collected if query is empty
+        if self.args.base.query.is_none() {
+            self.process_query("".into(), ctx);
+        }
 
         ctx.handle_base_args(&self.args.base).await?;
 
