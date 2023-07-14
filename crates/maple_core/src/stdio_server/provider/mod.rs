@@ -31,6 +31,7 @@ use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 use types::{ClapItem, MatchedItem};
 
 /// [`BaseArgs`] represents the arguments common to all the providers.
@@ -278,12 +279,7 @@ impl Context {
             _ => Icon::Null,
         };
 
-        let rank_criteria = crate::config::config()
-            .matcher
-            .tiebreak
-            .split(',')
-            .filter_map(|s| types::parse_criteria(s.trim()))
-            .collect();
+        let rank_criteria = crate::config::config().matcher.rank_criteria();
         let matcher_builder = provider_id.matcher_builder().rank_criteria(rank_criteria);
         let display_winwidth = vim.winwidth(display.winid).await?;
         // Sign column occupies 2 spaces.
@@ -436,17 +432,26 @@ impl Context {
         *provider_source = new;
     }
 
+    /// Returns a smaller delay for the input debounce if the source is not large.
+    pub fn adaptive_debounce_delay(&self) -> Option<Duration> {
+        if let ProviderSource::Small { total, .. } = *self.provider_source.read() {
+            if total < 10_000 {
+                return Some(Duration::from_millis(10));
+            } else if total < 100_000 {
+                return Some(Duration::from_millis(50));
+            } else if total < 200_000 {
+                return Some(Duration::from_millis(100));
+            }
+        }
+        None
+    }
+
     pub fn signify_terminated(&self, session_id: u64) {
         self.terminated.store(true, Ordering::SeqCst);
+        let provider_id = self.env.provider_id.clone();
+        tracing::debug!("ProviderSession {session_id:?}-{provider_id} terminated");
         let mut input_history = crate::datastore::INPUT_HISTORY_IN_MEMORY.lock();
-        input_history.insert(
-            self.env.provider_id.clone(),
-            self.input_recorder.clone().into_inputs(),
-        );
-        tracing::debug!(
-            "ProviderSession {session_id:?}-{} terminated",
-            self.provider_id()
-        );
+        input_history.update_inputs(provider_id, self.input_recorder.clone().into_inputs());
     }
 
     pub async fn record_input(&mut self) -> Result<()> {

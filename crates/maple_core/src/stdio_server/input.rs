@@ -109,6 +109,7 @@ impl ProviderEventSender {
     }
 }
 
+/// Input history of all providers.
 #[derive(Debug, Clone, Default)]
 pub struct InputHistory(HashMap<ProviderId, VecDeque<String>>);
 
@@ -132,7 +133,7 @@ impl InputHistory {
             .collect()
     }
 
-    pub fn insert(&mut self, provider_id: ProviderId, new_value: VecDeque<String>) {
+    pub fn update_inputs(&mut self, provider_id: ProviderId, new_value: VecDeque<String>) {
         self.0.insert(provider_id, new_value);
     }
 }

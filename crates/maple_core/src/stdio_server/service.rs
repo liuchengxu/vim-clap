@@ -4,7 +4,7 @@ use crate::stdio_server::input::{
     InternalProviderEvent, PluginEvent, ProviderEvent, ProviderEventSender,
 };
 use crate::stdio_server::plugin::ClapPlugin;
-use crate::stdio_server::provider::{ClapProvider, Context, ProviderSource};
+use crate::stdio_server::provider::{ClapProvider, Context};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -108,18 +108,8 @@ impl ProviderSession {
                                             match self.provider.on_initialize(&mut self.ctx).await {
                                                 Ok(()) => {
                                                     // Set a smaller debounce if the source scale is small.
-                                                    if let ProviderSource::Small { total, .. } = *self
-                                                        .ctx
-                                                        .provider_source
-                                                        .read()
-                                                    {
-                                                        if total < 10_000 {
-                                                            on_typed_delay = Duration::from_millis(10);
-                                                        } else if total < 100_000 {
-                                                            on_typed_delay = Duration::from_millis(50);
-                                                        } else if total < 200_000 {
-                                                            on_typed_delay = Duration::from_millis(100);
-                                                        }
+                                                    if let Some(new_delay) = self.ctx.adaptive_debounce_delay() {
+                                                        on_typed_delay = new_delay;
                                                     }
                                                     // Try to fulfill the preview window
                                                     if let Err(err) = self.provider.on_move(&mut self.ctx).await {

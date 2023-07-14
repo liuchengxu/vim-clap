@@ -4,6 +4,7 @@ use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use types::RankCriterion;
 
 static CONFIG_FILE: OnceCell<PathBuf> = OnceCell::new();
 // TODO: reload-config
@@ -65,6 +66,15 @@ impl Default for MatcherConfig {
         Self {
             tiebreak: "score,-begin,-end,-length".into(),
         }
+    }
+}
+
+impl MatcherConfig {
+    pub fn rank_criteria(&self) -> Vec<RankCriterion> {
+        self.tiebreak
+            .split(',')
+            .filter_map(|s| types::parse_criteria(s.trim()))
+            .collect()
     }
 }
 
