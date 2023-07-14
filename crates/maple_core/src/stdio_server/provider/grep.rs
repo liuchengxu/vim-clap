@@ -84,7 +84,7 @@ impl ClapProvider for GrepProvider {
         ctx.handle_base_args(&self.args.base).await
         // let initial_query = ctx.handle_base_args(&self.args.base).await?;
         // if !initial_query.is_empty() {
-            // self.process_query(initial_query, ctx);
+        // self.process_query(initial_query, ctx);
         // }
         // Ok(())
     }

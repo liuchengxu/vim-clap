@@ -204,7 +204,7 @@ impl ProviderSession {
                     .on_terminate(&mut self.ctx, self.provider_session_id);
                 ControlFlow::Break(())
             }
-            InternalProviderEvent::OnInitialize => {
+            InternalProviderEvent::Initialize => {
                 // Primarily initialize the provider source.
                 match self.provider.on_initialize(&mut self.ctx).await {
                     Ok(()) => {
@@ -335,11 +335,12 @@ impl ServiceManager {
         if let Entry::Vacant(v) = self.providers.entry(provider_session_id) {
             let (provider_session, provider_event_sender) =
                 ProviderSession::new(ctx, provider_session_id, provider);
+
             provider_session.start_event_loop();
 
             provider_event_sender
-                .send(ProviderEvent::Internal(InternalProviderEvent::OnInitialize))
-                .expect("Failed to send ProviderEvent::OnInitialize");
+                .send(ProviderEvent::Internal(InternalProviderEvent::Initialize))
+                .expect("Failed to send ProviderEvent::Initialize");
 
             v.insert(ProviderEventSender::new(
                 provider_event_sender,
