@@ -6,16 +6,21 @@ use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use types::Query;
 
+use super::BaseArgs;
+
 #[derive(Debug)]
 pub struct BlinesProvider {
+    args: BaseArgs,
     searcher_control: Option<SearcherControl>,
 }
 
 impl BlinesProvider {
-    pub fn new() -> Self {
-        Self {
+    pub async fn new(ctx: &Context) -> Result<Self> {
+        let args = ctx.parse_provider_args().await?;
+        Ok(Self {
+            args,
             searcher_control: None,
-        }
+        })
     }
 
     fn process_query(&mut self, query: String, ctx: &Context) {
@@ -62,11 +67,10 @@ impl BlinesProvider {
 #[async_trait::async_trait]
 impl ClapProvider for BlinesProvider {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        let query = ctx.vim.context_query_or_input().await?;
-        if !query.is_empty() {
-            self.process_query(query, ctx);
-        } else {
+        if self.args.query.is_none() {
             initialize_provider(ctx).await?;
+        } else {
+            ctx.handle_base_args(&self.args).await?;
         }
         Ok(())
     }
