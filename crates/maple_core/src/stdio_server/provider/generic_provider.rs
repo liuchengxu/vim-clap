@@ -194,7 +194,7 @@ impl ClapProvider for GenericProvider {
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.input_get().await?;
 
-        let quick_response =
+        let small_list_response =
             if let ProviderSource::Small { ref items, .. } = *ctx.provider_source.read() {
                 let matched_items = filter::par_filter_items(items, &ctx.matcher(&query));
                 let printer = Printer::new(ctx.env.display_winwidth, ctx.env.icon);
@@ -217,7 +217,7 @@ impl ClapProvider for GenericProvider {
                 None
             };
 
-        if let Some((msg, matched_items)) = quick_response {
+        if let Some((msg, matched_items)) = small_list_response {
             let new_query = ctx.vim.input_get().await?;
             if new_query == query {
                 ctx.vim
@@ -230,9 +230,15 @@ impl ClapProvider for GenericProvider {
 
         let data_source = match *ctx.provider_source.read() {
             ProviderSource::Small { .. } => unreachable!("Handled above; qed"),
+            ProviderSource::Initializing => {
+                ctx.vim
+                    .echo_warn("Can not process query: source initialization is in progress")?;
+                ctx.initializing_prompt_echoed.store(true, Ordering::SeqCst);
+                return Ok(());
+            }
             ProviderSource::Uninitialized => {
                 ctx.vim
-                    .echo_warn("Can not process input as source is not yet initialized")?;
+                    .echo_warn("Can not process query: source uninitialized")?;
                 return Ok(());
             }
             ProviderSource::CachedFile { ref path, .. } | ProviderSource::File { ref path, .. } => {

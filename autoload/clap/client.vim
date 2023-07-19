@@ -90,6 +90,7 @@ function! clap#client#notify_on_init(...) abort
         \   'icon': g:clap_enable_icon ? get(g:clap.provider._(), 'icon', 'Null') : 'Null',
         \   'no_cache': has_key(g:clap.context, 'no-cache') ? v:true : v:false,
         \   'start_buffer_path': expand('#'.g:clap.start.bufnr.':p'),
+        \   'source_is_list': g:clap.provider.source_type == g:__t_list || g:clap.provider.source_type == g:__t_func_list ? v:true : v:false,
         \ }
   if a:0 > 0
     call extend(params, a:1)
