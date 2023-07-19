@@ -326,7 +326,7 @@ impl Context {
             terminated: Arc::new(AtomicBool::new(false)),
             input_recorder,
             preview_manager: PreviewManager::new(),
-            provider_source: Arc::new(RwLock::new(ProviderSource::Unactionable)),
+            provider_source: Arc::new(RwLock::new(ProviderSource::Uninitialized)),
         })
     }
 
@@ -612,7 +612,7 @@ impl std::fmt::Display for ProviderId {
 pub enum ProviderSource {
     /// The provider source is not actionable on the Rust backend.
     #[default]
-    Unactionable,
+    Uninitialized,
 
     /// Small scale, in which case we do not have to use the dynamic filtering.
     ///

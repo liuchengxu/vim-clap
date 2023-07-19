@@ -140,7 +140,7 @@ async fn initialize_provider_source(ctx: &Context) -> Result<ProviderSource> {
         }
     }
 
-    Ok(ProviderSource::Unactionable)
+    Ok(ProviderSource::Uninitialized)
 }
 
 pub async fn initialize_provider(ctx: &Context) -> Result<()> {

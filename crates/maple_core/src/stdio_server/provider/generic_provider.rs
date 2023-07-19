@@ -229,8 +229,10 @@ impl ClapProvider for GenericProvider {
         }
 
         let data_source = match *ctx.provider_source.read() {
-            ProviderSource::Small { .. } | ProviderSource::Unactionable => {
-                tracing::debug!("par_dyn_run can not be used for ProviderSource::Small and ProviderSource::Unactionable.");
+            ProviderSource::Small { .. } => unreachable!("Handled above; qed"),
+            ProviderSource::Uninitialized => {
+                ctx.vim
+                    .echo_warn("Can not process input as source is not yet initialized")?;
                 return Ok(());
             }
             ProviderSource::CachedFile { ref path, .. } | ProviderSource::File { ref path, .. } => {
