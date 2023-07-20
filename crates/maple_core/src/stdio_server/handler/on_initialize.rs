@@ -178,7 +178,6 @@ async fn initialize_list_source(ctx: Context) -> Result<()> {
     let source_cmd: Vec<Value> = ctx.vim.bare_call("provider_source").await?;
     // Source must be initialized when it is a List: g:__t_list, g:__t_func_list
     if let Some(Value::Array(arr)) = source_cmd.into_iter().next() {
-        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
         let lines = arr
             .into_iter()
             .filter_map(|v| {
