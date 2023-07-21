@@ -1,4 +1,4 @@
-use crate::stdio_server::handler::{CachedPreviewImpl, PreviewTarget};
+use crate::stdio_server::handler::{initialize_provider, CachedPreviewImpl, PreviewTarget};
 use crate::stdio_server::provider::{ClapProvider, Context, ProviderSource};
 use crate::stdio_server::vim::VimProgressor;
 use anyhow::Result;
@@ -12,6 +12,8 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 use subprocess::Exec;
 use types::MatchedItem;
+
+use super::BaseArgs;
 
 #[derive(Debug)]
 enum DataSource {
@@ -80,6 +82,7 @@ fn start_filter_parallel(
 /// Generic provider impl.
 #[derive(Debug)]
 pub struct GenericProvider {
+    args: BaseArgs,
     runtimepath: Option<String>,
     maybe_filter_control: Option<FilterControl>,
     current_results: Arc<Mutex<Vec<MatchedItem>>>,
@@ -87,13 +90,15 @@ pub struct GenericProvider {
 }
 
 impl GenericProvider {
-    pub fn new() -> Self {
-        Self {
+    pub async fn new(ctx: &Context) -> Result<Self> {
+        let args = ctx.parse_provider_args().await?;
+        Ok(Self {
+            args,
             runtimepath: None,
             maybe_filter_control: None,
             current_results: Arc::new(Mutex::new(Vec::new())),
             last_filter_control_killed: Arc::new(AtomicBool::new(true)),
-        }
+        })
     }
 
     /// `lnum` is 1-based.
@@ -151,6 +156,12 @@ impl GenericProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for GenericProvider {
+    async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
+        let init_display = self.args.query.is_none();
+        initialize_provider(ctx, init_display).await?;
+        ctx.signal_initial_query(&self.args).await
+    }
+
     async fn on_move(&mut self, ctx: &mut Context) -> Result<()> {
         if !ctx.env.preview_enabled {
             return Ok(());

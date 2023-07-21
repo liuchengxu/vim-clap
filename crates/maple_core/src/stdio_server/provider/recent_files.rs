@@ -157,7 +157,7 @@ impl ClapProvider for RecentFilesProvider {
             ctx.vim
                 .exec("clap#state#process_response_on_typed", response)?;
         } else {
-            ctx.handle_base_args(&self.args).await?;
+            ctx.signal_initial_query(&self.args).await?;
         }
 
         Ok(())

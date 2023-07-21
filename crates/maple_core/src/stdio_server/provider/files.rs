@@ -1,9 +1,7 @@
-use crate::paths::AbsPathBuf;
 use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
 use anyhow::Result;
 use clap::Parser;
 use matcher::{Bonus, MatchScope};
-use serde_json::json;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -137,7 +135,7 @@ impl ClapProvider for FilesProvider {
             self.process_query("".into(), ctx);
         }
 
-        ctx.handle_base_args(&self.args.base).await?;
+        ctx.signal_initial_query(&self.args.base).await?;
 
         Ok(())
     }

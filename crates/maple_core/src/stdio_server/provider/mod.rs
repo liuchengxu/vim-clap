@@ -64,7 +64,7 @@ pub async fn create_provider(provider_id: &str, ctx: &Context) -> Result<Box<dyn
         "igrep" => Box::new(igrep::IgrepProvider::new(ctx).await?),
         "recent_files" => Box::new(recent_files::RecentFilesProvider::new(ctx).await?),
         "tagfiles" => Box::new(tagfiles::TagfilesProvider::new()),
-        _ => Box::new(generic_provider::GenericProvider::new()),
+        _ => Box::new(generic_provider::GenericProvider::new(ctx).await?),
     };
     Ok(provider)
 }
@@ -429,7 +429,7 @@ impl Context {
         Ok(provider_args)
     }
 
-    pub async fn handle_base_args(&self, base: &BaseArgs) -> Result<()> {
+    pub async fn signal_initial_query(&self, base: &BaseArgs) -> Result<()> {
         let BaseArgs { query, .. } = base;
 
         if let Some(query) = query {
@@ -732,7 +732,7 @@ impl ProviderSource {
 #[async_trait::async_trait]
 pub trait ClapProvider: Debug + Send + Sync + 'static {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        initialize_provider(ctx).await
+        initialize_provider(ctx, true).await
     }
 
     async fn on_initial_query(&mut self, ctx: &mut Context, initial_query: String) -> Result<()> {

@@ -55,7 +55,7 @@ impl ClapProvider for TagfilesProvider {
         if !query.is_empty() {
             self.process_query(query, ctx);
         } else {
-            initialize_provider(ctx).await?;
+            initialize_provider(ctx, false).await?;
         }
         Ok(())
     }

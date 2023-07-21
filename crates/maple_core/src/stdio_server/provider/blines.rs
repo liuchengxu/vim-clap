@@ -68,9 +68,9 @@ impl BlinesProvider {
 impl ClapProvider for BlinesProvider {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         if self.args.query.is_none() {
-            initialize_provider(ctx).await?;
+            initialize_provider(ctx, true).await?;
         } else {
-            ctx.handle_base_args(&self.args).await?;
+            ctx.signal_initial_query(&self.args).await?;
         }
         Ok(())
     }
