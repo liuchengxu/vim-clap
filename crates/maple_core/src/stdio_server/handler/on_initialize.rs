@@ -204,6 +204,8 @@ pub async fn initialize_provider(ctx: &Context) -> Result<()> {
     if ctx.env.source_is_list {
         let ctx = ctx.clone();
         ctx.set_provider_source(ProviderSource::Initializing);
+        // Initialize the list-style providers in another task so that the further messages won't
+        // be blocked by the initialization in case it takes too long.
         tokio::spawn(initialize_list_source(ctx));
         return Ok(());
     }
