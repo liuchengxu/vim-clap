@@ -32,6 +32,8 @@ impl ProviderSession {
     ) -> (Self, UnboundedSender<ProviderEvent>) {
         let (provider_event_sender, provider_event_receiver) = unbounded_channel();
 
+        ctx.set_provider_event_sender(provider_event_sender.clone());
+
         let provider_session = ProviderSession {
             ctx,
             provider_session_id,
@@ -223,6 +225,13 @@ impl ProviderSession {
                 let maybe_new_debounce = self.ctx.adaptive_debounce_delay();
 
                 ControlFlow::Continue(maybe_new_debounce)
+            }
+            InternalProviderEvent::InitialQuery(initial_query) => {
+                let _ = self
+                    .provider
+                    .on_initial_query(&mut self.ctx, initial_query)
+                    .await;
+                ControlFlow::Continue(None)
             }
         }
     }

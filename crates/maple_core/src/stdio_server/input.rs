@@ -32,6 +32,7 @@ pub enum ProviderEvent {
 #[derive(Debug)]
 pub enum InternalProviderEvent {
     OnInitialize,
+    InitialQuery(String),
     Terminate,
 }
 

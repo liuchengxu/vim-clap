@@ -21,6 +21,7 @@ use anyhow::{anyhow, Result};
 use filter::Query;
 use icon::{Icon, IconKind};
 use matcher::{Bonus, MatchScope, Matcher, MatcherBuilder};
+use once_cell::sync::OnceCell;
 use parking_lot::RwLock;
 use printer::Printer;
 use rpc::Params;
@@ -32,7 +33,10 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::mpsc::UnboundedSender;
 use types::{ClapItem, MatchedItem};
+
+use super::input::{InternalProviderEvent, ProviderEvent};
 
 /// [`BaseArgs`] represents the arguments common to all the providers.
 #[derive(Debug, clap::Parser, PartialEq, Eq, Default)]
@@ -242,6 +246,7 @@ pub struct Context {
     pub input_recorder: InputRecorder,
     pub preview_manager: PreviewManager,
     pub provider_source: Arc<RwLock<ProviderSource>>,
+    provider_event_sender: OnceCell<UnboundedSender<ProviderEvent>>,
 }
 
 impl Context {
@@ -329,11 +334,16 @@ impl Context {
             input_recorder,
             preview_manager: PreviewManager::new(),
             provider_source: Arc::new(RwLock::new(ProviderSource::Uninitialized)),
+            provider_event_sender: OnceCell::new(),
         })
     }
 
     pub fn provider_id(&self) -> &str {
         self.env.provider_id.as_str()
+    }
+
+    pub fn provider_debounce(&self) -> u64 {
+        crate::config::config().provider_debounce(self.env.provider_id.as_str())
     }
 
     pub fn matcher_builder(&self) -> MatcherBuilder {
@@ -353,6 +363,20 @@ impl Context {
             stop_signal,
             item_pool_size: self.env.display_winheight,
         }
+    }
+
+    pub fn set_provider_event_sender(&self, provider_event_sender: UnboundedSender<ProviderEvent>) {
+        self.provider_event_sender
+            .set(provider_event_sender)
+            .expect("Failed to initialize provider_event_sender in Context")
+    }
+
+    pub fn send_provider_event(&self, event: ProviderEvent) -> Result<()> {
+        self.provider_event_sender
+            .get()
+            .expect("Forget to initialize provider_event_sender!")
+            .send(event)
+            .map_err(Into::into)
     }
 
     /// Executes the command `cmd` and returns the raw bytes of stdout.
@@ -405,16 +429,16 @@ impl Context {
         Ok(provider_args)
     }
 
-    pub async fn handle_base_args(&self, base: &BaseArgs) -> Result<String> {
+    pub async fn handle_base_args(&self, base: &BaseArgs) -> Result<()> {
         let BaseArgs { query, .. } = base;
 
-        let query = if let Some(query) = query {
-            self.vim.call("set_initial_query", json!([query])).await?
-        } else {
-            self.vim.input_get().await?
+        if let Some(query) = query {
+            self.send_provider_event(ProviderEvent::Internal(
+                InternalProviderEvent::InitialQuery(query.clone()),
+            ))?;
         };
 
-        Ok(query)
+        Ok(())
     }
 
     pub async fn expanded_paths(&self, paths: &[PathBuf]) -> Result<Vec<PathBuf>> {
@@ -709,6 +733,14 @@ impl ProviderSource {
 pub trait ClapProvider: Debug + Send + Sync + 'static {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         initialize_provider(ctx).await
+    }
+
+    async fn on_initial_query(&mut self, ctx: &mut Context, initial_query: String) -> Result<()> {
+        // Mimic the user behavior by setting the user input and sending the singal
+        ctx.vim
+            .call("set_initial_query", json!([initial_query]))
+            .await?;
+        ctx.send_provider_event(ProviderEvent::OnTyped)
     }
 
     async fn on_move(&mut self, ctx: &mut Context) -> Result<()> {
