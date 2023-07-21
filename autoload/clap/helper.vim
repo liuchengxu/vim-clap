@@ -69,5 +69,9 @@ function! clap#helper#echo_warn(msg) abort
   echohl NONE
 endfunction
 
+function! clap#helper#echo_clear() abort
+  echo "\n"
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo

@@ -32,17 +32,17 @@ async fn execute_and_write_cache(
     })
 }
 
+fn to_small_provider_source(lines: Vec<String>) -> ProviderSource {
+    let total = lines.len();
+    let items = lines
+        .into_iter()
+        .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>)
+        .collect::<Vec<_>>();
+    ProviderSource::Small { total, items }
+}
+
 /// Performs the initialization like collecting the source and total number of source items.
 async fn initialize_provider_source(ctx: &Context) -> Result<ProviderSource> {
-    let to_small_provider_source = |lines: Vec<String>| {
-        let total = lines.len();
-        let items = lines
-            .into_iter()
-            .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>)
-            .collect::<Vec<_>>();
-        ProviderSource::Small { total, items }
-    };
-
     // Known providers.
     match ctx.provider_id() {
         "blines" => {
@@ -140,43 +140,80 @@ async fn initialize_provider_source(ctx: &Context) -> Result<ProviderSource> {
         }
     }
 
-    Ok(ProviderSource::Unactionable)
+    Ok(ProviderSource::Uninitialized)
+}
+
+fn on_initialized_source(provider_source: ProviderSource, ctx: &Context) -> Result<()> {
+    if let Some(total) = provider_source.total() {
+        ctx.vim.set_var("g:clap.display.initial_size", total)?;
+    }
+
+    if let Some(items) = provider_source.try_skim(ctx.provider_id(), 100) {
+        let printer = Printer::new(ctx.env.display_winwidth, ctx.env.icon);
+        let DisplayLines {
+            lines,
+            icon_added,
+            truncated_map,
+            ..
+        } = printer.to_display_lines(items);
+
+        let using_cache = provider_source.using_cache();
+
+        ctx.vim.exec(
+            "clap#state#init_display",
+            json!([lines, truncated_map, icon_added, using_cache]),
+        )?;
+    }
+
+    ctx.set_provider_source(provider_source);
+
+    if ctx.initializing_prompt_echoed.load(Ordering::SeqCst) {
+        ctx.vim.bare_exec("clap#helper#echo_clear")?;
+    }
+
+    Ok(())
+}
+
+async fn initialize_list_source(ctx: Context) -> Result<()> {
+    let source_cmd: Vec<Value> = ctx.vim.bare_call("provider_source").await?;
+    // Source must be initialized when it is a List: g:__t_list, g:__t_func_list
+    if let Some(Value::Array(arr)) = source_cmd.into_iter().next() {
+        let lines = arr
+            .into_iter()
+            .filter_map(|v| {
+                if let Value::String(s) = v {
+                    Some(s)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        on_initialized_source(to_small_provider_source(lines), &ctx)?;
+    }
+
+    Ok(())
 }
 
 pub async fn initialize_provider(ctx: &Context) -> Result<()> {
-    const TIMEOUT: Duration = Duration::from_millis(300);
-
     // Skip the initialization.
     match ctx.provider_id() {
         "grep" | "live_grep" => return Ok(()),
         _ => {}
     }
 
+    if ctx.env.source_is_list {
+        let ctx = ctx.clone();
+        ctx.set_provider_source(ProviderSource::Initializing);
+        // Initialize the list-style providers in another task so that the further messages won't
+        // be blocked by the initialization in case it takes too long.
+        tokio::spawn(initialize_list_source(ctx));
+        return Ok(());
+    }
+
+    const TIMEOUT: Duration = Duration::from_millis(300);
+
     match tokio::time::timeout(TIMEOUT, initialize_provider_source(ctx)).await {
-        Ok(Ok(provider_source)) => {
-            if let Some(total) = provider_source.total() {
-                ctx.vim.set_var("g:clap.display.initial_size", total)?;
-            }
-
-            if let Some(items) = provider_source.try_skim(ctx.provider_id(), 100) {
-                let printer = Printer::new(ctx.env.display_winwidth, ctx.env.icon);
-                let DisplayLines {
-                    lines,
-                    icon_added,
-                    truncated_map,
-                    ..
-                } = printer.to_display_lines(items);
-
-                let using_cache = provider_source.using_cache();
-
-                ctx.vim.exec(
-                    "clap#state#init_display",
-                    json!([lines, truncated_map, icon_added, using_cache]),
-                )?;
-            }
-
-            ctx.set_provider_source(provider_source);
-        }
+        Ok(Ok(provider_source)) => on_initialized_source(provider_source, ctx)?,
         Ok(Err(e)) => tracing::error!(?e, "Error occurred on creating session"),
         Err(_) => {
             // The initialization was not super fast.

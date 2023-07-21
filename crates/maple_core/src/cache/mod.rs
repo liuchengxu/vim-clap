@@ -118,7 +118,7 @@ impl CacheInfo {
     pub fn find_digest_usable(&mut self, shell_cmd: &ShellCommand) -> Option<Digest> {
         match self.find_digest(shell_cmd) {
             Some(index) => {
-                let mut d = &mut self.digests[index];
+                let d = &mut self.digests[index];
                 if d.is_usable() {
                     d.total_visits += 1;
                     d.last_visit = Utc::now();

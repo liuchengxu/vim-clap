@@ -98,6 +98,7 @@ pub struct ProviderEnvironment {
     pub icon: Icon,
     pub matcher_builder: MatcherBuilder,
     pub no_cache: bool,
+    pub source_is_list: bool,
     pub preview_enabled: bool,
     pub display_winwidth: usize,
     pub display_winheight: usize,
@@ -235,6 +236,7 @@ pub struct Context {
     pub vim: Vim,
     pub env: Arc<ProviderEnvironment>,
     pub maybe_preview_size: Option<usize>,
+    pub initializing_prompt_echoed: Arc<AtomicBool>,
     pub terminated: Arc<AtomicBool>,
     pub input_recorder: InputRecorder,
     pub preview_manager: PreviewManager,
@@ -253,6 +255,7 @@ impl Context {
             icon: String,
             no_cache: bool,
             start_buffer_path: PathBuf,
+            source_is_list: bool,
         }
 
         let InnerParams {
@@ -264,6 +267,7 @@ impl Context {
             no_cache,
             start_buffer_path,
             icon,
+            source_is_list,
         } = params.parse()?;
 
         let icon = match icon.to_lowercase().as_str() {
@@ -309,6 +313,7 @@ impl Context {
             input,
             display,
             no_cache,
+            source_is_list,
             preview_enabled: preview_enabled == 1,
             start_buffer_path,
             display_winwidth,
@@ -323,10 +328,11 @@ impl Context {
             vim,
             env: Arc::new(env),
             maybe_preview_size: None,
+            initializing_prompt_echoed: Arc::new(AtomicBool::new(false)),
             terminated: Arc::new(AtomicBool::new(false)),
             input_recorder,
             preview_manager: PreviewManager::new(),
-            provider_source: Arc::new(RwLock::new(ProviderSource::Unactionable)),
+            provider_source: Arc::new(RwLock::new(ProviderSource::Uninitialized)),
         })
     }
 
@@ -612,7 +618,10 @@ impl std::fmt::Display for ProviderId {
 pub enum ProviderSource {
     /// The provider source is not actionable on the Rust backend.
     #[default]
-    Unactionable,
+    Uninitialized,
+
+    /// The initializaion is in progress,
+    Initializing,
 
     /// Small scale, in which case we do not have to use the dynamic filtering.
     ///
