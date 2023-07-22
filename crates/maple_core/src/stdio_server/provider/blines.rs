@@ -70,7 +70,7 @@ impl ClapProvider for BlinesProvider {
         if self.args.query.is_none() {
             initialize_provider(ctx, true).await?;
         } else {
-            ctx.signal_initial_query(&self.args).await?;
+            ctx.handle_base_args(&self.args).await?;
         }
         Ok(())
     }

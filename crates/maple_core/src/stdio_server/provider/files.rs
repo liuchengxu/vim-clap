@@ -135,7 +135,7 @@ impl ClapProvider for FilesProvider {
             self.process_query("".into(), ctx);
         }
 
-        ctx.signal_initial_query(&self.args.base).await?;
+        ctx.handle_base_args(&self.args.base).await?;
 
         Ok(())
     }

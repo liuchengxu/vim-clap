@@ -158,8 +158,9 @@ impl GenericProvider {
 impl ClapProvider for GenericProvider {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         let init_display = self.args.query.is_none();
+        // Always attempt to initialize the source
         initialize_provider(ctx, init_display).await?;
-        ctx.signal_initial_query(&self.args).await
+        ctx.handle_base_args(&self.args).await
     }
 
     async fn on_move(&mut self, ctx: &mut Context) -> Result<()> {

@@ -429,7 +429,7 @@ impl Context {
         Ok(provider_args)
     }
 
-    pub async fn signal_initial_query(&self, base: &BaseArgs) -> Result<()> {
+    pub async fn handle_base_args(&self, base: &BaseArgs) -> Result<()> {
         let BaseArgs { query, .. } = base;
 
         if let Some(query) = query {
