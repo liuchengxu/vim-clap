@@ -705,23 +705,24 @@ impl ProviderSource {
             ),
             Self::File { ref path, .. } | Self::CachedFile { ref path, .. } => {
                 let lines_iter = utils::read_first_lines(path, n).ok()?;
-                Some(if provider_id == "blines" {
-                    let mut index = 0;
-                    lines_iter
-                        .map(|line| {
+                if provider_id == "blines" {
+                    let items = lines_iter
+                        .enumerate()
+                        .map(|(index, line)| {
                             let item: Arc<dyn ClapItem> = Arc::new(BlinesItem {
                                 raw: line,
                                 line_number: index + 1,
                             });
-                            index += 1;
                             MatchedItem::from(item)
                         })
-                        .collect()
+                        .collect();
+                    Some(items)
                 } else {
-                    lines_iter
+                    let items = lines_iter
                         .map(|line| MatchedItem::from(Arc::new(line) as Arc<dyn ClapItem>))
-                        .collect()
-                })
+                        .collect();
+                    Some(items)
+                }
             }
             _ => None,
         }
