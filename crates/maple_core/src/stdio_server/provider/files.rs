@@ -1,7 +1,9 @@
+use crate::paths::AbsPathBuf;
 use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::Parser;
 use matcher::{Bonus, MatchScope};
+use serde_json::json;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -106,29 +108,21 @@ impl FilesProvider {
 #[async_trait::async_trait]
 impl ClapProvider for FilesProvider {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        // let query = ctx.vim.context_query_or_input().await?;
+        if self.args.base.no_cwd && !self.args.paths.is_empty() {
+            let new_working_dir = &self.args.paths[0];
+            if let Ok(path) = ctx.vim.expand(new_working_dir.to_string_lossy()).await {
+                match AbsPathBuf::try_from(path.as_str()) {
+                    Ok(abs_path) => ctx.cwd = abs_path,
+                    Err(_) => {
+                        ctx.cwd = ctx.cwd.join(path).try_into().map_err(|err| {
+                            anyhow!("Failed to convert path to absolute path: {err:?}")
+                        })?;
+                    }
+                }
 
-        // if self.args.base.no_cwd && !self.args.paths.is_empty() {
-        // let new_working_dir = &self.args.paths[0];
-        // if let Ok(path) = ctx.vim.expand(new_working_dir.to_string_lossy()).await {
-        // let new_cwd = match AbsPathBuf::try_from(path.as_str()) {
-        // Ok(abs_path) => {
-        // ctx.cwd = abs_path.clone();
-        // abs_path
-        // }
-        // Err(_) => {
-        // ctx.cwd = ctx
-        // .cwd
-        // .join(path)
-        // .try_into()
-        // .expect("Failed to convert to absolute path");
-        // ctx.cwd.clone()
-        // }
-        // };
-
-        // ctx.vim.set_var("g:__clap_provider_cwd", json!([new_cwd]))?;
-        // }
-        // }
+                ctx.vim.set_var("g:__clap_provider_cwd", json!([ctx.cwd]))?;
+            }
+        }
 
         // All files will be collected if query is empty
         if self.args.base.query.is_none() {
