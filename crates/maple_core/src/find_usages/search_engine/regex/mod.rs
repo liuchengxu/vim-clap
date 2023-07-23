@@ -11,7 +11,7 @@
 mod definition;
 mod executable_searcher;
 
-use self::definition::{definitions_and_references, DefinitionSearchResult, MatchKind};
+use self::definition::{find_definitions_and_references, DefinitionSearchResult, MatchKind};
 use self::executable_searcher::{word_regex_search_with_extension, LanguageRegexSearcher};
 use crate::find_usages::{AddressableUsage, Usage, UsageMatcher, Usages};
 use crate::tools::rg::{get_language, Match, Word};
@@ -140,7 +140,7 @@ impl RegexSearcher {
 
         // render the results in group.
         if classify {
-            let res = definitions_and_references(lang_regex_searcher, comments)?;
+            let res = find_definitions_and_references(lang_regex_searcher, comments)?;
 
             let _usages = res
                 .into_par_iter()
