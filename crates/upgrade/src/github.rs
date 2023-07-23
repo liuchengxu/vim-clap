@@ -85,6 +85,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_retrieve_asset_size() {
+        if crate::tests::is_commit_associated_with_a_tag() {
+            return;
+        }
+
         for _i in 0..20 {
             if let Ok(latest_tag) = retrieve_latest_release().await.map(|r| r.tag_name) {
                 retrieve_asset_size(asset_name().unwrap(), &latest_tag)
@@ -94,6 +98,7 @@ mod tests {
             }
             tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         }
+
         panic!("Failed to retrieve the asset size for latest release");
     }
 }
