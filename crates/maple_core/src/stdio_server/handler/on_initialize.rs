@@ -219,7 +219,7 @@ pub async fn initialize_provider(ctx: &Context, init_display: bool) -> Result<()
 
     match tokio::time::timeout(TIMEOUT, initialize_provider_source(ctx)).await {
         Ok(Ok(provider_source)) => on_initialized_source(provider_source, ctx, init_display)?,
-        Ok(Err(e)) => tracing::error!(?e, "Error occurred on creating session"),
+        Ok(Err(e)) => tracing::error!(?e, "Error occurred while initializing the provider source"),
         Err(_) => {
             // The initialization was not super fast.
             tracing::debug!(timeout = ?TIMEOUT, "Did not receive value in time");

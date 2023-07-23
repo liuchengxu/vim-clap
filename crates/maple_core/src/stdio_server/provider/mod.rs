@@ -63,7 +63,7 @@ pub async fn create_provider(provider_id: &str, ctx: &Context) -> Result<Box<dyn
         "grep" => Box::new(grep::GrepProvider::new(ctx).await?),
         "igrep" => Box::new(igrep::IgrepProvider::new(ctx).await?),
         "recent_files" => Box::new(recent_files::RecentFilesProvider::new(ctx).await?),
-        "tagfiles" => Box::new(tagfiles::TagfilesProvider::new()),
+        "tagfiles" => Box::new(tagfiles::TagfilesProvider::new(ctx).await?),
         _ => Box::new(generic_provider::GenericProvider::new(ctx).await?),
     };
     Ok(provider)
