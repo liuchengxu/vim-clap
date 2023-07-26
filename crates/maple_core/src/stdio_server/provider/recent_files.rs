@@ -9,24 +9,29 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 use types::{ClapItem, MatchedItem, RankCalculator, Score};
 
+use super::BaseArgs;
+
 #[derive(Debug, Clone)]
 pub struct RecentFilesProvider {
+    args: BaseArgs,
     printer: Printer,
     lines: Arc<Mutex<Vec<MatchedItem>>>,
 }
 
 impl RecentFilesProvider {
-    pub fn new(ctx: &Context) -> Self {
+    pub async fn new(ctx: &Context) -> Result<Self> {
+        let args = ctx.parse_provider_args().await?;
         let icon = if ctx.env.icon.enabled() {
             icon::Icon::Enabled(icon::IconKind::File)
         } else {
             icon::Icon::Null
         };
         let printer = Printer::new(ctx.env.display_winwidth, icon);
-        Self {
+        Ok(Self {
+            args,
             printer,
             lines: Default::default(),
-        }
+        })
     }
 
     fn process_query(
@@ -138,19 +143,22 @@ impl RecentFilesProvider {
 #[async_trait::async_trait]
 impl ClapProvider for RecentFilesProvider {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        let query = ctx.vim.context_query_or_input().await?;
-        let cwd = ctx.vim.working_dir().await?;
+        if self.args.query.is_none() {
+            let preview_size = if ctx.env.preview_enabled {
+                Some(ctx.preview_size().await?)
+            } else {
+                None
+            };
 
-        let preview_size = if ctx.env.preview_enabled {
-            Some(ctx.preview_size().await?)
+            let response =
+                self.clone()
+                    .process_query(ctx.cwd.clone(), "".into(), preview_size, 1)?;
+
+            ctx.vim
+                .exec("clap#state#process_response_on_typed", response)?;
         } else {
-            None
-        };
-
-        let response = self.clone().process_query(cwd, query, preview_size, 1)?;
-
-        ctx.vim
-            .exec("clap#state#process_response_on_typed", response)?;
+            ctx.handle_base_args(&self.args).await?;
+        }
 
         Ok(())
     }

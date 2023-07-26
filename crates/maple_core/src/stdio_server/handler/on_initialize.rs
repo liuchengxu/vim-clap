@@ -100,10 +100,10 @@ async fn initialize_provider_source(ctx: &Context) -> Result<ProviderSource> {
 
                 const DIRECT_CREATE_NEW_SOURCE: &[&str] = &["files"];
 
-                let direct_create_new_source =
+                let create_new_source_directly =
                     DIRECT_CREATE_NEW_SOURCE.contains(&ctx.provider_id());
 
-                let provider_source = if direct_create_new_source || ctx.env.no_cache {
+                let provider_source = if create_new_source_directly || ctx.env.no_cache {
                     execute_and_write_cache(&shell_cmd.command, cache_file).await?
                 } else {
                     match shell_cmd.cache_digest() {
@@ -143,38 +143,43 @@ async fn initialize_provider_source(ctx: &Context) -> Result<ProviderSource> {
     Ok(ProviderSource::Uninitialized)
 }
 
-fn on_initialized_source(provider_source: ProviderSource, ctx: &Context) -> Result<()> {
+fn on_initialized_source(
+    provider_source: ProviderSource,
+    ctx: &Context,
+    init_display: bool,
+) -> Result<()> {
     if let Some(total) = provider_source.total() {
         ctx.vim.set_var("g:clap.display.initial_size", total)?;
     }
 
-    if let Some(items) = provider_source.try_skim(ctx.provider_id(), 100) {
-        let printer = Printer::new(ctx.env.display_winwidth, ctx.env.icon);
-        let DisplayLines {
-            lines,
-            icon_added,
-            truncated_map,
-            ..
-        } = printer.to_display_lines(items);
+    if init_display {
+        if let Some(items) = provider_source.try_skim(ctx.provider_id(), 100) {
+            let printer = Printer::new(ctx.env.display_winwidth, ctx.env.icon);
+            let DisplayLines {
+                lines,
+                icon_added,
+                truncated_map,
+                ..
+            } = printer.to_display_lines(items);
 
-        let using_cache = provider_source.using_cache();
+            let using_cache = provider_source.using_cache();
 
-        ctx.vim.exec(
-            "clap#state#init_display",
-            json!([lines, truncated_map, icon_added, using_cache]),
-        )?;
+            ctx.vim.exec(
+                "clap#state#init_display",
+                json!([lines, truncated_map, icon_added, using_cache]),
+            )?;
+        }
+        if ctx.initializing_prompt_echoed.load(Ordering::SeqCst) {
+            ctx.vim.bare_exec("clap#helper#echo_clear")?;
+        }
     }
 
     ctx.set_provider_source(provider_source);
 
-    if ctx.initializing_prompt_echoed.load(Ordering::SeqCst) {
-        ctx.vim.bare_exec("clap#helper#echo_clear")?;
-    }
-
     Ok(())
 }
 
-async fn initialize_list_source(ctx: Context) -> Result<()> {
+async fn initialize_list_source(ctx: Context, init_display: bool) -> Result<()> {
     let source_cmd: Vec<Value> = ctx.vim.bare_call("provider_source").await?;
     // Source must be initialized when it is a List: g:__t_list, g:__t_func_list
     if let Some(Value::Array(arr)) = source_cmd.into_iter().next() {
@@ -188,13 +193,13 @@ async fn initialize_list_source(ctx: Context) -> Result<()> {
                 }
             })
             .collect::<Vec<_>>();
-        on_initialized_source(to_small_provider_source(lines), &ctx)?;
+        on_initialized_source(to_small_provider_source(lines), &ctx, init_display)?;
     }
 
     Ok(())
 }
 
-pub async fn initialize_provider(ctx: &Context) -> Result<()> {
+pub async fn initialize_provider(ctx: &Context, init_display: bool) -> Result<()> {
     // Skip the initialization.
     match ctx.provider_id() {
         "grep" | "live_grep" => return Ok(()),
@@ -206,15 +211,15 @@ pub async fn initialize_provider(ctx: &Context) -> Result<()> {
         ctx.set_provider_source(ProviderSource::Initializing);
         // Initialize the list-style providers in another task so that the further messages won't
         // be blocked by the initialization in case it takes too long.
-        tokio::spawn(initialize_list_source(ctx));
+        tokio::spawn(initialize_list_source(ctx, init_display));
         return Ok(());
     }
 
     const TIMEOUT: Duration = Duration::from_millis(300);
 
     match tokio::time::timeout(TIMEOUT, initialize_provider_source(ctx)).await {
-        Ok(Ok(provider_source)) => on_initialized_source(provider_source, ctx)?,
-        Ok(Err(e)) => tracing::error!(?e, "Error occurred on creating session"),
+        Ok(Ok(provider_source)) => on_initialized_source(provider_source, ctx, init_display)?,
+        Ok(Err(e)) => tracing::error!(?e, "Error occurred while initializing the provider source"),
         Err(_) => {
             // The initialization was not super fast.
             tracing::debug!(timeout = ?TIMEOUT, "Did not receive value in time");

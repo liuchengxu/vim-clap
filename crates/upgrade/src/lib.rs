@@ -197,6 +197,20 @@ async fn download_prebuilt_binary(
 mod tests {
     use super::*;
 
+    pub fn is_commit_associated_with_a_tag() -> bool {
+        let output = std::process::Command::new("git")
+            .args(["rev-parse", "HEAD"])
+            .output()
+            .expect("Failed to find HEAD commit");
+        let commit_id = String::from_utf8_lossy(&output.stdout);
+
+        std::process::Command::new("git")
+            .args(["describe", "--tags", "--exact-match", commit_id.trim()])
+            .status()
+            .map(|exit_status| exit_status.success())
+            .unwrap_or(false)
+    }
+
     #[test]
     fn test_extract_version_number() {
         let tag = "v0.13-4-g58738c0";
@@ -207,15 +221,24 @@ mod tests {
 
     #[tokio::test]
     async fn test_download_prebuilt_binary() {
+        // Ignore this test when the commit is associated with a tag as the binary is possibly not
+        // yet able to be uploaded to the release page.
+        if is_commit_associated_with_a_tag() {
+            return;
+        }
+
         for _i in 0..20 {
             if let Ok(latest_tag) = retrieve_latest_release().await.map(|r| r.tag_name) {
                 download_prebuilt_binary(&latest_tag, true)
                     .await
-                    .expect("Failed to download the prebuilt binary into a tempfile");
+                    .unwrap_or_else(|err| panic!(
+                        "Failed to download the prebuilt binary for {latest_tag:?} into a tempfile: {err:?}"
+                    ));
                 return;
             }
             tokio::time::sleep(std::time::Duration::from_millis(300)).await;
         }
+
         panic!("Failed to download the prebuilt binary of latest release");
     }
 }

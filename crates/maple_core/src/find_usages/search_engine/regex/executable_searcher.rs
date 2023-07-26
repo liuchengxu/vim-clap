@@ -2,7 +2,7 @@ use super::definition::{
     build_full_regexp, get_definition_rules, is_comment, DefinitionKind, DefinitionSearchResult,
     Definitions, Occurrences,
 };
-use crate::tools::rg::{Match, Word};
+use crate::tools::rg::{Match, Word, RG_EXISTS};
 use dumb_analyzer::get_comment_syntax;
 use rayon::prelude::*;
 use std::convert::TryFrom;
@@ -17,21 +17,21 @@ pub struct ExecutableSearcher {
 }
 
 impl ExecutableSearcher {
-    fn new(command: Command) -> Self {
-        Self { command }
-    }
-
-    /// Executes `command` as a child process.
-    ///
-    /// Convert the entire output into a stream of ripgrep `Match`.
-    fn search(self, maybe_comments: Option<&[&str]>) -> Result<Vec<Match>> {
-        if !*crate::tools::rg::RG_EXISTS {
+    fn new(command: Command) -> Result<Self> {
+        if !*RG_EXISTS {
             return Err(Error::new(
                 ErrorKind::NotFound,
                 String::from("rg executable not found"),
             ));
         }
 
+        Ok(Self { command })
+    }
+
+    /// Executes `command` as a child process.
+    ///
+    /// Convert the entire output into a stream of ripgrep `Match`.
+    fn search(self, maybe_comments: Option<&[&str]>) -> Result<Vec<Match>> {
         let mut cmd = self.command;
 
         let cmd_output = cmd.output()?;
@@ -73,7 +73,7 @@ pub(super) fn word_regex_search_with_extension(
     if let Some(ref dir) = maybe_dir {
         command.current_dir(dir);
     }
-    ExecutableSearcher::new(command).search(if ignore_comment {
+    ExecutableSearcher::new(command)?.search(if ignore_comment {
         Some(get_comment_syntax(file_extension))
     } else {
         None
@@ -137,7 +137,7 @@ impl LanguageRegexSearcher {
         if let Some(ref dir) = self.dir {
             command.current_dir(dir);
         }
-        ExecutableSearcher::new(command).search(Some(comments))
+        ExecutableSearcher::new(command)?.search(Some(comments))
     }
 
     pub(super) fn regexp_search(&self, comments: &[&str]) -> Result<Vec<Match>> {
@@ -151,7 +151,7 @@ impl LanguageRegexSearcher {
         if let Some(ref dir) = self.dir {
             command.current_dir(dir);
         }
-        ExecutableSearcher::new(command).search(Some(comments))
+        ExecutableSearcher::new(command)?.search(Some(comments))
     }
 
     /// Returns a tuple of (definition_kind, ripgrep_matches) by searching given language `lang`.
@@ -170,7 +170,7 @@ impl LanguageRegexSearcher {
         if let Some(ref dir) = self.dir {
             command.current_dir(dir);
         }
-        ExecutableSearcher::new(command)
+        ExecutableSearcher::new(command)?
             .search(None)
             .map(|defs| (kind.clone(), defs))
     }

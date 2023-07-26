@@ -167,7 +167,7 @@ impl Occurrences {
     }
 }
 
-pub(super) fn definitions_and_references(
+pub(super) fn find_definitions_and_references(
     lang_regex_searcher: LanguageRegexSearcher,
     comments: &[&str],
 ) -> std::io::Result<HashMap<MatchKind, Vec<Match>>> {

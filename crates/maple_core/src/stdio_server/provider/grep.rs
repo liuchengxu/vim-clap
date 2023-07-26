@@ -81,11 +81,7 @@ impl GrepProvider {
 #[async_trait::async_trait]
 impl ClapProvider for GrepProvider {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        let initial_query = ctx.handle_base_args(&self.args.base).await?;
-        if !initial_query.is_empty() {
-            self.process_query(initial_query, ctx);
-        }
-        Ok(())
+        ctx.handle_base_args(&self.args.base).await
     }
 
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {

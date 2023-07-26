@@ -4,10 +4,11 @@ use crate::stdio_server::input::{
     InternalProviderEvent, PluginEvent, ProviderEvent, ProviderEventSender,
 };
 use crate::stdio_server::plugin::ClapPlugin;
-use crate::stdio_server::provider::{ClapProvider, Context, ProviderSource};
+use crate::stdio_server::provider::{ClapProvider, Context};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::ops::ControlFlow;
 use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;
@@ -31,6 +32,8 @@ impl ProviderSession {
     ) -> (Self, UnboundedSender<ProviderEvent>) {
         let (provider_event_sender, provider_event_receiver) = unbounded_channel();
 
+        ctx.set_provider_event_sender(provider_event_sender.clone());
+
         let provider_session = ProviderSession {
             ctx,
             provider_session_id,
@@ -42,8 +45,7 @@ impl ProviderSession {
     }
 
     pub fn start_event_loop(self) {
-        let debounce_delay =
-            crate::config::config().provider_debounce(self.ctx.env.provider_id.as_str());
+        let debounce_delay = self.ctx.provider_debounce();
 
         tracing::debug!(
             provider_session_id = self.provider_session_id,
@@ -99,36 +101,11 @@ impl ProviderSession {
                             match event {
                                 ProviderEvent::NewSession => unreachable!(),
                                 ProviderEvent::Internal(internal_event) => {
-                                    match internal_event {
-                                        InternalProviderEvent::Terminate => {
-                                            self.provider.on_terminate(&mut self.ctx, self.provider_session_id);
-                                            break;
-                                        }
-                                        InternalProviderEvent::OnInitialize => {
-                                            match self.provider.on_initialize(&mut self.ctx).await {
-                                                Ok(()) => {
-                                                    // Set a smaller debounce if the source scale is small.
-                                                    if let ProviderSource::Small { total, .. } = *self
-                                                        .ctx
-                                                        .provider_source
-                                                        .read()
-                                                    {
-                                                        if total < 10_000 {
-                                                            on_typed_delay = Duration::from_millis(10);
-                                                        } else if total < 100_000 {
-                                                            on_typed_delay = Duration::from_millis(50);
-                                                        } else if total < 200_000 {
-                                                            on_typed_delay = Duration::from_millis(100);
-                                                        }
-                                                    }
-                                                    // Try to fulfill the preview window
-                                                    if let Err(err) = self.provider.on_move(&mut self.ctx).await {
-                                                        tracing::debug!(?err, "Failed to preview after on_initialize completed");
-                                                    }
-                                                }
-                                                Err(err) => {
-                                                    tracing::error!(?err, "Failed to process {internal_event:?}");
-                                                }
+                                    match self.handle_internal_event(internal_event).await {
+                                        ControlFlow::Break(_) => break,
+                                        ControlFlow::Continue(maybe_new_debounce) => {
+                                            if let Some(new_delay) = maybe_new_debounce {
+                                                on_typed_delay = new_delay;
                                             }
                                         }
                                     }
@@ -186,25 +163,8 @@ impl ProviderSession {
             match event {
                 ProviderEvent::NewSession => unreachable!(),
                 ProviderEvent::Internal(internal_event) => {
-                    match internal_event {
-                        InternalProviderEvent::OnInitialize => {
-                            if let Err(err) = self.provider.on_initialize(&mut self.ctx).await {
-                                tracing::error!(?err, "Failed at process {internal_event:?}");
-                                continue;
-                            }
-                            // Try to fulfill the preview window
-                            if let Err(err) = self.provider.on_move(&mut self.ctx).await {
-                                tracing::debug!(
-                                    ?err,
-                                    "Failed to preview after on_initialize completed"
-                                );
-                            }
-                        }
-                        InternalProviderEvent::Terminate => {
-                            self.provider
-                                .on_terminate(&mut self.ctx, self.provider_session_id);
-                            break;
-                        }
+                    if self.handle_internal_event(internal_event).await.is_break() {
+                        break;
                     }
                 }
                 ProviderEvent::Exit => {
@@ -228,6 +188,50 @@ impl ProviderSession {
                         tracing::error!(?err, "Failed to process {key_event:?}");
                     }
                 }
+            }
+        }
+    }
+
+    /// Handles the internal provider event, returns an optional new debounce delay when the
+    /// control flow continues.
+    async fn handle_internal_event(
+        &mut self,
+        internal_event: InternalProviderEvent,
+    ) -> ControlFlow<(), Option<Duration>> {
+        match internal_event {
+            InternalProviderEvent::Terminate => {
+                self.provider
+                    .on_terminate(&mut self.ctx, self.provider_session_id);
+                ControlFlow::Break(())
+            }
+            InternalProviderEvent::Initialize => {
+                // Primarily initialize the provider source.
+                match self.provider.on_initialize(&mut self.ctx).await {
+                    Ok(()) => {
+                        // Try to fulfill the preview window
+                        if let Err(err) = self.provider.on_move(&mut self.ctx).await {
+                            tracing::debug!(
+                                ?err,
+                                "Failed to preview after on_initialize completed"
+                            );
+                        }
+                    }
+                    Err(err) => {
+                        tracing::error!(?err, "Failed to process {internal_event:?}");
+                    }
+                }
+
+                // Set a smaller debounce if the source scale is small.
+                let maybe_new_debounce = self.ctx.adaptive_debounce_delay();
+
+                ControlFlow::Continue(maybe_new_debounce)
+            }
+            InternalProviderEvent::InitialQuery(initial_query) => {
+                let _ = self
+                    .provider
+                    .on_initial_query(&mut self.ctx, initial_query)
+                    .await;
+                ControlFlow::Continue(None)
             }
         }
     }
@@ -331,11 +335,12 @@ impl ServiceManager {
         if let Entry::Vacant(v) = self.providers.entry(provider_session_id) {
             let (provider_session, provider_event_sender) =
                 ProviderSession::new(ctx, provider_session_id, provider);
+
             provider_session.start_event_loop();
 
             provider_event_sender
-                .send(ProviderEvent::Internal(InternalProviderEvent::OnInitialize))
-                .expect("Failed to send ProviderEvent::OnInitialize");
+                .send(ProviderEvent::Internal(InternalProviderEvent::Initialize))
+                .expect("Failed to send ProviderEvent::Initialize");
 
             v.insert(ProviderEventSender::new(
                 provider_event_sender,

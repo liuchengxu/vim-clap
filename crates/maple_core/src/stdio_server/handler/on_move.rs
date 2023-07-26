@@ -43,9 +43,9 @@ pub enum PreviewTarget {
     File(PathBuf),
     /// A specific location in a file.
     LineInFile { path: PathBuf, line_number: usize },
-    /// Commit revision.
-    Commit(String),
-    /// For the provider `help_tags`.
+    /// Git commit revision.
+    GitCommit(String),
+    /// Specifically for the `help_tags` provider.
     HelpTags {
         subject: String,
         doc_filename: String,
@@ -132,7 +132,7 @@ fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget
         }
         "commits" | "bcommits" => {
             let rev = extract_commit_rev(&curline).ok_or_else(err)?;
-            PreviewTarget::Commit(rev.into())
+            PreviewTarget::GitCommit(rev.into())
         }
         unknown_provider_id => {
             return Err(std::io::Error::new(
@@ -217,7 +217,7 @@ impl<'a> CachedPreviewImpl<'a> {
                 self.preview_file_at(path, *line_number, container_width)
                     .await
             }
-            PreviewTarget::Commit(rev) => self.preview_commits(rev)?,
+            PreviewTarget::GitCommit(rev) => self.preview_commits(rev)?,
             PreviewTarget::HelpTags {
                 subject,
                 doc_filename,
