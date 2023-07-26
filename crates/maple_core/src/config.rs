@@ -78,19 +78,11 @@ impl MatcherConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct PickerConfig {
     /// Specifies how many items will be displayed in the results window.
-    pub display_limit: Option<usize>,
-}
-
-impl Default for PickerConfig {
-    fn default() -> Self {
-        Self {
-            display_limit: None,
-        }
-    }
+    pub max_display_size: Option<usize>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -268,13 +260,13 @@ mod tests {
           "files" = 100
 
           [global-ignore]
-          file-path-pattern = ["test", "build"]
+          ignore-file-path-pattern = ["test", "build"]
 
           # [project-ignore."~/src/github.com/subspace/subspace"]
-          # comment-line = true
+          # ignore-comments = true
 
           [provider.ignore.dumb_jump]
-          comment-line = true
+          ignore-comments = true
 "#;
         let user_config: Config =
             toml::from_str(toml_content).expect("Failed to deserialize config");
