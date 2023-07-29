@@ -342,7 +342,10 @@ impl<'a> CachedPreviewImpl<'a> {
         let total = utils::count_lines(std::fs::File::open(path)?)?;
         let end = lines.len();
 
-        let scrollbar = if self.ctx.env.is_nvim && end > 0 {
+        let scrollbar = if self.ctx.env.is_nvim
+            && self.ctx.env.preview_direction.to_uppercase() == "LR"
+            && end > 0
+        {
             let preview_winheight = self.ctx.env.display_winheight;
 
             let length = ((end * preview_winheight) as f32 / total as f32) as usize;
@@ -478,7 +481,10 @@ impl<'a> CachedPreviewImpl<'a> {
                     .chain(self.truncate_preview_lines(lines.into_iter()))
                     .collect::<Vec<_>>();
 
-                let scrollbar = if self.ctx.env.is_nvim && total > 0 {
+                let scrollbar = if self.ctx.env.is_nvim
+                    && self.ctx.env.preview_direction.to_uppercase() == "LR"
+                    && total > 0
+                {
                     let start = if context_lines_not_empty {
                         start.saturating_sub(3)
                     } else {
