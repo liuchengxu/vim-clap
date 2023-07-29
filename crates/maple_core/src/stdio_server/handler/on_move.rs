@@ -342,24 +342,15 @@ impl<'a> CachedPreviewImpl<'a> {
         let total = utils::count_lines(std::fs::File::open(path)?)?;
         let end = lines.len();
 
-        let scrollbar = if end > 0 {
+        let scrollbar = if self.ctx.env.is_nvim && end > 0 {
             let preview_winheight = self.ctx.env.display_winheight;
 
-            let length = (end * preview_winheight) as f32 / total as f32;
+            let length = ((end * preview_winheight) as f32 / total as f32) as usize;
 
-            tracing::debug!(
-                end,
-                total,
-                preview_winheight,
-                length,
-                border_enabled = self.ctx.env.preview_border_enabled,
-                "============== calculate_hash"
-            );
-
-            if length as usize == 0 {
+            if length == 0 {
                 None
             } else {
-                let mut length = preview_winheight.min(length as usize);
+                let mut length = preview_winheight.min(length);
                 let top_position = if self.ctx.env.preview_border_enabled {
                     length -= if length == preview_winheight { 1 } else { 0 };
 
@@ -487,30 +478,21 @@ impl<'a> CachedPreviewImpl<'a> {
                     .chain(self.truncate_preview_lines(lines.into_iter()))
                     .collect::<Vec<_>>();
 
-                let scrollbar = if total > 0 {
+                let scrollbar = if self.ctx.env.is_nvim && total > 0 {
                     let start = if context_lines_not_empty {
                         start.saturating_sub(3)
                     } else {
                         start
                     };
                     let preview_winheight = self.ctx.env.display_winheight;
-                    let length = ((end - start) * preview_winheight) as f32 / total as f32;
+                    let length =
+                        (((end - start) * preview_winheight) as f32 / total as f32) as usize;
                     let top_position = (start * preview_winheight) as f32 / total as f32;
 
-                    tracing::debug!(
-                        start,
-                        end,
-                        total,
-                        preview_winheight,
-                        length,
-                        top_position,
-                        "============== calculate_hash"
-                    );
-
-                    if length as usize == 0 {
+                    if length == 0 {
                         None
                     } else {
-                        let mut length = preview_winheight.min(length as usize);
+                        let mut length = preview_winheight.min(length);
                         let top_position = if self.ctx.env.preview_border_enabled {
                             length -= if length == preview_winheight { 1 } else { 0 };
 

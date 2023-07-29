@@ -40,30 +40,28 @@ let s:symbol_left = g:__clap_search_box_border_symbol.left
 let s:symbol_right = g:__clap_search_box_border_symbol.right
 let s:symbol_width = strdisplaywidth(s:symbol_right)
 
-let g:clap_preview_scrollbar_fill_char = '▌'
+let s:shadow_winhl = 'Normal:ClapShadow,NormalNC:ClapShadow,EndOfBuffer:ClapShadow'
+let s:display_winhl = 'Normal:ClapDisplay,EndOfBuffer:ClapDisplayInvisibleEndOfBuffer,SignColumn:ClapDisplay,ColorColumn:ClapDisplay'
+let s:preview_winhl = 'Normal:ClapPreview,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreview,ColorColumn:ClapPreview'
+let s:preview_scrollbar_winhl = 'Normal:ClapPreviewScrollbar,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreviewScrollbar,ColorColumn:ClapPreviewScrollbar'
 
 if &background ==# 'dark'
-  if empty(get(g:, 'clap_preview_scrollbar_fill_char', ''))
+  if empty(get(g:clap_preview.scrollbar, 'fill_char', ''))
     hi ClapDefaultPreviewScrollbar ctermbg=237 guibg=#3E4452 ctermfg=173 guifg=#e18254 cterm=bold,reverse gui=bold,reverse
   else
-    let s:preview_scrollbar_fill_char = g:clap_preview_scrollbar_fill_char
+    let s:preview_scrollbar_fill_char = g:clap_preview.scrollbar.fill_char
     hi ClapDefaultPreviewScrollbar ctermbg=237 guibg=#3E4452 ctermfg=173 guifg=#e18254 cterm=bold gui=bold
   endif
 else
-  if empty(get(g:, 'clap_preview_scrollbar_fill_char', ''))
+  if empty(get(g:clap_preview.scrollbar, 'fill_char', ''))
     hi ClapDefaultPreviewScrollbar ctermbg=7 guibg=#ecf5ff ctermfg=173 guifg=#e18254 cterm=bold,reverse gui=bold,reverse
   else
-    let s:preview_scrollbar_fill_char = g:clap_preview_scrollbar_fill_char
+    let s:preview_scrollbar_fill_char = g:clap_preview.scrollbar.fill_char
     hi ClapDefaultPreviewScrollbar ctermbg=7 guibg=#ecf5ff ctermfg=173 guifg=#e18254 cterm=bold gui=bold
   endif
 endif
 
 hi default link ClapPreviewScrollbar ClapDefaultPreviewScrollbar
-
-let s:shadow_winhl = 'Normal:ClapShadow,NormalNC:ClapShadow,EndOfBuffer:ClapShadow'
-let s:display_winhl = 'Normal:ClapDisplay,EndOfBuffer:ClapDisplayInvisibleEndOfBuffer,SignColumn:ClapDisplay,ColorColumn:ClapDisplay'
-let s:preview_winhl = 'Normal:ClapPreview,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreview,ColorColumn:ClapPreview'
-let s:preview_scrollbar_winhl = 'Normal:ClapPreviewScrollbar,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreviewScrollbar,ColorColumn:ClapPreviewScrollbar'
 
 " shadow
 "  -----------------------------
@@ -408,22 +406,20 @@ function! clap#floating_win#show_preview_scrollbar(top_position, length) abort
     let config.height = a:length
     call nvim_win_set_config(s:preview_scrollbar_winid, config)
     if exists('s:preview_scrollbar_fill_char')
-      call s:update_preview_scrollbar_buf(a:length)
+      call s:update_preview_scrollbar(a:length)
     endif
   else
     call s:create_preview_scrollbar_win(a:top_position, a:length)
   endif
 endfunction
 
-function! s:update_preview_scrollbar_buf(length) abort
-  let fill_char = '▌'
-  " let fill_char = '│'
-  let lines = repeat([fill_char], a:length)
+function! s:update_preview_scrollbar(length) abort
+  let lines = repeat([s:preview_scrollbar_fill_char], a:length)
   call clap#util#nvim_buf_set_lines(s:preview_scrollbar_buf, lines)
 endfunction
 
 function! s:create_preview_scrollbar_win(top_position, length) abort
-  if !exists('s:preview_winid') || !nvim_win_is_valid(s:preview_winid)
+  if !exists('s:preview_winid') || !nvim_win_is_valid(s:preview_winid) || !exists('s:preview_scrollbar_fill_char')
     return
   endif
 
@@ -456,9 +452,7 @@ function! s:create_preview_scrollbar_win(top_position, length) abort
 
   call setwinvar(s:preview_scrollbar_winid, '&winhl', s:preview_scrollbar_winhl)
 
-  if exists('s:preview_scrollbar_fill_char')
-    call s:update_preview_scrollbar_buf(a:length)
-  endif
+  call s:update_preview_scrollbar(a:length)
 endfunction
 
 function! s:max_preview_size() abort
