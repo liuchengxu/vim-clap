@@ -105,6 +105,8 @@ pub struct ProviderEnvironment {
     pub no_cache: bool,
     pub source_is_list: bool,
     pub preview_enabled: bool,
+    pub preview_border_enabled: bool,
+    pub preview_direction: String,
     pub display_winwidth: usize,
     pub display_winheight: usize,
     /// Actual width for displaying the line content due to the sign column is included in
@@ -297,6 +299,9 @@ impl Context {
         let is_nvim: usize = vim.call("has", ["nvim"]).await?;
         let has_nvim_09: usize = vim.call("has", ["nvim-0.9"]).await?;
         let preview_enabled: usize = vim.bare_call("clap#preview#is_enabled").await?;
+        let preview_direction: String = vim.bare_call("clap#preview#direction").await?;
+
+        let popup_border: String = vim.eval("g:clap_popup_border").await?;
 
         let input_history = crate::datastore::INPUT_HISTORY_IN_MEMORY.lock();
         let inputs = if crate::config::config().input_history.share_all_inputs {
@@ -316,6 +321,8 @@ impl Context {
             no_cache,
             source_is_list,
             preview_enabled: preview_enabled == 1,
+            preview_border_enabled: popup_border != "nil",
+            preview_direction,
             start_buffer_path,
             display_winwidth,
             display_winheight,
@@ -354,6 +361,7 @@ impl Context {
         self.env.matcher_builder.clone().build(query.into())
     }
 
+    /// Constructs a [`SearchContext`] for the searching worker.
     pub fn search_context(&self, stop_signal: Arc<AtomicBool>) -> SearchContext {
         SearchContext {
             icon: self.env.icon,

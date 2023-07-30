@@ -300,6 +300,15 @@ g:clap_selected_sign                                     *g:clap_selected_sign*
   Default: `{ 'text': ' >', 'texthl': 'ClapSelectedSign', 'linehl': 'ClapSelected' }`
 
 
+g:clap_preview                                                 *g:clap_preview*
+
+  Type: |Dict|
+  Default: `{ 'scrollbar': { 'fill_char': '▌' } }`
+
+  This variable controls the scrollbar for preview window, available for
+  neovim only.
+
+
 g:clap_open_preview                                       *g:clap_open_preview*
 
   Type: |String|

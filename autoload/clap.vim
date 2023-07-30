@@ -83,6 +83,13 @@ let g:clap_enable_background_shadow = get(g:, 'clap_enable_background_shadow', v
 let g:clap_disable_matches_indicator = get(g:, 'clap_disable_matches_indicator', v:false)
 let g:clap_multi_selection_warning_silent = get(g:, 'clap_multi_selection_warning_silent', 0)
 
+let s:default_clap_preview = { 'scrollbar': { 'fill_char': '▌' } }
+if exists('g:clap_preview')
+  call extend(g:clap_preview, s:default_clap_preview, 'keep')
+else
+  let g:clap_preview = s:default_clap_preview
+endif
+
 function! clap#builtin_providers() abort
   if !exists('s:builtin_providers')
     let s:builtin_providers = map(

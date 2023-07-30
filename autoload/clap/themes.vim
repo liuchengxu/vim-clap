@@ -205,9 +205,9 @@ function! s:init_theme() abort
 endfunction
 
 function! clap#themes#init() abort
-  hi default link ClapMatches Search
+  hi default link ClapMatches        Search
   hi default link ClapNoMatchesFound ErrorMsg
-  hi default link ClapPopupCursor Type
+  hi default link ClapPopupCursor    Type
 
   if exists('g:clap_theme')
     " If anything is wrong, just use the default theme.

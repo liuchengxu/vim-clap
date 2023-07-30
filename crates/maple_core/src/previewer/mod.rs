@@ -10,10 +10,12 @@ use utils::read_first_lines;
 /// Preview of a file.
 #[derive(Clone, Debug)]
 pub struct FilePreview {
-    /// Line number at which the preview starts (exclusive).
+    /// Line number of source file at which the preview starts (exclusive).
     pub start: usize,
-    /// Line number at which the preview ends (inclusive).
+    /// Line number of source file at which the preview ends (inclusive).
     pub end: usize,
+    /// Total lines in the source file.
+    pub total: usize,
     /// Line number of the line that should be highlighed in the preview window.
     pub highlight_lnum: usize,
     /// [start, end] of the source file.
@@ -36,11 +38,15 @@ pub fn get_file_preview<P: AsRef<Path>>(
         (0, winheight, target_line_number)
     };
 
+    let total = utils::count_lines(std::fs::File::open(path.as_ref())?)?;
+
     let lines = read_preview_lines(path, start, end)?;
+    let end = end.min(total);
 
     Ok(FilePreview {
         start,
         end,
+        total,
         highlight_lnum,
         lines,
     })

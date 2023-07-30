@@ -32,6 +32,8 @@ let s:preview_bufnr = nvim_create_buf(v:false, v:true)
 let s:indicator_bufnr = nvim_create_buf(v:false, v:true)
 let g:__clap_indicator_bufnr = s:indicator_bufnr
 
+let s:preview_scrollbar_buf = nvim_create_buf(v:false, v:true)
+
 let s:exists_deoplete = exists('*deoplete#custom#buffer_option')
 
 let s:symbol_left = g:__clap_search_box_border_symbol.left
@@ -41,6 +43,25 @@ let s:symbol_width = strdisplaywidth(s:symbol_right)
 let s:shadow_winhl = 'Normal:ClapShadow,NormalNC:ClapShadow,EndOfBuffer:ClapShadow'
 let s:display_winhl = 'Normal:ClapDisplay,EndOfBuffer:ClapDisplayInvisibleEndOfBuffer,SignColumn:ClapDisplay,ColorColumn:ClapDisplay'
 let s:preview_winhl = 'Normal:ClapPreview,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreview,ColorColumn:ClapPreview'
+let s:preview_scrollbar_winhl = 'Normal:ClapPreviewScrollbar,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreviewScrollbar,ColorColumn:ClapPreviewScrollbar'
+
+if &background ==# 'dark'
+  if empty(get(g:clap_preview.scrollbar, 'fill_char', ''))
+    hi ClapDefaultPreviewScrollbar ctermbg=237 guibg=#3E4452 ctermfg=173 guifg=#e18254 cterm=bold,reverse gui=bold,reverse
+  else
+    let s:preview_scrollbar_fill_char = g:clap_preview.scrollbar.fill_char
+    hi ClapDefaultPreviewScrollbar ctermbg=237 guibg=#3E4452 ctermfg=173 guifg=#e18254 cterm=bold gui=bold
+  endif
+else
+  if empty(get(g:clap_preview.scrollbar, 'fill_char', ''))
+    hi ClapDefaultPreviewScrollbar ctermbg=7 guibg=#ecf5ff ctermfg=173 guifg=#e18254 cterm=bold,reverse gui=bold,reverse
+  else
+    let s:preview_scrollbar_fill_char = g:clap_preview.scrollbar.fill_char
+    hi ClapDefaultPreviewScrollbar ctermbg=7 guibg=#ecf5ff ctermfg=173 guifg=#e18254 cterm=bold gui=bold
+  endif
+endif
+
+hi default link ClapPreviewScrollbar ClapDefaultPreviewScrollbar
 
 " shadow
 "  -----------------------------
@@ -378,6 +399,62 @@ function! s:create_preview_win(height) abort
   let g:clap#floating_win#preview.bufnr = s:preview_bufnr
 endfunction
 
+function! clap#floating_win#show_preview_scrollbar(top_position, length) abort
+  if exists('s:preview_scrollbar_winid') && nvim_win_is_valid(s:preview_scrollbar_winid)
+    let config = nvim_win_get_config(s:preview_scrollbar_winid)
+    let config.row = nvim_win_get_config(s:preview_winid).row + a:top_position
+    let config.height = a:length
+    call nvim_win_set_config(s:preview_scrollbar_winid, config)
+    if exists('s:preview_scrollbar_fill_char')
+      call s:update_preview_scrollbar(a:length)
+    endif
+  else
+    call s:create_preview_scrollbar_win(a:top_position, a:length)
+  endif
+endfunction
+
+function! s:update_preview_scrollbar(length) abort
+  let lines = repeat([s:preview_scrollbar_fill_char], a:length)
+  call clap#util#nvim_buf_set_lines(s:preview_scrollbar_buf, lines)
+endfunction
+
+function! s:create_preview_scrollbar_win(top_position, length) abort
+  if !exists('s:preview_winid') || !nvim_win_is_valid(s:preview_winid) || !exists('s:preview_scrollbar_fill_char')
+    return
+  endif
+
+  let config = nvim_win_get_config(s:preview_winid)
+  let config.focusable = v:false
+  let config.border = 'none'
+  let config.row += a:top_position
+  let config.col += config.width + 1
+  let config.width = 1
+  let config.height = a:length
+
+  let preview_config = nvim_win_get_config(s:preview_winid)
+  if config.row + config.height > preview_config.row + preview_config.height
+    let config.row -= preview_config.row + preview_config.height - config.row - config.height
+  endif
+
+  let config.style = 'minimal'
+  let config.zindex = 1000
+  if has_key(config, 'title')
+    unlet config.title
+  endif
+  if has_key(config, 'title_pos')
+    unlet config.title_pos
+  endif
+
+  if !nvim_buf_is_valid(s:preview_scrollbar_buf)
+    let s:preview_scrollbar_buf = nvim_create_buf(v:false, v:true)
+  endif
+  silent let s:preview_scrollbar_winid = nvim_open_win(s:preview_scrollbar_buf, v:false, config)
+
+  call setwinvar(s:preview_scrollbar_winid, '&winhl', s:preview_scrollbar_winhl)
+
+  call s:update_preview_scrollbar(a:length)
+endfunction
+
 function! s:max_preview_size() abort
   if clap#preview#direction() ==# 'LR'
     return s:display_opts.height
@@ -528,6 +605,9 @@ function! clap#floating_win#close() abort
   call s:win_close(g:clap.input.winid)
   call s:win_close(g:clap.spinner.winid)
   call s:win_close(s:indicator_winid)
+  if exists('s:preview_scrollbar_winid')
+    call s:win_close(s:preview_scrollbar_winid)
+  endif
 
   " I don't know why, but this could be related to the cursor move in grep.vim
   " thus I have to go back to the start window in grep.vim
