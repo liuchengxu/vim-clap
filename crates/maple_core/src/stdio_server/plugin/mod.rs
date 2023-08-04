@@ -1,6 +1,6 @@
 mod ctags;
-mod highlight_cursor_word;
-mod markdown_toc;
+mod cursor_word_highlighter;
+mod markdown;
 
 use crate::stdio_server::input::{PluginAction, PluginEvent};
 use crate::stdio_server::vim::Vim;
@@ -8,8 +8,8 @@ use anyhow::{anyhow, Result};
 use std::fmt::Debug;
 
 pub use ctags::CtagsPlugin;
-pub use highlight_cursor_word::CursorWordHighlighter;
-pub use markdown_toc::MarkdownPlugin;
+pub use cursor_word_highlighter::CursorWordHighlighter;
+pub use markdown::MarkdownPlugin;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum PluginId {
@@ -46,6 +46,7 @@ pub struct SystemPlugin {
 
 impl SystemPlugin {
     const NOTE_RECENT_FILES: &'static str = "note_recent_files";
+
     const OPEN_CONFIG: &'static str = "open-config";
 
     const CALLABLE_ACTIONS: &[&'static str] = &[Self::OPEN_CONFIG];

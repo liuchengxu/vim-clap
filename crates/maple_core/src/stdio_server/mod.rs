@@ -233,7 +233,7 @@ impl Client {
                     return Ok((*plugin_id, notification.into()));
                 }
             }
-            Err(anyhow::anyhow!("Failed to parse {notification:?}"))
+            Err(anyhow!("Failed to parse {notification:?}"))
         };
 
         match Event::parse_notification(notification, action_parser)? {

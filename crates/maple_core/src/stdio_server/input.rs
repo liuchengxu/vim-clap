@@ -111,6 +111,9 @@ impl Event {
         notification: RpcNotification,
         action_parser: impl Fn(RpcNotification) -> anyhow::Result<Action>,
     ) -> anyhow::Result<Self> {
+        use AutocmdEventType::*;
+        use KeyEventType::*;
+
         match notification.method.as_str() {
             "new_session" => Ok(Self::NewProvider(notification.params)),
             "exit" => Ok(Self::ProviderWorker(ProviderEvent::Exit)),
@@ -120,48 +123,21 @@ impl Event {
             "on_typed" => Ok(Self::ProviderWorker(ProviderEvent::OnTyped(
                 notification.params,
             ))),
-            "cr" => Ok(Self::Key((
-                KeyEventType::CarriageReturn,
-                notification.params,
-            ))),
-            "tab" => Ok(Self::Key((KeyEventType::Tab, notification.params))),
-            "ctrl-n" => Ok(Self::Key((KeyEventType::CtrlN, notification.params))),
-            "ctrl-p" => Ok(Self::Key((KeyEventType::CtrlP, notification.params))),
-            "shift-up" => Ok(Self::Key((KeyEventType::ShiftUp, notification.params))),
-            "shift-down" => Ok(Self::Key((KeyEventType::ShiftDown, notification.params))),
-            "backspace" => Ok(Self::Key((KeyEventType::Backspace, notification.params))),
-            "CursorMoved" => Ok(Self::Autocmd((
-                AutocmdEventType::CursorMoved,
-                notification.params,
-            ))),
-            "InsertEnter" => Ok(Self::Autocmd((
-                AutocmdEventType::InsertEnter,
-                notification.params,
-            ))),
-            "BufEnter" => Ok(Self::Autocmd((
-                AutocmdEventType::BufEnter,
-                notification.params,
-            ))),
-            "BufLeave" => Ok(Self::Autocmd((
-                AutocmdEventType::BufLeave,
-                notification.params,
-            ))),
-            "BufDelete" => Ok(Self::Autocmd((
-                AutocmdEventType::BufDelete,
-                notification.params,
-            ))),
-            "BufWritePost" => Ok(Self::Autocmd((
-                AutocmdEventType::BufWritePost,
-                notification.params,
-            ))),
-            "BufWinEnter" => Ok(Self::Autocmd((
-                AutocmdEventType::BufWinEnter,
-                notification.params,
-            ))),
-            "BufWinLeave" => Ok(Self::Autocmd((
-                AutocmdEventType::BufWinLeave,
-                notification.params,
-            ))),
+            "cr" => Ok(Self::Key((CarriageReturn, notification.params))),
+            "tab" => Ok(Self::Key((Tab, notification.params))),
+            "ctrl-n" => Ok(Self::Key((CtrlN, notification.params))),
+            "ctrl-p" => Ok(Self::Key((CtrlP, notification.params))),
+            "shift-up" => Ok(Self::Key((ShiftUp, notification.params))),
+            "shift-down" => Ok(Self::Key((ShiftDown, notification.params))),
+            "backspace" => Ok(Self::Key((Backspace, notification.params))),
+            "CursorMoved" => Ok(Self::Autocmd((CursorMoved, notification.params))),
+            "InsertEnter" => Ok(Self::Autocmd((InsertEnter, notification.params))),
+            "BufEnter" => Ok(Self::Autocmd((BufEnter, notification.params))),
+            "BufLeave" => Ok(Self::Autocmd((BufLeave, notification.params))),
+            "BufDelete" => Ok(Self::Autocmd((BufDelete, notification.params))),
+            "BufWritePost" => Ok(Self::Autocmd((BufWritePost, notification.params))),
+            "BufWinEnter" => Ok(Self::Autocmd((BufWinEnter, notification.params))),
+            "BufWinLeave" => Ok(Self::Autocmd((BufWinLeave, notification.params))),
             _ => Ok(Self::Action(action_parser(notification)?)),
         }
     }

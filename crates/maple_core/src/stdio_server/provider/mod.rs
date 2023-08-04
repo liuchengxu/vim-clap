@@ -761,9 +761,10 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
 
     async fn on_initial_query(&mut self, ctx: &mut Context, initial_query: String) -> Result<()> {
         // Mimic the user behavior by setting the user input and sending the singal
-        ctx.vim
-            .call("set_initial_query", json!([initial_query]))
-            .await?;
+        let _ = ctx
+            .vim
+            .call::<String>("set_initial_query", json!([initial_query]))
+            .await;
         ctx.send_provider_event(ProviderEvent::OnTyped(Params::None))
     }
 

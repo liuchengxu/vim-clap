@@ -171,9 +171,11 @@ impl RegexSearcher {
         // There are some negative definitions we need to filter them out, e.g., the word
         // is a subtring in some identifer but we consider every word is a valid identifer.
         let positive_defs = defs
-            .par_iter()
+            .iter()
             .filter(|def| occurrences.contains(def))
             .collect::<Vec<_>>();
+
+        let word = &lang_regex_searcher.word;
 
         let mut regex_usages = definitions
             .into_par_iter()
@@ -183,10 +185,7 @@ impl RegexSearcher {
                     .filter_map(|matched| {
                         if positive_defs.contains(&&matched) {
                             usage_matcher
-                                .match_jump_line(
-                                    matched
-                                        .build_jump_line(kind.as_ref(), &lang_regex_searcher.word),
-                                )
+                                .match_jump_line(matched.build_jump_line(kind.as_ref(), word))
                                 .map(|(line, indices)| {
                                     RegexUsage::from_matched(&matched, line, indices)
                                 })
@@ -202,9 +201,7 @@ impl RegexSearcher {
                     if !defs.contains(&matched) {
                         let (kind, _) = resolve_reference_kind(matched.pattern(), &self.extension);
                         usage_matcher
-                            .match_jump_line(
-                                matched.build_jump_line(kind, &lang_regex_searcher.word),
-                            )
+                            .match_jump_line(matched.build_jump_line(kind, word))
                             .map(|(line, indices)| {
                                 RegexUsage::from_matched(&matched, line, indices)
                             })
@@ -222,7 +219,7 @@ impl RegexSearcher {
                 .into_par_iter()
                 .filter_map(|matched| {
                     usage_matcher
-                        .match_jump_line(matched.build_jump_line("grep", &lang_regex_searcher.word))
+                        .match_jump_line(matched.build_jump_line("grep", word))
                         .map(|(line, indices)| RegexUsage::from_matched(&matched, line, indices))
                 })
                 .collect::<Vec<_>>();
