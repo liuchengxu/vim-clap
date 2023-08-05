@@ -39,6 +39,26 @@ function! s:start_rpc_service() abort
   call clap#client#notify_on_init({'cwd': current_dir})
 endfunction
 
+function! s:handle_action(action) abort
+  echom 'action:'.a:action
+  let curline = g:clap.display.getcurline()
+  if empty(curline)
+    let entry = g:clap.input.get()
+  else
+    let entry = curline
+  endif
+  if a:action ==# "remove"
+    if entry[-1] ==# '/' || entry[-1] ==# '\'
+      call delete(entry, 'd')
+    else
+      call delete(entry)
+    endif
+  elseif a:action ==# 'new_dir'
+    call mkdir(entry)
+  endif
+  call s:filer.on_typed()
+endfunction
+
 let s:filer.init = function('s:start_rpc_service')
 let s:filer.icon = 'File'
 let s:filer.syntax = 'clap_filer'
@@ -49,6 +69,12 @@ let s:filer.mappings = {
       \ "<BS>": { -> clap#client#notify_provider('backspace') },
       \ "<Tab>": { ->  clap#client#notify_provider('tab') },
       \ "<A-U>": { -> clap#client#notify_provider('backspace') },
+      \ }
+let s:filer.action = {
+      \ 'title': 'Filer',
+      \ '&Remove': { -> clap#client#notify_provider('shift-tab', { 'action': 'Remove' } ) },
+      \ 'New&File': { -> clap#client#notify_provider('shift-tab', { 'action': 'NewFile' }) },
+      \ 'New&Directory': { -> clap#client#notify_provider('shift-tab', { 'action': 'NewDirectory'} ) },
       \ }
 let g:clap#provider#filer# = s:filer
 

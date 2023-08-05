@@ -34,7 +34,11 @@ endfunction
 function! clap#popup#action#invoke() abort
   let s:provider_action = g:clap.provider._().action
   if has_key(s:provider_action, 'title')
-    let title = s:provider_action['title']()
+    if type(s:provider_action['title']) == v:t_func
+      let title = s:provider_action['title']()
+    else
+      let title = s:provider_action['title']
+    endif
   else
     let title = 'Choose action:'
   endif

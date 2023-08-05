@@ -10,7 +10,11 @@ function! clap#floating_win#action#create() abort
 
   let provider_action = g:clap.provider._().action
   if has_key(provider_action, 'title')
-    let title = provider_action['title']()
+    if type(provider_action['title']) == v:t_func
+      let title = provider_action['title']()
+    else
+      let title = provider_action['title']
+    endif
   else
     let title = 'Choose action:'
   endif

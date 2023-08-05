@@ -3,7 +3,7 @@
 // pub use constants::*;
 include!(concat!(env!("OUT_DIR"), "/constants.rs"));
 
-use std::path::Path;
+use std::{fmt::Display, path::Path};
 
 /// The type used to represent icons.
 ///
@@ -41,6 +41,25 @@ impl Icon {
 
     pub fn enabled(&self) -> bool {
         matches!(self, Self::Enabled(_))
+    }
+
+    pub fn variants() -> [&'static str; 6] {
+        ["null", "file", "grep", "buffer_tags", "proj_tags", "unknown"]
+    }
+}
+
+impl Display for Icon {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Null => write!(f, "null"),
+            Self::Enabled(icon_kind) => match icon_kind {
+                IconKind::File => write!(f, "file"),
+                IconKind::Grep => write!(f, "grep"),
+                IconKind::BufferTags => write!(f, "buffer_tags"),
+                IconKind::ProjTags => write!(f, "proj_tags"),
+                IconKind::Unknown => write!(f, "unknown"),
+            },
+        }
     }
 }
 
