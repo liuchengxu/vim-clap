@@ -473,7 +473,7 @@ impl<'a> CachedPreviewImpl<'a> {
 
                 let highlight_lnum = highlight_lnum + context_lines.len();
 
-                let context_lines_not_empty = context_lines.is_empty();
+                let context_lines_is_empty = context_lines.is_empty();
 
                 let header_line = truncated_preview_header();
                 let lines = std::iter::once(header_line)
@@ -485,7 +485,7 @@ impl<'a> CachedPreviewImpl<'a> {
                     && self.ctx.env.preview_direction.to_uppercase() == "LR"
                     && total > 0
                 {
-                    let start = if context_lines_not_empty {
+                    let start = if context_lines_is_empty {
                         start.saturating_sub(3)
                     } else {
                         start
@@ -535,13 +535,12 @@ impl<'a> CachedPreviewImpl<'a> {
                 tracing::error!(
                     ?path,
                     provider_id = %self.ctx.provider_id(),
-                    ?err,
-                    "Couldn't read first lines",
+                    "Couldn't read first lines: {err:?}",
                 );
                 let header_line = truncated_preview_header();
                 let lines = vec![
                     header_line,
-                    format!("Error while previewing the file: {err}"),
+                    format!("Error while previewing {}: {err}", path.display()),
                 ];
                 Preview {
                     lines,
@@ -571,10 +570,7 @@ impl<'a> CachedPreviewImpl<'a> {
                             tracing::debug!(cwd = ?ctx.cwd, "Refreshing grep cache");
                             let new_digest = match crate::tools::rg::refresh_cache(&ctx.cwd) {
                                 Ok(digest) => {
-                                    tracing::debug!(
-                                        total = digest.total,
-                                        "Refresh the grep cache successfully"
-                                    );
+                                    tracing::debug!(total = digest.total, "Refreshed grep cache");
                                     digest
                                 }
                                 Err(e) => {
@@ -597,7 +593,7 @@ impl<'a> CachedPreviewImpl<'a> {
                     } else {
                         tracing::debug!(
                             cwd = ?self.ctx.cwd,
-                            "There is already a grep job running, skip freshing the cache"
+                            "Another grep job is running, skip freshing the cache"
                         );
                     }
                 }

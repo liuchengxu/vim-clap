@@ -1,7 +1,7 @@
 use crate::UtcTime;
 use chrono::prelude::*;
-use filter::SourceItem;
 use matcher::{Bonus, MatcherBuilder};
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::path::Path;
@@ -173,20 +173,17 @@ impl SortedRecentFiles {
     }
 
     pub fn filter_on_query(&self, query: &str, cwd: String) -> Vec<filter::MatchedItem> {
-        let mut cwd = cwd;
-        cwd.push(std::path::MAIN_SEPARATOR);
-
-        let source_items: Vec<SourceItem> = self
-            .entries
-            .iter()
-            .map(|entry| entry.fpath.replacen(&cwd, "", 1).into())
-            .collect();
-
-        cwd.pop();
+        let mut cwd_with_separator = cwd.clone();
+        cwd_with_separator.push(std::path::MAIN_SEPARATOR);
 
         let matcher = MatcherBuilder::new()
             .bonuses(vec![Bonus::Cwd(cwd.into()), Bonus::FileName])
             .build(query.into());
+
+        let source_items = self
+            .entries
+            .par_iter()
+            .map(|entry| entry.fpath.replacen(&cwd_with_separator, "", 1).into());
 
         filter::par_filter(source_items, &matcher)
     }

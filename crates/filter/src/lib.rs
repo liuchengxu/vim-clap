@@ -111,7 +111,10 @@ impl FilterContext {
 }
 
 /// Performs the synchorous filtering on a small scale of source in parallel.
-pub fn par_filter(source_items: Vec<SourceItem>, fuzzy_matcher: &Matcher) -> Vec<MatchedItem> {
+pub fn par_filter(
+    source_items: impl IntoParallelIterator<Item = SourceItem>,
+    fuzzy_matcher: &Matcher,
+) -> Vec<MatchedItem> {
     let matched_items: MatchedItems = source_items
         .into_par_iter()
         .filter_map(|item| {

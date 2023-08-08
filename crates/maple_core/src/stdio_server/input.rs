@@ -221,7 +221,7 @@ impl InputRecorder {
         self.current_index = self
             .current_index
             .checked_sub(1)
-            .unwrap_or(self.inputs.len() - 1);
+            .unwrap_or_else(|| self.inputs.len() - 1);
         self.inputs.get(self.current_index).map(AsRef::as_ref)
     }
 }

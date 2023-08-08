@@ -128,7 +128,7 @@ impl GenericProvider {
                 let items = curline.split('\t').collect::<Vec<_>>();
                 if items.len() < 2 {
                     return Err(anyhow::anyhow!(
-                        "Couldn't extract subject and doc_filename from the line"
+                        "Couldn't extract subject and doc_filename from {curline}"
                     ));
                 }
                 Some(PreviewTarget::HelpTags {

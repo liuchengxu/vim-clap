@@ -178,6 +178,30 @@ pub fn truncate_absolute_path(abs_path: &str, max_len: usize) -> Cow<'_, str> {
     abs_path.into()
 }
 
+pub fn find_project_root<'a>(start_dir: &'a Path, root_markers: &[String]) -> Option<&'a Path> {
+    upward_search(start_dir, |path| {
+        root_markers
+            .iter()
+            .any(|root_marker| path.join(root_marker).exists())
+    })
+    .ok()
+}
+
+fn upward_search<F>(path: &Path, predicate: F) -> anyhow::Result<&Path>
+where
+    F: Fn(&Path) -> bool,
+{
+    if predicate(path) {
+        return Ok(path);
+    }
+
+    let next_path = path
+        .parent()
+        .ok_or_else(|| anyhow::anyhow!("No parent directory"))?;
+
+    upward_search(next_path, predicate)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
