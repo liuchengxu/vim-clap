@@ -16,10 +16,9 @@ impl PluginEvent {
     /// Returns `true` if the event can be potentially too frequent and should be debounced.
     pub fn should_debounce(&self) -> bool {
         match self {
-            Self::Autocmd((autocmd_event_type, _)) => match autocmd_event_type {
-                AutocmdEventType::CursorMoved => true,
-                _ => false,
-            },
+            Self::Autocmd((autocmd_event_type, _)) => {
+                matches!(autocmd_event_type, AutocmdEventType::CursorMoved)
+            }
         }
     }
 }
@@ -259,7 +258,7 @@ impl InputRecorder {
         self.current_index = self
             .current_index
             .checked_sub(1)
-            .unwrap_or_else(|| self.inputs.len() - 1);
+            .unwrap_or(self.inputs.len() - 1);
         self.inputs.get(self.current_index).map(AsRef::as_ref)
     }
 }

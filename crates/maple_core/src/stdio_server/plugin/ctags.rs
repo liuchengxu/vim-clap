@@ -110,9 +110,9 @@ impl ClapPlugin for CtagsPlugin {
                 if !Path::new(&file_path).exists() {
                     return Ok(());
                 }
-                if !self.buf_tags.contains_key(&bufnr) {
+                if let std::collections::hash_map::Entry::Vacant(e) = self.buf_tags.entry(bufnr) {
                     let buffer_tags = crate::tools::ctags::fetch_buffer_tags(file_path)?;
-                    self.buf_tags.insert(bufnr, buffer_tags);
+                    e.insert(buffer_tags);
                     self.on_cursor_moved(bufnr).await?;
                 }
             }

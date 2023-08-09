@@ -306,10 +306,8 @@ impl PluginSession {
                                     pending_plugin_event.replace(plugin_event);
                                     notification_dirty = true;
                                     notification_timer.as_mut().reset(Instant::now() + event_delay);
-                                } else {
-                                    if let Err(err) = self.plugin.on_plugin_event(plugin_event).await {
-                                        tracing::error!(?err, "Failed to process plugin event");
-                                    }
+                                } else if let Err(err) = self.plugin.on_plugin_event(plugin_event).await {
+                                    tracing::error!(?err, "Failed to process plugin event");
                                 }
                             }
                             None => break, // channel has closed.
