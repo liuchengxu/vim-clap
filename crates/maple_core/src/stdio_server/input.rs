@@ -60,6 +60,8 @@ pub enum KeyEvent {
 pub enum Autocmd {
     CursorMoved,
     InsertEnter,
+    BufEnter,
+    BufLeave,
 }
 
 impl Event {
@@ -78,6 +80,8 @@ impl Event {
             "backspace" => Self::Key(KeyEvent::Backspace),
             "CursorMoved" => Self::Autocmd(Autocmd::CursorMoved),
             "InsertEnter" => Self::Autocmd(Autocmd::InsertEnter),
+            "BufEnter" => Self::Autocmd(Autocmd::BufEnter),
+            "BufLeave" => Self::Autocmd(Autocmd::BufLeave),
             action => Self::Action(action.to_string()),
         }
     }

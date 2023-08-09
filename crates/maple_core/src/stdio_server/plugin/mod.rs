@@ -1,4 +1,5 @@
 mod highlight_cursor_word;
+mod ctags;
 mod markdown_toc;
 
 use crate::stdio_server::input::Autocmd;

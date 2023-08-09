@@ -57,6 +57,8 @@ augroup VimClap
   if get(g:, 'clap_plugin_experimental', 0)
     autocmd CursorMoved * call clap#client#notify('CursorMoved')
     autocmd InsertEnter * call clap#client#notify('InsertEnter')
+    autocmd BufEnter * call clap#client#notify('BufEnter', [+expand('<abuf>')])
+    autocmd BufLeave * call clap#client#notify('BufLeave', [+expand('<abuf>')])
   endif
 
   " yanks provider

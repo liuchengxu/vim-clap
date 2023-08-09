@@ -434,7 +434,7 @@ impl<'a> CachedPreviewImpl<'a> {
                             && !dumb_analyzer::is_comment(latest_line, ext)
                         {
                             match context_tag_with_timeout(path, lnum).await {
-                                Some(tag) if tag.line < start => {
+                                Some(tag) if tag.line_number < start => {
                                     context_lines.reserve_exact(3);
 
                                     let border_line = "─".repeat(if self.ctx.env.is_nvim {

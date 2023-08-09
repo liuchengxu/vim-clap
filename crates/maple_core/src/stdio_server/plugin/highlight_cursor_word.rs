@@ -216,6 +216,7 @@ impl ClapPlugin for CursorWordHighlighter {
                 }
                 Ok(())
             }
+            _ => Ok(()),
         }
     }
 }
