@@ -10,7 +10,7 @@ use std::path::Path;
 
 #[derive(Serialize, Debug)]
 struct ScopeRef<'a> {
-    scope: &'a str,
+    name: &'a str,
     scope_kind: &'a str,
     scope_kind_icon: IconType,
 }
@@ -19,7 +19,7 @@ impl<'a> ScopeRef<'a> {
     fn from_scope(scope: &'a Scope) -> Self {
         let scope_kind_icon = icon::tags_kind_icon(&scope.scope_kind);
         Self {
-            scope: &scope.scope,
+            name: &scope.scope,
             scope_kind: &scope.scope_kind,
             scope_kind_icon,
         }
