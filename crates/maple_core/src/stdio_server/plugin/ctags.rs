@@ -1,10 +1,30 @@
 use crate::stdio_server::input::{AutocmdEventType, PluginEvent};
 use crate::stdio_server::plugin::ClapPlugin;
 use crate::stdio_server::vim::Vim;
-use crate::tools::ctags::BufferTag;
+use crate::tools::ctags::{BufferTag, Scope};
 use anyhow::Result;
+use icon::IconType;
+use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
+
+#[derive(Serialize, Debug)]
+struct ScopeRef<'a> {
+    scope: &'a str,
+    scope_kind: &'a str,
+    scope_kind_icon: IconType,
+}
+
+impl<'a> ScopeRef<'a> {
+    fn from_scope(scope: &'a Scope) -> Self {
+        let scope_kind_icon = icon::tags_kind_icon(&scope.scope_kind);
+        Self {
+            scope: &scope.scope,
+            scope_kind: &scope.scope_kind,
+            scope_kind_icon,
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct CtagsPlugin {
@@ -48,11 +68,9 @@ impl ClapPlugin for CtagsPlugin {
                     let buffer_tags = crate::tools::ctags::fetch_buffer_tags(file_path)?;
                     self.buf_tags.insert(bufnr, buffer_tags);
                 }
-                Ok(())
             }
             BufDelete => {
                 self.buf_tags.remove(&bufnr);
-                Ok(())
             }
             CursorMoved => {
                 let [_bufnum, curlnum, _col, _off] = self.vim.getpos(".").await?;
@@ -76,20 +94,21 @@ impl ClapPlugin for CtagsPlugin {
                                 "name": tag.name,
                                 "line_number": tag.line_number,
                                 "kind": tag.kind,
-                                "scope": tag.scope,
+                                "kind_icon": icon::tags_kind_icon(&tag.kind),
+                                "scope": tag.scope.as_ref().map(ScopeRef::from_scope),
                             }),
                         )?;
 
                         self.last_cursor_tag.replace(tag.clone());
                     } else {
-                        self.vim
-                            .setbufvar(bufnr, "clap_current_symbol", serde_json::json!({}))?;
+                        self.vim.setbufvar(bufnr, "clap_current_symbol", {})?;
                         self.last_cursor_tag.take();
                     }
                 }
-                Ok(())
             }
-            _ => Ok(()),
+            _ => {}
         }
+
+        Ok(())
     }
 }
