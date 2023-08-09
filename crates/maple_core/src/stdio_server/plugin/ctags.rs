@@ -47,7 +47,14 @@ impl CtagsPlugin {
         if let Some(buffer_tags) = self.buf_tags.get(&bufnr) {
             let idx = match buffer_tags.binary_search_by_key(&curlnum, |tag| tag.line_number) {
                 Ok(idx) => idx,
-                Err(idx) => idx.saturating_sub(1),
+                Err(idx) => match idx.checked_sub(1) {
+                    Some(idx) => idx,
+                    None => {
+                        self.vim.setbufvar(bufnr, "clap_current_symbol", {})?;
+                        self.last_cursor_tag.take();
+                        return Ok(());
+                    }
+                },
             };
             if let Some(tag) = buffer_tags.get(idx) {
                 if let Some(last_cursor_tag) = &self.last_cursor_tag {

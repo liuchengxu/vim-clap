@@ -10,8 +10,8 @@ use itertools::Itertools;
 fn build_raw_line<S: AsRef<OsStr> + ?Sized>(p: &S, const_name: &str) -> String {
     let json_file_path = Path::new(p);
     let json_file_str = read_to_string(json_file_path).expect("file not found");
-    let icon_map: HashMap<String, char> =
-        serde_json::from_str(&json_file_str).expect("error while reading json");
+    let icon_map: HashMap<String, char> = serde_json::from_str(&json_file_str)
+        .unwrap_or_else(|err| panic!("error while reading {}: {err:?})", json_file_path.display()));
 
     let sorted_icon_tuples = icon_map
         .keys()
