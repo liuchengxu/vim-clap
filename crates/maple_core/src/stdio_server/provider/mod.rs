@@ -785,7 +785,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
     }
 
     async fn on_key_event(&mut self, ctx: &mut Context, key_event: KeyEvent) -> Result<()> {
-        let (key_event_type, params) = key_event;
+        let (key_event_type, _params) = key_event;
         match key_event_type {
             KeyEventType::ShiftUp => ctx.scroll_preview(Direction::Up).await?,
             KeyEventType::ShiftDown => ctx.scroll_preview(Direction::Down).await?,

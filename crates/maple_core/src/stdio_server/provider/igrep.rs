@@ -478,7 +478,7 @@ impl ClapProvider for IgrepProvider {
     }
 
     async fn on_key_event(&mut self, ctx: &mut Context, key_event: KeyEvent) -> Result<()> {
-        let (key_event_type, params) = key_event;
+        let (key_event_type, _params) = key_event;
         match key_event_type {
             KeyEventType::CtrlN => ctx.next_input().await,
             KeyEventType::CtrlP => ctx.previous_input().await,

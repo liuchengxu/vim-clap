@@ -58,8 +58,9 @@ augroup VimClap
     autocmd CursorMoved * call clap#client#notify('CursorMoved', [+expand('<abuf>')])
     autocmd InsertEnter * call clap#client#notify('InsertEnter')
     autocmd BufWinEnter * call clap#client#notify('BufWinEnter', [+expand('<abuf>')])
-    autocmd BufEnter * call clap#client#notify('BufEnter', [+expand('<abuf>')])
-    autocmd BufLeave * call clap#client#notify('BufLeave', [+expand('<abuf>')])
+    autocmd BufEnter    * call clap#client#notify('BufEnter',    [+expand('<abuf>')])
+    autocmd BufLeave    * call clap#client#notify('BufLeave',    [+expand('<abuf>')])
+    autocmd BufDelete   * call clap#client#notify('BufDelete',   [+expand('<abuf>')])
   endif
 
   " yanks provider

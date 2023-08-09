@@ -420,7 +420,7 @@ impl ClapProvider for FilerProvider {
     }
 
     async fn on_key_event(&mut self, ctx: &mut Context, key_event: KeyEvent) -> Result<()> {
-        let (key_event_type, params) = key_event;
+        let (key_event_type, _params) = key_event;
         match key_event_type {
             KeyEventType::Tab => self.on_tab(ctx).await,
             KeyEventType::Backspace => self.on_backspace(ctx).await,

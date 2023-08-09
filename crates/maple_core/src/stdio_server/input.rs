@@ -85,6 +85,7 @@ pub enum AutocmdEventType {
     BufEnter,
     BufWinEnter,
     BufLeave,
+    BufDelete,
     BufWinLeave,
 }
 
@@ -107,6 +108,7 @@ impl Event {
             "InsertEnter" => Self::Autocmd((AutocmdEventType::InsertEnter, notification.params)),
             "BufEnter" => Self::Autocmd((AutocmdEventType::BufEnter, notification.params)),
             "BufLeave" => Self::Autocmd((AutocmdEventType::BufLeave, notification.params)),
+            "BufDelete" => Self::Autocmd((AutocmdEventType::BufDelete, notification.params)),
             "BufWinEnter" => Self::Autocmd((AutocmdEventType::BufWinEnter, notification.params)),
             "BufWinLeave" => Self::Autocmd((AutocmdEventType::BufWinLeave, notification.params)),
             _ => Self::Action(Action {

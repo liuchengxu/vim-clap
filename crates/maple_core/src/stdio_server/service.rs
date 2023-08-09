@@ -305,11 +305,11 @@ impl PluginSession {
                                 if plugin_event.should_debounce() {
                                     pending_plugin_event.replace(plugin_event);
                                     notification_dirty = true;
-                                    notification_timer
-                                        .as_mut()
-                                        .reset(Instant::now() + event_delay);
+                                    notification_timer.as_mut().reset(Instant::now() + event_delay);
                                 } else {
-                                    let _ = self.plugin.on_plugin_event(plugin_event).await;
+                                    if let Err(err) = self.plugin.on_plugin_event(plugin_event).await {
+                                        tracing::error!(?err, "Failed to process plugin event");
+                                    }
                                 }
                             }
                             None => break, // channel has closed.
@@ -321,7 +321,7 @@ impl PluginSession {
 
                         if let Some(autocmd) = pending_plugin_event.take() {
                             if let Err(err) = self.plugin.on_plugin_event(autocmd).await {
-                                tracing::error!(?err, "Failed to process autocmd");
+                                tracing::error!(?err, "Failed to process debounced plugin event");
                             }
                         }
                     }
@@ -384,6 +384,7 @@ impl ServiceManager {
         ));
     }
 
+    #[allow(unused)]
     pub fn new_plugin_without_debounce(&mut self, plugin: Box<dyn ClapPlugin>) {
         self.plugins.push(PluginSession::create(plugin, None));
     }
