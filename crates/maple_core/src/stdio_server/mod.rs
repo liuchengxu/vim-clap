@@ -89,7 +89,10 @@ impl Client {
     /// Creates a new instnace of [`Client`].
     fn new(vim: Vim) -> Self {
         let mut service_manager = ServiceManager::default();
-        service_manager.new_plugin(Box::new(CtagsPlugin::new(vim.clone())) as Box<dyn ClapPlugin>);
+        if crate::config::config().plugin.ctags.enable {
+            service_manager
+                .new_plugin(Box::new(CtagsPlugin::new(vim.clone())) as Box<dyn ClapPlugin>);
+        }
         if crate::config::config().plugin.highlight_cursor_word.enable {
             service_manager.new_plugin(
                 Box::new(CursorWordHighlighter::new(vim.clone())) as Box<dyn ClapPlugin>

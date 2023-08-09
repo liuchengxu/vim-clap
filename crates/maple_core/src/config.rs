@@ -131,9 +131,17 @@ pub struct MarkdownTocConfig {
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct CtagsPluginConfig {
+    /// Whether to enable this plugin.
+    pub enable: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct PluginConfig {
     pub highlight_cursor_word: HighlightCursorWordConfig,
     pub markdown_toc: MarkdownTocConfig,
+    pub ctags: CtagsPluginConfig,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
