@@ -18,6 +18,7 @@ use subprocess::{Exec, NullFile};
 pub use self::buffer_tag::{BufferTag, BufferTagItem};
 pub use self::context_tag::{
     buffer_tag_items, buffer_tags_lines, current_context_tag, current_context_tag_async,
+    fetch_buffer_tags,
 };
 pub use self::project_tag::{ProjectTag, ProjectTagItem};
 

@@ -8,11 +8,12 @@ mod vim;
 
 pub use self::input::InputHistory;
 use self::input::{Event, PluginEvent, ProviderEvent};
-use self::plugin::{ClapPlugin, CursorWordHighlighter};
+use self::plugin::{ClapPlugin, CtagsPlugin, CursorWordHighlighter};
 use self::provider::{create_provider, Context};
 use self::service::ServiceManager;
 use self::vim::initialize_syntax_map;
 pub use self::vim::{Vim, VimProgressor};
+use crate::stdio_server::input::Action;
 use anyhow::{anyhow, Result};
 use parking_lot::Mutex;
 use rpc::{RpcClient, RpcNotification, RpcRequest, VimMessage};
@@ -88,6 +89,7 @@ impl Client {
     /// Creates a new instnace of [`Client`].
     fn new(vim: Vim) -> Self {
         let mut service_manager = ServiceManager::default();
+        service_manager.new_plugin(Box::new(CtagsPlugin::new(vim.clone())) as Box<dyn ClapPlugin>);
         if crate::config::config().plugin.highlight_cursor_word.enable {
             service_manager.new_plugin(
                 Box::new(CursorWordHighlighter::new(vim.clone())) as Box<dyn ClapPlugin>
@@ -123,16 +125,15 @@ impl Client {
                                 VimMessage::Notification(notification) => {
                                     // Avoid spawn too frequently if user opens and
                                     // closes the provider frequently in a very short time.
-                                    match Event::from_method(&notification.method) {
-                                        Event::Provider(ProviderEvent::NewSession) => {
-                                            pending_notification.replace(notification);
+                                    if notification.method == "new_session" {
+                                        pending_notification.replace(notification);
 
-                                            notification_dirty = true;
-                                            notification_timer
-                                                .as_mut()
-                                                .reset(Instant::now() + notification_delay);
-                                        }
-                                        _ => self.process_notification(notification),
+                                        notification_dirty = true;
+                                        notification_timer
+                                            .as_mut()
+                                            .reset(Instant::now() + notification_delay);
+                                    } else {
+                                        self.process_notification(notification);
                                     }
                                 }
                             }
@@ -183,30 +184,28 @@ impl Client {
 
     /// Actually process a Vim notification message.
     async fn do_process_notification(&self, notification: RpcNotification) -> Result<()> {
-        match Event::from_method(&notification.method) {
+        let maybe_session_id = notification.session_id();
+        match Event::parse_notification(notification) {
             Event::Provider(provider_event) => match provider_event {
-                ProviderEvent::NewSession => {
+                ProviderEvent::NewSession(params) => {
                     let provider_id = self.vim.provider_id().await?;
-                    let session_id = notification
-                        .session_id()
+                    let session_id = maybe_session_id
                         .ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
-                    let ctx = Context::new(notification.params, self.vim.clone()).await?;
+                    let ctx = Context::new(params, self.vim.clone()).await?;
                     let provider = create_provider(&provider_id, &ctx).await?;
                     self.service_manager_mutex
                         .lock()
                         .new_provider(session_id, provider, ctx);
                 }
                 ProviderEvent::Exit => {
-                    let session_id = notification
-                        .session_id()
+                    let session_id = maybe_session_id
                         .ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
                     self.service_manager_mutex
                         .lock()
                         .notify_provider_exit(session_id);
                 }
                 to_send => {
-                    let session_id = notification
-                        .session_id()
+                    let session_id = maybe_session_id
                         .ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
                     self.service_manager_mutex
                         .lock()
@@ -214,28 +213,27 @@ impl Client {
                 }
             },
             Event::Key(key_event) => {
-                let session_id = notification
-                    .session_id()
-                    .ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
+                let session_id =
+                    maybe_session_id.ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
                 self.service_manager_mutex
                     .lock()
                     .notify_provider(session_id, ProviderEvent::Key(key_event));
             }
-            Event::Autocmd(autocmd) => {
+            Event::Autocmd(autocmd_event) => {
                 self.service_manager_mutex
                     .lock()
-                    .notify_plugins(PluginEvent::Autocmd(autocmd));
+                    .notify_plugins(PluginEvent::Autocmd(autocmd_event));
             }
-            Event::Action(action) => self.handle_action(notification, action).await?,
+            Event::Action(action) => self.handle_action(action).await?,
         }
 
         Ok(())
     }
 
-    async fn handle_action(&self, notification: RpcNotification, action: String) -> Result<()> {
-        match action.as_str() {
+    async fn handle_action(&self, action: Action) -> Result<()> {
+        match action.command.as_str() {
             "note_recent_files" => {
-                let bufnr: Vec<usize> = notification.params.parse()?;
+                let bufnr: Vec<usize> = action.params.parse()?;
                 let bufnr = bufnr
                     .first()
                     .ok_or(anyhow!("bufnr not found in `note_recent_file`"))?;
@@ -285,7 +283,7 @@ impl Client {
                         .exec("deletebufline", json!([bufnr, start + 1, end + 1]))?;
                 }
             }
-            _ => return Err(anyhow!("Unknown notification: {notification:?}")),
+            _ => return Err(anyhow!("Unknown action: {action:?}")),
         }
 
         Ok(())

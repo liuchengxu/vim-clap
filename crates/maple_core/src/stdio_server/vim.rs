@@ -329,6 +329,10 @@ impl Vim {
         self.call("getpos", json![expr]).await
     }
 
+    pub fn setbufvar(&self, bufnr: usize, varname: &str, val: impl Serialize) -> Result<()> {
+        self.exec("setbufvar", serde_json::json!([bufnr, varname, val]))
+    }
+
     pub async fn winwidth(&self, winid: usize) -> Result<usize> {
         let width: i32 = self.call("winwidth", json![winid]).await?;
         if width < 0 {

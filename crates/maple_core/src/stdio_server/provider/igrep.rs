@@ -1,7 +1,7 @@
 use super::filer::{read_dir_entries, FilerItem, FilerItemWithoutIcon};
 use super::Direction;
 use crate::stdio_server::handler::{CachedPreviewImpl, Preview, PreviewTarget};
-use crate::stdio_server::input::KeyEvent;
+use crate::stdio_server::input::{KeyEvent, KeyEventType};
 use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
 use crate::stdio_server::vim::preview_syntax;
 use anyhow::Result;
@@ -65,10 +65,9 @@ impl Grepper {
 
         self.searcher_control.replace(new_control);
 
-        let _ = ctx.vim.exec(
-            "setbufvar",
-            serde_json::json!([ctx.env.display.bufnr, "&syntax", "clap_grep"]),
-        );
+        let _ = ctx
+            .vim
+            .setbufvar(ctx.env.display.bufnr, "&syntax", "clap_grep");
     }
 }
 
@@ -126,10 +125,8 @@ impl Explorer {
                 .collect(),
         );
 
-        ctx.vim.exec(
-            "setbufvar",
-            serde_json::json!([ctx.env.display.bufnr, "&syntax", "clap_filer"]),
-        )?;
+        ctx.vim
+            .setbufvar(ctx.env.display.bufnr, "&syntax", "clap_filer")?;
 
         Ok(())
     }
@@ -481,14 +478,15 @@ impl ClapProvider for IgrepProvider {
     }
 
     async fn on_key_event(&mut self, ctx: &mut Context, key_event: KeyEvent) -> Result<()> {
-        match key_event {
-            KeyEvent::CtrlN => ctx.next_input().await,
-            KeyEvent::CtrlP => ctx.previous_input().await,
-            KeyEvent::ShiftUp => ctx.scroll_preview(Direction::Up).await,
-            KeyEvent::ShiftDown => ctx.scroll_preview(Direction::Down).await,
-            KeyEvent::Tab => self.on_tab(ctx).await,
-            KeyEvent::Backspace => self.on_backspace(ctx).await,
-            KeyEvent::CarriageReturn => self.on_carriage_return(ctx).await,
+        let (key_event_type, params) = key_event;
+        match key_event_type {
+            KeyEventType::CtrlN => ctx.next_input().await,
+            KeyEventType::CtrlP => ctx.previous_input().await,
+            KeyEventType::ShiftUp => ctx.scroll_preview(Direction::Up).await,
+            KeyEventType::ShiftDown => ctx.scroll_preview(Direction::Down).await,
+            KeyEventType::Tab => self.on_tab(ctx).await,
+            KeyEventType::Backspace => self.on_backspace(ctx).await,
+            KeyEventType::CarriageReturn => self.on_carriage_return(ctx).await,
         }
     }
 }

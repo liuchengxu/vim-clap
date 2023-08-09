@@ -1,16 +1,17 @@
-mod highlight_cursor_word;
 mod ctags;
+mod highlight_cursor_word;
 mod markdown_toc;
 
-use crate::stdio_server::input::Autocmd;
+use crate::stdio_server::input::PluginEvent;
 use anyhow::Result;
 use std::fmt::Debug;
 
+pub use ctags::CtagsPlugin;
 pub use highlight_cursor_word::CursorWordHighlighter;
 pub use markdown_toc::{find_toc_range, generate_toc};
 
 /// A trait each Clap plugin must implement.
 #[async_trait::async_trait]
 pub trait ClapPlugin: Debug + Send + Sync + 'static {
-    async fn on_autocmd(&mut self, autocmd: Autocmd) -> Result<()>;
+    async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()>;
 }

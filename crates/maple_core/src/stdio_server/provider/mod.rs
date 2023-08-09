@@ -15,7 +15,7 @@ use crate::searcher::SearchContext;
 use crate::stdio_server::handler::{
     initialize_provider, CachedPreviewImpl, Preview, PreviewTarget,
 };
-use crate::stdio_server::input::{InputRecorder, KeyEvent};
+use crate::stdio_server::input::{InputRecorder, KeyEvent, KeyEventType};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use filter::Query;
@@ -764,7 +764,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
         ctx.vim
             .call("set_initial_query", json!([initial_query]))
             .await?;
-        ctx.send_provider_event(ProviderEvent::OnTyped)
+        ctx.send_provider_event(ProviderEvent::OnTyped(Params::None))
     }
 
     async fn on_move(&mut self, ctx: &mut Context) -> Result<()> {
@@ -785,11 +785,12 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
     }
 
     async fn on_key_event(&mut self, ctx: &mut Context, key_event: KeyEvent) -> Result<()> {
-        match key_event {
-            KeyEvent::ShiftUp => ctx.scroll_preview(Direction::Up).await?,
-            KeyEvent::ShiftDown => ctx.scroll_preview(Direction::Down).await?,
-            KeyEvent::CtrlN => ctx.next_input().await?,
-            KeyEvent::CtrlP => ctx.previous_input().await?,
+        let (key_event_type, params) = key_event;
+        match key_event_type {
+            KeyEventType::ShiftUp => ctx.scroll_preview(Direction::Up).await?,
+            KeyEventType::ShiftDown => ctx.scroll_preview(Direction::Down).await?,
+            KeyEventType::CtrlN => ctx.next_input().await?,
+            KeyEventType::CtrlP => ctx.previous_input().await?,
             _ => {}
         }
         Ok(())
