@@ -119,11 +119,13 @@ impl CursorWordHighlighter {
             return Ok(None);
         }
 
-        let Some(file_extension) = source_file.extension().and_then(|s| s.to_str()) else {
+        let Some(file_extension) = source_file.extension().and_then(|s| s.to_str())
+        else {
             return Ok(None)
         };
 
-        let Some(file_name) = source_file.file_name().and_then(|s| s.to_str()) else {
+        let Some(file_name) = source_file.file_name().and_then(|s| s.to_str())
+        else {
             return Ok(None)
         };
 
@@ -212,9 +214,9 @@ impl ClapPlugin for CursorWordHighlighter {
 
         let PluginEvent::Autocmd(autocmd_event) = plugin_event;
 
-        let (autocmd_event_type, _params) = autocmd_event;
+        let (event_type, _params) = autocmd_event;
 
-        match autocmd_event_type {
+        match event_type {
             CursorMoved => self.highlight_symbol_under_cursor().await,
             InsertEnter => {
                 if let Some(WinHighlights { winid, match_ids }) = self.cursor_highlights.take() {

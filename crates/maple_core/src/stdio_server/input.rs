@@ -7,21 +7,6 @@ use tokio::sync::mpsc::UnboundedSender;
 pub type KeyEvent = (KeyEventType, Params);
 pub type AutocmdEvent = (AutocmdEventType, Params);
 
-#[derive(Debug)]
-pub enum Event {
-    Provider(ProviderEvent),
-    /// `:h autocmd`
-    Autocmd(AutocmdEvent),
-    Key(KeyEvent),
-    Action(Action),
-}
-
-#[derive(Debug, Clone)]
-pub struct Action {
-    pub command: String,
-    pub params: Params,
-}
-
 #[derive(Debug, Clone)]
 pub enum PluginEvent {
     Autocmd(AutocmdEvent),
@@ -87,6 +72,23 @@ pub enum AutocmdEventType {
     BufLeave,
     BufDelete,
     BufWinLeave,
+}
+
+#[derive(Debug, Clone)]
+pub struct Action {
+    pub command: String,
+    pub params: Params,
+}
+
+#[derive(Debug)]
+pub enum Event {
+    Provider(ProviderEvent),
+    /// `:h autocmd`
+    Autocmd(AutocmdEvent),
+    /// `:h keycodes`
+    Key(KeyEvent),
+    /// User-oriented actions.
+    Action(Action),
 }
 
 impl Event {

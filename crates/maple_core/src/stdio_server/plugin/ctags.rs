@@ -43,13 +43,14 @@ impl CtagsPlugin {
     }
 
     async fn on_cursor_moved(&mut self, bufnr: usize) -> Result<()> {
-        let [_bufnum, curlnum, _col, _off] = self.vim.getpos(".").await?;
         if let Some(buffer_tags) = self.buf_tags.get(&bufnr) {
+            let curlnum = self.vim.line(".").await?;
             let idx = match buffer_tags.binary_search_by_key(&curlnum, |tag| tag.line_number) {
                 Ok(idx) => idx,
                 Err(idx) => match idx.checked_sub(1) {
                     Some(idx) => idx,
                     None => {
+                        // Before the first tag.
                         self.vim.setbufvar(bufnr, "clap_current_symbol", {})?;
                         self.last_cursor_tag.take();
                         return Ok(());
@@ -95,7 +96,7 @@ impl ClapPlugin for CtagsPlugin {
 
         let PluginEvent::Autocmd(autocmd_event) = plugin_event;
 
-        let (autocmd_event_type, params) = autocmd_event;
+        let (event_type, params) = autocmd_event;
 
         let params: Vec<usize> = params.parse()?;
         let bufnr = params
@@ -103,7 +104,7 @@ impl ClapPlugin for CtagsPlugin {
             .next()
             .ok_or_else(|| anyhow::anyhow!("bufnr not found in params"))?;
 
-        match autocmd_event_type {
+        match event_type {
             BufEnter => {
                 let file_path: String = self.vim.expand(format!("#{bufnr}:p")).await?;
                 if !Path::new(&file_path).exists() {
