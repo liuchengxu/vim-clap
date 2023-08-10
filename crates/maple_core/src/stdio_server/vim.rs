@@ -315,6 +315,21 @@ impl Vim {
         self.call("col", json![expr]).await
     }
 
+    pub async fn deletebufline(
+        &self,
+        buf: impl Serialize + Debug,
+        first: usize,
+        last: usize,
+    ) -> Result<()> {
+        let ret: u32 = self
+            .call("deletebufline", json!([buf, first, last]))
+            .await?;
+        if ret == 1 {
+            return Err(anyhow!("`deletebufline({buf:?}, {first}, {last})` failure"));
+        }
+        Ok(())
+    }
+
     pub async fn expand(&self, string: impl AsRef<str>) -> Result<String> {
         self.call("expand", json![string.as_ref()]).await
     }

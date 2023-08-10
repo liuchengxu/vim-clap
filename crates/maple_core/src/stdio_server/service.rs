@@ -358,7 +358,7 @@ impl ServiceManager {
 
             provider_event_sender
                 .send(ProviderEvent::Internal(InternalProviderEvent::Initialize))
-                .expect("Failed to send ProviderEvent::Initialize");
+                .expect("Failed to send InternalProviderEvent::Initialize");
 
             v.insert(ProviderEventSender::new(
                 provider_event_sender,

@@ -266,8 +266,7 @@ impl Client {
                     let shiftwidth = self.vim.getbufvar("", "&shiftwidth").await?;
                     // TODO: skip update if the new doc is the same as the old one.
                     let new_toc = plugin::generate_toc(file, start + 1, shiftwidth)?;
-                    self.vim
-                        .exec("deletebufline", json!([bufnr, start + 1, end + 1]))?;
+                    self.vim.deletebufline(bufnr, start + 1, end + 1).await?;
                     self.vim.exec("append_and_write", json!([start, new_toc]))?;
                 }
             }
@@ -275,8 +274,7 @@ impl Client {
                 let file = self.vim.current_buffer_path().await?;
                 let bufnr = self.vim.bufnr("").await?;
                 if let Some((start, end)) = plugin::find_toc_range(file)? {
-                    self.vim
-                        .exec("deletebufline", json!([bufnr, start + 1, end + 1]))?;
+                    self.vim.deletebufline(bufnr, start + 1, end + 1).await?;
                 }
             }
             _ => return Err(anyhow!("Unknown action: {action:?}")),
