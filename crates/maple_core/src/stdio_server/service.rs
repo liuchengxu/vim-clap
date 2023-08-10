@@ -99,7 +99,6 @@ impl ProviderSession {
                             tracing::trace!("[with_debounce] Received event: {event:?}");
 
                             match event {
-                                ProviderEvent::NewSession(_) => unreachable!(),
                                 ProviderEvent::Internal(internal_event) => {
                                     match self.handle_internal_event(internal_event).await {
                                         ControlFlow::Break(_) => break,
@@ -161,7 +160,6 @@ impl ProviderSession {
             tracing::trace!("[without_debounce] Received event: {event:?}");
 
             match event {
-                ProviderEvent::NewSession(_) => unreachable!(),
                 ProviderEvent::Internal(internal_event) => {
                     if self.handle_internal_event(internal_event).await.is_break() {
                         break;

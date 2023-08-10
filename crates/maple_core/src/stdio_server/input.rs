@@ -26,7 +26,6 @@ impl PluginEvent {
 /// Provider specific events.
 #[derive(Debug)]
 pub enum ProviderEvent {
-    NewSession(Params),
     OnMove(Params),
     OnTyped(Params),
     Exit,
@@ -81,7 +80,8 @@ pub struct Action {
 
 #[derive(Debug)]
 pub enum Event {
-    Provider(ProviderEvent),
+    NewProvider(Params),
+    ProviderWorker(ProviderEvent),
     /// `:h autocmd`
     Autocmd(AutocmdEvent),
     /// `:h keycodes`
@@ -94,10 +94,10 @@ impl Event {
     /// Converts the notification to an [`Event`].
     pub fn parse_notification(notification: RpcNotification) -> Self {
         match notification.method.as_str() {
-            "exit" => Self::Provider(ProviderEvent::Exit),
-            "on_move" => Self::Provider(ProviderEvent::OnMove(notification.params)),
-            "on_typed" => Self::Provider(ProviderEvent::OnTyped(notification.params)),
-            "new_session" => Self::Provider(ProviderEvent::NewSession(notification.params)),
+            "new_session" => Self::NewProvider(notification.params),
+            "exit" => Self::ProviderWorker(ProviderEvent::Exit),
+            "on_move" => Self::ProviderWorker(ProviderEvent::OnMove(notification.params)),
+            "on_typed" => Self::ProviderWorker(ProviderEvent::OnTyped(notification.params)),
             "cr" => Self::Key((KeyEventType::CarriageReturn, notification.params)),
             "tab" => Self::Key((KeyEventType::Tab, notification.params)),
             "ctrl-n" => Self::Key((KeyEventType::CtrlN, notification.params)),
