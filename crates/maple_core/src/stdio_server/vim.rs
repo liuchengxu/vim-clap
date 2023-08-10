@@ -410,10 +410,6 @@ impl Vim {
         self.bare_call("provider_args").await
     }
 
-    pub async fn provider_id(&self) -> Result<String> {
-        self.eval("g:clap.provider.id").await
-    }
-
     pub async fn working_dir(&self) -> Result<AbsPathBuf> {
         self.bare_call("clap#rooter#working_dir").await
     }

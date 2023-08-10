@@ -54,8 +54,8 @@ pub struct BaseArgs {
     no_cwd: bool,
 }
 
-pub async fn create_provider(provider_id: &str, ctx: &Context) -> Result<Box<dyn ClapProvider>> {
-    let provider: Box<dyn ClapProvider> = match provider_id {
+pub async fn create_provider(ctx: &Context) -> Result<Box<dyn ClapProvider>> {
+    let provider: Box<dyn ClapProvider> = match ctx.env.provider_id.as_str() {
         "blines" => Box::new(blines::BlinesProvider::new(ctx).await?),
         "dumb_jump" => Box::new(dumb_jump::DumbJumpProvider::new()),
         "filer" => Box::new(filer::FilerProvider::new(ctx).await?),

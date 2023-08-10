@@ -190,11 +190,10 @@ impl Client {
         let maybe_session_id = notification.session_id();
         match Event::parse_notification(notification) {
             Event::NewProvider(params) => {
-                let provider_id = self.vim.provider_id().await?;
                 let session_id =
                     maybe_session_id.ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
                 let ctx = Context::new(params, self.vim.clone()).await?;
-                let provider = create_provider(&provider_id, &ctx).await?;
+                let provider = create_provider(&ctx).await?;
                 self.service_manager_mutex
                     .lock()
                     .new_provider(session_id, provider, ctx);
