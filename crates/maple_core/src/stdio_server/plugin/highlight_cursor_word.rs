@@ -144,7 +144,7 @@ impl CursorWordHighlighter {
 
         // TODO: filter the false positive results, using a blocklist of filetypes?
         let [_bufnum, curlnum, col, _off] = self.vim.getpos(".").await?;
-        let curline = self.vim.getcurbufline(curlnum).await?;
+        let curline = self.vim.getbufoneline("", curlnum).await?;
 
         if crate::config::config()
             .plugin

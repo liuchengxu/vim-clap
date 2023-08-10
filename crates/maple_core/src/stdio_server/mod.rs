@@ -262,7 +262,7 @@ impl Client {
             }
             "update-toc" => {
                 let file = self.vim.current_buffer_path().await?;
-                let bufnr = self.vim.current_bufnr().await?;
+                let bufnr = self.vim.bufnr("").await?;
                 if let Some((start, end)) = plugin::find_toc_range(&file)? {
                     let shiftwidth = self.vim.getbufvar("", "&shiftwidth").await?;
                     // TODO: skip update if the new doc is the same as the old one.
@@ -274,7 +274,7 @@ impl Client {
             }
             "delete-toc" => {
                 let file = self.vim.current_buffer_path().await?;
-                let bufnr = self.vim.current_bufnr().await?;
+                let bufnr = self.vim.bufnr("").await?;
                 if let Some((start, end)) = plugin::find_toc_range(file)? {
                     self.vim
                         .exec("deletebufline", json!([bufnr, start + 1, end + 1]))?;
