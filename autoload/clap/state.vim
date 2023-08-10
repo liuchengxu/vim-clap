@@ -236,26 +236,6 @@ function! clap#state#set_input(new) abort
   call clap#api#win_execute(g:clap.input.winid, 'call cursor(1, 1000)')
 endfunction
 
-" Returns the cached source tmp file.
-"
-" Write the providers whose `source` is list-style into a tempfile.
-function! clap#state#into_tempfile(source_list) abort
-  if has_key(g:clap.provider, 'source_tempfile')
-    let tmp = g:clap.provider.source_tempfile
-    return tmp
-  else
-    let tmp = tempname()
-    if writefile(a:source_list, tmp) == 0
-      call add(g:clap.tmps, tmp)
-      let g:clap.provider.source_tempfile = tmp
-      return tmp
-    else
-      call g:clap.abort('Fail to write source to a temp file')
-      return ''
-    endif
-  endif
-endfunction
-
 function! s:unlet_vars(vars) abort
   for var in a:vars
     if exists(var)
