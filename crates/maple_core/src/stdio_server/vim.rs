@@ -329,6 +329,14 @@ impl Vim {
         self.call("getpos", json![expr]).await
     }
 
+    pub async fn getbufvar<R: DeserializeOwned>(
+        &self,
+        buf: impl Serialize,
+        varname: &str,
+    ) -> Result<R> {
+        self.call("getbufvar", json!([buf, varname])).await
+    }
+
     pub fn setbufvar(&self, bufnr: usize, varname: &str, val: impl Serialize) -> Result<()> {
         self.exec("setbufvar", serde_json::json!([bufnr, varname, val]))
     }

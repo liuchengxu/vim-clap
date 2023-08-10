@@ -251,10 +251,7 @@ impl Client {
             "generate-toc" => {
                 let curlnum = self.vim.line(".").await?;
                 let file = self.vim.current_buffer_path().await?;
-                let shiftwidth = self
-                    .vim
-                    .call("getbufvar", json!(["", "&shiftwidth"]))
-                    .await?;
+                let shiftwidth = self.vim.getbufvar("", "&shiftwidth").await?;
                 let mut toc = plugin::generate_toc(file, curlnum, shiftwidth)?;
                 let prev_line = self.vim.curbufline(curlnum - 1).await?;
                 if !prev_line.map(|line| line.is_empty()).unwrap_or(false) {
@@ -267,10 +264,7 @@ impl Client {
                 let file = self.vim.current_buffer_path().await?;
                 let bufnr = self.vim.current_bufnr().await?;
                 if let Some((start, end)) = plugin::find_toc_range(&file)? {
-                    let shiftwidth = self
-                        .vim
-                        .call("getbufvar", json!(["", "&shiftwidth"]))
-                        .await?;
+                    let shiftwidth = self.vim.getbufvar("", "&shiftwidth").await?;
                     // TODO: skip update if the new doc is the same as the old one.
                     let new_toc = plugin::generate_toc(file, start + 1, shiftwidth)?;
                     self.vim
