@@ -1,3 +1,4 @@
+use crate::stdio_server::plugin::{MarkdownPlugin, PluginId, SystemPlugin};
 use crate::stdio_server::provider::ProviderId;
 use crate::stdio_server::service::ProviderSessionId;
 use rpc::{Params, RpcNotification};
@@ -10,6 +11,7 @@ pub type AutocmdEvent = (AutocmdEventType, Params);
 #[derive(Debug, Clone)]
 pub enum PluginEvent {
     Autocmd(AutocmdEvent),
+    Action(PluginAction),
 }
 
 impl PluginEvent {
@@ -19,6 +21,7 @@ impl PluginEvent {
             Self::Autocmd((autocmd_event_type, _)) => {
                 matches!(autocmd_event_type, AutocmdEventType::CursorMoved)
             }
+            _ => false,
         }
     }
 }
@@ -73,10 +76,41 @@ pub enum AutocmdEventType {
     BufWinLeave,
 }
 
+pub type Action = (PluginId, PluginAction);
+
 #[derive(Debug, Clone)]
-pub struct Action {
-    pub command: String,
+pub struct PluginAction {
+    pub action: String,
     pub params: Params,
+}
+
+impl PluginAction {
+    fn empty() -> Self {
+        Self {
+            action: Default::default(),
+            params: Params::None,
+        }
+    }
+}
+
+impl From<RpcNotification> for PluginAction {
+    fn from(notification: RpcNotification) -> Self {
+        Self {
+            action: notification.method,
+            params: notification.params,
+        }
+    }
+}
+
+fn parse_action(notification: RpcNotification) -> Action {
+    let action = notification.method.as_str();
+    if SystemPlugin::ACTIONS.contains(&action) {
+        (PluginId::System, notification.into())
+    } else if MarkdownPlugin::ACTIONS.contains(&action) {
+        (PluginId::Markdown, notification.into())
+    } else {
+        (PluginId::Unknown, PluginAction::empty())
+    }
 }
 
 #[derive(Debug)]
@@ -114,10 +148,7 @@ impl Event {
             "BufWritePost" => Self::Autocmd((AutocmdEventType::BufWritePost, notification.params)),
             "BufWinEnter" => Self::Autocmd((AutocmdEventType::BufWinEnter, notification.params)),
             "BufWinLeave" => Self::Autocmd((AutocmdEventType::BufWinLeave, notification.params)),
-            _ => Self::Action(Action {
-                command: notification.method,
-                params: notification.params,
-            }),
+            _ => Self::Action(parse_action(notification)),
         }
     }
 }

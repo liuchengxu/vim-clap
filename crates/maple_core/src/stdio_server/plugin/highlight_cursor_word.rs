@@ -103,7 +103,7 @@ impl CursorWordHighlighter {
     pub fn new(vim: Vim) -> Self {
         let (ignore_extensions, ignore_file_names): (Vec<_>, Vec<_>) = crate::config::config()
             .plugin
-            .highlight_cursor_word
+            .cursor_word_highlighter
             .ignore_files
             .split(',')
             .partition(|s| s.starts_with("*."));
@@ -155,7 +155,7 @@ impl CursorWordHighlighter {
 
         if crate::config::config()
             .plugin
-            .highlight_cursor_word
+            .cursor_word_highlighter
             .ignore_comment_line
         {
             if let Some(ext) = source_file.extension().and_then(|s| s.to_str()) {
@@ -219,7 +219,9 @@ impl ClapPlugin for CursorWordHighlighter {
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
         use AutocmdEventType::{CursorMoved, InsertEnter};
 
-        let PluginEvent::Autocmd(autocmd_event) = plugin_event;
+        let PluginEvent::Autocmd(autocmd_event) = plugin_event else {
+            return Ok(());
+        };
 
         let (event_type, _params) = autocmd_event;
 

@@ -13,6 +13,8 @@ use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;
 
+use super::plugin::PluginId;
+
 pub type ProviderSessionId = u64;
 
 #[derive(Debug)]
@@ -334,7 +336,7 @@ impl PluginSession {
 #[derive(Debug, Default)]
 pub struct ServiceManager {
     providers: HashMap<ProviderSessionId, ProviderEventSender>,
-    plugins: Vec<UnboundedSender<PluginEvent>>,
+    plugins: HashMap<PluginId, UnboundedSender<PluginEvent>>,
 }
 
 impl ServiceManager {
@@ -373,21 +375,35 @@ impl ServiceManager {
     }
 
     /// Creates a new plugin session with the default debounce setting.
-    pub fn new_plugin(&mut self, plugin: Box<dyn ClapPlugin>) {
-        self.plugins.push(PluginSession::create(
-            plugin,
-            Some(Duration::from_millis(50)),
-        ));
+    pub fn new_plugin(&mut self, plugin_id: PluginId, plugin: Box<dyn ClapPlugin>) {
+        self.plugins.insert(
+            plugin_id,
+            PluginSession::create(plugin, Some(Duration::from_millis(50))),
+        );
     }
 
     #[allow(unused)]
-    pub fn new_plugin_without_debounce(&mut self, plugin: Box<dyn ClapPlugin>) {
-        self.plugins.push(PluginSession::create(plugin, None));
+    pub fn new_plugin_without_debounce(
+        &mut self,
+        plugin_id: PluginId,
+        plugin: Box<dyn ClapPlugin>,
+    ) {
+        self.plugins
+            .insert(plugin_id, PluginSession::create(plugin, None));
     }
 
+    /// Sends event message to all plugins.
     pub fn notify_plugins(&mut self, plugin_event: PluginEvent) {
         self.plugins
-            .retain(|plugin_sender| plugin_sender.send(plugin_event.clone()).is_ok())
+            .retain(|_plugin_id, plugin_sender| plugin_sender.send(plugin_event.clone()).is_ok());
+    }
+
+    pub fn notify_plugin(&mut self, plugin_id: PluginId, plugin_event: PluginEvent) {
+        if let Entry::Occupied(v) = self.plugins.entry(plugin_id) {
+            if v.get().send(plugin_event).is_err() {
+                v.remove_entry();
+            }
+        }
     }
 
     pub fn exists(&self, provider_session_id: ProviderSessionId) -> bool {

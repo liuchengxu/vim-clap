@@ -94,7 +94,9 @@ impl ClapPlugin for CtagsPlugin {
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
         use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
 
-        let PluginEvent::Autocmd(autocmd_event) = plugin_event;
+        let PluginEvent::Autocmd(autocmd_event) = plugin_event else {
+          return Ok(());
+        };
 
         let (event_type, params) = autocmd_event;
 

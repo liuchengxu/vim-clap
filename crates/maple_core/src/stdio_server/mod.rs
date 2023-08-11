@@ -8,12 +8,13 @@ mod vim;
 
 pub use self::input::InputHistory;
 use self::input::{Event, PluginEvent, ProviderEvent};
-use self::plugin::{ClapPlugin, CtagsPlugin, CursorWordHighlighter};
+use self::plugin::{
+    ClapPlugin, CtagsPlugin, CursorWordHighlighter, MarkdownPlugin, PluginId, SystemPlugin,
+};
 use self::provider::{create_provider, Context};
 use self::service::ServiceManager;
 use self::vim::initialize_syntax_map;
 pub use self::vim::{Vim, VimProgressor};
-use crate::stdio_server::input::Action;
 use anyhow::{anyhow, Result};
 use parking_lot::Mutex;
 use rpc::{RpcClient, RpcNotification, RpcRequest, VimMessage};
@@ -89,13 +90,27 @@ impl Client {
     /// Creates a new instnace of [`Client`].
     fn new(vim: Vim) -> Self {
         let mut service_manager = ServiceManager::default();
-        if crate::config::config().plugin.ctags.enable {
-            service_manager
-                .new_plugin(Box::new(CtagsPlugin::new(vim.clone())) as Box<dyn ClapPlugin>);
-        }
-        if crate::config::config().plugin.highlight_cursor_word.enable {
+        service_manager.new_plugin(
+            PluginId::System,
+            Box::new(SystemPlugin::new(vim.clone())) as Box<dyn ClapPlugin>,
+        );
+        let plugin = &crate::config::config().plugin;
+        if plugin.ctags.enable {
             service_manager.new_plugin(
-                Box::new(CursorWordHighlighter::new(vim.clone())) as Box<dyn ClapPlugin>
+                PluginId::Ctags,
+                Box::new(CtagsPlugin::new(vim.clone())) as Box<dyn ClapPlugin>,
+            );
+        }
+        if plugin.markdown.enable {
+            service_manager.new_plugin(
+                PluginId::Markdown,
+                Box::new(MarkdownPlugin::new(vim.clone())) as Box<dyn ClapPlugin>,
+            );
+        }
+        if plugin.cursor_word_highlighter.enable {
+            service_manager.new_plugin(
+                PluginId::CursorWordHighlighter,
+                Box::new(CursorWordHighlighter::new(vim.clone())) as Box<dyn ClapPlugin>,
             );
         }
         Self {
@@ -226,58 +241,11 @@ impl Client {
                     .lock()
                     .notify_plugins(PluginEvent::Autocmd(autocmd_event));
             }
-            Event::Action(action) => self.handle_action(action).await?,
-        }
-
-        Ok(())
-    }
-
-    async fn handle_action(&self, action: Action) -> Result<()> {
-        match action.command.as_str() {
-            "note_recent_files" => {
-                let bufnr: Vec<usize> = action.params.parse()?;
-                let bufnr = bufnr
-                    .first()
-                    .ok_or(anyhow!("bufnr not found in `note_recent_file`"))?;
-                let file_path: String = self.vim.expand(format!("#{bufnr}:p")).await?;
-                handler::messages::note_recent_file(file_path)?
+            Event::Action((plugin_id, plugin_action)) => {
+                self.service_manager_mutex
+                    .lock()
+                    .notify_plugin(plugin_id, PluginEvent::Action(plugin_action));
             }
-            "open-config" => {
-                let config_file = crate::config::config_file();
-                self.vim
-                    .exec("execute", format!("edit {}", config_file.display()))?;
-            }
-            "generate-toc" => {
-                let curlnum = self.vim.line(".").await?;
-                let file = self.vim.current_buffer_path().await?;
-                let shiftwidth = self.vim.getbufvar("", "&shiftwidth").await?;
-                let mut toc = plugin::generate_toc(file, curlnum, shiftwidth)?;
-                let prev_line = self.vim.curbufline(curlnum - 1).await?;
-                if !prev_line.map(|line| line.is_empty()).unwrap_or(false) {
-                    toc.push_front(Default::default());
-                }
-                self.vim
-                    .exec("append_and_write", json!([curlnum - 1, toc]))?;
-            }
-            "update-toc" => {
-                let file = self.vim.current_buffer_path().await?;
-                let bufnr = self.vim.bufnr("").await?;
-                if let Some((start, end)) = plugin::find_toc_range(&file)? {
-                    let shiftwidth = self.vim.getbufvar("", "&shiftwidth").await?;
-                    // TODO: skip update if the new doc is the same as the old one.
-                    let new_toc = plugin::generate_toc(file, start + 1, shiftwidth)?;
-                    self.vim.deletebufline(bufnr, start + 1, end + 1).await?;
-                    self.vim.exec("append_and_write", json!([start, new_toc]))?;
-                }
-            }
-            "delete-toc" => {
-                let file = self.vim.current_buffer_path().await?;
-                let bufnr = self.vim.bufnr("").await?;
-                if let Some((start, end)) = plugin::find_toc_range(file)? {
-                    self.vim.deletebufline(bufnr, start + 1, end + 1).await?;
-                }
-            }
-            _ => return Err(anyhow!("Unknown action: {action:?}")),
         }
 
         Ok(())

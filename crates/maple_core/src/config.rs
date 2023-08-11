@@ -103,7 +103,7 @@ impl Default for LogConfig {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
-pub struct HighlightCursorWordConfig {
+pub struct CursorWordHighlighterConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
     /// Whether to ignore the comment line
@@ -112,7 +112,7 @@ pub struct HighlightCursorWordConfig {
     pub ignore_files: String,
 }
 
-impl Default for HighlightCursorWordConfig {
+impl Default for CursorWordHighlighterConfig {
     fn default() -> Self {
         Self {
             enable: false,
@@ -124,7 +124,7 @@ impl Default for HighlightCursorWordConfig {
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
-pub struct MarkdownTocConfig {
+pub struct MarkdownPluginConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
 }
@@ -139,8 +139,8 @@ pub struct CtagsPluginConfig {
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct PluginConfig {
-    pub highlight_cursor_word: HighlightCursorWordConfig,
-    pub markdown_toc: MarkdownTocConfig,
+    pub cursor_word_highlighter: CursorWordHighlighterConfig,
+    pub markdown: MarkdownPluginConfig,
     pub ctags: CtagsPluginConfig,
 }
 
@@ -260,7 +260,7 @@ mod tests {
           [matcher]
           tiebreak = "score,-begin,-end,-length"
 
-          [plugin.highlight-cursor-word]
+          [plugin.cursor-word-highlighter]
           enable = true
 
           [provider.debounce]
