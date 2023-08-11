@@ -40,27 +40,30 @@ endif
 let s:api = {}
 
 if s:is_nvim
-  function! clap#api#floating_win_is_valid(winid) abort
-    return nvim_win_is_valid(a:winid)
-  endfunction
-
   function! s:api.win_is_valid(winid) abort
     return nvim_win_is_valid(a:winid)
   endfunction
 
-else
-  function! clap#api#floating_win_is_valid(winid) abort
-    return !empty(popup_getpos(a:winid))
+  function! s:api.get_var(name) abort
+    return nvim_get_var(a:name)
   endfunction
 
+  function! s:api.set_var(name, value) abort
+    return nvim_set_var(a:name, a:value)
+  endfunction
+else
   function! s:api.win_is_valid(winid) abort
     return win_screenpos(a:winid) != [0, 0]
   endfunction
-endif
 
-function! s:api.context_query_or_input() abort
-  return has_key(g:clap.context, 'query') ? g:clap.context.query : g:clap.input.get()
-endfunction
+  function! s:api.get_var(name) abort
+    return get(g:, a:name, v:null)
+  endfunction
+
+  function! s:api.set_var(name, value) abort
+    execute 'let '.a:name.'= a:value'
+  endfunction
+endif
 
 " The leading icon is stripped.
 function! s:api.display_getcurline() abort
@@ -104,14 +107,6 @@ endfunction
 
 function! s:api.input_set(value) abort
   call g:clap.input.set(a:value)
-endfunction
-
-function! s:api.get_var(var) abort
-  return get(g:, a:var, v:null)
-endfunction
-
-function! s:api.set_var(name, value) abort
-  execute 'let '.a:name.'= a:value'
 endfunction
 
 function! s:api.current_buffer_path() abort

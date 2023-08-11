@@ -429,10 +429,6 @@ impl Vim {
         self.bare_call("clap#rooter#working_dir").await
     }
 
-    pub async fn context_query_or_input(&self) -> Result<String> {
-        self.bare_call("context_query_or_input").await
-    }
-
     pub async fn current_buffer_path(&self) -> Result<String> {
         self.bare_call("current_buffer_path").await
     }

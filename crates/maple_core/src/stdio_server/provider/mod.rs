@@ -57,7 +57,7 @@ pub struct BaseArgs {
 pub async fn create_provider(ctx: &Context) -> Result<Box<dyn ClapProvider>> {
     let provider: Box<dyn ClapProvider> = match ctx.env.provider_id.as_str() {
         "blines" => Box::new(blines::BlinesProvider::new(ctx).await?),
-        "dumb_jump" => Box::new(dumb_jump::DumbJumpProvider::new()),
+        "dumb_jump" => Box::new(dumb_jump::DumbJumpProvider::new(ctx).await?),
         "filer" => Box::new(filer::FilerProvider::new(ctx).await?),
         "files" => Box::new(files::FilesProvider::new(ctx).await?),
         "grep" => Box::new(grep::GrepProvider::new(ctx).await?),

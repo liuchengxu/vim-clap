@@ -92,7 +92,7 @@ impl CtagsPlugin {
 #[async_trait::async_trait]
 impl ClapPlugin for CtagsPlugin {
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
-        use AutocmdEventType::{BufDelete, BufEnter, CursorMoved};
+        use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
 
         let PluginEvent::Autocmd(autocmd_event) = plugin_event;
 
@@ -105,16 +105,14 @@ impl ClapPlugin for CtagsPlugin {
             .ok_or_else(|| anyhow::anyhow!("bufnr not found in params"))?;
 
         match event_type {
-            BufEnter => {
+            BufEnter | BufWritePost => {
                 let file_path: String = self.vim.expand(format!("#{bufnr}:p")).await?;
                 if !Path::new(&file_path).exists() {
                     return Ok(());
                 }
-                if let std::collections::hash_map::Entry::Vacant(e) = self.buf_tags.entry(bufnr) {
-                    let buffer_tags = crate::tools::ctags::fetch_buffer_tags(file_path)?;
-                    e.insert(buffer_tags);
-                    self.on_cursor_moved(bufnr).await?;
-                }
+                let buffer_tags = crate::tools::ctags::fetch_buffer_tags(file_path)?;
+                self.buf_tags.insert(bufnr, buffer_tags);
+                self.on_cursor_moved(bufnr).await?;
             }
             BufDelete => {
                 self.buf_tags.remove(&bufnr);
