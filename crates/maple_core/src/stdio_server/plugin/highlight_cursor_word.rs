@@ -95,13 +95,24 @@ struct WinHighlights {
 pub struct CursorWordHighlighter {
     vim: Vim,
     cursor_highlights: Option<WinHighlights>,
+    ignore_extensions: Vec<&'static str>,
+    ignore_file_names: Vec<&'static str>,
 }
 
 impl CursorWordHighlighter {
     pub fn new(vim: Vim) -> Self {
+        let (ignore_extensions, ignore_file_names): (Vec<_>, Vec<_>) = crate::config::config()
+            .plugin
+            .highlight_cursor_word
+            .ignore_files
+            .split(',')
+            .partition(|s| s.starts_with("*."));
+
         Self {
             vim,
             cursor_highlights: None,
+            ignore_extensions,
+            ignore_file_names,
         }
     }
 
@@ -129,15 +140,11 @@ impl CursorWordHighlighter {
             return Ok(None)
         };
 
-        let (ignore_extensions, ignore_file_names): (Vec<_>, Vec<_>) = crate::config::config()
-            .plugin
-            .highlight_cursor_word
-            .ignore_files
-            .split(',')
-            .partition(|s| s.starts_with("*."));
-
-        if ignore_extensions.iter().any(|s| &s[2..] == file_extension)
-            || ignore_file_names.contains(&file_name)
+        if self
+            .ignore_extensions
+            .iter()
+            .any(|s| &s[2..] == file_extension)
+            || self.ignore_file_names.contains(&file_name)
         {
             return Ok(None);
         }
