@@ -9,6 +9,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::ops::Deref;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -301,8 +302,32 @@ impl Vim {
         self.call("bufname", json!([bufnr])).await
     }
 
+    pub async fn bufnr(&self, buf: impl Serialize) -> Result<usize> {
+        let bufnr: i32 = self.call("bufnr", json![buf]).await?;
+        if bufnr < 0 {
+            Err(anyhow!("buffer doesn't exist"))
+        } else {
+            Ok(bufnr as usize)
+        }
+    }
+
     pub async fn col(&self, expr: &str) -> Result<usize> {
         self.call("col", json![expr]).await
+    }
+
+    pub async fn deletebufline(
+        &self,
+        buf: impl Serialize + Debug,
+        first: usize,
+        last: usize,
+    ) -> Result<()> {
+        let ret: u32 = self
+            .call("deletebufline", json!([buf, first, last]))
+            .await?;
+        if ret == 1 {
+            return Err(anyhow!("`deletebufline({buf:?}, {first}, {last})` failure"));
+        }
+        Ok(())
     }
 
     pub async fn expand(&self, string: impl AsRef<str>) -> Result<String> {
@@ -317,16 +342,32 @@ impl Vim {
         self.call("fnamemodify", json!([fname, mods])).await
     }
 
-    pub async fn matchdelete(&self, id: i32, win: usize) -> Result<i32> {
-        self.call("matchdelete", json!([id, win])).await
+    pub async fn getbufoneline(&self, buf: impl Serialize, lnum: usize) -> Result<String> {
+        self.call("getbufoneline", json!([buf, lnum])).await
+    }
+
+    pub async fn getbufvar<R: DeserializeOwned>(
+        &self,
+        buf: impl Serialize,
+        varname: &str,
+    ) -> Result<R> {
+        self.call("getbufvar", json!([buf, varname])).await
+    }
+
+    pub async fn getpos(&self, expr: &str) -> Result<[usize; 4]> {
+        self.call("getpos", json![expr]).await
     }
 
     pub async fn line(&self, expr: &str) -> Result<usize> {
         self.call("line", json![expr]).await
     }
 
-    pub async fn getpos(&self, expr: &str) -> Result<[usize; 4]> {
-        self.call("getpos", json![expr]).await
+    pub async fn matchdelete(&self, id: i32, win: usize) -> Result<i32> {
+        self.call("matchdelete", json!([id, win])).await
+    }
+
+    pub fn setbufvar(&self, bufnr: usize, varname: &str, val: impl Serialize) -> Result<()> {
+        self.exec("setbufvar", json!([bufnr, varname, val]))
     }
 
     pub async fn winwidth(&self, winid: usize) -> Result<usize> {
@@ -384,16 +425,8 @@ impl Vim {
         self.bare_call("provider_args").await
     }
 
-    pub async fn provider_id(&self) -> Result<String> {
-        self.eval("g:clap.provider.id").await
-    }
-
     pub async fn working_dir(&self) -> Result<AbsPathBuf> {
         self.bare_call("clap#rooter#working_dir").await
-    }
-
-    pub async fn context_query_or_input(&self) -> Result<String> {
-        self.bare_call("context_query_or_input").await
     }
 
     pub async fn current_buffer_path(&self) -> Result<String> {
@@ -421,19 +454,6 @@ impl Vim {
 
     pub async fn current_winid(&self) -> Result<usize> {
         self.bare_call("win_getid").await
-    }
-
-    pub async fn current_bufnr(&self) -> Result<usize> {
-        let bufnr: i32 = self.call("bufnr", json![""]).await?;
-        if bufnr < 0 {
-            Err(anyhow!("bufnr doesn't exist"))
-        } else {
-            Ok(bufnr as usize)
-        }
-    }
-
-    pub async fn getcurbufline(&self, lnum: usize) -> Result<String> {
-        self.call("getbufoneline", json!(["", lnum])).await
     }
 
     pub async fn get_var_bool(&self, var: &str) -> Result<bool> {

@@ -74,7 +74,7 @@ fn tokio_cmd_in_raw_format(file: &Path) -> TokioCommand {
 }
 
 fn find_context_tag(superset_tags: Vec<BufferTag>, at: usize) -> Option<BufferTag> {
-    match superset_tags.binary_search_by_key(&at, |tag| tag.line) {
+    match superset_tags.binary_search_by_key(&at, |tag| tag.line_number) {
         Ok(_l) => None, // Skip if the line is exactly a tag line.
         Err(_l) => {
             let context_tags = superset_tags
@@ -82,7 +82,7 @@ fn find_context_tag(superset_tags: Vec<BufferTag>, at: usize) -> Option<BufferTa
                 .filter(|tag| CONTEXT_KINDS.contains(&tag.kind.as_ref()))
                 .collect::<Vec<_>>();
 
-            match context_tags.binary_search_by_key(&at, |tag| tag.line) {
+            match context_tags.binary_search_by_key(&at, |tag| tag.line_number) {
                 Ok(_) => None,
                 Err(l) => {
                     let maybe_idx = l.checked_sub(1); // use the previous item.
@@ -141,6 +141,20 @@ pub fn buffer_tags_lines(
         .collect::<Vec<_>>())
 }
 
+pub fn fetch_buffer_tags(file: impl AsRef<std::ffi::OsStr>) -> Result<Vec<BufferTag>> {
+    let (mut tags, _max_name_len) = if *CTAGS_HAS_JSON_FEATURE.deref() {
+        let cmd = subprocess_cmd_in_json_format(file);
+        collect_buffer_tags(cmd, BufferTag::from_ctags_json)?
+    } else {
+        let cmd = subprocess_cmd_in_raw_format(file);
+        collect_buffer_tags(cmd, BufferTag::from_ctags_raw)?
+    };
+
+    tags.par_sort_unstable_by_key(|x| x.line_number);
+
+    Ok(tags)
+}
+
 pub fn buffer_tag_items(
     file: impl AsRef<std::ffi::OsStr>,
     force_raw: bool,
@@ -190,10 +204,12 @@ fn collect_superset_context_tags(
         .par_bridge()
         .filter_map(|s| parse_tag(&s))
         // the line of method/function name is lower.
-        .filter(|tag| tag.line <= target_lnum && CONTEXT_SUPERSET.contains(&tag.kind.as_ref()))
+        .filter(|tag| {
+            tag.line_number <= target_lnum && CONTEXT_SUPERSET.contains(&tag.kind.as_ref())
+        })
         .collect::<Vec<_>>();
 
-    tags.par_sort_unstable_by_key(|x| x.line);
+    tags.par_sort_unstable_by_key(|x| x.line_number);
 
     Ok(tags)
 }
@@ -212,10 +228,12 @@ async fn collect_superset_context_tags_async(
         .par_split(|x| x == &b'\n')
         .filter_map(|s| parse_tag(&String::from_utf8_lossy(s)))
         // the line of method/function name is lower.
-        .filter(|tag| tag.line <= target_lnum && CONTEXT_SUPERSET.contains(&tag.kind.as_ref()))
+        .filter(|tag| {
+            tag.line_number <= target_lnum && CONTEXT_SUPERSET.contains(&tag.kind.as_ref())
+        })
         .collect::<Vec<_>>();
 
-    tags.par_sort_unstable_by_key(|x| x.line);
+    tags.par_sort_unstable_by_key(|x| x.line_number);
 
     Ok(tags)
 }

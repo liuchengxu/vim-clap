@@ -7,8 +7,11 @@ mod service;
 mod vim;
 
 pub use self::input::InputHistory;
-use self::input::{Event, PluginEvent, ProviderEvent};
-use self::plugin::{ClapPlugin, CursorWordHighlighter};
+use self::input::{Action, Event, PluginEvent, ProviderEvent};
+use self::plugin::{
+    ActionType, ClapPlugin, CtagsPlugin, CursorWordHighlighter, MarkdownPlugin, PluginId,
+    SystemPlugin,
+};
 use self::provider::{create_provider, Context};
 use self::service::ServiceManager;
 use self::vim::initialize_syntax_map;
@@ -17,6 +20,7 @@ use anyhow::{anyhow, Result};
 use parking_lot::Mutex;
 use rpc::{RpcClient, RpcNotification, RpcRequest, VimMessage};
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::io::{BufReader, BufWriter};
 use std::sync::Arc;
 use std::time::Duration;
@@ -24,7 +28,11 @@ use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::Instant;
 
 // Do the initialization on startup.
-async fn initialize(vim: Vim, config_err: Option<toml::de::Error>) -> Result<()> {
+async fn initialize(
+    vim: Vim,
+    actions: Vec<&str>,
+    config_err: Option<toml::de::Error>,
+) -> Result<()> {
     if let Some(err) = config_err {
         vim.echo_warn(format!(
             "Using default Config due to the error in {}: {err}",
@@ -45,8 +53,7 @@ async fn initialize(vim: Vim, config_err: Option<toml::de::Error>) -> Result<()>
     let ext_map = initialize_syntax_map(&output);
     vim.exec("clap#ext#set", json![ext_map])?;
 
-    const ACTIONS: &[&str] = &["open-config", "generate-toc", "update-toc", "delete-toc"];
-    vim.set_var("g:clap_actions", json![ACTIONS])?;
+    vim.set_var("g:clap_actions", json![actions])?;
 
     tracing::debug!("Client initialized successfully");
 
@@ -66,36 +73,72 @@ pub async fn start(config_err: Option<toml::de::Error>) {
 
     let vim = Vim::new(rpc_client);
 
+    let mut callable_actions = Vec::new();
+    let mut all_actions = HashMap::new();
+
+    let mut service_manager = ServiceManager::default();
+
+    let plugin = Box::new(SystemPlugin::new(vim.clone())) as Box<dyn ClapPlugin>;
+
+    callable_actions.extend_from_slice(plugin.actions(ActionType::Callable));
+    let (plugin_id, actions) = service_manager.register_plugin(plugin);
+    all_actions.insert(plugin_id, actions);
+
+    let plugin = &crate::config::config().plugin;
+
+    if plugin.ctags.enable {
+        let plugin = Box::new(CtagsPlugin::new(vim.clone())) as Box<dyn ClapPlugin>;
+        callable_actions.extend_from_slice(plugin.actions(ActionType::Callable));
+        let (plugin_id, actions) = service_manager.register_plugin(plugin);
+        all_actions.insert(plugin_id, actions);
+    }
+
+    if plugin.markdown.enable {
+        let plugin = Box::new(MarkdownPlugin::new(vim.clone())) as Box<dyn ClapPlugin>;
+        callable_actions.extend_from_slice(plugin.actions(ActionType::Callable));
+        let (plugin_id, actions) = service_manager.register_plugin(plugin);
+        all_actions.insert(plugin_id, actions);
+    }
+
+    if plugin.cursor_word_highlighter.enable {
+        let plugin = Box::new(CursorWordHighlighter::new(vim.clone())) as Box<dyn ClapPlugin>;
+        callable_actions.extend_from_slice(plugin.actions(ActionType::Callable));
+        let (plugin_id, actions) = service_manager.register_plugin(plugin);
+        all_actions.insert(plugin_id, actions);
+    }
+
     tokio::spawn({
         let vim = vim.clone();
         async move {
-            if let Err(e) = initialize(vim, config_err).await {
+            if let Err(e) = initialize(vim, callable_actions, config_err).await {
                 tracing::error!(error = ?e, "Failed to initialize Client")
             }
         }
     });
 
-    Client::new(vim).run(vim_message_receiver).await;
+    Client::new(vim, service_manager, all_actions)
+        .run(vim_message_receiver)
+        .await;
 }
 
 #[derive(Clone)]
 struct Client {
     vim: Vim,
     service_manager_mutex: Arc<Mutex<ServiceManager>>,
+    plugin_actions: Arc<Mutex<HashMap<PluginId, Vec<String>>>>,
 }
 
 impl Client {
     /// Creates a new instnace of [`Client`].
-    fn new(vim: Vim) -> Self {
-        let mut service_manager = ServiceManager::default();
-        if crate::config::config().plugin.highlight_cursor_word.enable {
-            service_manager.new_plugin(
-                Box::new(CursorWordHighlighter::new(vim.clone())) as Box<dyn ClapPlugin>
-            );
-        }
+    fn new(
+        vim: Vim,
+        service_manager: ServiceManager,
+        plugin_actions: HashMap<PluginId, Vec<String>>,
+    ) -> Self {
         Self {
             vim,
             service_manager_mutex: Arc::new(Mutex::new(service_manager)),
+            plugin_actions: Arc::new(Mutex::new(plugin_actions)),
         }
     }
 
@@ -123,16 +166,15 @@ impl Client {
                                 VimMessage::Notification(notification) => {
                                     // Avoid spawn too frequently if user opens and
                                     // closes the provider frequently in a very short time.
-                                    match Event::from_method(&notification.method) {
-                                        Event::Provider(ProviderEvent::NewSession) => {
-                                            pending_notification.replace(notification);
+                                    if notification.method == "new_session" {
+                                        pending_notification.replace(notification);
 
-                                            notification_dirty = true;
-                                            notification_timer
-                                                .as_mut()
-                                                .reset(Instant::now() + notification_delay);
-                                        }
-                                        _ => self.process_notification(notification),
+                                        notification_dirty = true;
+                                        notification_timer
+                                            .as_mut()
+                                            .reset(Instant::now() + notification_delay);
+                                    } else {
+                                        self.process_notification(notification);
                                     }
                                 }
                             }
@@ -183,30 +225,37 @@ impl Client {
 
     /// Actually process a Vim notification message.
     async fn do_process_notification(&self, notification: RpcNotification) -> Result<()> {
-        match Event::from_method(&notification.method) {
-            Event::Provider(provider_event) => match provider_event {
-                ProviderEvent::NewSession => {
-                    let provider_id = self.vim.provider_id().await?;
-                    let session_id = notification
-                        .session_id()
-                        .ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
-                    let ctx = Context::new(notification.params, self.vim.clone()).await?;
-                    let provider = create_provider(&provider_id, &ctx).await?;
-                    self.service_manager_mutex
-                        .lock()
-                        .new_provider(session_id, provider, ctx);
+        let maybe_session_id = notification.session_id();
+
+        let action_parser = |notification: RpcNotification| -> Result<Action> {
+            for (plugin_id, actions) in self.plugin_actions.lock().iter() {
+                if actions.contains(&notification.method) {
+                    return Ok((*plugin_id, notification.into()));
                 }
+            }
+            Err(anyhow::anyhow!("Failed to parse {notification:?}"))
+        };
+
+        match Event::parse_notification(notification, action_parser)? {
+            Event::NewProvider(params) => {
+                let session_id =
+                    maybe_session_id.ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
+                let ctx = Context::new(params, self.vim.clone()).await?;
+                let provider = create_provider(&ctx).await?;
+                self.service_manager_mutex
+                    .lock()
+                    .new_provider(session_id, provider, ctx);
+            }
+            Event::ProviderWorker(provider_event) => match provider_event {
                 ProviderEvent::Exit => {
-                    let session_id = notification
-                        .session_id()
+                    let session_id = maybe_session_id
                         .ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
                     self.service_manager_mutex
                         .lock()
                         .notify_provider_exit(session_id);
                 }
                 to_send => {
-                    let session_id = notification
-                        .session_id()
+                    let session_id = maybe_session_id
                         .ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
                     self.service_manager_mutex
                         .lock()
@@ -214,78 +263,22 @@ impl Client {
                 }
             },
             Event::Key(key_event) => {
-                let session_id = notification
-                    .session_id()
-                    .ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
+                let session_id =
+                    maybe_session_id.ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
                 self.service_manager_mutex
                     .lock()
                     .notify_provider(session_id, ProviderEvent::Key(key_event));
             }
-            Event::Autocmd(autocmd) => {
+            Event::Autocmd(autocmd_event) => {
                 self.service_manager_mutex
                     .lock()
-                    .notify_plugins(PluginEvent::Autocmd(autocmd));
+                    .notify_plugins(PluginEvent::Autocmd(autocmd_event));
             }
-            Event::Action(action) => self.handle_action(notification, action).await?,
-        }
-
-        Ok(())
-    }
-
-    async fn handle_action(&self, notification: RpcNotification, action: String) -> Result<()> {
-        match action.as_str() {
-            "note_recent_files" => {
-                let bufnr: Vec<usize> = notification.params.parse()?;
-                let bufnr = bufnr
-                    .first()
-                    .ok_or(anyhow!("bufnr not found in `note_recent_file`"))?;
-                let file_path: String = self.vim.expand(format!("#{bufnr}:p")).await?;
-                handler::messages::note_recent_file(file_path)?
+            Event::Action((plugin_id, plugin_action)) => {
+                self.service_manager_mutex
+                    .lock()
+                    .notify_plugin_action(plugin_id, plugin_action);
             }
-            "open-config" => {
-                let config_file = crate::config::config_file();
-                self.vim
-                    .exec("execute", format!("edit {}", config_file.display()))?;
-            }
-            "generate-toc" => {
-                let curlnum = self.vim.line(".").await?;
-                let file = self.vim.current_buffer_path().await?;
-                let shiftwidth = self
-                    .vim
-                    .call("getbufvar", json!(["", "&shiftwidth"]))
-                    .await?;
-                let mut toc = plugin::generate_toc(file, curlnum, shiftwidth)?;
-                let prev_line = self.vim.curbufline(curlnum - 1).await?;
-                if !prev_line.map(|line| line.is_empty()).unwrap_or(false) {
-                    toc.push_front(Default::default());
-                }
-                self.vim
-                    .exec("append_and_write", json!([curlnum - 1, toc]))?;
-            }
-            "update-toc" => {
-                let file = self.vim.current_buffer_path().await?;
-                let bufnr = self.vim.current_bufnr().await?;
-                if let Some((start, end)) = plugin::find_toc_range(&file)? {
-                    let shiftwidth = self
-                        .vim
-                        .call("getbufvar", json!(["", "&shiftwidth"]))
-                        .await?;
-                    // TODO: skip update if the new doc is the same as the old one.
-                    let new_toc = plugin::generate_toc(file, start + 1, shiftwidth)?;
-                    self.vim
-                        .exec("deletebufline", json!([bufnr, start + 1, end + 1]))?;
-                    self.vim.exec("append_and_write", json!([start, new_toc]))?;
-                }
-            }
-            "delete-toc" => {
-                let file = self.vim.current_buffer_path().await?;
-                let bufnr = self.vim.current_bufnr().await?;
-                if let Some((start, end)) = plugin::find_toc_range(file)? {
-                    self.vim
-                        .exec("deletebufline", json!([bufnr, start + 1, end + 1]))?;
-                }
-            }
-            _ => return Err(anyhow!("Unknown notification: {notification:?}")),
         }
 
         Ok(())

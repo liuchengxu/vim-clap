@@ -4,11 +4,22 @@ use serde::{Deserialize, Serialize};
 use types::{ClapItem, FuzzyText};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Scope {
+    pub scope: String,
+    pub scope_kind: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct BufferTag {
     pub name: String,
     pub pattern: String,
-    pub line: usize,
+    #[serde(rename = "line")]
+    pub line_number: usize,
     pub kind: String,
+    #[serde(flatten)]
+    pub scope: Option<Scope>,
 }
 
 impl BufferTag {
@@ -18,7 +29,7 @@ impl BufferTag {
 
     /// Returns the display line for BuiltinHandle, no icon attached.
     pub fn format_buffer_tag(&self, max_name_len: usize) -> String {
-        let name_line = format!("{}:{}", self.name, self.line);
+        let name_line = format!("{}:{}", self.name, self.line_number);
 
         let kind = format!("[{}]", self.kind);
         let pattern = super::trim_pattern(&self.pattern);
@@ -62,16 +73,23 @@ impl BufferTag {
         let others = items.join("\t");
 
         if let Some((tagaddress, kind_line_scope)) = others.rsplit_once(";\"") {
-            t.pattern = String::from(&tagaddress[2..]);
+            t.pattern = tagaddress.to_owned();
 
             let mut iter = kind_line_scope.split_whitespace();
 
             t.kind = iter.next()?.into();
 
-            t.line = iter.next().and_then(|s| {
+            t.line_number = iter.next().and_then(|s| {
                 s.split_once(':')
                     .and_then(|(_, line)| line.parse::<usize>().ok())
             })?;
+
+            t.scope = iter.next().and_then(|s| {
+                s.split_once(':').map(|(scope_kind, scope)| Scope {
+                    scope: scope.to_owned(),
+                    scope_kind: scope_kind.to_owned(),
+                })
+            });
 
             Some(t)
         } else {
@@ -102,5 +120,48 @@ impl ClapItem for BufferTagItem {
 
     fn bonus_text(&self) -> &str {
         &self.pattern
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_ctags_raw() {
+        let line = r#"with_dir	crates/maple_core/src/tools/ctags/mod.rs	/^    pub fn with_dir(dir: P) -> Self {$/;"	method	line:150	implementation:TagsGenerator"#;
+        assert_eq!(
+            BufferTag::from_ctags_raw(line).unwrap(),
+            BufferTag {
+                name: "with_dir".to_string(),
+                pattern: "/^    pub fn with_dir(dir: P) -> Self {$/".to_string(),
+                line_number: 150,
+                kind: "method".to_string(),
+                scope: Some(Scope {
+                    scope: "TagsGenerator".to_string(),
+                    scope_kind: "implementation".to_string(),
+                })
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_ctags_json() {
+        let json_line = r#"
+{"_type": "tag", "name": "with_dir", "path": "crates/maple_core/src/tools/ctags/mod.rs", "pattern": "/^    pub fn with_dir(dir: P) -> Self {$/", "line": 150, "kind": "method", "scope": "TagsGenerator", "scopeKind": "implementation"}
+      "#;
+        assert_eq!(
+            BufferTag::from_ctags_json(json_line).unwrap(),
+            BufferTag {
+                name: "with_dir".to_string(),
+                pattern: "/^    pub fn with_dir(dir: P) -> Self {$/".to_string(),
+                line_number: 150,
+                kind: "method".to_string(),
+                scope: Some(Scope {
+                    scope: "TagsGenerator".to_string(),
+                    scope_kind: "implementation".to_string(),
+                })
+            }
+        );
     }
 }

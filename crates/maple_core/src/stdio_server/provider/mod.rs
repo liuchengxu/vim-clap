@@ -15,7 +15,7 @@ use crate::searcher::SearchContext;
 use crate::stdio_server::handler::{
     initialize_provider, CachedPreviewImpl, Preview, PreviewTarget,
 };
-use crate::stdio_server::input::{InputRecorder, KeyEvent};
+use crate::stdio_server::input::{InputRecorder, KeyEvent, KeyEventType};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use filter::Query;
@@ -54,10 +54,10 @@ pub struct BaseArgs {
     no_cwd: bool,
 }
 
-pub async fn create_provider(provider_id: &str, ctx: &Context) -> Result<Box<dyn ClapProvider>> {
-    let provider: Box<dyn ClapProvider> = match provider_id {
+pub async fn create_provider(ctx: &Context) -> Result<Box<dyn ClapProvider>> {
+    let provider: Box<dyn ClapProvider> = match ctx.env.provider_id.as_str() {
         "blines" => Box::new(blines::BlinesProvider::new(ctx).await?),
-        "dumb_jump" => Box::new(dumb_jump::DumbJumpProvider::new()),
+        "dumb_jump" => Box::new(dumb_jump::DumbJumpProvider::new(ctx).await?),
         "filer" => Box::new(filer::FilerProvider::new(ctx).await?),
         "files" => Box::new(files::FilesProvider::new(ctx).await?),
         "grep" => Box::new(grep::GrepProvider::new(ctx).await?),
@@ -254,7 +254,7 @@ pub struct Context {
 impl Context {
     pub async fn new(params: Params, vim: Vim) -> Result<Self> {
         #[derive(Deserialize)]
-        struct InnerParams {
+        struct InitializeParams {
             provider_id: ProviderId,
             start: BufnrWinid,
             input: BufnrWinid,
@@ -266,7 +266,7 @@ impl Context {
             source_is_list: bool,
         }
 
-        let InnerParams {
+        let InitializeParams {
             provider_id,
             start,
             input,
@@ -288,28 +288,21 @@ impl Context {
 
         let rank_criteria = crate::config::config().matcher.rank_criteria();
         let matcher_builder = provider_id.matcher_builder().rank_criteria(rank_criteria);
+
         let display_winwidth = vim.winwidth(display.winid).await?;
+        let display_winheight = vim.winheight(display.winid).await?;
+        let is_nvim: usize = vim.call("has", ["nvim"]).await?;
+        let has_nvim_09: usize = vim.call("has", ["nvim-0.9"]).await?;
+        let preview_enabled: usize = vim.bare_call("clap#preview#is_enabled").await?;
+        let preview_direction: String = vim.bare_call("clap#preview#direction").await?;
+        let popup_border: String = vim.eval("g:clap_popup_border").await?;
+
         // Sign column occupies 2 spaces.
         let display_line_width = display_winwidth - 2;
         let display_line_width = match provider_id.as_str() {
             "grep" => display_line_width - 2,
             _ => display_line_width,
         };
-        let display_winheight = vim.winheight(display.winid).await?;
-        let is_nvim: usize = vim.call("has", ["nvim"]).await?;
-        let has_nvim_09: usize = vim.call("has", ["nvim-0.9"]).await?;
-        let preview_enabled: usize = vim.bare_call("clap#preview#is_enabled").await?;
-        let preview_direction: String = vim.bare_call("clap#preview#direction").await?;
-
-        let popup_border: String = vim.eval("g:clap_popup_border").await?;
-
-        let input_history = crate::datastore::INPUT_HISTORY_IN_MEMORY.lock();
-        let inputs = if crate::config::config().input_history.share_all_inputs {
-            input_history.all_inputs()
-        } else {
-            input_history.inputs(&provider_id)
-        };
-        let input_recorder = InputRecorder::new(inputs);
 
         let env = ProviderEnvironment {
             is_nvim: is_nvim == 1,
@@ -331,6 +324,14 @@ impl Context {
             icon,
         };
 
+        let input_history = crate::datastore::INPUT_HISTORY_IN_MEMORY.lock();
+        let inputs = if crate::config::config().input_history.share_all_inputs {
+            input_history.all_inputs()
+        } else {
+            input_history.inputs(&env.provider_id)
+        };
+        let input_recorder = InputRecorder::new(inputs);
+
         Ok(Self {
             cwd,
             vim,
@@ -344,6 +345,20 @@ impl Context {
             provider_event_sender: OnceCell::new(),
         })
     }
+
+    // let root_markers = vec![".root".to_string(), ".git".to_string(), ".git/".to_string()];
+    // let cwd = if start_buffer_path.exists() {
+    // match crate::paths::find_project_root(&start_buffer_path, &root_markers) {
+    // Some(project_root) => project_root
+    // .to_path_buf()
+    // .try_into()
+    // .expect("project_root must be absolute path; qed"),
+    // None => vim.bare_call("getcwd").await?,
+    // }
+    // } else {
+    // vim.bare_call("getcwd").await?
+    // };
+    // vim.set_var("g:__clap_provider_cwd", serde_json::json!([&cwd]))?;
 
     pub fn provider_id(&self) -> &str {
         self.env.provider_id.as_str()
@@ -749,7 +764,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
         ctx.vim
             .call("set_initial_query", json!([initial_query]))
             .await?;
-        ctx.send_provider_event(ProviderEvent::OnTyped)
+        ctx.send_provider_event(ProviderEvent::OnTyped(Params::None))
     }
 
     async fn on_move(&mut self, ctx: &mut Context) -> Result<()> {
@@ -770,11 +785,12 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
     }
 
     async fn on_key_event(&mut self, ctx: &mut Context, key_event: KeyEvent) -> Result<()> {
-        match key_event {
-            KeyEvent::ShiftUp => ctx.scroll_preview(Direction::Up).await?,
-            KeyEvent::ShiftDown => ctx.scroll_preview(Direction::Down).await?,
-            KeyEvent::CtrlN => ctx.next_input().await?,
-            KeyEvent::CtrlP => ctx.previous_input().await?,
+        let (key_event_type, _params) = key_event;
+        match key_event_type {
+            KeyEventType::ShiftUp => ctx.scroll_preview(Direction::Up).await?,
+            KeyEventType::ShiftDown => ctx.scroll_preview(Direction::Down).await?,
+            KeyEventType::CtrlN => ctx.next_input().await?,
+            KeyEventType::CtrlP => ctx.previous_input().await?,
             _ => {}
         }
         Ok(())

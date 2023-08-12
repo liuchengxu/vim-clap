@@ -1,5 +1,5 @@
-use crate::stdio_server::input::Autocmd;
-use crate::stdio_server::plugin::ClapPlugin;
+use crate::stdio_server::input::{AutocmdEventType, PluginEvent};
+use crate::stdio_server::plugin::{ClapPlugin, PluginId};
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
 use matcher::WordMatcher;
@@ -95,13 +95,26 @@ struct WinHighlights {
 pub struct CursorWordHighlighter {
     vim: Vim,
     cursor_highlights: Option<WinHighlights>,
+    ignore_extensions: Vec<&'static str>,
+    ignore_file_names: Vec<&'static str>,
 }
 
 impl CursorWordHighlighter {
+    pub const ID: PluginId = PluginId::CursorWordHighlighter;
+
     pub fn new(vim: Vim) -> Self {
+        let (ignore_extensions, ignore_file_names): (Vec<_>, Vec<_>) = crate::config::config()
+            .plugin
+            .cursor_word_highlighter
+            .ignore_files
+            .split(',')
+            .partition(|s| s.starts_with("*."));
+
         Self {
             vim,
             cursor_highlights: None,
+            ignore_extensions,
+            ignore_file_names,
         }
     }
 
@@ -119,34 +132,32 @@ impl CursorWordHighlighter {
             return Ok(None);
         }
 
-        let Some(file_extension) = source_file.extension().and_then(|s| s.to_str()) else {
+        let Some(file_extension) = source_file.extension().and_then(|s| s.to_str())
+        else {
             return Ok(None)
         };
 
-        let Some(file_name) = source_file.file_name().and_then(|s| s.to_str()) else {
+        let Some(file_name) = source_file.file_name().and_then(|s| s.to_str())
+        else {
             return Ok(None)
         };
 
-        let (ignore_extensions, ignore_file_names): (Vec<_>, Vec<_>) = crate::config::config()
-            .plugin
-            .highlight_cursor_word
-            .ignore_files
-            .split(',')
-            .partition(|s| s.starts_with("*."));
-
-        if ignore_extensions.iter().any(|s| &s[2..] == file_extension)
-            || ignore_file_names.contains(&file_name)
+        if self
+            .ignore_extensions
+            .iter()
+            .any(|s| &s[2..] == file_extension)
+            || self.ignore_file_names.contains(&file_name)
         {
             return Ok(None);
         }
 
         // TODO: filter the false positive results, using a blocklist of filetypes?
         let [_bufnum, curlnum, col, _off] = self.vim.getpos(".").await?;
-        let curline = self.vim.getcurbufline(curlnum).await?;
+        let curline = self.vim.getbufoneline("", curlnum).await?;
 
         if crate::config::config()
             .plugin
-            .highlight_cursor_word
+            .cursor_word_highlighter
             .ignore_comment_line
         {
             if let Some(ext) = source_file.extension().and_then(|s| s.to_str()) {
@@ -207,15 +218,28 @@ impl CursorWordHighlighter {
 
 #[async_trait::async_trait]
 impl ClapPlugin for CursorWordHighlighter {
-    async fn on_autocmd(&mut self, autocmd: Autocmd) -> Result<()> {
-        match autocmd {
-            Autocmd::CursorMoved => self.highlight_symbol_under_cursor().await,
-            Autocmd::InsertEnter => {
+    fn id(&self) -> PluginId {
+        Self::ID
+    }
+
+    async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
+        use AutocmdEventType::{CursorMoved, InsertEnter};
+
+        let PluginEvent::Autocmd(autocmd_event) = plugin_event else {
+            return Ok(());
+        };
+
+        let (event_type, _params) = autocmd_event;
+
+        match event_type {
+            CursorMoved => self.highlight_symbol_under_cursor().await,
+            InsertEnter => {
                 if let Some(WinHighlights { winid, match_ids }) = self.cursor_highlights.take() {
                     self.vim.matchdelete_batch(match_ids, winid).await?;
                 }
                 Ok(())
             }
+            _ => Ok(()),
         }
     }
 }

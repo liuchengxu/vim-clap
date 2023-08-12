@@ -5,7 +5,7 @@ use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, UsageMa
 use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::CachedPreviewImpl;
 use crate::stdio_server::job;
-use crate::stdio_server::provider::{ClapProvider, Context};
+use crate::stdio_server::provider::{BaseArgs, ClapProvider, Context};
 use crate::tools::ctags::{get_language, TagsGenerator, CTAGS_EXISTS};
 use crate::tools::gtags::GTAGS_EXISTS;
 use anyhow::Result;
@@ -116,6 +116,7 @@ struct SearchResults {
 
 #[derive(Debug, Clone)]
 pub struct DumbJumpProvider {
+    args: BaseArgs,
     /// Results from last searching.
     /// This might be a superset of searching results for the last query.
     cached_results: SearchResults,
@@ -153,13 +154,15 @@ async fn init_gtags(cwd: PathBuf, gtags_regenerated: Arc<AtomicBool>) {
 }
 
 impl DumbJumpProvider {
-    pub fn new() -> Self {
-        Self {
+    pub async fn new(ctx: &Context) -> Result<Self> {
+        let args = ctx.parse_provider_args().await?;
+        Ok(Self {
+            args,
             cached_results: Default::default(),
             current_usages: None,
             ctags_regenerated: Arc::new(false.into()),
             gtags_regenerated: Arc::new(false.into()),
-        }
+        })
     }
 
     async fn initialize_tags(&self, extension: String, cwd: AbsPathBuf) -> Result<()> {
@@ -229,7 +232,7 @@ impl DumbJumpProvider {
     async fn start_search(
         &self,
         search_worker: SearchWorker,
-        query: String,
+        query: &str,
         query_info: QueryInfo,
     ) -> Result<SearchResults> {
         if query.is_empty() {
@@ -295,9 +298,8 @@ impl ClapProvider for DumbJumpProvider {
             }
         });
 
-        let query = ctx.vim.context_query_or_input().await?;
-        if !query.is_empty() {
-            let query_info = parse_query_info(&query);
+        if let Some(query) = &self.args.query {
+            let query_info = parse_query_info(query);
             let search_worker = SearchWorker {
                 cwd,
                 query_info: query_info.clone(),
@@ -384,7 +386,7 @@ impl ClapProvider for DumbJumpProvider {
             query_info: query_info.clone(),
             source_file_extension: ctx.start_buffer_extension()?.to_string(),
         };
-        let search_results = self.start_search(search_worker, query, query_info).await?;
+        let search_results = self.start_search(search_worker, &query, query_info).await?;
 
         self.on_new_search_results(search_results, ctx)?;
 

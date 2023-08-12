@@ -55,8 +55,14 @@ augroup VimClap
   autocmd BufAdd      * call clap#client#notify('note_recent_files', [+expand('<abuf>')])
 
   if get(g:, 'clap_plugin_experimental', 0)
-    autocmd CursorMoved * call clap#client#notify('CursorMoved')
-    autocmd InsertEnter * call clap#client#notify('InsertEnter')
+    autocmd InsertEnter  * call clap#client#notify('InsertEnter')
+    autocmd CursorMoved  * call clap#client#notify('CursorMoved',  [+expand('<abuf>')])
+    autocmd BufEnter     * call clap#client#notify('BufEnter',     [+expand('<abuf>')])
+    autocmd BufLeave     * call clap#client#notify('BufLeave',     [+expand('<abuf>')])
+    autocmd BufDelete    * call clap#client#notify('BufDelete',    [+expand('<abuf>')])
+    autocmd BufWritePost * call clap#client#notify('BufWritePost', [+expand('<abuf>')])
+    autocmd BufWinEnter  * call clap#client#notify('BufWinEnter',  [+expand('<abuf>')])
+    autocmd BufWinLeave  * call clap#client#notify('BufWinLeave',  [+expand('<abuf>')])
   endif
 
   " yanks provider

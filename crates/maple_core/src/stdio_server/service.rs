@@ -3,7 +3,7 @@
 use crate::stdio_server::input::{
     InternalProviderEvent, PluginEvent, ProviderEvent, ProviderEventSender,
 };
-use crate::stdio_server::plugin::ClapPlugin;
+use crate::stdio_server::plugin::{ActionType, ClapPlugin};
 use crate::stdio_server::provider::{ClapProvider, Context};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -12,6 +12,9 @@ use std::ops::ControlFlow;
 use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;
+
+use super::input::PluginAction;
+use super::plugin::PluginId;
 
 pub type ProviderSessionId = u64;
 
@@ -99,7 +102,6 @@ impl ProviderSession {
                             tracing::trace!("[with_debounce] Received event: {event:?}");
 
                             match event {
-                                ProviderEvent::NewSession => unreachable!(),
                                 ProviderEvent::Internal(internal_event) => {
                                     match self.handle_internal_event(internal_event).await {
                                         ControlFlow::Break(_) => break,
@@ -114,17 +116,17 @@ impl ProviderSession {
                                     self.provider.on_terminate(&mut self.ctx, self.provider_session_id);
                                     break;
                                 }
-                                ProviderEvent::OnMove => {
+                                ProviderEvent::OnMove(_params) => {
                                     on_move_dirty = true;
                                     on_move_timer.as_mut().reset(Instant::now() + on_move_delay);
                                 }
-                                ProviderEvent::OnTyped => {
+                                ProviderEvent::OnTyped(_params) => {
                                     on_typed_dirty = true;
                                     on_typed_timer.as_mut().reset(Instant::now() + on_typed_delay);
                                 }
                                 ProviderEvent::Key(key_event) => {
                                     if let Err(err) = self.provider.on_key_event(&mut self.ctx, key_event).await {
-                                        tracing::error!(?err, "Failed to process {event:?}");
+                                        tracing::error!(?err, "Failed to process key_event");
                                     }
                                 }
                             }
@@ -161,7 +163,6 @@ impl ProviderSession {
             tracing::trace!("[without_debounce] Received event: {event:?}");
 
             match event {
-                ProviderEvent::NewSession => unreachable!(),
                 ProviderEvent::Internal(internal_event) => {
                     if self.handle_internal_event(internal_event).await.is_break() {
                         break;
@@ -172,20 +173,20 @@ impl ProviderSession {
                         .on_terminate(&mut self.ctx, self.provider_session_id);
                     break;
                 }
-                ProviderEvent::OnMove => {
+                ProviderEvent::OnMove(_params) => {
                     if let Err(err) = self.provider.on_move(&mut self.ctx).await {
-                        tracing::debug!(?err, "Failed to process {event:?}");
+                        tracing::debug!(?err, "Failed to process OnMove");
                     }
                 }
-                ProviderEvent::OnTyped => {
+                ProviderEvent::OnTyped(_params) => {
                     let _ = self.ctx.record_input().await;
                     if let Err(err) = self.provider.on_typed(&mut self.ctx).await {
-                        tracing::debug!(?err, "Failed to process {event:?}");
+                        tracing::debug!(?err, "Failed to process OnTyped");
                     }
                 }
                 ProviderEvent::Key(key_event) => {
                     if let Err(err) = self.provider.on_key_event(&mut self.ctx, key_event).await {
-                        tracing::error!(?err, "Failed to process {key_event:?}");
+                        tracing::error!(?err, "Failed to process key_event");
                     }
                 }
             }
@@ -240,29 +241,51 @@ impl ProviderSession {
 #[derive(Debug)]
 pub struct PluginSession {
     plugin: Box<dyn ClapPlugin>,
-    event_delay: Duration,
     plugin_events: UnboundedReceiver<PluginEvent>,
 }
 
 impl PluginSession {
     pub fn create(
         plugin: Box<dyn ClapPlugin>,
-        event_delay: Duration,
+        maybe_event_delay: Option<Duration>,
     ) -> UnboundedSender<PluginEvent> {
         let (plugin_event_sender, plugin_event_receiver) = unbounded_channel();
 
         let plugin_session = PluginSession {
             plugin,
-            event_delay,
             plugin_events: plugin_event_receiver,
         };
 
-        plugin_session.start_event_loop();
+        if let Some(event_delay) = maybe_event_delay {
+            plugin_session.start_event_loop(event_delay);
+        } else {
+            plugin_session.start_event_loop_without_debounce();
+        }
 
         plugin_event_sender
     }
 
-    fn start_event_loop(mut self) {
+    fn start_event_loop_without_debounce(mut self) {
+        tracing::debug!("Spawning a new plugin session task without debounce");
+
+        tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                  maybe_plugin_event = self.plugin_events.recv() => {
+                      if let Some(plugin_event) = maybe_plugin_event {
+                          if let Err(err) = self.plugin.on_plugin_event(plugin_event).await {
+                              tracing::error!(?err, "Failed to process plugin_event");
+                          }
+                      } else {
+                          break;
+                      }
+                  }
+                }
+            }
+        });
+    }
+
+    fn start_event_loop(mut self, event_delay: Duration) {
         tracing::debug!("Spawning a new plugin session task");
 
         tokio::spawn(async move {
@@ -270,7 +293,7 @@ impl PluginSession {
             // which is actually just 1 year in the future.
             const NEVER: Duration = Duration::from_secs(365 * 24 * 60 * 60);
 
-            let mut pending_autocmd = None;
+            let mut pending_plugin_event = None;
             let mut notification_dirty = false;
             let notification_timer = tokio::time::sleep(NEVER);
             tokio::pin!(notification_timer);
@@ -280,14 +303,12 @@ impl PluginSession {
                     maybe_plugin_event = self.plugin_events.recv() => {
                         match maybe_plugin_event {
                             Some(plugin_event) => {
-                                match plugin_event {
-                                    PluginEvent::Autocmd(autocmd) => {
-                                        pending_autocmd.replace(autocmd);
-                                        notification_dirty = true;
-                                        notification_timer
-                                            .as_mut()
-                                            .reset(Instant::now() + self.event_delay);
-                                    }
+                                if plugin_event.should_debounce() {
+                                    pending_plugin_event.replace(plugin_event);
+                                    notification_dirty = true;
+                                    notification_timer.as_mut().reset(Instant::now() + event_delay);
+                                } else if let Err(err) = self.plugin.on_plugin_event(plugin_event).await {
+                                    tracing::error!(?err, "Failed to process plugin event");
                                 }
                             }
                             None => break, // channel has closed.
@@ -297,9 +318,9 @@ impl PluginSession {
                         notification_dirty = false;
                         notification_timer.as_mut().reset(Instant::now() + NEVER);
 
-                        if let Some(autocmd) = pending_autocmd.take() {
-                            if let Err(err) = self.plugin.on_autocmd(autocmd).await {
-                                tracing::error!(?err, "Failed at process {autocmd:?}");
+                        if let Some(autocmd) = pending_plugin_event.take() {
+                            if let Err(err) = self.plugin.on_plugin_event(autocmd).await {
+                                tracing::error!(?err, "Failed to process debounced plugin event");
                             }
                         }
                     }
@@ -316,7 +337,7 @@ impl PluginSession {
 #[derive(Debug, Default)]
 pub struct ServiceManager {
     providers: HashMap<ProviderSessionId, ProviderEventSender>,
-    plugins: Vec<UnboundedSender<PluginEvent>>,
+    plugins: HashMap<PluginId, UnboundedSender<PluginEvent>>,
 }
 
 impl ServiceManager {
@@ -340,7 +361,7 @@ impl ServiceManager {
 
             provider_event_sender
                 .send(ProviderEvent::Internal(InternalProviderEvent::Initialize))
-                .expect("Failed to send ProviderEvent::Initialize");
+                .expect("Failed to send InternalProviderEvent::Initialize");
 
             v.insert(ProviderEventSender::new(
                 provider_event_sender,
@@ -355,14 +376,45 @@ impl ServiceManager {
     }
 
     /// Creates a new plugin session with the default debounce setting.
-    pub fn new_plugin(&mut self, plugin: Box<dyn ClapPlugin>) {
-        self.plugins
-            .push(PluginSession::create(plugin, Duration::from_millis(50)));
+    pub fn register_plugin(&mut self, plugin: Box<dyn ClapPlugin>) -> (PluginId, Vec<String>) {
+        let plugin_id = plugin.id();
+
+        let all_actions = plugin
+            .actions(ActionType::All)
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+
+        self.plugins.insert(
+            plugin_id,
+            PluginSession::create(plugin, Some(Duration::from_millis(50))),
+        );
+
+        (plugin_id, all_actions)
     }
 
+    #[allow(unused)]
+    pub fn register_plugin_without_debounce(
+        &mut self,
+        plugin_id: PluginId,
+        plugin: Box<dyn ClapPlugin>,
+    ) {
+        self.plugins
+            .insert(plugin_id, PluginSession::create(plugin, None));
+    }
+
+    /// Sends event message to all plugins.
     pub fn notify_plugins(&mut self, plugin_event: PluginEvent) {
         self.plugins
-            .retain(|plugin_sender| plugin_sender.send(plugin_event.clone()).is_ok())
+            .retain(|_plugin_id, plugin_sender| plugin_sender.send(plugin_event.clone()).is_ok());
+    }
+
+    pub fn notify_plugin_action(&mut self, plugin_id: PluginId, plugin_action: PluginAction) {
+        if let Entry::Occupied(v) = self.plugins.entry(plugin_id) {
+            if v.get().send(PluginEvent::Action(plugin_action)).is_err() {
+                v.remove_entry();
+            }
+        }
     }
 
     pub fn exists(&self, provider_session_id: ProviderSessionId) -> bool {

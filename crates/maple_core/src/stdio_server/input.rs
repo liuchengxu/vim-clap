@@ -1,28 +1,36 @@
+use crate::stdio_server::plugin::PluginId;
 use crate::stdio_server::provider::ProviderId;
 use crate::stdio_server::service::ProviderSessionId;
+use rpc::{Params, RpcNotification};
 use std::collections::{HashMap, HashSet, VecDeque};
 use tokio::sync::mpsc::UnboundedSender;
 
-#[derive(Debug)]
-pub enum Event {
-    Provider(ProviderEvent),
-    Autocmd(Autocmd),
-    Key(KeyEvent),
-    /// Various uncategoried actions.
-    Action(String),
-}
+pub type KeyEvent = (KeyEventType, Params);
+pub type AutocmdEvent = (AutocmdEventType, Params);
 
 #[derive(Debug, Clone)]
 pub enum PluginEvent {
-    Autocmd(Autocmd),
+    Autocmd(AutocmdEvent),
+    Action(PluginAction),
+}
+
+impl PluginEvent {
+    /// Returns `true` if the event can be potentially too frequent and should be debounced.
+    pub fn should_debounce(&self) -> bool {
+        match self {
+            Self::Autocmd((autocmd_event_type, _)) => {
+                matches!(autocmd_event_type, AutocmdEventType::CursorMoved)
+            }
+            _ => false,
+        }
+    }
 }
 
 /// Provider specific events.
 #[derive(Debug)]
 pub enum ProviderEvent {
-    NewSession,
-    OnMove,
-    OnTyped,
+    OnMove(Params),
+    OnTyped(Params),
     Exit,
     Key(KeyEvent),
     /// Signal fired internally.
@@ -36,9 +44,9 @@ pub enum InternalProviderEvent {
     Terminate,
 }
 
-/// Represents a key event.
+/// Represents a key event type.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
-pub enum KeyEvent {
+pub enum KeyEventType {
     // Ctrl-I/<Tab>
     Tab,
     // Ctrl-H/<BS>
@@ -57,28 +65,104 @@ pub enum KeyEvent {
 
 /// Represents a key event.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
-pub enum Autocmd {
+pub enum AutocmdEventType {
     CursorMoved,
     InsertEnter,
+    BufEnter,
+    BufLeave,
+    BufDelete,
+    BufWritePost,
+    BufWinEnter,
+    BufWinLeave,
+}
+
+pub type Action = (PluginId, PluginAction);
+
+#[derive(Debug, Clone)]
+pub struct PluginAction {
+    pub action: String,
+    pub params: Params,
+}
+
+impl From<RpcNotification> for PluginAction {
+    fn from(notification: RpcNotification) -> Self {
+        Self {
+            action: notification.method,
+            params: notification.params,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum Event {
+    NewProvider(Params),
+    ProviderWorker(ProviderEvent),
+    /// `:h autocmd`
+    Autocmd(AutocmdEvent),
+    /// `:h keycodes`
+    Key(KeyEvent),
+    /// User-oriented actions.
+    Action(Action),
 }
 
 impl Event {
-    pub fn from_method(method: &str) -> Self {
-        match method {
-            "exit" => Self::Provider(ProviderEvent::Exit),
-            "on_move" => Self::Provider(ProviderEvent::OnMove),
-            "on_typed" => Self::Provider(ProviderEvent::OnTyped),
-            "new_session" => Self::Provider(ProviderEvent::NewSession),
-            "cr" => Self::Key(KeyEvent::CarriageReturn),
-            "tab" => Self::Key(KeyEvent::Tab),
-            "ctrl-n" => Self::Key(KeyEvent::CtrlN),
-            "ctrl-p" => Self::Key(KeyEvent::CtrlP),
-            "shift-up" => Self::Key(KeyEvent::ShiftUp),
-            "shift-down" => Self::Key(KeyEvent::ShiftDown),
-            "backspace" => Self::Key(KeyEvent::Backspace),
-            "CursorMoved" => Self::Autocmd(Autocmd::CursorMoved),
-            "InsertEnter" => Self::Autocmd(Autocmd::InsertEnter),
-            action => Self::Action(action.to_string()),
+    /// Converts the notification to an [`Event`].
+    pub fn parse_notification(
+        notification: RpcNotification,
+        action_parser: impl Fn(RpcNotification) -> anyhow::Result<Action>,
+    ) -> anyhow::Result<Self> {
+        match notification.method.as_str() {
+            "new_session" => Ok(Self::NewProvider(notification.params)),
+            "exit" => Ok(Self::ProviderWorker(ProviderEvent::Exit)),
+            "on_move" => Ok(Self::ProviderWorker(ProviderEvent::OnMove(
+                notification.params,
+            ))),
+            "on_typed" => Ok(Self::ProviderWorker(ProviderEvent::OnTyped(
+                notification.params,
+            ))),
+            "cr" => Ok(Self::Key((
+                KeyEventType::CarriageReturn,
+                notification.params,
+            ))),
+            "tab" => Ok(Self::Key((KeyEventType::Tab, notification.params))),
+            "ctrl-n" => Ok(Self::Key((KeyEventType::CtrlN, notification.params))),
+            "ctrl-p" => Ok(Self::Key((KeyEventType::CtrlP, notification.params))),
+            "shift-up" => Ok(Self::Key((KeyEventType::ShiftUp, notification.params))),
+            "shift-down" => Ok(Self::Key((KeyEventType::ShiftDown, notification.params))),
+            "backspace" => Ok(Self::Key((KeyEventType::Backspace, notification.params))),
+            "CursorMoved" => Ok(Self::Autocmd((
+                AutocmdEventType::CursorMoved,
+                notification.params,
+            ))),
+            "InsertEnter" => Ok(Self::Autocmd((
+                AutocmdEventType::InsertEnter,
+                notification.params,
+            ))),
+            "BufEnter" => Ok(Self::Autocmd((
+                AutocmdEventType::BufEnter,
+                notification.params,
+            ))),
+            "BufLeave" => Ok(Self::Autocmd((
+                AutocmdEventType::BufLeave,
+                notification.params,
+            ))),
+            "BufDelete" => Ok(Self::Autocmd((
+                AutocmdEventType::BufDelete,
+                notification.params,
+            ))),
+            "BufWritePost" => Ok(Self::Autocmd((
+                AutocmdEventType::BufWritePost,
+                notification.params,
+            ))),
+            "BufWinEnter" => Ok(Self::Autocmd((
+                AutocmdEventType::BufWinEnter,
+                notification.params,
+            ))),
+            "BufWinLeave" => Ok(Self::Autocmd((
+                AutocmdEventType::BufWinLeave,
+                notification.params,
+            ))),
+            _ => Ok(Self::Action(action_parser(notification)?)),
         }
     }
 }
