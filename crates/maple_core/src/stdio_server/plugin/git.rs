@@ -9,10 +9,10 @@ pub struct GitPlugin {
 }
 
 impl GitPlugin {
-    const COMMIT_REV: &'static str = "git/commit-rev";
+    const OPEN_CURRENT_LINE_IN_BROWSER: &'static str = "git/open-current-line-in-browser";
 
     pub const ID: PluginId = PluginId::Git;
-    pub const ACTIONS: &[&'static str] = &[Self::COMMIT_REV];
+    pub const ACTIONS: &[&'static str] = &[Self::OPEN_CURRENT_LINE_IN_BROWSER];
 
     pub fn new(vim: Vim) -> Self {
         Self { vim }
@@ -35,7 +35,7 @@ impl ClapPlugin for GitPlugin {
             PluginEvent::Action(plugin_action) => {
                 let PluginAction { action, params: _ } = plugin_action;
                 match action.as_str() {
-                    Self::COMMIT_REV => {
+                    Self::OPEN_CURRENT_LINE_IN_BROWSER => {
                         let buf_path = self.vim.current_buffer_path().await?;
                         let filepath = Path::new(&buf_path);
 
@@ -49,20 +49,14 @@ impl ClapPlugin for GitPlugin {
 
                         let relative_path = filepath.strip_prefix(git_root)?;
 
-                        tracing::info!(
-                            "========= buf_path: {buf_path}, git_root: {}",
-                            git_root.display()
-                        );
-
                         let output = std::process::Command::new("git")
+                            .current_dir(git_root)
                             .arg("remote")
                             .arg("-v")
                             .stderr(std::process::Stdio::inherit())
                             .output()?;
 
                         let stdout = String::from_utf8_lossy(&output.stdout);
-                        let res = stdout.split('\n').find(|line| line.starts_with("origin"));
-                        tracing::info!("========= stdout: {stdout:?}, res: {res:?}");
                         let Some(remote_url) = stdout
                             .split('\n')
                             .find(|line| line.starts_with("origin"))
@@ -72,13 +66,10 @@ impl ClapPlugin for GitPlugin {
                         };
 
                         // https://github.com/liuchengxu/vim-clap{.git}
-                        let remote_url = if remote_url.ends_with(".git") {
-                            &remote_url[..remote_url.len() - 4]
-                        } else {
-                            remote_url
-                        };
+                        let remote_url = remote_url.strip_suffix(".git").unwrap_or(remote_url);
 
                         let output = std::process::Command::new("git")
+                            .current_dir(git_root)
                             .arg("rev-parse")
                             .arg("HEAD")
                             .stderr(std::process::Stdio::inherit())
@@ -86,7 +77,7 @@ impl ClapPlugin for GitPlugin {
 
                         let stdout = String::from_utf8_lossy(&output.stdout);
                         let Some(rev) = stdout.split('\n').next() else {
-                          return Ok(())
+                            return Ok(())
                         };
 
                         let lnum = self.vim.line(".").await?;
@@ -95,7 +86,10 @@ impl ClapPlugin for GitPlugin {
                             relative_path.display()
                         );
 
-                        self.vim.echo_info(format!("commit_url: {commit_url}"))?;
+                        if let Err(e) = webbrowser::open(&commit_url) {
+                            self.vim
+                                .echo_warn(format!("Failed to open {commit_url}: {e:?}"))?;
+                        }
                     }
                     unknown_action => return Err(anyhow!("Unknown action: {unknown_action:?}")),
                 }

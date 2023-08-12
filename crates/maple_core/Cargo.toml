@@ -43,6 +43,7 @@ printer = { path = "../printer" }
 rpc = { path = "../rpc" }
 types = { path = "../types" }
 utils = { path = "../utils" }
+webbrowser = "0.8.10"
 
 [dev-dependencies]
 git = { package = "git2", version = "0.15" }
