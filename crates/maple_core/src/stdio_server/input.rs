@@ -115,8 +115,8 @@ impl Event {
         use KeyEventType::*;
 
         match notification.method.as_str() {
-            "new_session" => Ok(Self::NewProvider(notification.params)),
-            "exit" => Ok(Self::ProviderWorker(ProviderEvent::Exit)),
+            "new_provider" => Ok(Self::NewProvider(notification.params)),
+            "exit_provider" => Ok(Self::ProviderWorker(ProviderEvent::Exit)),
             "on_move" => Ok(Self::ProviderWorker(ProviderEvent::OnMove(
                 notification.params,
             ))),

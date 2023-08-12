@@ -178,9 +178,21 @@ pub fn truncate_absolute_path(abs_path: &str, max_len: usize) -> Cow<'_, str> {
     abs_path.into()
 }
 
-pub fn find_project_root<'a>(start_dir: &'a Path, root_markers: &[String]) -> Option<&'a Path> {
+pub fn find_project_root<'a, P: AsRef<Path>>(
+    start_dir: &'a Path,
+    root_markers: &[P],
+) -> Option<&'a Path> {
     upward_search(start_dir, |path| {
         root_markers
+            .iter()
+            .any(|root_marker| path.join(root_marker).exists())
+    })
+    .ok()
+}
+
+pub fn find_git_root<'a>(start_dir: &'a Path) -> Option<&'a Path> {
+    upward_search(start_dir, |path| {
+        [".git", ".git/"]
             .iter()
             .any(|root_marker| path.join(root_marker).exists())
     })

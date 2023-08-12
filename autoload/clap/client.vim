@@ -101,7 +101,7 @@ function! clap#client#notify_on_init(...) abort
   if a:0 > 0
     call extend(params, a:1)
   endif
-  call s:notify_provider('new_session', params)
+  call s:notify_provider('new_provider', params)
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""

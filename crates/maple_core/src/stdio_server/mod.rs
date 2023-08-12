@@ -7,10 +7,10 @@ mod service;
 mod vim;
 
 pub use self::input::InputHistory;
-use self::input::{Action, Event, PluginEvent, ProviderEvent};
+use self::input::{Action, Event, ProviderEvent};
 use self::plugin::{
-    ActionType, ClapPlugin, CtagsPlugin, CursorWordHighlighter, MarkdownPlugin, PluginId,
-    SystemPlugin,
+    ActionType, ClapPlugin, CtagsPlugin, CursorWordHighlighter, GitPlugin, MarkdownPlugin,
+    PluginId, SystemPlugin,
 };
 use self::provider::{create_provider, Context};
 use self::service::ServiceManager;
@@ -84,6 +84,11 @@ pub async fn start(config_err: Option<toml::de::Error>) {
     let (plugin_id, actions) = service_manager.register_plugin(plugin);
     all_actions.insert(plugin_id, actions);
 
+    let plugin = Box::new(GitPlugin::new(vim.clone())) as Box<dyn ClapPlugin>;
+    callable_actions.extend_from_slice(plugin.actions(ActionType::Callable));
+    let (plugin_id, actions) = service_manager.register_plugin(plugin);
+    all_actions.insert(plugin_id, actions);
+
     let plugin = &crate::config::config().plugin;
 
     if plugin.ctags.enable {
@@ -124,8 +129,8 @@ pub async fn start(config_err: Option<toml::de::Error>) {
 #[derive(Clone)]
 struct Client {
     vim: Vim,
-    service_manager_mutex: Arc<Mutex<ServiceManager>>,
     plugin_actions: Arc<Mutex<HashMap<PluginId, Vec<String>>>>,
+    service_manager: Arc<Mutex<ServiceManager>>,
 }
 
 impl Client {
@@ -137,8 +142,8 @@ impl Client {
     ) -> Self {
         Self {
             vim,
-            service_manager_mutex: Arc::new(Mutex::new(service_manager)),
             plugin_actions: Arc::new(Mutex::new(plugin_actions)),
+            service_manager: Arc::new(Mutex::new(service_manager)),
         }
     }
 
@@ -166,7 +171,7 @@ impl Client {
                                 VimMessage::Notification(notification) => {
                                     // Avoid spawn too frequently if user opens and
                                     // closes the provider frequently in a very short time.
-                                    if notification.method == "new_session" {
+                                    if notification.method == "new_provider" {
                                         pending_notification.replace(notification);
 
                                         notification_dirty = true;
@@ -191,7 +196,7 @@ impl Client {
                             .session_id()
                             .unwrap_or_default()
                             .saturating_sub(1);
-                        self.service_manager_mutex.lock().try_exit(last_session_id);
+                        self.service_manager.lock().try_exit(last_session_id);
                         let session_id = notification.session_id();
                         if let Err(err) = self.do_process_notification(notification).await {
                             tracing::error!(?session_id, ?err, "Error at processing Vim Notification");
@@ -204,7 +209,7 @@ impl Client {
 
     fn process_notification(&self, notification: RpcNotification) {
         if let Some(session_id) = notification.session_id() {
-            if self.service_manager_mutex.lock().exists(session_id) {
+            if self.service_manager.lock().exists(session_id) {
                 let client = self.clone();
 
                 tokio::spawn(async move {
@@ -242,7 +247,7 @@ impl Client {
                     maybe_session_id.ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
                 let ctx = Context::new(params, self.vim.clone()).await?;
                 let provider = create_provider(&ctx).await?;
-                self.service_manager_mutex
+                self.service_manager
                     .lock()
                     .new_provider(session_id, provider, ctx);
             }
@@ -250,14 +255,12 @@ impl Client {
                 ProviderEvent::Exit => {
                     let session_id = maybe_session_id
                         .ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
-                    self.service_manager_mutex
-                        .lock()
-                        .notify_provider_exit(session_id);
+                    self.service_manager.lock().notify_provider_exit(session_id);
                 }
                 to_send => {
                     let session_id = maybe_session_id
                         .ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
-                    self.service_manager_mutex
+                    self.service_manager
                         .lock()
                         .notify_provider(session_id, to_send);
                 }
@@ -265,17 +268,15 @@ impl Client {
             Event::Key(key_event) => {
                 let session_id =
                     maybe_session_id.ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
-                self.service_manager_mutex
+                self.service_manager
                     .lock()
                     .notify_provider(session_id, ProviderEvent::Key(key_event));
             }
             Event::Autocmd(autocmd_event) => {
-                self.service_manager_mutex
-                    .lock()
-                    .notify_plugins(PluginEvent::Autocmd(autocmd_event));
+                self.service_manager.lock().notify_plugins(autocmd_event);
             }
             Event::Action((plugin_id, plugin_action)) => {
-                self.service_manager_mutex
+                self.service_manager
                     .lock()
                     .notify_plugin_action(plugin_id, plugin_action);
             }
