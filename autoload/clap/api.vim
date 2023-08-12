@@ -47,10 +47,6 @@ if s:is_nvim
   function! s:api.get_var(name) abort
     return nvim_get_var(a:name)
   endfunction
-
-  function! s:api.set_var(name, value) abort
-    return nvim_set_var(a:name, a:value)
-  endfunction
 else
   function! s:api.win_is_valid(winid) abort
     return win_screenpos(a:winid) != [0, 0]
@@ -58,10 +54,6 @@ else
 
   function! s:api.get_var(name) abort
     return get(g:, a:name, v:null)
-  endfunction
-
-  function! s:api.set_var(name, value) abort
-    execute 'let '.a:name.'= a:value'
   endfunction
 endif
 
@@ -107,6 +99,10 @@ endfunction
 
 function! s:api.input_set(value) abort
   call g:clap.input.set(a:value)
+endfunction
+
+function! s:api.set_var(name, value) abort
+  execute 'let '.a:name.'= a:value'
 endfunction
 
 function! s:api.current_buffer_path() abort

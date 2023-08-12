@@ -1,5 +1,5 @@
 use crate::stdio_server::input::{PluginAction, PluginEvent};
-use crate::stdio_server::plugin::ClapPlugin;
+use crate::stdio_server::plugin::{ActionType, ClapPlugin, PluginId};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
@@ -156,7 +156,7 @@ fn parse_toc(
         .collect())
 }
 
-pub fn generate_toc(
+fn generate_toc(
     input_file: impl AsRef<Path>,
     line_start: usize,
     shiftwidth: usize,
@@ -177,7 +177,7 @@ pub fn generate_toc(
     Ok(full_toc.into())
 }
 
-pub fn find_toc_range(input_file: impl AsRef<Path>) -> std::io::Result<Option<(usize, usize)>> {
+fn find_toc_range(input_file: impl AsRef<Path>) -> std::io::Result<Option<(usize, usize)>> {
     let mut start = 0;
 
     for (idx, line) in utils::read_lines(input_file)?
@@ -207,6 +207,7 @@ impl MarkdownPlugin {
     const UPDATE_TOC: &'static str = "markdown/update-toc";
     const DELETE_TOC: &'static str = "markdown/delete-toc";
 
+    pub const ID: PluginId = PluginId::Markdown;
     pub const ACTIONS: &[&'static str] = &[Self::GENERATE_TOC, Self::UPDATE_TOC, Self::DELETE_TOC];
 
     pub fn new(vim: Vim) -> Self {
@@ -216,6 +217,17 @@ impl MarkdownPlugin {
 
 #[async_trait::async_trait]
 impl ClapPlugin for MarkdownPlugin {
+    fn id(&self) -> PluginId {
+        Self::ID
+    }
+
+    fn actions(&self, action_type: ActionType) -> &[&'static str] {
+        match action_type {
+            ActionType::Callable => Self::ACTIONS,
+            ActionType::All => Self::ACTIONS,
+        }
+    }
+
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
         match plugin_event {
             PluginEvent::Autocmd(_) => Ok(()),

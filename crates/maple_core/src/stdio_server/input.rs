@@ -1,4 +1,4 @@
-use crate::stdio_server::plugin::{MarkdownPlugin, PluginId, SystemPlugin};
+use crate::stdio_server::plugin::PluginId;
 use crate::stdio_server::provider::ProviderId;
 use crate::stdio_server::service::ProviderSessionId;
 use rpc::{Params, RpcNotification};
@@ -84,32 +84,12 @@ pub struct PluginAction {
     pub params: Params,
 }
 
-impl PluginAction {
-    fn empty() -> Self {
-        Self {
-            action: Default::default(),
-            params: Params::None,
-        }
-    }
-}
-
 impl From<RpcNotification> for PluginAction {
     fn from(notification: RpcNotification) -> Self {
         Self {
             action: notification.method,
             params: notification.params,
         }
-    }
-}
-
-fn parse_action(notification: RpcNotification) -> Action {
-    let action = notification.method.as_str();
-    if SystemPlugin::ACTIONS.contains(&action) {
-        (PluginId::System, notification.into())
-    } else if MarkdownPlugin::ACTIONS.contains(&action) {
-        (PluginId::Markdown, notification.into())
-    } else {
-        (PluginId::Unknown, PluginAction::empty())
     }
 }
 
@@ -127,28 +107,62 @@ pub enum Event {
 
 impl Event {
     /// Converts the notification to an [`Event`].
-    pub fn parse_notification(notification: RpcNotification) -> Self {
+    pub fn parse_notification(
+        notification: RpcNotification,
+        action_parser: impl Fn(RpcNotification) -> anyhow::Result<Action>,
+    ) -> anyhow::Result<Self> {
         match notification.method.as_str() {
-            "new_session" => Self::NewProvider(notification.params),
-            "exit" => Self::ProviderWorker(ProviderEvent::Exit),
-            "on_move" => Self::ProviderWorker(ProviderEvent::OnMove(notification.params)),
-            "on_typed" => Self::ProviderWorker(ProviderEvent::OnTyped(notification.params)),
-            "cr" => Self::Key((KeyEventType::CarriageReturn, notification.params)),
-            "tab" => Self::Key((KeyEventType::Tab, notification.params)),
-            "ctrl-n" => Self::Key((KeyEventType::CtrlN, notification.params)),
-            "ctrl-p" => Self::Key((KeyEventType::CtrlP, notification.params)),
-            "shift-up" => Self::Key((KeyEventType::ShiftUp, notification.params)),
-            "shift-down" => Self::Key((KeyEventType::ShiftDown, notification.params)),
-            "backspace" => Self::Key((KeyEventType::Backspace, notification.params)),
-            "CursorMoved" => Self::Autocmd((AutocmdEventType::CursorMoved, notification.params)),
-            "InsertEnter" => Self::Autocmd((AutocmdEventType::InsertEnter, notification.params)),
-            "BufEnter" => Self::Autocmd((AutocmdEventType::BufEnter, notification.params)),
-            "BufLeave" => Self::Autocmd((AutocmdEventType::BufLeave, notification.params)),
-            "BufDelete" => Self::Autocmd((AutocmdEventType::BufDelete, notification.params)),
-            "BufWritePost" => Self::Autocmd((AutocmdEventType::BufWritePost, notification.params)),
-            "BufWinEnter" => Self::Autocmd((AutocmdEventType::BufWinEnter, notification.params)),
-            "BufWinLeave" => Self::Autocmd((AutocmdEventType::BufWinLeave, notification.params)),
-            _ => Self::Action(parse_action(notification)),
+            "new_session" => Ok(Self::NewProvider(notification.params)),
+            "exit" => Ok(Self::ProviderWorker(ProviderEvent::Exit)),
+            "on_move" => Ok(Self::ProviderWorker(ProviderEvent::OnMove(
+                notification.params,
+            ))),
+            "on_typed" => Ok(Self::ProviderWorker(ProviderEvent::OnTyped(
+                notification.params,
+            ))),
+            "cr" => Ok(Self::Key((
+                KeyEventType::CarriageReturn,
+                notification.params,
+            ))),
+            "tab" => Ok(Self::Key((KeyEventType::Tab, notification.params))),
+            "ctrl-n" => Ok(Self::Key((KeyEventType::CtrlN, notification.params))),
+            "ctrl-p" => Ok(Self::Key((KeyEventType::CtrlP, notification.params))),
+            "shift-up" => Ok(Self::Key((KeyEventType::ShiftUp, notification.params))),
+            "shift-down" => Ok(Self::Key((KeyEventType::ShiftDown, notification.params))),
+            "backspace" => Ok(Self::Key((KeyEventType::Backspace, notification.params))),
+            "CursorMoved" => Ok(Self::Autocmd((
+                AutocmdEventType::CursorMoved,
+                notification.params,
+            ))),
+            "InsertEnter" => Ok(Self::Autocmd((
+                AutocmdEventType::InsertEnter,
+                notification.params,
+            ))),
+            "BufEnter" => Ok(Self::Autocmd((
+                AutocmdEventType::BufEnter,
+                notification.params,
+            ))),
+            "BufLeave" => Ok(Self::Autocmd((
+                AutocmdEventType::BufLeave,
+                notification.params,
+            ))),
+            "BufDelete" => Ok(Self::Autocmd((
+                AutocmdEventType::BufDelete,
+                notification.params,
+            ))),
+            "BufWritePost" => Ok(Self::Autocmd((
+                AutocmdEventType::BufWritePost,
+                notification.params,
+            ))),
+            "BufWinEnter" => Ok(Self::Autocmd((
+                AutocmdEventType::BufWinEnter,
+                notification.params,
+            ))),
+            "BufWinLeave" => Ok(Self::Autocmd((
+                AutocmdEventType::BufWinLeave,
+                notification.params,
+            ))),
+            _ => Ok(Self::Action(action_parser(notification)?)),
         }
     }
 }

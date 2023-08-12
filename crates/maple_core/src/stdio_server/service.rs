@@ -3,7 +3,7 @@
 use crate::stdio_server::input::{
     InternalProviderEvent, PluginEvent, ProviderEvent, ProviderEventSender,
 };
-use crate::stdio_server::plugin::ClapPlugin;
+use crate::stdio_server::plugin::{ActionType, ClapPlugin};
 use crate::stdio_server::provider::{ClapProvider, Context};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -13,6 +13,7 @@ use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;
 
+use super::input::PluginAction;
 use super::plugin::PluginId;
 
 pub type ProviderSessionId = u64;
@@ -375,15 +376,25 @@ impl ServiceManager {
     }
 
     /// Creates a new plugin session with the default debounce setting.
-    pub fn new_plugin(&mut self, plugin_id: PluginId, plugin: Box<dyn ClapPlugin>) {
+    pub fn register_plugin(&mut self, plugin: Box<dyn ClapPlugin>) -> (PluginId, Vec<String>) {
+        let plugin_id = plugin.id();
+
+        let all_actions = plugin
+            .actions(ActionType::All)
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+
         self.plugins.insert(
             plugin_id,
             PluginSession::create(plugin, Some(Duration::from_millis(50))),
         );
+
+        (plugin_id, all_actions)
     }
 
     #[allow(unused)]
-    pub fn new_plugin_without_debounce(
+    pub fn register_plugin_without_debounce(
         &mut self,
         plugin_id: PluginId,
         plugin: Box<dyn ClapPlugin>,
@@ -398,9 +409,9 @@ impl ServiceManager {
             .retain(|_plugin_id, plugin_sender| plugin_sender.send(plugin_event.clone()).is_ok());
     }
 
-    pub fn notify_plugin(&mut self, plugin_id: PluginId, plugin_event: PluginEvent) {
+    pub fn notify_plugin_action(&mut self, plugin_id: PluginId, plugin_action: PluginAction) {
         if let Entry::Occupied(v) = self.plugins.entry(plugin_id) {
-            if v.get().send(plugin_event).is_err() {
+            if v.get().send(PluginEvent::Action(plugin_action)).is_err() {
                 v.remove_entry();
             }
         }

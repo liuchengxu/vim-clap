@@ -11,19 +11,31 @@ pub use ctags::CtagsPlugin;
 pub use highlight_cursor_word::CursorWordHighlighter;
 pub use markdown_toc::MarkdownPlugin;
 
-/// A trait each Clap plugin must implement.
-#[async_trait::async_trait]
-pub trait ClapPlugin: Debug + Send + Sync + 'static {
-    async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()>;
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum PluginId {
+    System,
     Ctags,
     CursorWordHighlighter,
     Markdown,
-    System,
-    Unknown,
+}
+
+#[derive(Debug)]
+pub enum ActionType {
+    Callable,
+    All,
+}
+
+/// A trait each Clap plugin must implement.
+#[async_trait::async_trait]
+pub trait ClapPlugin: Debug + Send + Sync + 'static {
+    fn id(&self) -> PluginId;
+
+    /// Returns the actions that can be invoked by users from cmdline.
+    fn actions(&self, _action_type: ActionType) -> &[&'static str] {
+        &[]
+    }
+
+    async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()>;
 }
 
 #[derive(Debug, Clone)]
@@ -35,6 +47,9 @@ impl SystemPlugin {
     const NOTE_RECENT_FILES: &'static str = "note_recent_files";
     const OPEN_CONFIG: &'static str = "open-config";
 
+    const CALLABLE_ACTIONS: &[&'static str] = &[Self::OPEN_CONFIG];
+
+    pub const ID: PluginId = PluginId::System;
     pub const ACTIONS: &[&'static str] = &[Self::NOTE_RECENT_FILES, Self::OPEN_CONFIG];
 
     pub fn new(vim: Vim) -> Self {
@@ -44,6 +59,17 @@ impl SystemPlugin {
 
 #[async_trait::async_trait]
 impl ClapPlugin for SystemPlugin {
+    fn id(&self) -> PluginId {
+        Self::ID
+    }
+
+    fn actions(&self, action_type: ActionType) -> &[&'static str] {
+        match action_type {
+            ActionType::Callable => Self::CALLABLE_ACTIONS,
+            ActionType::All => Self::ACTIONS,
+        }
+    }
+
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
         match plugin_event {
             PluginEvent::Autocmd(_) => Ok(()),
