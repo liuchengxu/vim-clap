@@ -21,7 +21,9 @@ pub enum PluginId {
 
 #[derive(Debug)]
 pub enum ActionType {
+    /// Actions that users can interact with.
     Callable,
+    /// All actions.
     All,
 }
 
@@ -30,7 +32,6 @@ pub enum ActionType {
 pub trait ClapPlugin: Debug + Send + Sync + 'static {
     fn id(&self) -> PluginId;
 
-    /// Returns the actions that can be invoked by users from cmdline.
     fn actions(&self, _action_type: ActionType) -> &[&'static str] {
         &[]
     }
