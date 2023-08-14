@@ -437,7 +437,7 @@ impl Context {
                             // Show help in the display window.
                             let err_msg = err.to_string();
                             let lines = err_msg.split('\n').collect::<Vec<_>>();
-                            let _ = self.vim.exec("display_set_lines", json!([lines]));
+                            let _ = self.vim.exec("display_set_lines", [lines]);
                         }
                         _ => {
                             let _ = self.vim.echo_warn(format!(
@@ -510,10 +510,10 @@ impl Context {
     pub async fn next_input(&mut self) -> Result<()> {
         if let Some(next) = self.input_recorder.move_to_next() {
             if self.env.is_nvim {
-                self.vim.exec("clap#state#set_input", json!([next]))?;
+                self.vim.exec("clap#state#set_input", [next])?;
             } else {
                 self.vim
-                    .exec("clap#popup#move_manager#set_input_and_react", json!([next]))?;
+                    .exec("clap#popup#move_manager#set_input_and_react", [next])?;
             }
         }
         Ok(())
@@ -522,12 +522,10 @@ impl Context {
     pub async fn previous_input(&mut self) -> Result<()> {
         if let Some(previous) = self.input_recorder.move_to_previous() {
             if self.env.is_nvim {
-                self.vim.exec("clap#state#set_input", json!([previous]))?;
+                self.vim.exec("clap#state#set_input", [previous])?;
             } else {
-                self.vim.exec(
-                    "clap#popup#move_manager#set_input_and_react",
-                    json!([previous]),
-                )?;
+                self.vim
+                    .exec("clap#popup#move_manager#set_input_and_react", [previous])?;
             }
         }
         Ok(())

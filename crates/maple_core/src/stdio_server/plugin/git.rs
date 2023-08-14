@@ -10,9 +10,10 @@ pub struct GitPlugin {
 
 impl GitPlugin {
     const OPEN_CURRENT_LINE_IN_BROWSER: &'static str = "git/open-current-line-in-browser";
+    const BLAME: &'static str = "git/blame";
 
     pub const ID: PluginId = PluginId::Git;
-    pub const ACTIONS: &[&'static str] = &[Self::OPEN_CURRENT_LINE_IN_BROWSER];
+    pub const ACTIONS: &[&'static str] = &[Self::OPEN_CURRENT_LINE_IN_BROWSER, Self::BLAME];
 
     pub fn new(vim: Vim) -> Self {
         Self { vim }
@@ -90,6 +91,35 @@ impl ClapPlugin for GitPlugin {
                             self.vim
                                 .echo_warn(format!("Failed to open {commit_url}: {e:?}"))?;
                         }
+                    }
+                    Self::BLAME => {
+                        let buf_path = self.vim.current_buffer_path().await?;
+                        let filepath = Path::new(&buf_path);
+
+                        let Some(git_root) = filepath
+                            .exists()
+                            .then(|| crate::paths::find_git_root(&filepath))
+                            .flatten()
+                        else {
+                            return Ok(());
+                        };
+
+                        let relative_path = filepath.strip_prefix(git_root)?;
+
+                        let lnum = self.vim.line(".").await?;
+
+                        let output = std::process::Command::new("git")
+                            .current_dir(git_root)
+                            .arg("blame")
+                            .arg(format!("-L{lnum},{lnum}"))
+                            .arg("--")
+                            .arg(relative_path)
+                            .stderr(std::process::Stdio::inherit())
+                            .output()?;
+
+                        let stdout = String::from_utf8_lossy(&output.stdout);
+
+                        self.vim.echo_info(stdout)?;
                     }
                     unknown_action => return Err(anyhow!("Unknown action: {unknown_action:?}")),
                 }
