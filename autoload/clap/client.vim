@@ -63,13 +63,13 @@ endfunction
 
 function! clap#client#notify(method, ...) abort
   if clap#job#daemon#is_running()
-    call clap#rpc#notify(a:method, get(a:000, 0, v:null))
+    call clap#rpc#notify(a:method, get(a:000, 0, []))
   endif
 endfunction
 
 " Optional argument: params: v:null, List, Dict
 function! clap#client#request_async(method, callback, ...) abort
-  call s:request_async(a:method, get(a:000, 0, v:null))
+  call s:request_async(a:method, get(a:000, 0, []))
   if a:callback isnot v:null
     let s:handlers[s:req_id] = a:callback
   endif
