@@ -111,6 +111,8 @@ impl ClapPlugin for GitPlugin {
                         let output = std::process::Command::new("git")
                             .current_dir(git_root)
                             .arg("blame")
+                            .arg("-p")
+                            .arg("--incremental")
                             .arg(format!("-L{lnum},{lnum}"))
                             .arg("--")
                             .arg(relative_path)
@@ -119,8 +121,51 @@ impl ClapPlugin for GitPlugin {
 
                         let stdout = String::from_utf8_lossy(&output.stdout);
 
-                        self.vim.echo_info(stdout)?;
+                        let mut author = None;
+                        let mut summary = None;
+                        let mut author_time = None;
+
+                        for line in stdout.split('\n') {
+                            if let Some((k, v)) = line.split_once(' ') {
+                                match k {
+                                    "author" => {
+                                        if v == "Not Committed Yet" {
+                                            self.vim.echo_info(format!("({v})"))?;
+                                            return Ok(());
+                                        }
+
+                                        author.replace(v);
+                                    }
+                                    "summary" => {
+                                        summary.replace(v);
+                                    }
+                                    "author-time" => {
+                                        author_time.replace(v);
+                                    }
+                                    _ => {}
+                                }
+                            }
+
+                            match (author, author_time, summary) {
+                                (Some(author), Some(author_time), Some(summary)) => {
+                                    use chrono::{TimeZone, Utc};
+
+                                    let author_time = Utc
+                                        .timestamp_opt(
+                                            author_time.parse::<i64>().expect("Parse timestamp"),
+                                            0,
+                                        )
+                                        .unwrap();
+
+                                    self.vim
+                                        .echo_info(format!("({author} {author_time}) {summary}"))?;
+                                    return Ok(());
+                                }
+                                _ => {}
+                            }
+                        }
                     }
+
                     unknown_action => return Err(anyhow!("Unknown action: {unknown_action:?}")),
                 }
 
