@@ -1,7 +1,7 @@
 use crate::stdio_server::plugin::{ActionType, ClapPlugin, PluginAction, PluginEvent, PluginId};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
 pub struct GitPlugin {
@@ -17,6 +17,65 @@ impl GitPlugin {
 
     pub fn new(vim: Vim) -> Self {
         Self { vim }
+    }
+
+    async fn show_blame_info(
+        &self,
+        git_root: &Path,
+        relative_path: &Path,
+        lnum: usize,
+    ) -> Result<()> {
+        let output = std::process::Command::new("git")
+            .current_dir(git_root)
+            .arg("blame")
+            .arg("-p")
+            .arg("--incremental")
+            .arg(format!("-L{lnum},{lnum}"))
+            .arg("--")
+            .arg(relative_path)
+            .stderr(std::process::Stdio::inherit())
+            .output()?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        let mut author = None;
+        let mut summary = None;
+        let mut author_time = None;
+
+        for line in stdout.split('\n') {
+            if let Some((k, v)) = line.split_once(' ') {
+                match k {
+                    "author" => {
+                        if v == "Not Committed Yet" {
+                            self.vim.echo_info(format!("({v})"))?;
+                            return Ok(());
+                        }
+
+                        author.replace(v);
+                    }
+                    "summary" => {
+                        summary.replace(v);
+                    }
+                    "author-time" => {
+                        author_time.replace(v);
+                    }
+                    _ => {}
+                }
+            }
+
+            match (author, author_time, summary) {
+                (Some(author), Some(author_time), Some(summary)) => {
+                    use chrono::{TimeZone, Utc};
+
+                    let time = Utc.timestamp_opt(author_time.parse::<i64>()?, 0).unwrap();
+
+                    self.vim.echo_info(format!("({author} {time}) {summary}"))?;
+                    return Ok(());
+                }
+                _ => {}
+            }
+        }
+        Ok(())
     }
 }
 
@@ -94,7 +153,7 @@ impl ClapPlugin for GitPlugin {
                     }
                     Self::BLAME => {
                         let buf_path = self.vim.current_buffer_path().await?;
-                        let filepath = Path::new(&buf_path);
+                        let filepath = PathBuf::from(buf_path);
 
                         let Some(git_root) = filepath
                             .exists()
@@ -108,62 +167,7 @@ impl ClapPlugin for GitPlugin {
 
                         let lnum = self.vim.line(".").await?;
 
-                        let output = std::process::Command::new("git")
-                            .current_dir(git_root)
-                            .arg("blame")
-                            .arg("-p")
-                            .arg("--incremental")
-                            .arg(format!("-L{lnum},{lnum}"))
-                            .arg("--")
-                            .arg(relative_path)
-                            .stderr(std::process::Stdio::inherit())
-                            .output()?;
-
-                        let stdout = String::from_utf8_lossy(&output.stdout);
-
-                        let mut author = None;
-                        let mut summary = None;
-                        let mut author_time = None;
-
-                        for line in stdout.split('\n') {
-                            if let Some((k, v)) = line.split_once(' ') {
-                                match k {
-                                    "author" => {
-                                        if v == "Not Committed Yet" {
-                                            self.vim.echo_info(format!("({v})"))?;
-                                            return Ok(());
-                                        }
-
-                                        author.replace(v);
-                                    }
-                                    "summary" => {
-                                        summary.replace(v);
-                                    }
-                                    "author-time" => {
-                                        author_time.replace(v);
-                                    }
-                                    _ => {}
-                                }
-                            }
-
-                            match (author, author_time, summary) {
-                                (Some(author), Some(author_time), Some(summary)) => {
-                                    use chrono::{TimeZone, Utc};
-
-                                    let author_time = Utc
-                                        .timestamp_opt(
-                                            author_time.parse::<i64>().expect("Parse timestamp"),
-                                            0,
-                                        )
-                                        .unwrap();
-
-                                    self.vim
-                                        .echo_info(format!("({author} {author_time}) {summary}"))?;
-                                    return Ok(());
-                                }
-                                _ => {}
-                            }
-                        }
+                        self.show_blame_info(git_root, relative_path, lnum).await?;
                     }
 
                     unknown_action => return Err(anyhow!("Unknown action: {unknown_action:?}")),
