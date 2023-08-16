@@ -8,10 +8,10 @@ use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use std::fmt::Debug;
 
-pub use ctags::CtagsPlugin;
-pub use cursor_word_highlighter::CursorWordHighlighter;
-pub use git::GitPlugin;
-pub use markdown::MarkdownPlugin;
+pub use self::ctags::CtagsPlugin;
+pub use self::cursor_word_highlighter::CursorWordHighlighter;
+pub use self::git::GitPlugin;
+pub use self::markdown::MarkdownPlugin;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum PluginId {

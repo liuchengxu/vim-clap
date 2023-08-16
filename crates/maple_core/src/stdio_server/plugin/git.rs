@@ -99,13 +99,10 @@ fn parse_blame_output(stdout: Vec<u8>) -> Result<(String, i64, String)> {
             }
         }
 
-        match (author, author_time, summary) {
-            (Some(author), Some(author_time), Some(summary)) => {
-                let time = author_time.parse::<i64>()?;
+        if let (Some(author), Some(author_time), Some(summary)) = (author, author_time, summary) {
+            let time = author_time.parse::<i64>()?;
 
-                return Ok((author.to_owned(), time, summary.to_string()));
-            }
-            _ => {}
+            return Ok((author.to_owned(), time, summary.to_string()));
         }
     }
 
@@ -146,7 +143,7 @@ impl ClapPlugin for GitPlugin {
 
                         let Some(git_root) = filepath
                             .exists()
-                            .then(|| crate::paths::find_git_root(&filepath))
+                            .then(|| crate::paths::find_git_root(filepath))
                             .flatten()
                         else {
                             return Ok(());
@@ -222,7 +219,7 @@ impl ClapPlugin for GitPlugin {
                         let (author, author_time, summary) = parse_blame_output(stdout)?;
 
                         if author == "Not Committed Yet" {
-                            self.vim.echo_info(format!("{author}"))?;
+                            self.vim.echo_info(author)?;
                         } else {
                             let user_name = get_user_name(git_root)?;
                             let time = Utc.timestamp_opt(author_time, 0).unwrap();

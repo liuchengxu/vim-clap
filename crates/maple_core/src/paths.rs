@@ -190,7 +190,7 @@ pub fn find_project_root<'a, P: AsRef<Path>>(
     .ok()
 }
 
-pub fn find_git_root<'a>(start_dir: &'a Path) -> Option<&'a Path> {
+pub fn find_git_root(start_dir: &Path) -> Option<&Path> {
     upward_search(start_dir, |path| {
         [".git", ".git/"]
             .iter()
