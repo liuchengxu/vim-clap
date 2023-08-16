@@ -12,7 +12,18 @@ pub struct GitPlugin {
     vim: Vim,
 }
 
-fn get_user_name(git_root: &Path) -> Result<String> {
+fn fetch_rev_parse(git_root: &Path, arg: &str) -> Result<String> {
+    let output = std::process::Command::new("git")
+        .current_dir(git_root)
+        .arg("rev-parse")
+        .arg(arg)
+        .stderr(std::process::Stdio::inherit())
+        .output()?;
+
+    Ok(String::from_utf8(output.stdout)?)
+}
+
+fn fetch_user_name(git_root: &Path) -> Result<String> {
     let output = std::process::Command::new("git")
         .current_dir(git_root)
         .arg("config")
@@ -61,7 +72,7 @@ fn fetch_blame_info_with_lines(
     let stdin = p
         .stdin
         .as_mut()
-        .ok_or_else(|| anyhow::anyhow!("stdin unavailable"))?;
+        .ok_or_else(|| anyhow!("stdin unavailable"))?;
     stdin.write_all(lines.as_bytes())?;
 
     let output = p.wait_with_output()?;
@@ -69,7 +80,7 @@ fn fetch_blame_info_with_lines(
     if output.status.success() {
         Ok(output.stdout)
     } else {
-        Err(anyhow::anyhow!(
+        Err(anyhow!(
             "Child process errors out: {}",
             String::from_utf8_lossy(&output.stderr)
         ))
@@ -170,14 +181,7 @@ impl ClapPlugin for GitPlugin {
                         // https://github.com/liuchengxu/vim-clap{.git}
                         let remote_url = remote_url.strip_suffix(".git").unwrap_or(remote_url);
 
-                        let output = std::process::Command::new("git")
-                            .current_dir(git_root)
-                            .arg("rev-parse")
-                            .arg("HEAD")
-                            .stderr(std::process::Stdio::inherit())
-                            .output()?;
-
-                        let stdout = String::from_utf8_lossy(&output.stdout);
+                        let stdout = fetch_rev_parse(git_root, "HEAD")?;
                         let Some(rev) = stdout.split('\n').next() else {
                             return Ok(())
                         };
@@ -221,8 +225,11 @@ impl ClapPlugin for GitPlugin {
                         if author == "Not Committed Yet" {
                             self.vim.echo_info(author)?;
                         } else {
-                            let user_name = get_user_name(git_root)?;
-                            let time = Utc.timestamp_opt(author_time, 0).unwrap();
+                            let user_name = fetch_user_name(git_root)?;
+                            let time =
+                                Utc.timestamp_opt(author_time, 0).single().ok_or_else(|| {
+                                    anyhow!("Failed to parse timestamp {author_time}")
+                                })?;
                             if user_name == author {
                                 self.vim.echo_info(format!("(You {time}) {summary}"))?;
                             } else {

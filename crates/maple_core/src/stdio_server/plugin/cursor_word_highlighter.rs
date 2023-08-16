@@ -196,6 +196,42 @@ impl CursorWordHighlighter {
 
         Ok(())
     }
+
+    async fn try_track_buffer(&mut self, bufnr: usize) -> Result<()> {
+        if self.bufs.contains_key(&bufnr) {
+            return Ok(());
+        }
+
+        let source_file = self.vim.current_buffer_path().await?;
+        let source_file = PathBuf::from(source_file);
+
+        if !source_file.is_file() {
+            return Ok(());
+        }
+
+        let Some(file_extension) = source_file.extension().and_then(|s| s.to_str())
+                else {
+                    return Ok(())
+                };
+
+        let Some(file_name) = source_file.file_name().and_then(|s| s.to_str())
+                else {
+                    return Ok(())
+                };
+
+        if self
+            .ignore_extensions
+            .iter()
+            .any(|s| &s[2..] == file_extension)
+            || self.ignore_file_names.contains(&file_name)
+        {
+            return Ok(());
+        }
+
+        self.bufs.insert(bufnr, source_file);
+
+        Ok(())
+    }
 }
 
 #[async_trait::async_trait]
@@ -217,51 +253,16 @@ impl ClapPlugin for CursorWordHighlighter {
         let bufnr = params.parse_bufnr()?;
 
         match event_type {
-            BufEnter | BufWinEnter => {
-                if self.bufs.contains_key(&bufnr) {
-                    return Ok(());
-                }
-
-                let source_file = self.vim.current_buffer_path().await?;
-                let source_file = PathBuf::from(source_file);
-
-                if !source_file.is_file() {
-                    return Ok(());
-                }
-
-                let Some(file_extension) = source_file.extension().and_then(|s| s.to_str())
-                else {
-                    return Ok(())
-                };
-
-                let Some(file_name) = source_file.file_name().and_then(|s| s.to_str())
-                else {
-                    return Ok(())
-                };
-
-                if self
-                    .ignore_extensions
-                    .iter()
-                    .any(|s| &s[2..] == file_extension)
-                    || self.ignore_file_names.contains(&file_name)
-                {
-                    return Ok(());
-                }
-
-                self.bufs.insert(bufnr, source_file);
-            }
+            BufEnter | BufWinEnter => self.try_track_buffer(bufnr).await?,
             BufDelete | BufLeave | BufWinLeave => {
                 self.bufs.remove(&bufnr);
             }
             CursorMoved if self.bufs.contains_key(&bufnr) => {
                 self.highlight_symbol_under_cursor(bufnr).await?
             }
-            InsertEnter => {
-                if self.bufs.contains_key(&bufnr) {
-                    if let Some(WinHighlights { winid, match_ids }) = self.cursor_highlights.take()
-                    {
-                        self.vim.matchdelete_batch(match_ids, winid).await?;
-                    }
+            InsertEnter if self.bufs.contains_key(&bufnr) => {
+                if let Some(WinHighlights { winid, match_ids }) = self.cursor_highlights.take() {
+                    self.vim.matchdelete_batch(match_ids, winid).await?;
                 }
             }
             _ => {}
