@@ -354,6 +354,15 @@ impl Vim {
         self.call("getbufvar", (buf, varname)).await
     }
 
+    pub async fn getbufline(
+        &self,
+        buf: impl Serialize,
+        start: impl Serialize,
+        end: impl Serialize,
+    ) -> Result<Vec<String>> {
+        self.call("getbufline", (buf, start, end)).await
+    }
+
     pub async fn getpos(&self, expr: &str) -> Result<[usize; 4]> {
         self.call("getpos", [expr]).await
     }
@@ -450,6 +459,12 @@ impl Vim {
 
     pub fn echo_warn(&self, msg: impl AsRef<str>) -> Result<()> {
         self.exec("clap#helper#echo_warn", [msg.as_ref()])
+    }
+
+    pub async fn bufmodified(&self, bufnr: impl Serialize) -> Result<bool> {
+        self.getbufvar::<u32>(bufnr, "&modified")
+            .await
+            .map(|m| m == 1u32)
     }
 
     pub async fn current_winid(&self) -> Result<usize> {
