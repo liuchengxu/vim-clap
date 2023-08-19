@@ -1,16 +1,13 @@
+use crate::stdio_server::input::AutocmdEventType;
 use crate::stdio_server::plugin::{ActionType, ClapPlugin, PluginAction, PluginEvent, PluginId};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use chrono::{TimeZone, Utc};
 use itertools::Itertools;
+use std::collections::HashMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
-
-#[derive(Debug, Clone)]
-pub struct GitPlugin {
-    vim: Vim,
-}
 
 fn fetch_rev_parse(git_root: &Path, arg: &str) -> Result<String> {
     let output = std::process::Command::new("git")
@@ -28,6 +25,18 @@ fn fetch_user_name(git_root: &Path) -> Result<String> {
         .current_dir(git_root)
         .arg("config")
         .arg("user.name")
+        .stderr(std::process::Stdio::inherit())
+        .output()?;
+
+    Ok(String::from_utf8(output.stdout)?)
+}
+
+fn fetch_origin_url(git_root: &Path) -> Result<String> {
+    let output = std::process::Command::new("git")
+        .current_dir(git_root)
+        .arg("config")
+        .arg("--get")
+        .arg("remote.origin.url")
         .stderr(std::process::Stdio::inherit())
         .output()?;
 
@@ -120,6 +129,19 @@ fn parse_blame_output(stdout: Vec<u8>) -> Result<(String, i64, String)> {
     Err(anyhow!("blame digest not found in output"))
 }
 
+fn in_git_repo(filepath: &Path) -> Option<&Path> {
+    filepath
+        .exists()
+        .then(|| crate::paths::find_git_root(filepath))
+        .flatten()
+}
+
+#[derive(Debug, Clone)]
+pub struct GitPlugin {
+    vim: Vim,
+    bufs: HashMap<usize, (PathBuf, PathBuf)>,
+}
+
 impl GitPlugin {
     const BLAME: &'static str = "git/blame";
     const OPEN_CURRENT_LINE_IN_BROWSER: &'static str = "git/open-current-line-in-browser";
@@ -128,7 +150,73 @@ impl GitPlugin {
     pub const ACTIONS: &[&'static str] = &[Self::OPEN_CURRENT_LINE_IN_BROWSER, Self::BLAME];
 
     pub fn new(vim: Vim) -> Self {
-        Self { vim }
+        Self {
+            vim,
+            bufs: HashMap::new(),
+        }
+    }
+
+    async fn try_track_buffer(&mut self, bufnr: usize) -> Result<()> {
+        if self.bufs.contains_key(&bufnr) {
+            return Ok(());
+        }
+
+        let buf_path = self.vim.current_buffer_path().await?;
+
+        let filepath = PathBuf::from(buf_path);
+
+        if let Some(git_root) = in_git_repo(&filepath) {
+            let git_root = git_root.to_path_buf();
+            self.bufs.insert(bufnr, (filepath, git_root));
+            return Ok(());
+        }
+
+        Ok(())
+    }
+
+    async fn cursor_line_blame_info(&self, filepath: &Path, git_root: &Path) -> Result<String> {
+        let relative_path = filepath.strip_prefix(git_root)?;
+
+        let lnum = self.vim.line(".").await?;
+
+        let stdout = if self.vim.bufmodified("").await? {
+            let lines = self.vim.getbufline("", 1, "$").await?;
+            fetch_blame_info_with_lines(git_root, relative_path, lnum, lines)?
+        } else {
+            fetch_blame_info(git_root, relative_path, lnum)?
+        };
+
+        let (author, author_time, summary) = parse_blame_output(stdout)?;
+
+        if author == "Not Committed Yet" {
+            Ok(author.to_string())
+        } else {
+            let user_name = fetch_user_name(git_root)?;
+            let time = Utc
+                .timestamp_opt(author_time, 0)
+                .single()
+                .ok_or_else(|| anyhow!("Failed to parse timestamp {author_time}"))?;
+            let time = chrono_humanize::HumanTime::from(time);
+            if user_name.trim() == author {
+                Ok(format!("(You {time}) {summary}"))
+            } else {
+                Ok(format!("({author} {time}) {summary}"))
+            }
+        }
+    }
+
+    async fn show_blame_info(&self) -> Result<()> {
+        let buf_path = self.vim.current_buffer_path().await?;
+        let filepath = PathBuf::from(buf_path);
+
+        let Some(git_root) = in_git_repo(&filepath) else {
+            return Ok(());
+        };
+
+        let blame_info = self.cursor_line_blame_info(&filepath, git_root).await?;
+        self.vim.echo_info(blame_info)?;
+
+        Ok(())
     }
 }
 
@@ -144,7 +232,32 @@ impl ClapPlugin for GitPlugin {
 
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
         match plugin_event {
-            PluginEvent::Autocmd(_) => Ok(()),
+            PluginEvent::Autocmd((autocmd_event_type, params)) => {
+                use AutocmdEventType::{BufDelete, BufEnter, CursorMoved, InsertEnter};
+
+                tracing::info!("========== [git] {autocmd_event_type:?}");
+                let bufnr = params.parse_bufnr()?;
+
+                match autocmd_event_type {
+                    BufEnter => self.try_track_buffer(bufnr).await?,
+                    BufDelete => {
+                        self.bufs.remove(&bufnr);
+                    }
+                    InsertEnter => {
+                        // Clear blame info
+                    }
+                    CursorMoved => {
+                        if let Some((filepath, git_root)) = self.bufs.get(&bufnr) {
+                            let blame_info =
+                                self.cursor_line_blame_info(filepath, git_root).await?;
+                            self.vim.exec("echomsg", [blame_info])?;
+                        }
+                    }
+                    _ => {}
+                }
+
+                Ok(())
+            }
             PluginEvent::Action(plugin_action) => {
                 let PluginAction { action, params: _ } = plugin_action;
                 match action.as_str() {
@@ -152,36 +265,22 @@ impl ClapPlugin for GitPlugin {
                         let buf_path = self.vim.current_buffer_path().await?;
                         let filepath = Path::new(&buf_path);
 
-                        let Some(git_root) = filepath
-                            .exists()
-                            .then(|| crate::paths::find_git_root(filepath))
-                            .flatten()
-                        else {
+                        let Some(git_root) = in_git_repo(filepath) else {
                             return Ok(());
                         };
 
                         let relative_path = filepath.strip_prefix(git_root)?;
 
-                        let output = std::process::Command::new("git")
-                            .current_dir(git_root)
-                            .arg("remote")
-                            .arg("-v")
-                            .stderr(std::process::Stdio::inherit())
-                            .output()?;
-
-                        let stdout = String::from_utf8_lossy(&output.stdout);
-                        let Some(remote_url) = stdout
-                            .split('\n')
-                            .find(|line| line.starts_with("origin"))
-                            .and_then(|origin_line| origin_line.split_whitespace().nth(1))
-                        else {
-                            return Ok(());
-                        };
+                        let stdout = fetch_origin_url(git_root)?;
+                        let remote_url = stdout.trim();
 
                         // https://github.com/liuchengxu/vim-clap{.git}
                         let remote_url = remote_url.strip_suffix(".git").unwrap_or(remote_url);
 
-                        let stdout = fetch_rev_parse(git_root, "HEAD")?;
+                        let Ok(stdout) = fetch_rev_parse(git_root, "HEAD") else {
+                            return Ok(());
+                        };
+
                         let Some(rev) = stdout.split('\n').next() else {
                             return Ok(())
                         };
@@ -197,48 +296,7 @@ impl ClapPlugin for GitPlugin {
                                 .echo_warn(format!("Failed to open {commit_url}: {e:?}"))?;
                         }
                     }
-                    Self::BLAME => {
-                        let buf_path = self.vim.current_buffer_path().await?;
-                        let filepath = PathBuf::from(buf_path);
-
-                        let Some(git_root) = filepath
-                            .exists()
-                            .then(|| crate::paths::find_git_root(&filepath))
-                            .flatten()
-                        else {
-                            return Ok(());
-                        };
-
-                        let relative_path = filepath.strip_prefix(git_root)?;
-
-                        let lnum = self.vim.line(".").await?;
-
-                        let stdout = if self.vim.bufmodified("").await? {
-                            let lines = self.vim.getbufline("", 1, "$").await?;
-                            fetch_blame_info_with_lines(git_root, relative_path, lnum, lines)?
-                        } else {
-                            fetch_blame_info(git_root, relative_path, lnum)?
-                        };
-
-                        let (author, author_time, summary) = parse_blame_output(stdout)?;
-
-                        if author == "Not Committed Yet" {
-                            self.vim.echo_info(author)?;
-                        } else {
-                            let user_name = fetch_user_name(git_root)?;
-                            let time =
-                                Utc.timestamp_opt(author_time, 0).single().ok_or_else(|| {
-                                    anyhow!("Failed to parse timestamp {author_time}")
-                                })?;
-                            let time = chrono_humanize::HumanTime::from(time);
-                            if user_name.trim() == author {
-                                self.vim.echo_info(format!("(You {time}) {summary}"))?;
-                            } else {
-                                self.vim.echo_info(format!("({author} {time}) {summary}"))?;
-                            }
-                        }
-                    }
-
+                    Self::BLAME => self.show_blame_info().await?,
                     unknown_action => return Err(anyhow!("Unknown action: {unknown_action:?}")),
                 }
 

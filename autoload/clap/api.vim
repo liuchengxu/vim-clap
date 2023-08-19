@@ -130,6 +130,10 @@ function! s:api.show_lines_in_preview(lines) abort
   endif
 endfunction
 
+function! s:api.echomsg(msg) abort
+  echomsg a:msg
+endfunction
+
 function! s:api.set_initial_query(query) abort
   if a:query ==# '@visual'
     let query = clap#util#get_visual_selection()
