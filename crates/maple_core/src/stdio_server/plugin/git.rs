@@ -230,7 +230,8 @@ impl ClapPlugin for GitPlugin {
                                 Utc.timestamp_opt(author_time, 0).single().ok_or_else(|| {
                                     anyhow!("Failed to parse timestamp {author_time}")
                                 })?;
-                            if user_name == author {
+                            let time = chrono_humanize::HumanTime::from(time);
+                            if user_name.trim() == author {
                                 self.vim.echo_info(format!("(You {time}) {summary}"))?;
                             } else {
                                 self.vim.echo_info(format!("({author} {time}) {summary}"))?;
