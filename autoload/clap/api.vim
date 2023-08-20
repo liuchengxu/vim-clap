@@ -47,6 +47,31 @@ if s:is_nvim
   function! s:api.get_var(name) abort
     return nvim_get_var(a:name)
   endfunction
+
+  function! s:api.show_cursor_blame_info(bufnr, text) abort
+    if !exists('s:blame_ns_id')
+      let s:blame_ns_id = nvim_create_namespace('clap_blame')
+    endif
+
+    let id = getbufvar(a:bufnr, 'clap_last_extmark_id')
+    if !empty(id)
+      call nvim_buf_del_extmark(a:bufnr, s:blame_ns_id, id)
+    endif
+
+    let available_space = winwidth(bufwinid(a:bufnr)) - col('$')
+    if available_space > strlen(a:text)
+      let opts = { 'virt_text': [[a:text, 'SpecialComment']], 'virt_text_pos': 'eol' }
+    else
+      let opts = { 'virt_lines': [[[a:text, 'SpecialComment']]] }
+    endif
+
+    try
+      let last_id = nvim_buf_set_extmark(a:bufnr, s:blame_ns_id, line('.') - 1, col('.') - 1, opts)
+      call setbufvar(a:bufnr, 'clap_last_extmark_id', last_id)
+    " Suppress error: Invalid 'col': out of range
+    catch /^Vim\%((\a\+)\)\=:E5555/
+    endtry
+  endfunction
 else
   function! s:api.win_is_valid(winid) abort
     return win_screenpos(a:winid) != [0, 0]
@@ -54,6 +79,24 @@ else
 
   function! s:api.get_var(name) abort
     return get(g:, a:name, v:null)
+  endfunction
+
+  function! s:api.show_cursor_blame_info(bufnr, text) abort
+    let col_offset = &numberwidth + 4
+    let col_offset += &signcolumn ==# 'yes' ? 2 : 0
+    let popup_id = getbufvar(a:bufnr, 'clap_blame_popup_id')
+    if empty(popup_id)
+      let popup_id = popup_create(a:text, {
+            \ 'line': 'cursor',
+            \ 'col': col('$') + col_offset,
+            \ 'highlight': 'SpecialComment',
+            \ 'zindex': 50 - 1,
+            \ })
+      call setbufvar(a:bufnr, 'clap_blame_popup_id', popup_id)
+    else
+      call popup_settext(popup_id, a:text)
+      call popup_move(popup_id, { 'line': 'cursor', 'col': col('$') + col_offset })
+    endif
   endfunction
 endif
 
@@ -150,31 +193,6 @@ function! s:api.set_initial_query(query) abort
   endif
 
   return query
-endfunction
-
-function! s:api.show_cursor_blame_info(bufnr, text) abort
-  if !exists('s:blame_ns_id')
-    let s:blame_ns_id = nvim_create_namespace('clap_blame')
-  endif
-
-  let id = getbufvar(a:bufnr, 'clap_last_extmark_id')
-  if !empty(id)
-    call nvim_buf_del_extmark(a:bufnr, s:blame_ns_id, id)
-  endif
-
-  let available_space = winwidth(bufwinid(a:bufnr)) - col('$')
-  if available_space > strlen(a:text)
-    let opts = { 'virt_text': [[a:text, 'Function']], 'virt_text_pos': 'eol' }
-  else
-    let opts = { 'virt_lines': [[[a:text, 'Function']]] }
-  endif
-
-  try
-    let last_id = nvim_buf_set_extmark(a:bufnr, s:blame_ns_id, line('.') - 1, col('.') - 1, opts)
-    call setbufvar(a:bufnr, 'clap_last_extmark_id', last_id)
-  " Suppress error: Invalid 'col': out of range
-  catch /^Vim\%((\a\+)\)\=:E5555/
-  endtry
 endfunction
 
 function! clap#api#call(method, args) abort
