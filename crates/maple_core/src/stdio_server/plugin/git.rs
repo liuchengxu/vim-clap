@@ -139,7 +139,7 @@ impl BlameInfo {
                     let display_string = fmt;
                     let display_string = display_string.replace("author", author);
                     let display_string = display_string.replace("time", time.to_string().as_str());
-                    let display_string = display_string.replace("summary", &summary);
+                    let display_string = display_string.replace("summary", summary);
                     Ok(display_string.into())
                 } else {
                     Ok(format!("({author} {time}) {summary}").into())
