@@ -15,7 +15,7 @@ fn fetch_rev_parse(git_root: &Path, arg: &str) -> Result<String> {
         .current_dir(git_root)
         .arg("rev-parse")
         .arg(arg)
-        .stderr(std::process::Stdio::piped())
+        .stderr(Stdio::null())
         .output()?;
 
     Ok(String::from_utf8(output.stdout)?)
@@ -26,7 +26,7 @@ fn fetch_user_name(git_root: &Path) -> Result<String> {
         .current_dir(git_root)
         .arg("config")
         .arg("user.name")
-        .stderr(std::process::Stdio::piped())
+        .stderr(Stdio::null())
         .output()?;
 
     Ok(String::from_utf8(output.stdout)?)
@@ -38,7 +38,7 @@ fn fetch_origin_url(git_root: &Path) -> Result<String> {
         .arg("config")
         .arg("--get")
         .arg("remote.origin.url")
-        .stderr(std::process::Stdio::piped())
+        .stderr(Stdio::null())
         .output()?;
 
     Ok(String::from_utf8(output.stdout)?)
@@ -53,8 +53,8 @@ fn fetch_blame_output(git_root: &Path, relative_path: &Path, lnum: usize) -> Res
         .arg(format!("-L{lnum},{lnum}"))
         .arg("--")
         .arg(relative_path)
-        .stdin(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
         .output()?;
 
     if output.status.success() {
@@ -85,6 +85,7 @@ fn fetch_blame_output_with_lines(
         .arg(relative_path)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .spawn()?;
 
     let lines = lines.into_iter().join("\n");
