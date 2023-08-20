@@ -129,8 +129,18 @@ impl BlameInfo {
                     .single()
                     .ok_or_else(|| anyhow!("Failed to parse timestamp {author_time}"))?;
                 let time = chrono_humanize::HumanTime::from(time);
-                if user_name.trim() == author {
-                    Ok(format!("(You {time}) {summary}").into())
+                let author = if user_name.trim().eq(author) {
+                    "You"
+                } else {
+                    author
+                };
+
+                if let Some(fmt) = &crate::config::config().plugin.git.blame_format_string {
+                    let display_string = fmt;
+                    let display_string = display_string.replace("author", author);
+                    let display_string = display_string.replace("time", time.to_string().as_str());
+                    let display_string = display_string.replace("summary", &summary);
+                    Ok(display_string.into())
                 } else {
                     Ok(format!("({author} {time}) {summary}").into())
                 }

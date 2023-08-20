@@ -136,12 +136,34 @@ pub struct CtagsPluginConfig {
     pub enable: bool,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct GitPluginConfig {
+    /// Whether to enable this plugin.
+    pub enable: bool,
+
+    /// Format string used to display the blame info.
+    ///
+    /// The default format is `"(author time) summary"`.
+    pub blame_format_string: Option<String>,
+}
+
+impl Default for GitPluginConfig {
+    fn default() -> Self {
+        Self {
+            enable: true,
+            blame_format_string: None,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct PluginConfig {
     pub cursor_word_highlighter: CursorWordHighlighterConfig,
     pub markdown: MarkdownPluginConfig,
     pub ctags: CtagsPluginConfig,
+    pub git: GitPluginConfig,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
