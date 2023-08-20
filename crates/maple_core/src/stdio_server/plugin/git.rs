@@ -234,7 +234,6 @@ impl GitPlugin {
         if let Some((filepath, git_root)) = self.bufs.get(&bufnr) {
             let maybe_blame_info = self.cursor_line_blame_info(filepath, git_root).await?;
             if let Some(blame_info) = maybe_blame_info {
-                // self.vim.exec("echomsg", [blame_info])?;
                 self.vim
                     .exec("show_cursor_blame_info", (bufnr, blame_info))?;
             }
@@ -307,7 +306,7 @@ impl ClapPlugin for GitPlugin {
                         self.bufs.remove(&bufnr);
                     }
                     InsertEnter => {
-                        // Clear blame info
+                        self.vim.exec("clear_blame_info", [bufnr])?;
                     }
                     CursorMoved => self.on_cursor_moved(bufnr).await?,
                     _ => {}
