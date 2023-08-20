@@ -152,6 +152,31 @@ function! s:api.set_initial_query(query) abort
   return query
 endfunction
 
+function! s:api.show_cursor_blame_info(bufnr, text) abort
+  if !exists('s:blame_ns_id')
+    let s:blame_ns_id = nvim_create_namespace('clap_blame')
+  endif
+
+  let id = getbufvar(a:bufnr, 'clap_last_extmark_id')
+  if !empty(id)
+    call nvim_buf_del_extmark(a:bufnr, s:blame_ns_id, id)
+  endif
+
+  let available_space = winwidth(bufwinid(a:bufnr)) - col('$')
+  if available_space > strlen(a:text)
+    let opts = { 'virt_text': [[a:text, 'Function']], 'virt_text_pos': 'eol' }
+  else
+    let opts = { 'virt_lines': [[[a:text, 'Function']]] }
+  endif
+
+  try
+    let last_id = nvim_buf_set_extmark(a:bufnr, s:blame_ns_id, line('.') - 1, col('.') - 1, opts)
+    call setbufvar(a:bufnr, 'clap_last_extmark_id', last_id)
+  " Suppress error: Invalid 'col': out of range
+  catch /^Vim\%((\a\+)\)\=:E5555/
+  endtry
+endfunction
+
 function! clap#api#call(method, args) abort
   " Catch all the exceptions
   try

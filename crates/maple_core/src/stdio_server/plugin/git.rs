@@ -4,6 +4,7 @@ use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use chrono::{TimeZone, Utc};
 use itertools::Itertools;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -14,7 +15,7 @@ fn fetch_rev_parse(git_root: &Path, arg: &str) -> Result<String> {
         .current_dir(git_root)
         .arg("rev-parse")
         .arg(arg)
-        .stderr(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::piped())
         .output()?;
 
     Ok(String::from_utf8(output.stdout)?)
@@ -25,7 +26,7 @@ fn fetch_user_name(git_root: &Path) -> Result<String> {
         .current_dir(git_root)
         .arg("config")
         .arg("user.name")
-        .stderr(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::piped())
         .output()?;
 
     Ok(String::from_utf8(output.stdout)?)
@@ -37,13 +38,13 @@ fn fetch_origin_url(git_root: &Path) -> Result<String> {
         .arg("config")
         .arg("--get")
         .arg("remote.origin.url")
-        .stderr(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::piped())
         .output()?;
 
     Ok(String::from_utf8(output.stdout)?)
 }
 
-fn fetch_blame_info(git_root: &Path, relative_path: &Path, lnum: usize) -> Result<Vec<u8>> {
+fn fetch_blame_output(git_root: &Path, relative_path: &Path, lnum: usize) -> Result<Vec<u8>> {
     let output = std::process::Command::new("git")
         .current_dir(git_root)
         .arg("blame")
@@ -52,14 +53,22 @@ fn fetch_blame_info(git_root: &Path, relative_path: &Path, lnum: usize) -> Resul
         .arg(format!("-L{lnum},{lnum}"))
         .arg("--")
         .arg(relative_path)
-        .stderr(std::process::Stdio::inherit())
+        .stdin(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
         .output()?;
 
-    Ok(output.stdout)
+    if output.status.success() {
+        Ok(output.stdout)
+    } else {
+        Err(anyhow!(
+            "Child process errors out: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ))
+    }
 }
 
 // git blame --contents - -L 100,+1 --line-porcelain crates/maple_core/src/stdio_server/plugin/git.rs
-fn fetch_blame_info_with_lines(
+fn fetch_blame_output_with_lines(
     git_root: &Path,
     relative_path: &Path,
     lnum: usize,
@@ -75,6 +84,7 @@ fn fetch_blame_info_with_lines(
         .arg("--line-porcelain")
         .arg(relative_path)
         .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
         .spawn()?;
 
     let lines = lines.into_iter().join("\n");
@@ -96,7 +106,40 @@ fn fetch_blame_info_with_lines(
     }
 }
 
-fn parse_blame_output(stdout: Vec<u8>) -> Result<(String, i64, String)> {
+struct BlameInfo {
+    author: String,
+    author_time: Option<i64>,
+    summary: Option<String>,
+}
+
+impl BlameInfo {
+    fn display(&self, git_root: &Path) -> Result<Cow<'_, str>> {
+        let author = &self.author;
+
+        if author == "Not Committed Yet" {
+            return Ok(author.into());
+        }
+
+        match (&self.author_time, &self.summary) {
+            (Some(author_time), Some(summary)) => {
+                let user_name = fetch_user_name(git_root)?;
+                let time = Utc
+                    .timestamp_opt(*author_time, 0)
+                    .single()
+                    .ok_or_else(|| anyhow!("Failed to parse timestamp {author_time}"))?;
+                let time = chrono_humanize::HumanTime::from(time);
+                if user_name.trim() == author {
+                    Ok(format!("(You {time}) {summary}").into())
+                } else {
+                    Ok(format!("({author} {time}) {summary}").into())
+                }
+            }
+            _ => Ok(format!("({author})").into()),
+        }
+    }
+}
+
+fn parse_blame_info(stdout: Vec<u8>) -> Result<Option<BlameInfo>> {
     let stdout = String::from_utf8_lossy(&stdout);
 
     let mut author = None;
@@ -120,13 +163,15 @@ fn parse_blame_output(stdout: Vec<u8>) -> Result<(String, i64, String)> {
         }
 
         if let (Some(author), Some(author_time), Some(summary)) = (author, author_time, summary) {
-            let time = author_time.parse::<i64>()?;
-
-            return Ok((author.to_owned(), time, summary.to_string()));
+            return Ok(Some(BlameInfo {
+                author: author.to_owned(),
+                author_time: Some(author_time.parse::<i64>()?),
+                summary: Some(summary.to_owned()),
+            }));
         }
     }
 
-    Err(anyhow!("blame digest not found in output"))
+    Ok(None)
 }
 
 fn in_git_repo(filepath: &Path) -> Option<&Path> {
@@ -174,35 +219,39 @@ impl GitPlugin {
         Ok(())
     }
 
-    async fn cursor_line_blame_info(&self, filepath: &Path, git_root: &Path) -> Result<String> {
+    async fn on_cursor_moved(&self, bufnr: usize) -> Result<()> {
+        if let Some((filepath, git_root)) = self.bufs.get(&bufnr) {
+            let maybe_blame_info = self.cursor_line_blame_info(filepath, git_root).await?;
+            if let Some(blame_info) = maybe_blame_info {
+                // self.vim.exec("echomsg", [blame_info])?;
+                self.vim
+                    .exec("show_cursor_blame_info", (bufnr, blame_info))?;
+            }
+        }
+        Ok(())
+    }
+
+    async fn cursor_line_blame_info(
+        &self,
+        filepath: &Path,
+        git_root: &Path,
+    ) -> Result<Option<String>> {
         let relative_path = filepath.strip_prefix(git_root)?;
 
         let lnum = self.vim.line(".").await?;
 
         let stdout = if self.vim.bufmodified("").await? {
             let lines = self.vim.getbufline("", 1, "$").await?;
-            fetch_blame_info_with_lines(git_root, relative_path, lnum, lines)?
+            fetch_blame_output_with_lines(git_root, relative_path, lnum, lines)?
         } else {
-            fetch_blame_info(git_root, relative_path, lnum)?
+            fetch_blame_output(git_root, relative_path, lnum)?
         };
 
-        let (author, author_time, summary) = parse_blame_output(stdout)?;
-
-        if author == "Not Committed Yet" {
-            Ok(author.to_string())
-        } else {
-            let user_name = fetch_user_name(git_root)?;
-            let time = Utc
-                .timestamp_opt(author_time, 0)
-                .single()
-                .ok_or_else(|| anyhow!("Failed to parse timestamp {author_time}"))?;
-            let time = chrono_humanize::HumanTime::from(time);
-            if user_name.trim() == author {
-                Ok(format!("(You {time}) {summary}"))
-            } else {
-                Ok(format!("({author} {time}) {summary}"))
-            }
+        if let Ok(Some(blame_info)) = parse_blame_info(stdout) {
+            return Ok(Some(blame_info.display(git_root)?.to_string()));
         }
+
+        Ok(None)
     }
 
     async fn show_blame_info(&self) -> Result<()> {
@@ -213,8 +262,9 @@ impl GitPlugin {
             return Ok(());
         };
 
-        let blame_info = self.cursor_line_blame_info(&filepath, git_root).await?;
-        self.vim.echo_info(blame_info)?;
+        if let Ok(Some(blame_info)) = self.cursor_line_blame_info(&filepath, git_root).await {
+            self.vim.echo_info(blame_info)?;
+        }
 
         Ok(())
     }
@@ -235,24 +285,20 @@ impl ClapPlugin for GitPlugin {
             PluginEvent::Autocmd((autocmd_event_type, params)) => {
                 use AutocmdEventType::{BufDelete, BufEnter, CursorMoved, InsertEnter};
 
-                tracing::info!("========== [git] {autocmd_event_type:?}");
                 let bufnr = params.parse_bufnr()?;
 
                 match autocmd_event_type {
-                    BufEnter => self.try_track_buffer(bufnr).await?,
+                    BufEnter => {
+                        self.try_track_buffer(bufnr).await?;
+                        self.on_cursor_moved(bufnr).await?;
+                    }
                     BufDelete => {
                         self.bufs.remove(&bufnr);
                     }
                     InsertEnter => {
                         // Clear blame info
                     }
-                    CursorMoved => {
-                        if let Some((filepath, git_root)) = self.bufs.get(&bufnr) {
-                            let blame_info =
-                                self.cursor_line_blame_info(filepath, git_root).await?;
-                            self.vim.exec("echomsg", [blame_info])?;
-                        }
-                    }
+                    CursorMoved => self.on_cursor_moved(bufnr).await?,
                     _ => {}
                 }
 

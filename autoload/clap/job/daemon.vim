@@ -27,7 +27,7 @@ if has('nvim')
         if line =~# '^Content-length:'
           let s:content_length = str2nr(matchstr(line, '\d\+$'))
         else
-          call clap#helper#echo_error('This should not happen, unknown message:'.line)
+          call clap#helper#echo_error('Unknown message sent from server:'.line)
         endif
         continue
       endif
