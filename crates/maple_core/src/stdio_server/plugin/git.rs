@@ -220,22 +220,52 @@ fn in_git_repo(filepath: &Path) -> Option<&Path> {
 }
 
 #[derive(Debug, Clone)]
+enum Toggle {
+    On,
+    Off,
+}
+
+impl Toggle {
+    fn switch(&mut self) {
+        match self {
+            Self::On => {
+                *self = Self::Off;
+            }
+            Self::Off => {
+                *self = Self::On;
+            }
+        }
+    }
+
+    fn is_off(&self) -> bool {
+        matches!(self, Self::Off)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct GitPlugin {
     vim: Vim,
     bufs: HashMap<usize, (PathBuf, Git)>,
+    toggle: Toggle,
 }
 
 impl GitPlugin {
     const BLAME: &'static str = "git/blame";
     const OPEN_CURRENT_LINE_IN_BROWSER: &'static str = "git/open-current-line-in-browser";
+    const TOGGLE: &'static str = "git/toggle";
 
     pub const ID: PluginId = PluginId::Git;
-    pub const ACTIONS: &[&'static str] = &[Self::OPEN_CURRENT_LINE_IN_BROWSER, Self::BLAME];
+    pub const ACTIONS: &[&'static str] = &[
+        Self::OPEN_CURRENT_LINE_IN_BROWSER,
+        Self::BLAME,
+        Self::TOGGLE,
+    ];
 
     pub fn new(vim: Vim) -> Self {
         Self {
             vim,
             bufs: HashMap::new(),
+            toggle: Toggle::On,
         }
     }
 
@@ -321,6 +351,10 @@ impl ClapPlugin for GitPlugin {
             PluginEvent::Autocmd((autocmd_event_type, params)) => {
                 use AutocmdEventType::{BufDelete, BufEnter, CursorMoved, InsertEnter};
 
+                if self.toggle.is_off() {
+                    return Ok(());
+                }
+
                 let bufnr = params.parse_bufnr()?;
 
                 match autocmd_event_type {
@@ -343,6 +377,21 @@ impl ClapPlugin for GitPlugin {
             PluginEvent::Action(plugin_action) => {
                 let PluginAction { action, params: _ } = plugin_action;
                 match action.as_str() {
+                    Self::TOGGLE => {
+                        match self.toggle {
+                            Toggle::On => {
+                                for bufnr in self.bufs.keys() {
+                                    self.vim.exec("clear_blame_info", [bufnr])?;
+                                }
+                            }
+                            Toggle::Off => {
+                                let bufnr = self.vim.bufnr("").await?;
+
+                                self.on_cursor_moved(bufnr).await?;
+                            }
+                        }
+                        self.toggle.switch();
+                    }
                     Self::OPEN_CURRENT_LINE_IN_BROWSER => {
                         let buf_path = self.vim.current_buffer_path().await?;
                         let filepath = PathBuf::from(buf_path);
