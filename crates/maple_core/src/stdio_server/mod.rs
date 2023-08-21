@@ -7,7 +7,7 @@ mod service;
 mod vim;
 
 pub use self::input::InputHistory;
-use self::input::{Action, Event, ProviderEvent};
+use self::input::{ActionEvent, Event, ProviderEvent};
 use self::plugin::{
     ActionType, ClapPlugin, CtagsPlugin, CursorWordHighlighter, GitPlugin, MarkdownPlugin,
     PluginId, SystemPlugin,
@@ -232,7 +232,7 @@ impl Client {
     async fn do_process_notification(&self, notification: RpcNotification) -> Result<()> {
         let maybe_session_id = notification.session_id();
 
-        let action_parser = |notification: RpcNotification| -> Result<Action> {
+        let action_parser = |notification: RpcNotification| -> Result<ActionEvent> {
             for (plugin_id, actions) in self.plugin_actions.lock().iter() {
                 if actions.contains(&notification.method) {
                     return Ok((*plugin_id, notification.into()));

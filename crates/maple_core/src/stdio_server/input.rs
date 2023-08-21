@@ -76,7 +76,7 @@ pub enum AutocmdEventType {
     BufWinLeave,
 }
 
-pub type Action = (PluginId, PluginAction);
+pub type ActionEvent = (PluginId, PluginAction);
 
 #[derive(Debug, Clone)]
 pub struct PluginAction {
@@ -101,15 +101,15 @@ pub enum Event {
     Autocmd(AutocmdEvent),
     /// `:h keycodes`
     Key(KeyEvent),
-    /// User-oriented actions.
-    Action(Action),
+    /// Plugin actions.
+    Action(ActionEvent),
 }
 
 impl Event {
     /// Converts the notification to an [`Event`].
     pub fn parse_notification(
         notification: RpcNotification,
-        action_parser: impl Fn(RpcNotification) -> anyhow::Result<Action>,
+        action_parser: impl Fn(RpcNotification) -> anyhow::Result<ActionEvent>,
     ) -> anyhow::Result<Self> {
         use AutocmdEventType::*;
         use KeyEventType::*;
