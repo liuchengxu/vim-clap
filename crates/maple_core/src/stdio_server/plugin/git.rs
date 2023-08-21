@@ -10,100 +10,125 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
-fn fetch_rev_parse(git_root: &Path, arg: &str) -> Result<String> {
-    let output = std::process::Command::new("git")
-        .current_dir(git_root)
-        .arg("rev-parse")
-        .arg(arg)
-        .stderr(Stdio::null())
-        .output()?;
-
-    Ok(String::from_utf8(output.stdout)?)
+#[derive(Debug, Clone)]
+struct Git {
+    repo: PathBuf,
+    user_name: String,
 }
 
-fn fetch_user_name(git_root: &Path) -> Result<String> {
-    let output = std::process::Command::new("git")
-        .current_dir(git_root)
-        .arg("config")
-        .arg("user.name")
-        .stderr(Stdio::null())
-        .output()?;
+impl Git {
+    fn init(git_root: PathBuf) -> Result<Self> {
+        let output = std::process::Command::new("git")
+            .current_dir(&git_root)
+            .arg("config")
+            .arg("user.name")
+            .stderr(Stdio::null())
+            .output()?;
 
-    Ok(String::from_utf8(output.stdout)?)
-}
+        let user_name = String::from_utf8(output.stdout)?.trim().to_string();
 
-fn fetch_origin_url(git_root: &Path) -> Result<String> {
-    let output = std::process::Command::new("git")
-        .current_dir(git_root)
-        .arg("config")
-        .arg("--get")
-        .arg("remote.origin.url")
-        .stderr(Stdio::null())
-        .output()?;
-
-    Ok(String::from_utf8(output.stdout)?)
-}
-
-fn fetch_blame_output(git_root: &Path, relative_path: &Path, lnum: usize) -> Result<Vec<u8>> {
-    let output = std::process::Command::new("git")
-        .current_dir(git_root)
-        .arg("blame")
-        .arg("--porcelain")
-        .arg("--incremental")
-        .arg(format!("-L{lnum},{lnum}"))
-        .arg("--")
-        .arg(relative_path)
-        .stdin(Stdio::null())
-        .stderr(Stdio::null())
-        .output()?;
-
-    if output.status.success() {
-        Ok(output.stdout)
-    } else {
-        Err(anyhow!(
-            "Child process errors out: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ))
+        Ok(Self {
+            repo: git_root,
+            user_name,
+        })
     }
-}
 
-// git blame --contents - -L 100,+1 --line-porcelain crates/maple_core/src/stdio_server/plugin/git.rs
-fn fetch_blame_output_with_lines(
-    git_root: &Path,
-    relative_path: &Path,
-    lnum: usize,
-    lines: Vec<String>,
-) -> Result<Vec<u8>> {
-    let mut p = std::process::Command::new("git")
-        .current_dir(git_root)
-        .arg("blame")
-        .arg("--contents")
-        .arg("-")
-        .arg("-L")
-        .arg(format!("{lnum},+1"))
-        .arg("--line-porcelain")
-        .arg(relative_path)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()?;
+    fn fetch_rev_parse(&self, arg: &str) -> Result<String> {
+        let output = std::process::Command::new("git")
+            .current_dir(&self.repo)
+            .arg("rev-parse")
+            .arg(arg)
+            .stderr(Stdio::null())
+            .output()?;
 
-    let lines = lines.into_iter().join("\n");
-    let stdin = p
-        .stdin
-        .as_mut()
-        .ok_or_else(|| anyhow!("stdin unavailable"))?;
-    stdin.write_all(lines.as_bytes())?;
+        Ok(String::from_utf8(output.stdout)?)
+    }
 
-    let output = p.wait_with_output()?;
+    #[allow(unused)]
+    fn fetch_user_name(&self) -> Result<String> {
+        let output = std::process::Command::new("git")
+            .current_dir(&self.repo)
+            .arg("config")
+            .arg("user.name")
+            .stderr(Stdio::null())
+            .output()?;
 
-    if output.status.success() {
-        Ok(output.stdout)
-    } else {
-        Err(anyhow!(
-            "Child process errors out: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ))
+        Ok(String::from_utf8(output.stdout)?)
+    }
+
+    fn fetch_origin_url(&self) -> Result<String> {
+        let output = std::process::Command::new("git")
+            .current_dir(&self.repo)
+            .arg("config")
+            .arg("--get")
+            .arg("remote.origin.url")
+            .stderr(Stdio::null())
+            .output()?;
+
+        Ok(String::from_utf8(output.stdout)?)
+    }
+
+    fn fetch_blame_output(&self, relative_path: &Path, lnum: usize) -> Result<Vec<u8>> {
+        let output = std::process::Command::new("git")
+            .current_dir(&self.repo)
+            .arg("blame")
+            .arg("--porcelain")
+            .arg("--incremental")
+            .arg(format!("-L{lnum},{lnum}"))
+            .arg("--")
+            .arg(relative_path)
+            .stdin(Stdio::null())
+            .stderr(Stdio::null())
+            .output()?;
+
+        if output.status.success() {
+            Ok(output.stdout)
+        } else {
+            Err(anyhow!(
+                "Child process errors out: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ))
+        }
+    }
+
+    // git blame --contents - -L 100,+1 --line-porcelain crates/maple_core/src/stdio_server/plugin/git.rs
+    fn fetch_blame_output_with_lines(
+        &self,
+        relative_path: &Path,
+        lnum: usize,
+        lines: Vec<String>,
+    ) -> Result<Vec<u8>> {
+        let mut p = std::process::Command::new("git")
+            .current_dir(&self.repo)
+            .arg("blame")
+            .arg("--contents")
+            .arg("-")
+            .arg("-L")
+            .arg(format!("{lnum},+1"))
+            .arg("--line-porcelain")
+            .arg(relative_path)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()?;
+
+        let lines = lines.into_iter().join("\n");
+        let stdin = p
+            .stdin
+            .as_mut()
+            .ok_or_else(|| anyhow!("stdin unavailable"))?;
+        stdin.write_all(lines.as_bytes())?;
+
+        let output = p.wait_with_output()?;
+
+        if output.status.success() {
+            Ok(output.stdout)
+        } else {
+            Err(anyhow!(
+                "Child process errors out: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ))
+        }
     }
 }
 
@@ -114,7 +139,7 @@ struct BlameInfo {
 }
 
 impl BlameInfo {
-    fn display(&self, git_root: &Path) -> Result<Cow<'_, str>> {
+    fn display(&self, user_name: &str) -> Result<Cow<'_, str>> {
         let author = &self.author;
 
         if author == "Not Committed Yet" {
@@ -123,23 +148,25 @@ impl BlameInfo {
 
         match (&self.author_time, &self.summary) {
             (Some(author_time), Some(summary)) => {
-                let user_name = fetch_user_name(git_root)?;
                 let time = Utc
                     .timestamp_opt(*author_time, 0)
                     .single()
                     .ok_or_else(|| anyhow!("Failed to parse timestamp {author_time}"))?;
                 let time = chrono_humanize::HumanTime::from(time);
-                let author = if user_name.trim().eq(author) {
-                    "You"
-                } else {
-                    author
-                };
+                let author = if user_name.eq(author) { "You" } else { author };
 
                 if let Some(fmt) = &crate::config::config().plugin.git.blame_format_string {
-                    let display_string = fmt;
-                    let display_string = display_string.replace("author", author);
-                    let display_string = display_string.replace("time", time.to_string().as_str());
-                    let display_string = display_string.replace("summary", summary);
+                    let mut display_string = fmt.to_string();
+                    let mut replace_template_string = |to_replace: &str, replace_with: &str| {
+                        if let Some(idx) = display_string.find(to_replace) {
+                            display_string.replace_range(idx..idx + to_replace.len(), replace_with);
+                        }
+                    };
+
+                    replace_template_string("author", author);
+                    replace_template_string("time", time.to_string().as_str());
+                    replace_template_string("summary", summary);
+
                     Ok(display_string.into())
                 } else {
                     Ok(format!("({author} {time}) {summary}").into())
@@ -195,7 +222,7 @@ fn in_git_repo(filepath: &Path) -> Option<&Path> {
 #[derive(Debug, Clone)]
 pub struct GitPlugin {
     vim: Vim,
-    bufs: HashMap<usize, (PathBuf, PathBuf)>,
+    bufs: HashMap<usize, (PathBuf, Git)>,
 }
 
 impl GitPlugin {
@@ -223,7 +250,7 @@ impl GitPlugin {
 
         if let Some(git_root) = in_git_repo(&filepath) {
             let git_root = git_root.to_path_buf();
-            self.bufs.insert(bufnr, (filepath, git_root));
+            self.bufs.insert(bufnr, (filepath, Git::init(git_root)?));
             return Ok(());
         }
 
@@ -231,8 +258,8 @@ impl GitPlugin {
     }
 
     async fn on_cursor_moved(&self, bufnr: usize) -> Result<()> {
-        if let Some((filepath, git_root)) = self.bufs.get(&bufnr) {
-            let maybe_blame_info = self.cursor_line_blame_info(filepath, git_root).await?;
+        if let Some((filepath, git)) = self.bufs.get(&bufnr) {
+            let maybe_blame_info = self.cursor_line_blame_info(git, filepath).await?;
             if let Some(blame_info) = maybe_blame_info {
                 self.vim
                     .exec("show_cursor_blame_info", (bufnr, blame_info))?;
@@ -241,24 +268,20 @@ impl GitPlugin {
         Ok(())
     }
 
-    async fn cursor_line_blame_info(
-        &self,
-        filepath: &Path,
-        git_root: &Path,
-    ) -> Result<Option<String>> {
-        let relative_path = filepath.strip_prefix(git_root)?;
+    async fn cursor_line_blame_info(&self, git: &Git, filepath: &Path) -> Result<Option<String>> {
+        let relative_path = filepath.strip_prefix(&git.repo)?;
 
         let lnum = self.vim.line(".").await?;
 
         let stdout = if self.vim.bufmodified("").await? {
             let lines = self.vim.getbufline("", 1, "$").await?;
-            fetch_blame_output_with_lines(git_root, relative_path, lnum, lines)?
+            git.fetch_blame_output_with_lines(relative_path, lnum, lines)?
         } else {
-            fetch_blame_output(git_root, relative_path, lnum)?
+            git.fetch_blame_output(relative_path, lnum)?
         };
 
         if let Ok(Some(blame_info)) = parse_blame_info(stdout) {
-            return Ok(Some(blame_info.display(git_root)?.to_string()));
+            return Ok(Some(blame_info.display(&git.user_name)?.to_string()));
         }
 
         Ok(None)
@@ -272,7 +295,10 @@ impl GitPlugin {
             return Ok(());
         };
 
-        if let Ok(Some(blame_info)) = self.cursor_line_blame_info(&filepath, git_root).await {
+        if let Ok(Some(blame_info)) = self
+            .cursor_line_blame_info(&Git::init(git_root.to_path_buf())?, &filepath)
+            .await
+        {
             self.vim.echo_info(blame_info)?;
         }
 
@@ -319,21 +345,23 @@ impl ClapPlugin for GitPlugin {
                 match action.as_str() {
                     Self::OPEN_CURRENT_LINE_IN_BROWSER => {
                         let buf_path = self.vim.current_buffer_path().await?;
-                        let filepath = Path::new(&buf_path);
+                        let filepath = PathBuf::from(buf_path);
 
-                        let Some(git_root) = in_git_repo(filepath) else {
+                        let Some(git_root) = in_git_repo(&filepath) else {
                             return Ok(());
                         };
 
-                        let relative_path = filepath.strip_prefix(git_root)?;
+                        let git = Git::init(git_root.to_path_buf())?;
 
-                        let stdout = fetch_origin_url(git_root)?;
+                        let relative_path = filepath.strip_prefix(&git.repo)?;
+
+                        let stdout = git.fetch_origin_url()?;
                         let remote_url = stdout.trim();
 
                         // https://github.com/liuchengxu/vim-clap{.git}
                         let remote_url = remote_url.strip_suffix(".git").unwrap_or(remote_url);
 
-                        let Ok(stdout) = fetch_rev_parse(git_root, "HEAD") else {
+                        let Ok(stdout) = git.fetch_rev_parse("HEAD") else {
                             return Ok(());
                         };
 

@@ -50,7 +50,7 @@ if s:is_nvim
     return nvim_get_var(a:name)
   endfunction
 
-  function! s:api.delete_blame_info(bufnr) abort
+  function! s:api.clear_blame_info(bufnr) abort
     let id = getbufvar(a:bufnr, 'clap_git_blame_extmark_id')
     if !empty(id)
       call nvim_buf_del_extmark(a:bufnr, s:blame_ns_id, id)
@@ -71,7 +71,9 @@ if s:is_nvim
     if available_space > strlen(a:text)
       let opts = { 'virt_text': [[a:text, 'ClapBlameInfo']], 'virt_text_pos': 'eol' }
     else
-      let opts = { 'virt_lines': [[['╰─▸ '.a:text, 'ClapBlameInfo']]], 'virt_lines_leftcol': col('.')  - 1 }
+      let text = &signcolumn ==# 'yes' ? printf('  ╰─▸ %s', a:text) : a:text
+      let text = &numberwidth > 0 ? printf('%s%s', repeat(' ', &numberwidth/2), text) : text
+      let opts = { 'virt_lines': [[[text, 'ClapBlameInfo']]], 'virt_lines_leftcol': col('.')  - 1 }
     endif
 
     try
@@ -90,7 +92,7 @@ else
     return get(g:, a:name, v:null)
   endfunction
 
-  function! s:api.delete_blame_info(bufnr) abort
+  function! s:api.clear_blame_info(bufnr) abort
     let popup_id = getbufvar(a:bufnr, 'clap_git_blame_popup_id')
     if !empty(popup_id)
       call popup_hide(popup_id)
