@@ -1,5 +1,5 @@
 use crate::stdio_server::input::{PluginAction, PluginEvent};
-use crate::stdio_server::plugin::{ActionType, ClapPlugin, PluginId};
+use crate::stdio_server::plugin::{Action, ActionType, ClapPlugin, PluginId};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
@@ -203,12 +203,22 @@ pub struct MarkdownPlugin {
 }
 
 impl MarkdownPlugin {
-    const GENERATE_TOC: &'static str = "markdown/generate-toc";
-    const UPDATE_TOC: &'static str = "markdown/update-toc";
-    const DELETE_TOC: &'static str = "markdown/delete-toc";
-
     pub const ID: PluginId = PluginId::Markdown;
-    pub const ACTIONS: &[&'static str] = &[Self::GENERATE_TOC, Self::UPDATE_TOC, Self::DELETE_TOC];
+
+    const GENERATE_TOC: &'static str = "markdown/generate-toc";
+    const GENERATE_TOC_ACTION: Action = Action::callable(Self::GENERATE_TOC);
+
+    const UPDATE_TOC: &'static str = "markdown/update-toc";
+    const UPDATE_TOC_ACTION: Action = Action::callable(Self::UPDATE_TOC);
+
+    const DELETE_TOC: &'static str = "markdown/delete-toc";
+    const DELETE_TOC_ACTION: Action = Action::callable(Self::DELETE_TOC);
+
+    const ACTIONS: &[Action] = &[
+        Self::GENERATE_TOC_ACTION,
+        Self::UPDATE_TOC_ACTION,
+        Self::DELETE_TOC_ACTION,
+    ];
 
     pub fn new(vim: Vim) -> Self {
         Self { vim }
@@ -221,19 +231,16 @@ impl ClapPlugin for MarkdownPlugin {
         Self::ID
     }
 
-    fn actions(&self, action_type: ActionType) -> &[&'static str] {
-        match action_type {
-            ActionType::Callable => Self::ACTIONS,
-            ActionType::All => Self::ACTIONS,
-        }
+    fn actions(&self, _action_type: ActionType) -> &[Action] {
+        Self::ACTIONS
     }
 
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
         match plugin_event {
             PluginEvent::Autocmd(_) => Ok(()),
             PluginEvent::Action(plugin_action) => {
-                let PluginAction { action, params: _ } = plugin_action;
-                match action.as_str() {
+                let PluginAction { method, params: _ } = plugin_action;
+                match method.as_str() {
                     Self::GENERATE_TOC => {
                         let curlnum = self.vim.line(".").await?;
                         let file = self.vim.current_buffer_path().await?;

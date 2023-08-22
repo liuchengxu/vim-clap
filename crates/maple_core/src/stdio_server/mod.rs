@@ -73,19 +73,27 @@ pub async fn start(config_err: Option<toml::de::Error>) {
 
     let vim = Vim::new(rpc_client);
 
-    let mut callable_actions = Vec::new();
+    let mut callable_action_methods = Vec::new();
     let mut all_actions = HashMap::new();
+
+    let mut extend_callable_actions = |plugin: &Box<dyn ClapPlugin>| {
+        callable_action_methods.extend(
+            plugin
+                .actions(ActionType::Callable)
+                .iter()
+                .map(|a| a.method),
+        );
+    };
 
     let mut service_manager = ServiceManager::default();
 
     let plugin = Box::new(SystemPlugin::new(vim.clone())) as Box<dyn ClapPlugin>;
-
-    callable_actions.extend_from_slice(plugin.actions(ActionType::Callable));
+    extend_callable_actions(&plugin);
     let (plugin_id, actions) = service_manager.register_plugin(plugin);
     all_actions.insert(plugin_id, actions);
 
     let plugin = Box::new(GitPlugin::new(vim.clone())) as Box<dyn ClapPlugin>;
-    callable_actions.extend_from_slice(plugin.actions(ActionType::Callable));
+    extend_callable_actions(&plugin);
     let (plugin_id, actions) = service_manager.register_plugin(plugin);
     all_actions.insert(plugin_id, actions);
 
@@ -93,21 +101,21 @@ pub async fn start(config_err: Option<toml::de::Error>) {
 
     if plugin.ctags.enable {
         let plugin = Box::new(CtagsPlugin::new(vim.clone())) as Box<dyn ClapPlugin>;
-        callable_actions.extend_from_slice(plugin.actions(ActionType::Callable));
+        extend_callable_actions(&plugin);
         let (plugin_id, actions) = service_manager.register_plugin(plugin);
         all_actions.insert(plugin_id, actions);
     }
 
     if plugin.markdown.enable {
         let plugin = Box::new(MarkdownPlugin::new(vim.clone())) as Box<dyn ClapPlugin>;
-        callable_actions.extend_from_slice(plugin.actions(ActionType::Callable));
+        extend_callable_actions(&plugin);
         let (plugin_id, actions) = service_manager.register_plugin(plugin);
         all_actions.insert(plugin_id, actions);
     }
 
     if plugin.cursor_word_highlighter.enable {
         let plugin = Box::new(CursorWordHighlighter::new(vim.clone())) as Box<dyn ClapPlugin>;
-        callable_actions.extend_from_slice(plugin.actions(ActionType::Callable));
+        extend_callable_actions(&plugin);
         let (plugin_id, actions) = service_manager.register_plugin(plugin);
         all_actions.insert(plugin_id, actions);
     }
@@ -115,7 +123,7 @@ pub async fn start(config_err: Option<toml::de::Error>) {
     tokio::spawn({
         let vim = vim.clone();
         async move {
-            if let Err(e) = initialize(vim, callable_actions, config_err).await {
+            if let Err(e) = initialize(vim, callable_action_methods, config_err).await {
                 tracing::error!(error = ?e, "Failed to initialize Client")
             }
         }

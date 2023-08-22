@@ -1,5 +1,7 @@
 use crate::stdio_server::input::AutocmdEventType;
-use crate::stdio_server::plugin::{ActionType, ClapPlugin, PluginAction, PluginEvent, PluginId};
+use crate::stdio_server::plugin::{
+    Action, ActionType, ClapPlugin, PluginAction, PluginEvent, PluginId,
+};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use chrono::{TimeZone, Utc};
@@ -250,15 +252,22 @@ pub struct GitPlugin {
 }
 
 impl GitPlugin {
-    const BLAME: &'static str = "git/blame";
-    const OPEN_CURRENT_LINE_IN_BROWSER: &'static str = "git/open-current-line-in-browser";
-    const TOGGLE: &'static str = "git/toggle";
-
     pub const ID: PluginId = PluginId::Git;
-    pub const ACTIONS: &[&'static str] = &[
-        Self::OPEN_CURRENT_LINE_IN_BROWSER,
-        Self::BLAME,
-        Self::TOGGLE,
+
+    const BLAME: &'static str = "git/blame";
+    const BLAME_ACTION: Action = Action::callable(Self::BLAME);
+
+    const OPEN_CURRENT_LINE_IN_BROWSER: &'static str = "git/open-current-line-in-browser";
+    const OPEN_CURRENT_LINE_IN_BROWSER_ACTION: Action =
+        Action::callable(Self::OPEN_CURRENT_LINE_IN_BROWSER);
+
+    const TOGGLE: &'static str = "git/toggle";
+    const TOGGLE_ACTION: Action = Action::callable(Self::TOGGLE);
+
+    const ACTIONS: &[Action] = &[
+        Self::BLAME_ACTION,
+        Self::OPEN_CURRENT_LINE_IN_BROWSER_ACTION,
+        Self::TOGGLE_ACTION,
     ];
 
     pub fn new(vim: Vim) -> Self {
@@ -342,7 +351,7 @@ impl ClapPlugin for GitPlugin {
         Self::ID
     }
 
-    fn actions(&self, _action_type: ActionType) -> &[&'static str] {
+    fn actions(&self, _action_type: ActionType) -> &[Action] {
         Self::ACTIONS
     }
 
@@ -375,8 +384,8 @@ impl ClapPlugin for GitPlugin {
                 Ok(())
             }
             PluginEvent::Action(plugin_action) => {
-                let PluginAction { action, params: _ } = plugin_action;
-                match action.as_str() {
+                let PluginAction { method, params: _ } = plugin_action;
+                match method.as_str() {
                     Self::TOGGLE => {
                         match self.toggle {
                             Toggle::On => {

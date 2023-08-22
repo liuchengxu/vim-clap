@@ -80,14 +80,14 @@ pub type ActionEvent = (PluginId, PluginAction);
 
 #[derive(Debug, Clone)]
 pub struct PluginAction {
-    pub action: String,
+    pub method: String,
     pub params: Params,
 }
 
 impl From<RpcNotification> for PluginAction {
     fn from(notification: RpcNotification) -> Self {
         Self {
-            action: notification.method,
+            method: notification.method,
             params: notification.params,
         }
     }

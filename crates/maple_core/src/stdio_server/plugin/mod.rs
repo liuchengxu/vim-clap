@@ -22,7 +22,22 @@ pub enum PluginId {
     Markdown,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub struct Action {
+    pub ty: ActionType,
+    pub method: &'static str,
+}
+
+impl Action {
+    pub const fn callable(method: &'static str) -> Self {
+        Self {
+            ty: ActionType::Callable,
+            method,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum ActionType {
     /// Actions that users can interact with.
     Callable,
@@ -35,7 +50,7 @@ pub enum ActionType {
 pub trait ClapPlugin: Debug + Send + Sync + 'static {
     fn id(&self) -> PluginId;
 
-    fn actions(&self, _action_type: ActionType) -> &[&'static str] {
+    fn actions(&self, _action_type: ActionType) -> &[Action] {
         &[]
     }
 
@@ -48,14 +63,16 @@ pub struct SystemPlugin {
 }
 
 impl SystemPlugin {
+    pub const ID: PluginId = PluginId::System;
+
     const NOTE_RECENT_FILES: &'static str = "note_recent_files";
+    const NOTE_RECENT_FILES_ACTION: Action = Action::callable(Self::NOTE_RECENT_FILES);
 
     const OPEN_CONFIG: &'static str = "open-config";
+    const OPEN_CONFIG_ACTION: Action = Action::callable(Self::OPEN_CONFIG);
 
-    const CALLABLE_ACTIONS: &[&'static str] = &[Self::OPEN_CONFIG];
-
-    pub const ID: PluginId = PluginId::System;
-    pub const ACTIONS: &[&'static str] = &[Self::NOTE_RECENT_FILES, Self::OPEN_CONFIG];
+    const CALLABLE_ACTIONS: &[Action] = &[Self::OPEN_CONFIG_ACTION];
+    const ACTIONS: &[Action] = &[Self::NOTE_RECENT_FILES_ACTION, Self::OPEN_CONFIG_ACTION];
 
     pub fn new(vim: Vim) -> Self {
         Self { vim }
@@ -68,7 +85,7 @@ impl ClapPlugin for SystemPlugin {
         Self::ID
     }
 
-    fn actions(&self, action_type: ActionType) -> &[&'static str] {
+    fn actions(&self, action_type: ActionType) -> &[Action] {
         match action_type {
             ActionType::Callable => Self::CALLABLE_ACTIONS,
             ActionType::All => Self::ACTIONS,
@@ -79,8 +96,8 @@ impl ClapPlugin for SystemPlugin {
         match plugin_event {
             PluginEvent::Autocmd(_) => Ok(()),
             PluginEvent::Action(plugin_action) => {
-                let PluginAction { action, params } = plugin_action;
-                match action.as_str() {
+                let PluginAction { method, params } = plugin_action;
+                match method.as_str() {
                     Self::NOTE_RECENT_FILES => {
                         let bufnr: Vec<usize> = params.parse()?;
                         let bufnr = bufnr

@@ -382,7 +382,7 @@ impl ServiceManager {
         let all_actions = plugin
             .actions(ActionType::All)
             .iter()
-            .map(|s| s.to_string())
+            .map(|s| s.method.to_string())
             .collect();
 
         self.plugins.insert(
