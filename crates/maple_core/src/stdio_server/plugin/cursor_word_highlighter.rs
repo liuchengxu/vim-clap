@@ -1,5 +1,5 @@
 use crate::stdio_server::input::{AutocmdEventType, PluginEvent};
-use crate::stdio_server::plugin::{ClapPlugin, PluginId};
+use crate::stdio_server::plugin::{ClapAction, ClapPlugin, PluginId};
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
 use matcher::WordMatcher;
@@ -233,6 +233,8 @@ impl CursorWordHighlighter {
         Ok(())
     }
 }
+
+impl ClapAction for CursorWordHighlighter {}
 
 #[async_trait::async_trait]
 impl ClapPlugin for CursorWordHighlighter {

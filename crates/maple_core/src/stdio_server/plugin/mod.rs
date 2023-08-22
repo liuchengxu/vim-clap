@@ -45,14 +45,16 @@ pub enum ActionType {
     All,
 }
 
-/// A trait each Clap plugin must implement.
-#[async_trait::async_trait]
-pub trait ClapPlugin: Debug + Send + Sync + 'static {
-    fn id(&self) -> PluginId;
-
+pub trait ClapAction {
     fn actions(&self, _action_type: ActionType) -> &[Action] {
         &[]
     }
+}
+
+/// A trait each Clap plugin must implement.
+#[async_trait::async_trait]
+pub trait ClapPlugin: ClapAction + Debug + Send + Sync + 'static {
+    fn id(&self) -> PluginId;
 
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()>;
 }
@@ -79,17 +81,19 @@ impl SystemPlugin {
     }
 }
 
-#[async_trait::async_trait]
-impl ClapPlugin for SystemPlugin {
-    fn id(&self) -> PluginId {
-        Self::ID
-    }
-
+impl ClapAction for SystemPlugin {
     fn actions(&self, action_type: ActionType) -> &[Action] {
         match action_type {
             ActionType::Callable => Self::CALLABLE_ACTIONS,
             ActionType::All => Self::ACTIONS,
         }
+    }
+}
+
+#[async_trait::async_trait]
+impl ClapPlugin for SystemPlugin {
+    fn id(&self) -> PluginId {
+        Self::ID
     }
 
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {

@@ -1,5 +1,5 @@
 use crate::stdio_server::input::{PluginAction, PluginEvent};
-use crate::stdio_server::plugin::{Action, ActionType, ClapPlugin, PluginId};
+use crate::stdio_server::plugin::{Action, ActionType, ClapAction, ClapPlugin, PluginId};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
@@ -225,14 +225,16 @@ impl MarkdownPlugin {
     }
 }
 
+impl ClapAction for MarkdownPlugin {
+    fn actions(&self, _action_type: ActionType) -> &[Action] {
+        Self::ACTIONS
+    }
+}
+
 #[async_trait::async_trait]
 impl ClapPlugin for MarkdownPlugin {
     fn id(&self) -> PluginId {
         Self::ID
-    }
-
-    fn actions(&self, _action_type: ActionType) -> &[Action] {
-        Self::ACTIONS
     }
 
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {

@@ -1,6 +1,6 @@
 use crate::stdio_server::input::AutocmdEventType;
 use crate::stdio_server::plugin::{
-    Action, ActionType, ClapPlugin, PluginAction, PluginEvent, PluginId,
+    Action, ActionType, ClapAction, ClapPlugin, PluginAction, PluginEvent, PluginId,
 };
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
@@ -345,14 +345,16 @@ impl GitPlugin {
     }
 }
 
+impl ClapAction for GitPlugin {
+    fn actions(&self, _action_type: ActionType) -> &[Action] {
+        Self::ACTIONS
+    }
+}
+
 #[async_trait::async_trait]
 impl ClapPlugin for GitPlugin {
     fn id(&self) -> PluginId {
         Self::ID
-    }
-
-    fn actions(&self, _action_type: ActionType) -> &[Action] {
-        Self::ACTIONS
     }
 
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
