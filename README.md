@@ -315,10 +315,12 @@ tiebreak = "score,-begin,-end,-length"
 
 <!-- ### Plugin -->
 
-<!-- Apart from the providers focusing on the general searching/filtering, vim-clap has an experimental support of a varity of vim plugins reimplemented in Rust. I created them in order to shorten my plugin list in vimrc, use at your own risk. -->
+<!-- Apart from the feature of a general fuzzy finder, vim-clap has an experimental support of a varity of vim plugins reimplemented in Rust, which are created primarily for the performance and simplifying the plugin list in vimrc. These plugins may not be feature-complete to their alternatives, use at your own risk. -->
 
-<!-- - highlight-cursor-word -->
-<!-- - vim-markdown-toc -->
+<!-- - ctags -->
+<!-- - cursor-word-highlighter -->
+<!-- - git -->
+<!-- - markdown -->
 
 ## How to define your own provider
 
