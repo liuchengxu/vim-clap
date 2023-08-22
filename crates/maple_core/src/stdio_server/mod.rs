@@ -284,6 +284,17 @@ impl Client {
                 self.service_manager.lock().notify_plugins(autocmd_event);
             }
             Event::Action((plugin_id, plugin_action)) => {
+                if plugin_id == PluginId::System && plugin_action.method == "list-plugins" {
+                    let lines = self
+                        .service_manager
+                        .lock()
+                        .plugins
+                        .keys()
+                        .map(|p| p.to_string())
+                        .collect::<Vec<_>>();
+                    self.vim.echo_info(lines.join(","))?;
+                    return Ok(());
+                }
                 self.service_manager
                     .lock()
                     .notify_plugin_action(plugin_id, plugin_action);

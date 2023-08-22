@@ -336,8 +336,8 @@ impl PluginSession {
 /// which is dedicated to provide the filtering service.
 #[derive(Debug, Default)]
 pub struct ServiceManager {
-    providers: HashMap<ProviderSessionId, ProviderEventSender>,
-    plugins: HashMap<PluginId, UnboundedSender<PluginEvent>>,
+    pub providers: HashMap<ProviderSessionId, ProviderEventSender>,
+    pub plugins: HashMap<PluginId, UnboundedSender<PluginEvent>>,
 }
 
 impl ServiceManager {
