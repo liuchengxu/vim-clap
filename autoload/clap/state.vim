@@ -83,7 +83,12 @@ function! clap#state#process_progress_full(display_lines, matched, processed) ab
     return
   endif
   call clap#indicator#update(a:matched, a:processed)
-  call g:clap.display.set_lines(a:display_lines.lines)
+  if a:matched == 0
+    call g:clap.display.set_lines([g:clap_no_matches_msg])
+    call g:clap.preview.clear()
+  else
+    call g:clap.display.set_lines(a:display_lines.lines)
+  endif
   call clap#highlighter#add_highlights(a:display_lines.indices)
   call clap#preview#update_with_delay()
   if a:matched > 0

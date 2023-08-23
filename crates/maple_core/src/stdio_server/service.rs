@@ -13,7 +13,7 @@ use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;
 
-use super::input::PluginAction;
+use super::input::{AutocmdEvent, PluginAction};
 use super::plugin::PluginId;
 
 pub type ProviderSessionId = u64;
@@ -266,7 +266,7 @@ impl PluginSession {
     }
 
     fn start_event_loop_without_debounce(mut self) {
-        tracing::debug!("Spawning a new plugin session task without debounce");
+        tracing::debug!(id = ?self.plugin.id(), debounce = false, "Starting a new plugin service");
 
         tokio::spawn(async move {
             loop {
@@ -286,7 +286,7 @@ impl PluginSession {
     }
 
     fn start_event_loop(mut self, event_delay: Duration) {
-        tracing::debug!("Spawning a new plugin session task");
+        tracing::debug!(id = ?self.plugin.id(), debounce = ?event_delay, "Starting a new plugin service");
 
         tokio::spawn(async move {
             // If the debounce timer isn't active, it will be set to expire "never",
@@ -307,8 +307,8 @@ impl PluginSession {
                                     pending_plugin_event.replace(plugin_event);
                                     notification_dirty = true;
                                     notification_timer.as_mut().reset(Instant::now() + event_delay);
-                                } else if let Err(err) = self.plugin.on_plugin_event(plugin_event).await {
-                                    tracing::error!(?err, "Failed to process plugin event");
+                                } else if let Err(err) = self.plugin.on_plugin_event(plugin_event.clone()).await {
+                                    tracing::error!(?err, "Failed to process plugin event: {plugin_event:?}");
                                 }
                             }
                             None => break, // channel has closed.
@@ -336,8 +336,8 @@ impl PluginSession {
 /// which is dedicated to provide the filtering service.
 #[derive(Debug, Default)]
 pub struct ServiceManager {
-    providers: HashMap<ProviderSessionId, ProviderEventSender>,
-    plugins: HashMap<PluginId, UnboundedSender<PluginEvent>>,
+    pub providers: HashMap<ProviderSessionId, ProviderEventSender>,
+    pub plugins: HashMap<PluginId, UnboundedSender<PluginEvent>>,
 }
 
 impl ServiceManager {
@@ -382,7 +382,7 @@ impl ServiceManager {
         let all_actions = plugin
             .actions(ActionType::All)
             .iter()
-            .map(|s| s.to_string())
+            .map(|s| s.method.to_string())
             .collect();
 
         self.plugins.insert(
@@ -404,9 +404,12 @@ impl ServiceManager {
     }
 
     /// Sends event message to all plugins.
-    pub fn notify_plugins(&mut self, plugin_event: PluginEvent) {
-        self.plugins
-            .retain(|_plugin_id, plugin_sender| plugin_sender.send(plugin_event.clone()).is_ok());
+    pub fn notify_plugins(&mut self, autocmd: AutocmdEvent) {
+        self.plugins.retain(|_plugin_id, plugin_sender| {
+            plugin_sender
+                .send(PluginEvent::Autocmd(autocmd.clone()))
+                .is_ok()
+        });
     }
 
     pub fn notify_plugin_action(&mut self, plugin_id: PluginId, plugin_action: PluginAction) {

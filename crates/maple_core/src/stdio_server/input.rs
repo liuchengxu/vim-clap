@@ -76,18 +76,18 @@ pub enum AutocmdEventType {
     BufWinLeave,
 }
 
-pub type Action = (PluginId, PluginAction);
+pub type ActionEvent = (PluginId, PluginAction);
 
 #[derive(Debug, Clone)]
 pub struct PluginAction {
-    pub action: String,
+    pub method: String,
     pub params: Params,
 }
 
 impl From<RpcNotification> for PluginAction {
     fn from(notification: RpcNotification) -> Self {
         Self {
-            action: notification.method,
+            method: notification.method,
             params: notification.params,
         }
     }
@@ -101,22 +101,22 @@ pub enum Event {
     Autocmd(AutocmdEvent),
     /// `:h keycodes`
     Key(KeyEvent),
-    /// User-oriented actions.
-    Action(Action),
+    /// Plugin actions.
+    Action(ActionEvent),
 }
 
 impl Event {
     /// Converts the notification to an [`Event`].
     pub fn parse_notification(
         notification: RpcNotification,
-        action_parser: impl Fn(RpcNotification) -> anyhow::Result<Action>,
+        action_parser: impl Fn(RpcNotification) -> anyhow::Result<ActionEvent>,
     ) -> anyhow::Result<Self> {
         use AutocmdEventType::*;
         use KeyEventType::*;
 
         match notification.method.as_str() {
-            "new_session" => Ok(Self::NewProvider(notification.params)),
-            "exit" => Ok(Self::ProviderWorker(ProviderEvent::Exit)),
+            "new_provider" => Ok(Self::NewProvider(notification.params)),
+            "exit_provider" => Ok(Self::ProviderWorker(ProviderEvent::Exit)),
             "on_move" => Ok(Self::ProviderWorker(ProviderEvent::OnMove(
                 notification.params,
             ))),

@@ -23,7 +23,7 @@ endif
 
 if s:maple_bin isnot v:null
   function! clap#maple#clean_up() abort
-    call clap#client#notify_provider('exit')
+    call clap#client#notify_provider('exit_provider')
   endfunction
 else
   function! clap#maple#clean_up() abort

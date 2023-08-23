@@ -278,6 +278,15 @@ impl Params {
             .map_err(|e| Error::invalid_params(format!("Invalid params: {e}.")))
     }
 
+    /// Parse Autocmd event params, which is [bufnr].
+    pub fn parse_bufnr(self) -> Result<usize, Error> {
+        let params: Vec<usize> = self.parse()?;
+        params
+            .into_iter()
+            .next()
+            .ok_or_else(|| Error::invalid_params("bufnr not found in params"))
+    }
+
     /// Check for no params, returns Err if any params
     pub fn expect_no_params(self) -> Result<(), Error> {
         match self {

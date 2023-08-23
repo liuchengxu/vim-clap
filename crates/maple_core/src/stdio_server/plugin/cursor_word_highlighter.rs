@@ -1,10 +1,11 @@
 use crate::stdio_server::input::{AutocmdEventType, PluginEvent};
-use crate::stdio_server::plugin::{ClapPlugin, PluginId};
+use crate::stdio_server::plugin::{ClapAction, ClapPlugin, PluginId};
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
 use matcher::WordMatcher;
+use std::collections::HashMap;
 use std::fmt::Debug;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use utils::read_lines_from;
 
 #[derive(Debug, serde::Serialize)]
@@ -94,6 +95,7 @@ struct WinHighlights {
 #[derive(Debug)]
 pub struct CursorWordHighlighter {
     vim: Vim,
+    bufs: HashMap<usize, PathBuf>,
     cursor_highlights: Option<WinHighlights>,
     ignore_extensions: Vec<&'static str>,
     ignore_file_names: Vec<&'static str>,
@@ -112,48 +114,28 @@ impl CursorWordHighlighter {
 
         Self {
             vim,
+            bufs: HashMap::new(),
             cursor_highlights: None,
             ignore_extensions,
             ignore_file_names,
         }
     }
 
-    async fn create_new_highlights(&mut self) -> Result<Option<WinHighlights>> {
+    async fn create_new_highlights(&mut self, bufnr: usize) -> Result<Option<WinHighlights>> {
         let cword = self.vim.expand("<cword>").await?;
 
         if cword.is_empty() {
             return Ok(None);
         }
 
-        let source_file = self.vim.current_buffer_path().await?;
-        let source_file = Path::new(&source_file);
-
-        if !source_file.is_file() {
-            return Ok(None);
-        }
-
-        let Some(file_extension) = source_file.extension().and_then(|s| s.to_str())
-        else {
-            return Ok(None)
-        };
-
-        let Some(file_name) = source_file.file_name().and_then(|s| s.to_str())
-        else {
-            return Ok(None)
-        };
-
-        if self
-            .ignore_extensions
-            .iter()
-            .any(|s| &s[2..] == file_extension)
-            || self.ignore_file_names.contains(&file_name)
-        {
-            return Ok(None);
-        }
+        let source_file = self
+            .bufs
+            .get(&bufnr)
+            .ok_or_else(|| anyhow::anyhow!("bufnr doesn't exist"))?;
 
         // TODO: filter the false positive results, using a blocklist of filetypes?
         let [_bufnum, curlnum, col, _off] = self.vim.getpos(".").await?;
-        let curline = self.vim.getbufoneline("", curlnum).await?;
+        let curline = self.vim.getbufoneline(bufnr, curlnum).await?;
 
         if crate::config::config()
             .plugin
@@ -200,8 +182,8 @@ impl CursorWordHighlighter {
     }
 
     /// Highlight the cursor word and all the occurrences.
-    async fn highlight_symbol_under_cursor(&mut self) -> Result<()> {
-        let maybe_new_highlights = self.create_new_highlights().await?;
+    async fn highlight_symbol_under_cursor(&mut self, bufnr: usize) -> Result<()> {
+        let maybe_new_highlights = self.create_new_highlights(bufnr).await?;
         let old_highlights = match maybe_new_highlights {
             Some(new_highlights) => self.cursor_highlights.replace(new_highlights),
             None => self.cursor_highlights.take(),
@@ -214,7 +196,45 @@ impl CursorWordHighlighter {
 
         Ok(())
     }
+
+    async fn try_track_buffer(&mut self, bufnr: usize) -> Result<()> {
+        if self.bufs.contains_key(&bufnr) {
+            return Ok(());
+        }
+
+        let source_file = self.vim.current_buffer_path().await?;
+        let source_file = PathBuf::from(source_file);
+
+        if !source_file.is_file() {
+            return Ok(());
+        }
+
+        let Some(file_extension) = source_file.extension().and_then(|s| s.to_str())
+                else {
+                    return Ok(())
+                };
+
+        let Some(file_name) = source_file.file_name().and_then(|s| s.to_str())
+                else {
+                    return Ok(())
+                };
+
+        if self
+            .ignore_extensions
+            .iter()
+            .any(|s| &s[2..] == file_extension)
+            || self.ignore_file_names.contains(&file_name)
+        {
+            return Ok(());
+        }
+
+        self.bufs.insert(bufnr, source_file);
+
+        Ok(())
+    }
 }
+
+impl ClapAction for CursorWordHighlighter {}
 
 #[async_trait::async_trait]
 impl ClapPlugin for CursorWordHighlighter {
@@ -223,23 +243,33 @@ impl ClapPlugin for CursorWordHighlighter {
     }
 
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
-        use AutocmdEventType::{CursorMoved, InsertEnter};
+        use AutocmdEventType::{
+            BufDelete, BufEnter, BufLeave, BufWinEnter, BufWinLeave, CursorMoved, InsertEnter,
+        };
 
         let PluginEvent::Autocmd(autocmd_event) = plugin_event else {
             return Ok(());
         };
 
-        let (event_type, _params) = autocmd_event;
+        let (event_type, params) = autocmd_event;
+        let bufnr = params.parse_bufnr()?;
 
         match event_type {
-            CursorMoved => self.highlight_symbol_under_cursor().await,
-            InsertEnter => {
+            BufEnter | BufWinEnter => self.try_track_buffer(bufnr).await?,
+            BufDelete | BufLeave | BufWinLeave => {
+                self.bufs.remove(&bufnr);
+            }
+            CursorMoved if self.bufs.contains_key(&bufnr) => {
+                self.highlight_symbol_under_cursor(bufnr).await?
+            }
+            InsertEnter if self.bufs.contains_key(&bufnr) => {
                 if let Some(WinHighlights { winid, match_ids }) = self.cursor_highlights.take() {
                     self.vim.matchdelete_batch(match_ids, winid).await?;
                 }
-                Ok(())
             }
-            _ => Ok(()),
+            _ => {}
         }
+
+        Ok(())
     }
 }

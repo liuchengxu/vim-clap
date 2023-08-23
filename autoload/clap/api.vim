@@ -55,6 +55,7 @@ else
   function! s:api.get_var(name) abort
     return get(g:, a:name, v:null)
   endfunction
+
 endif
 
 " The leading icon is stripped.
@@ -128,6 +129,10 @@ function! s:api.show_lines_in_preview(lines) abort
   else
     call g:clap.preview.show(a:lines)
   endif
+endfunction
+
+function! s:api.echomsg(msg) abort
+  echomsg a:msg
 endfunction
 
 function! s:api.set_initial_query(query) abort

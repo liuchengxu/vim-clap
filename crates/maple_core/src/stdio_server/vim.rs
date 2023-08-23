@@ -299,11 +299,11 @@ impl Vim {
     //    builtin-function-list
     /////////////////////////////////////////////////////////////////
     pub async fn bufname(&self, bufnr: usize) -> Result<String> {
-        self.call("bufname", json!([bufnr])).await
+        self.call("bufname", [bufnr]).await
     }
 
     pub async fn bufnr(&self, buf: impl Serialize) -> Result<usize> {
-        let bufnr: i32 = self.call("bufnr", json![buf]).await?;
+        let bufnr: i32 = self.call("bufnr", [buf]).await?;
         if bufnr < 0 {
             Err(anyhow!("buffer doesn't exist"))
         } else {
@@ -312,7 +312,7 @@ impl Vim {
     }
 
     pub async fn col(&self, expr: &str) -> Result<usize> {
-        self.call("col", json![expr]).await
+        self.call("col", [expr]).await
     }
 
     pub async fn deletebufline(
@@ -331,19 +331,19 @@ impl Vim {
     }
 
     pub async fn expand(&self, string: impl AsRef<str>) -> Result<String> {
-        self.call("expand", json![string.as_ref()]).await
+        self.call("expand", [string.as_ref()]).await
     }
 
     pub async fn eval<R: DeserializeOwned>(&self, s: &str) -> Result<R> {
-        self.call("eval", json!([s])).await
+        self.call("eval", [s]).await
     }
 
     pub async fn fnamemodify(&self, fname: &str, mods: &str) -> Result<String> {
-        self.call("fnamemodify", json!([fname, mods])).await
+        self.call("fnamemodify", [fname, mods]).await
     }
 
     pub async fn getbufoneline(&self, buf: impl Serialize, lnum: usize) -> Result<String> {
-        self.call("getbufoneline", json!([buf, lnum])).await
+        self.call("getbufoneline", (buf, lnum)).await
     }
 
     pub async fn getbufvar<R: DeserializeOwned>(
@@ -351,27 +351,36 @@ impl Vim {
         buf: impl Serialize,
         varname: &str,
     ) -> Result<R> {
-        self.call("getbufvar", json!([buf, varname])).await
+        self.call("getbufvar", (buf, varname)).await
+    }
+
+    pub async fn getbufline(
+        &self,
+        buf: impl Serialize,
+        start: impl Serialize,
+        end: impl Serialize,
+    ) -> Result<Vec<String>> {
+        self.call("getbufline", (buf, start, end)).await
     }
 
     pub async fn getpos(&self, expr: &str) -> Result<[usize; 4]> {
-        self.call("getpos", json![expr]).await
+        self.call("getpos", [expr]).await
     }
 
     pub async fn line(&self, expr: &str) -> Result<usize> {
-        self.call("line", json![expr]).await
+        self.call("line", [expr]).await
     }
 
     pub async fn matchdelete(&self, id: i32, win: usize) -> Result<i32> {
-        self.call("matchdelete", json!([id, win])).await
+        self.call("matchdelete", (id, win)).await
     }
 
     pub fn setbufvar(&self, bufnr: usize, varname: &str, val: impl Serialize) -> Result<()> {
-        self.exec("setbufvar", json!([bufnr, varname, val]))
+        self.exec("setbufvar", (bufnr, varname, val))
     }
 
     pub async fn winwidth(&self, winid: usize) -> Result<usize> {
-        let width: i32 = self.call("winwidth", json![winid]).await?;
+        let width: i32 = self.call("winwidth", [winid]).await?;
         if width < 0 {
             Err(anyhow!("window {winid} doesn't exist"))
         } else {
@@ -380,7 +389,7 @@ impl Vim {
     }
 
     pub async fn winheight(&self, winid: usize) -> Result<usize> {
-        let height: i32 = self.call("winheight", json![winid]).await?;
+        let height: i32 = self.call("winheight", [winid]).await?;
         if height < 0 {
             Err(anyhow!("window {winid} doesn't exist"))
         } else {
@@ -434,7 +443,7 @@ impl Vim {
     }
 
     pub async fn curbufline(&self, lnum: usize) -> Result<Option<String>> {
-        self.call("curbufline", json!([lnum])).await
+        self.call("curbufline", [lnum]).await
     }
 
     pub fn set_preview_syntax(&self, syntax: &str) -> Result<()> {
@@ -445,11 +454,17 @@ impl Vim {
     //    General helpers
     /////////////////////////////////////////////////////////////////
     pub fn echo_info(&self, msg: impl AsRef<str>) -> Result<()> {
-        self.exec("clap#helper#echo_info", json!([msg.as_ref()]))
+        self.exec("clap#helper#echo_info", [msg.as_ref()])
     }
 
     pub fn echo_warn(&self, msg: impl AsRef<str>) -> Result<()> {
-        self.exec("clap#helper#echo_warn", json!([msg.as_ref()]))
+        self.exec("clap#helper#echo_warn", [msg.as_ref()])
+    }
+
+    pub async fn bufmodified(&self, bufnr: impl Serialize) -> Result<bool> {
+        self.getbufvar::<u32>(bufnr, "&modified")
+            .await
+            .map(|m| m == 1u32)
     }
 
     pub async fn current_winid(&self) -> Result<usize> {
@@ -457,13 +472,13 @@ impl Vim {
     }
 
     pub async fn get_var_bool(&self, var: &str) -> Result<bool> {
-        let value: Value = self.call("get_var", json!([var])).await?;
+        let value: Value = self.call("get_var", [var]).await?;
         Ok(from_vim_bool(value))
     }
 
     pub async fn matchdelete_batch(&self, ids: Vec<i32>, win: usize) -> Result<()> {
         if self.win_is_valid(win).await? {
-            self.exec("matchdelete_batch", json!([ids, win]))?;
+            self.exec("matchdelete_batch", (ids, win))?;
         }
         Ok(())
     }
@@ -474,8 +489,8 @@ impl Vim {
         provider_id: &ProviderId,
         preview_winid: usize,
     ) -> Result<usize> {
-        let preview_winheight: usize = self.call("winheight", json![preview_winid]).await?;
-        let preview_size: Value = self.call("get_var", json!(["clap_preview_size"])).await?;
+        let preview_winheight: usize = self.call("winheight", [preview_winid]).await?;
+        let preview_size: Value = self.call("get_var", ["clap_preview_size"]).await?;
         let preview_config: PreviewConfig = preview_size.into();
         Ok(preview_config
             .preview_size(provider_id.as_str())
@@ -483,11 +498,11 @@ impl Vim {
     }
 
     pub fn set_var(&self, var_name: &str, value: impl Serialize) -> Result<()> {
-        self.exec("set_var", json!([var_name, value]))
+        self.exec("set_var", (var_name, value))
     }
 
     pub async fn win_is_valid(&self, winid: usize) -> Result<bool> {
-        let value: Value = self.call("win_is_valid", json!([winid])).await?;
+        let value: Value = self.call("win_is_valid", [winid]).await?;
         Ok(from_vim_bool(value))
     }
 }
