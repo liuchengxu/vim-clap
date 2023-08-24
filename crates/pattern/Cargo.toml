@@ -5,5 +5,5 @@ authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-once_cell = "1.7"
-regex = "1"
+once_cell = { workspace = true }
+regex = { workspace = true }

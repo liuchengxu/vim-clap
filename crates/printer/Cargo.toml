@@ -8,16 +8,16 @@ publish = false
 homepage = "https://github.com/liuchengxu/vim-clap"
 
 [dependencies]
-serde = { version = "1.0",  features = ["derive"] }
-serde_json = "1.0"
-unicode-width = "0.1.4"
+serde = { workspace = true }
+serde_json = { workspace = true }
+unicode-width = { workspace = true }
 
-icon = { path = "../icon" }
-pattern = { path = "../pattern" }
-types = { path = "../types" }
-utils = { path = "../utils" }
+icon = { workspace = true }
+pattern = { workspace = true }
+types = { workspace = true }
+utils = { workspace = true }
 
 [target.'cfg(not(windows))'.dev-dependencies]
-rayon = "1.5"
+rayon = { workspace = true }
 termion = "1.5.1"
-filter = { path = "../filter" }
+filter = { workspace = true }

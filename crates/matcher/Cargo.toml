@@ -5,11 +5,11 @@ authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-fuzzy-matcher = "0.3"
-grep-matcher = "0.1"
-grep-regex = "0.1"
+fuzzy-matcher = { workspace = true }
+grep-matcher = { workspace = true }
+grep-regex = { workspace = true }
 
-dumb_analyzer = { path = "../dumb_analyzer" }
-extracted_fzy = { path = "extracted_fzy" }
-pattern = { path = "../pattern" }
-types = { path = "../types" }
+dumb_analyzer = { workspace = true }
+extracted_fzy = { path = "./extracted_fzy" }
+pattern = { workspace = true }
+types = { workspace = true }

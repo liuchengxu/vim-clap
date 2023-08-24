@@ -9,5 +9,5 @@ indicatif = "0.16"
 tokio = { version = "1.19", features = ["fs", "macros", "rt", "io-util", "rt-multi-thread"] }
 # Use `rustls-tls` instead of `default-tls` to not pull in the openssl dep, making the cross-compile easier.
 reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
-serde = { version = "1.0",  features = ["derive"] }
-serde_json = "1.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
