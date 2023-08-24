@@ -38,6 +38,7 @@ dumb_analyzer = { path = "../dumb_analyzer" }
 filter = { path = "../filter" }
 icon = { path = "../icon" }
 matcher = { path = "../matcher" }
+paths = { path = "../paths" }
 pattern = { path = "../pattern" }
 printer = { path = "../printer" }
 rpc = { path = "../rpc" }

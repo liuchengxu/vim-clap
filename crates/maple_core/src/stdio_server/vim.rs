@@ -1,7 +1,7 @@
-use crate::paths::AbsPathBuf;
 use crate::stdio_server::provider::ProviderId;
 use anyhow::{anyhow, Result};
 use once_cell::sync::{Lazy, OnceCell};
+use paths::AbsPathBuf;
 use printer::DisplayLines;
 use rayon::prelude::*;
 use rpc::RpcClient;

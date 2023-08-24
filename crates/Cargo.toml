@@ -8,6 +8,7 @@ members = [
     "maple_core",
     "matcher",
     "matcher/extracted_fzy",
+    "paths",
     "pattern",
     "printer",
     "rpc",

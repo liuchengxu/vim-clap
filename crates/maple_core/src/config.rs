@@ -1,6 +1,6 @@
-use crate::paths::AbsPathBuf;
 use dirs::PROJECT_DIRS;
 use once_cell::sync::OnceCell;
+use paths::AbsPathBuf;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;

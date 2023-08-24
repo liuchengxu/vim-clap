@@ -2,11 +2,11 @@ mod buffer_tag;
 mod context_tag;
 mod project_tag;
 
-use crate::paths::AbsPathBuf;
 use crate::process::ShellCommand;
 use dirs::PROJECT_DIRS;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
+use paths::AbsPathBuf;
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::hash::Hash;

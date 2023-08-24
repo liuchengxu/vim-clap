@@ -1164,6 +1164,7 @@ dependencies = [
  "matcher",
  "once_cell",
  "parking_lot",
+ "paths",
  "pattern",
  "percent-encoding",
  "printer",
@@ -1342,6 +1343,16 @@ dependencies = [
  "redox_syscall 0.3.5",
  "smallvec",
  "windows-targets 0.48.5",
+]
+
+[[package]]
+name = "paths"
+version = "0.1.0"
+dependencies = [
+ "dirs",
+ "itertools",
+ "once_cell",
+ "serde",
 ]
 
 [[package]]

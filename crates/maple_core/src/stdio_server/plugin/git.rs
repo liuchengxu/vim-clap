@@ -217,7 +217,7 @@ fn parse_blame_info(stdout: Vec<u8>) -> Result<Option<BlameInfo>> {
 fn in_git_repo(filepath: &Path) -> Option<&Path> {
     filepath
         .exists()
-        .then(|| crate::paths::find_git_root(filepath))
+        .then(|| paths::find_git_root(filepath))
         .flatten()
 }
 

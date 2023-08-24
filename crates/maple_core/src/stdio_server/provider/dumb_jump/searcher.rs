@@ -1,8 +1,8 @@
 use super::QueryInfo;
 use crate::config::IgnoreConfig;
 use crate::find_usages::{AddressableUsage, CtagsSearcher, GtagsSearcher, RegexSearcher, Usages};
-use crate::paths::AbsPathBuf;
 use crate::tools::ctags::{get_language, TagsGenerator};
+use paths::AbsPathBuf;
 use rayon::prelude::*;
 use std::collections::HashSet;
 use std::io::Result;

@@ -199,7 +199,7 @@ pub fn find_git_root(start_dir: &Path) -> Option<&Path> {
     .ok()
 }
 
-fn upward_search<F>(path: &Path, predicate: F) -> anyhow::Result<&Path>
+fn upward_search<F>(path: &Path, predicate: F) -> std::io::Result<&Path>
 where
     F: Fn(&Path) -> bool,
 {
@@ -209,7 +209,7 @@ where
 
     let next_path = path
         .parent()
-        .ok_or_else(|| anyhow::anyhow!("No parent directory"))?;
+        .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "No parent directory"))?;
 
     upward_search(next_path, predicate)
 }

@@ -9,7 +9,6 @@ mod recent_files;
 mod tagfiles;
 
 pub use self::filer::read_dir_entries;
-use crate::paths::AbsPathBuf;
 use crate::searcher::blines::BlinesItem;
 use crate::searcher::SearchContext;
 use crate::stdio_server::handler::{
@@ -23,6 +22,7 @@ use icon::{Icon, IconKind};
 use matcher::{Bonus, MatchScope, Matcher, MatcherBuilder};
 use once_cell::sync::OnceCell;
 use parking_lot::RwLock;
+use paths::AbsPathBuf;
 use printer::Printer;
 use rpc::Params;
 use serde::{Deserialize, Serialize};
@@ -348,7 +348,7 @@ impl Context {
 
     // let root_markers = vec![".root".to_string(), ".git".to_string(), ".git/".to_string()];
     // let cwd = if start_buffer_path.exists() {
-    // match crate::paths::find_project_root(&start_buffer_path, &root_markers) {
+    // match paths::find_project_root(&start_buffer_path, &root_markers) {
     // Some(project_root) => project_root
     // .to_path_buf()
     // .try_into()
