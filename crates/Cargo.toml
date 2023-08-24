@@ -1,6 +1,6 @@
 [workspace]
-
 members = [
+    "dirs",
     "dumb_analyzer",
     "filter",
     "icon",

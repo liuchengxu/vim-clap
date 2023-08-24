@@ -1,9 +1,9 @@
 //! This module provides the feature of persistent data store via file system.
 
 use crate::cache::CacheInfo;
-use crate::dirs::PROJECT_DIRS;
 use crate::recent_files::SortedRecentFiles;
 use crate::stdio_server::InputHistory;
+use dirs::PROJECT_DIRS;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use serde::de::DeserializeOwned;

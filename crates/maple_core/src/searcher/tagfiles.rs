@@ -1,6 +1,6 @@
-use crate::dirs::HOME;
 use crate::searcher::{SearchContext, SearcherMessage};
 use crate::stdio_server::VimProgressor;
+use dirs::HOME;
 use filter::BestItems;
 use matcher::Matcher;
 use printer::Printer;

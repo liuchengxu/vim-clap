@@ -1,4 +1,4 @@
-use crate::dirs::BASE_DIRS;
+use dirs::BASE_DIRS;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use serde::de::Error as DeserializeError;

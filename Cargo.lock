@@ -457,6 +457,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "dirs"
+version = "0.1.0"
+dependencies = [
+ "directories",
+ "once_cell",
+]
+
+[[package]]
 name = "dirs-sys"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1144,7 +1152,7 @@ dependencies = [
  "chrono",
  "chrono-humanize",
  "clap",
- "directories",
+ "dirs",
  "dumb_analyzer",
  "filter",
  "futures",

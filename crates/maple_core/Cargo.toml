@@ -15,7 +15,6 @@ base64 = "0.13"
 bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.2", features = ["derive"] }
-directories = "4.0"
 futures = "0.3"
 # ripgrep for global search
 grep-searcher = "0.1"
@@ -34,6 +33,7 @@ subprocess = { git = "https://github.com/hniksic/rust-subprocess" }
 toml = "0.5"
 tracing = "0.1"
 
+dirs = { path = "../dirs" }
 dumb_analyzer = { path = "../dumb_analyzer" }
 filter = { path = "../filter" }
 icon = { path = "../icon" }
