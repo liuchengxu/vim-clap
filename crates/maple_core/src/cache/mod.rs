@@ -3,8 +3,8 @@ use crate::process::ShellCommand;
 use crate::UtcTime;
 use chrono::prelude::*;
 use std::path::PathBuf;
-
-pub const MAX_DIGESTS: usize = 100;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 /// Digest of a cached command execution.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -27,6 +27,8 @@ pub struct Digest {
 }
 
 impl Digest {
+    const EXECUTION_EXPIRATION_DAYS: i64 = 3;
+
     /// Creates an instance of [`Digest`].
     pub fn new(shell_cmd: ShellCommand, total: usize, cached_path: PathBuf) -> Self {
         let now = Utc::now();
@@ -57,9 +59,9 @@ impl Digest {
     pub fn is_usable(&self) -> bool {
         let now = Utc::now();
 
-        const EXECUTION_EXPIRATION_DAYS: i64 = 3;
-
-        if now.signed_duration_since(self.execution_time).num_days() > EXECUTION_EXPIRATION_DAYS {
+        if now.signed_duration_since(self.execution_time).num_days()
+            > Self::EXECUTION_EXPIRATION_DAYS
+        {
             return false;
         }
 
@@ -73,12 +75,21 @@ impl Digest {
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct CacheInfo {
     digests: Vec<Digest>,
+    #[serde(skip)]
+    idle: Arc<AtomicBool>,
 }
 
 impl CacheInfo {
-    pub fn with_capacity(capacity: usize) -> Self {
+    /// Maximum number of digests in the cache.
+    ///
+    /// The oldest one will be deleted once the size of cache exceeds this number.
+    pub const MAX_DIGESTS: usize = 100;
+
+    /// Constructs a new instance of [`CacheInfo`] with default cache size.
+    pub fn new() -> Self {
         Self {
-            digests: Vec::with_capacity(capacity),
+            digests: Vec::with_capacity(Self::MAX_DIGESTS),
+            idle: Arc::new(AtomicBool::new(true)),
         }
     }
 
@@ -91,7 +102,7 @@ impl CacheInfo {
         const MAX_DAYS: i64 = 30;
 
         self.digests.retain(|digest| {
-            if digest.shell_cmd.cwd.exists()
+            if digest.shell_cmd.dir.exists()
                 && digest.cached_path.exists()
                 && now.signed_duration_since(digest.last_visit).num_days() < MAX_DAYS
                 // In case the cache was not created completely.
@@ -115,14 +126,14 @@ impl CacheInfo {
     }
 
     /// Finds the usable digest given `shell_cmd`.
-    pub fn find_digest_usable(&mut self, shell_cmd: &ShellCommand) -> Option<Digest> {
+    pub fn lookup_usable_digest(&mut self, shell_cmd: &ShellCommand) -> Option<Digest> {
         match self.find_digest(shell_cmd) {
             Some(index) => {
                 let d = &mut self.digests[index];
                 if d.is_usable() {
                     d.total_visits += 1;
                     d.last_visit = Utc::now();
-                    // FIXME: save the latest state?
+
                     Some(d.clone())
                 } else {
                     if let Err(err) = self.prune_stale(index) {
@@ -132,6 +143,22 @@ impl CacheInfo {
                 }
             }
             _ => None,
+        }
+    }
+
+    /// Write the latest cache info to the disk if not busy, usually invoked after a usable digest lookup.
+    pub fn store_cache_info_if_idle(&self) {
+        if self
+            .idle
+            .compare_exchange(true, false, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok()
+        {
+            let new_cache_info = self.clone();
+
+            tokio::task::spawn_blocking(move || {
+                let _ = crate::datastore::store_cache_info(&new_cache_info);
+                new_cache_info.idle.store(true, Ordering::SeqCst);
+            });
         }
     }
 
@@ -148,7 +175,7 @@ impl CacheInfo {
         } else {
             self.digests.push(digest);
 
-            if self.digests.len() > MAX_DIGESTS {
+            if self.digests.len() > Self::MAX_DIGESTS {
                 self.digests.sort_unstable_by_key(|k| k.stale_score());
                 self.digests.pop();
             }
@@ -180,13 +207,6 @@ pub fn push_cache_digest(digest: Digest) {
     });
 }
 
-pub fn find_largest_cache_digest() -> Option<Digest> {
-    let cache_info = CACHE_INFO_IN_MEMORY.lock();
-    let mut digests = cache_info.to_digests();
-    digests.sort_unstable_by_key(|digest| digest.total);
-    digests.last().cloned()
-}
-
 pub fn store_cache_digest(
     shell_cmd: ShellCommand,
     new_created_cache: PathBuf,
@@ -200,4 +220,12 @@ pub fn store_cache_digest(
     cache_info.limited_push(digest.clone())?;
 
     Ok(digest)
+}
+
+/// For benchmarking purpose.
+pub fn find_largest_cache_digest() -> Option<Digest> {
+    let cache_info = CACHE_INFO_IN_MEMORY.lock();
+    let mut digests = cache_info.to_digests();
+    digests.sort_unstable_by_key(|digest| digest.total);
+    digests.last().cloned()
 }

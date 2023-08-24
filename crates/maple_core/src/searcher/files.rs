@@ -47,13 +47,13 @@ fn search_files(
                 _ => return WalkState::Continue,
             };
 
+            // TODO: Add match_file_path() in matcher to avoid allocation each time.
             let path = if let Ok(p) = entry.path().strip_prefix(&search_root) {
                 p.to_string_lossy().to_string()
             } else {
                 entry.path().to_string_lossy().to_string()
             };
 
-            // TODO: Add match_file_path() in matcher to avoid allocation each time.
             let maybe_matched_item = matcher.match_item(Arc::new(path));
 
             if let Err(err) = sender.send(maybe_matched_item) {

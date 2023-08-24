@@ -1,6 +1,6 @@
 //! This module provides the feature of persistent data store via file system.
 
-use crate::cache::{CacheInfo, MAX_DIGESTS};
+use crate::cache::CacheInfo;
 use crate::dirs::PROJECT_DIRS;
 use crate::recent_files::SortedRecentFiles;
 use crate::stdio_server::InputHistory;
@@ -20,7 +20,7 @@ static CACHE_METADATA_PATH: Lazy<Option<PathBuf>> =
 
 pub static CACHE_INFO_IN_MEMORY: Lazy<Arc<Mutex<CacheInfo>>> = Lazy::new(|| {
     let mut maybe_persistent = load_json::<CacheInfo, _>(CACHE_METADATA_PATH.as_deref())
-        .unwrap_or_else(|| CacheInfo::with_capacity(MAX_DIGESTS));
+        .unwrap_or_else(|| CacheInfo::new());
     maybe_persistent.remove_invalid_and_old_entries();
     Arc::new(Mutex::new(maybe_persistent))
 });

@@ -1,5 +1,6 @@
 //! Wrapper of [`tokio::process::Command`].
 
+use crate::process::process_output;
 use std::path::Path;
 use tokio::process::Command;
 
@@ -70,7 +71,7 @@ impl TokioCommand {
         // both for Neovim and Vim.
         let output = self.0.output().await?;
 
-        super::process_output(output)
+        process_output(output)
     }
 
     pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
