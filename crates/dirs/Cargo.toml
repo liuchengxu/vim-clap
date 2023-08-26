@@ -5,4 +5,3 @@ edition = "2021"
 
 [dependencies]
 directories = { workspace = true }
-once_cell = { workspace = true }

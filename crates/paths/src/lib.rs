@@ -1,4 +1,4 @@
-use dirs::BASE_DIRS;
+use dirs::Dirs;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use serde::de::Error as DeserializeError;
@@ -21,7 +21,7 @@ impl<'de> Deserialize<'de> for AbsPathBuf {
         if path.is_absolute() {
             Ok(Self(path))
         } else if let Ok(stripped) = path.strip_prefix("~") {
-            let path = BASE_DIRS.home_dir().join(stripped);
+            let path = Dirs::base().home_dir().join(stripped);
             // Resolve the symlink.
             let path =
                 canonicalize(path).map_err(|err| DeserializeError::custom(err.to_string()))?;
@@ -111,7 +111,7 @@ pub fn expand_tilde(path: impl AsRef<str>) -> PathBuf {
     static HOME_PREFIX: Lazy<String> = Lazy::new(|| format!("~{MAIN_SEPARATOR}"));
 
     if let Some(stripped) = path.as_ref().strip_prefix(HOME_PREFIX.as_str()) {
-        BASE_DIRS.home_dir().join(stripped)
+        Dirs::base().home_dir().join(stripped)
     } else {
         path.as_ref().into()
     }
@@ -122,7 +122,7 @@ pub fn truncate_absolute_path(abs_path: &str, max_len: usize) -> Cow<'_, str> {
     if abs_path.len() > max_len {
         let gap = abs_path.len() - max_len;
 
-        if let Some(home_dir) = BASE_DIRS.home_dir().to_str() {
+        if let Some(home_dir) = Dirs::base().home_dir().to_str() {
             if abs_path.starts_with(home_dir) {
                 // ~/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs
                 if home_dir.len() > gap {
@@ -227,7 +227,7 @@ mod tests {
         let p = r#".rustup\toolchains\stable-x86_64-unknown-linux-gnu\lib\rustlib\src\rust\library\alloc\src\string.rs"#;
         let abs_path = format!(
             "{}{MAIN_SEPARATOR}{p}",
-            BASE_DIRS.home_dir().to_str().unwrap(),
+            Dirs::base().home_dir().to_str().unwrap(),
         );
         let max_len = 60;
         #[cfg(not(target_os = "windows"))]

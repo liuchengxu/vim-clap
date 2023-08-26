@@ -1,4 +1,4 @@
-use dirs::PROJECT_DIRS;
+use dirs::Dirs;
 use once_cell::sync::Lazy;
 use std::path::PathBuf;
 
@@ -6,7 +6,7 @@ pub static GTAGS_EXISTS: Lazy<bool> = Lazy::new(|| gtags_executable_exists().unw
 
 /// Directory for `GTAGS`/`GRTAGS`.
 pub static GTAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
-    let gtags_dir = PROJECT_DIRS.data_dir().join("gtags");
+    let gtags_dir = Dirs::project().data_dir().join("gtags");
 
     std::fs::create_dir_all(&gtags_dir).expect("Couldn't create gtags directory for vim-clap");
 

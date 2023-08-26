@@ -1,4 +1,4 @@
-use dirs::PROJECT_DIRS;
+use dirs::Dirs;
 use once_cell::sync::OnceCell;
 use paths::AbsPathBuf;
 use serde::{Deserialize, Serialize};
@@ -17,7 +17,7 @@ pub fn load_config_on_startup(
         // Linux: ~/.config/vimclap/config.toml
         // macOS: ~/Library/Application\ Support/org.vim.Vim-Clap/config.toml
         // Windows: ~\AppData\Roaming\Vim\Vim Clap\config\config.toml
-        let config_file_path = PROJECT_DIRS.config_dir().join("config.toml");
+        let config_file_path = Dirs::project().config_dir().join("config.toml");
 
         if !config_file_path.exists() {
             std::fs::create_dir_all(&config_file_path).ok();

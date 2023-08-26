@@ -3,7 +3,7 @@ mod context_tag;
 mod project_tag;
 
 use crate::process::ShellCommand;
-use dirs::PROJECT_DIRS;
+use dirs::Dirs;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use paths::AbsPathBuf;
@@ -33,8 +33,7 @@ pub static DEFAULT_EXCLUDE_OPT: Lazy<String> = Lazy::new(|| {
 
 /// Directory for the `tags` files.
 pub static CTAGS_TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
-    let mut tags_dir = PROJECT_DIRS.data_dir().to_path_buf();
-    tags_dir.push("tags");
+    let tags_dir = Dirs::project().data_dir().join("tags");
 
     std::fs::create_dir_all(&tags_dir).expect("Couldn't create tags directory for vim-clap");
 

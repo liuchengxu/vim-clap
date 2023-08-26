@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use maple_core::datastore::CACHE_INFO_IN_MEMORY;
-use maple_core::dirs::clap_cache_dir;
+use maple_core::dirs::Dirs;
 use std::fs::read_dir;
 use std::io::Write;
 use std::path::{PathBuf, MAIN_SEPARATOR};
@@ -32,7 +32,7 @@ pub struct List {
 
 impl List {
     fn run(&self) -> Result<()> {
-        let cache_dir = clap_cache_dir()?;
+        let cache_dir = Dirs::clap_cache_dir()?;
         let stdout = std::io::stdout();
         let mut lock = stdout.lock();
 
@@ -79,7 +79,7 @@ pub struct Purge {
 
 impl Purge {
     fn run(&self) -> Result<()> {
-        let cache_dir = clap_cache_dir()?;
+        let cache_dir = Dirs::clap_cache_dir()?;
 
         if let Ok(cache_size) = dir_size(&cache_dir) {
             let readable_size = if cache_size > 1024 * 1024 {
