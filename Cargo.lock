@@ -1350,7 +1350,6 @@ version = "0.1.0"
 dependencies = [
  "dirs",
  "itertools",
- "once_cell",
  "serde",
 ]
 

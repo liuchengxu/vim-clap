@@ -1,12 +1,12 @@
 use dirs::Dirs;
 use itertools::Itertools;
-use once_cell::sync::Lazy;
 use serde::de::Error as DeserializeError;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::fs::canonicalize;
 use std::path::{Display, Path, PathBuf, MAIN_SEPARATOR};
+use std::sync::OnceLock;
 
 /// Unit type wrapper of [`PathBuf`] that is absolute path.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize)]
@@ -107,10 +107,14 @@ impl std::fmt::Display for AbsPathBuf {
     }
 }
 
+/// Expands `~` if any.
 pub fn expand_tilde(path: impl AsRef<str>) -> PathBuf {
-    static HOME_PREFIX: Lazy<String> = Lazy::new(|| format!("~{MAIN_SEPARATOR}"));
+    static HOME_PREFIX: OnceLock<String> = OnceLock::new();
 
-    if let Some(stripped) = path.as_ref().strip_prefix(HOME_PREFIX.as_str()) {
+    if let Some(stripped) = path
+        .as_ref()
+        .strip_prefix(HOME_PREFIX.get_or_init(|| format!("~{MAIN_SEPARATOR}")))
+    {
         Dirs::base().home_dir().join(stripped)
     } else {
         path.as_ref().into()
@@ -207,9 +211,9 @@ where
         return Ok(path);
     }
 
-    let next_path = path
-        .parent()
-        .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "No parent directory"))?;
+    let next_path = path.parent().ok_or_else(|| {
+        std::io::Error::new(std::io::ErrorKind::NotFound, "Reached root directory")
+    })?;
 
     upward_search(next_path, predicate)
 }
