@@ -13,10 +13,10 @@ anyhow = { workspace = true }
 clap = { workspace = true }
 futures = { workspace = true }
 itertools = { workspace = true }
-num_cpus = "1.13"
-tokio = { version = "1.19", features = ["fs", "rt", "process", "macros", "rt-multi-thread", "sync", "time"] }
-rayon = "1.5"
-regex = "1"
+num_cpus = { workspace = true }
+tokio = { workspace = true, features = ["fs", "rt", "process", "macros", "rt-multi-thread", "sync", "time"] }
+rayon = { workspace = true }
+regex = { workspace = true }
 serde_json = { workspace = true }
 subprocess = { workspace = true }
 tracing = { workspace = true }

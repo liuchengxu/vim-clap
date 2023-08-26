@@ -10,11 +10,11 @@ description = "Core of vim-clap Rust backend"
 
 [dependencies]
 anyhow = { workspace = true }
-async-trait = "0.1"
-base64 = "0.13"
+async-trait = { workspace = true }
+base64 = { workspace = true }
 bytecount = { workspace = true }
-chrono = { version = "0.4", features = ["serde"] }
-chrono-humanize = "0.2.3"
+chrono = { workspace = true }
+chrono-humanize = { workspace = true }
 clap = { workspace = true }
 futures = { workspace = true }
 # ripgrep for global search
@@ -22,18 +22,18 @@ grep-searcher = { workspace = true }
 grep-matcher = { workspace = true }
 ignore = { workspace = true }
 itertools = { workspace = true }
-tokio = { version = "1.19", features = ["fs", "rt", "process", "macros", "rt-multi-thread", "sync", "time"] }
+tokio = { workspace = true, features = ["fs", "rt", "process", "macros", "rt-multi-thread", "sync", "time"] }
 once_cell = { workspace = true }
 parking_lot = { workspace = true }
-percent-encoding = "2.2.0"
+percent-encoding = { workspace = true }
 rayon = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 subprocess = { workspace = true }
-toml = "0.5"
+toml = { workspace = true }
 tracing = { workspace = true }
-webbrowser = "0.8.10"
+webbrowser = { workspace = true }
 
 dirs = { workspace = true }
 dumb_analyzer = { workspace = true }

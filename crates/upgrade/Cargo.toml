@@ -5,8 +5,8 @@ authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-indicatif = "0.16"
-tokio = { version = "1.19", features = ["fs", "macros", "rt", "io-util", "rt-multi-thread"] }
+indicatif = { workspace = true }
+tokio = { workspace = true, features = ["fs", "macros", "rt", "io-util", "rt-multi-thread"] }
 # Use `rustls-tls` instead of `default-tls` to not pull in the openssl dep, making the cross-compile easier.
 reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
 serde = { workspace = true }
