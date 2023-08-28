@@ -87,7 +87,7 @@ fn test_filename_bonus() {
 
 #[test]
 fn test_language_keyword_bonus() {
-    let lines = vec!["hellorsr foo", "function foo"];
+    let lines = ["hellorsr foo", "function foo"];
     let query: Query = "fo".into();
     let matcher = MatcherBuilder::new()
         .bonuses(vec![Bonus::Language("vim".into())])
@@ -104,7 +104,7 @@ fn test_language_keyword_bonus() {
 
 #[test]
 fn test_exact_search_term_bonus() {
-    let lines = vec!["function foo qwer", "function foo"];
+    let lines = ["function foo qwer", "function foo"];
     let query: Query = "'fo".into();
     let matcher = MatcherBuilder::new().build(query);
     let matched_item1 = matcher

@@ -256,7 +256,7 @@ impl<'a> CachedPreviewImpl<'a> {
         let preview_tag = HelpTagPreview::new(subject, doc_filename, runtimepath);
         if let Some((fname, lines)) = preview_tag.get_help_lines(self.preview_height) {
             let lines = std::iter::once(fname.clone())
-                .chain(lines.into_iter())
+                .chain(lines)
                 .collect::<Vec<_>>();
             Preview {
                 lines,
