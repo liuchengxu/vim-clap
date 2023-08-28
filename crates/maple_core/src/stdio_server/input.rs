@@ -274,7 +274,7 @@ impl InputRecorder {
     /// Returns the previous input if inputs are not empty.
     ///
     /// Returns the last input if current input is the first.
-    pub fn move_to_previous(&mut self) -> Option<&str> {
+    pub fn move_to_prev(&mut self) -> Option<&str> {
         if self.inputs.is_empty() {
             return None;
         }

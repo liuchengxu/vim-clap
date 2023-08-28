@@ -1,8 +1,8 @@
 //! Poor man's language analyzer.
 
 use keywords::KeywordPriority;
-use std::sync::OnceLock;
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
 mod keywords;
 

@@ -428,7 +428,7 @@ impl ClapProvider for FilerProvider {
             KeyEventType::ShiftUp => ctx.scroll_preview(Direction::Up).await,
             KeyEventType::ShiftDown => ctx.scroll_preview(Direction::Down).await,
             KeyEventType::CtrlN => ctx.next_input().await,
-            KeyEventType::CtrlP => ctx.previous_input().await,
+            KeyEventType::CtrlP => ctx.prev_input().await,
         }
     }
 }

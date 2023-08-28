@@ -111,7 +111,7 @@ function! s:api.current_buffer_path() abort
 endfunction
 
 function! s:api.matchdelete_batch(match_ids, winid) abort
-  call map(a:match_ids, 'matchdelete(v:val, a:winid)')
+  silent! call map(a:match_ids, 'matchdelete(v:val, a:winid)')
 endfunction
 
 function! s:api.curbufline(lnum) abort
