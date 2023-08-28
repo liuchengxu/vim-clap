@@ -428,7 +428,7 @@ impl ClapPlugin for GitPlugin {
                         };
 
                         let Some(rev) = stdout.split('\n').next() else {
-                            return Ok(())
+                            return Ok(());
                         };
 
                         let lnum = self.vim.line(".").await?;
