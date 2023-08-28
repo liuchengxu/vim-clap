@@ -209,15 +209,13 @@ impl CursorWordHighlighter {
             return Ok(());
         }
 
-        let Some(file_extension) = source_file.extension().and_then(|s| s.to_str())
-                else {
-                    return Ok(())
-                };
+        let Some(file_extension) = source_file.extension().and_then(|s| s.to_str()) else {
+            return Ok(());
+        };
 
-        let Some(file_name) = source_file.file_name().and_then(|s| s.to_str())
-                else {
-                    return Ok(())
-                };
+        let Some(file_name) = source_file.file_name().and_then(|s| s.to_str()) else {
+            return Ok(());
+        };
 
         if self
             .ignore_extensions

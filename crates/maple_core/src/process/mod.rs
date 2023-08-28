@@ -96,19 +96,23 @@ pub struct ShellCommand {
     ///
     /// The same command with different cwd normally has
     /// different results, thus we need to record the cwd too.
-    pub cwd: PathBuf,
+    pub dir: PathBuf,
 }
 
 impl ShellCommand {
     /// Creates a new instance of [`ShellCommand`].
-    pub fn new(command: String, cwd: PathBuf) -> Self {
-        Self { command, cwd }
+    pub fn new(command: String, dir: PathBuf) -> Self {
+        Self { command, dir }
     }
 
     /// Returns the cache digest if the cache exists.
     pub fn cache_digest(&self) -> Option<Digest> {
         let mut info = CACHE_INFO_IN_MEMORY.lock();
-        info.find_digest_usable(self)
+        let maybe_usable_digest = info.lookup_usable_digest(self);
+        if maybe_usable_digest.is_some() {
+            info.store_cache_info_if_idle();
+        }
+        maybe_usable_digest
     }
 
     pub fn cache_file_path(&self) -> std::io::Result<PathBuf> {

@@ -457,6 +457,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "dirs"
+version = "0.1.0"
+dependencies = [
+ "directories",
+]
+
+[[package]]
 name = "dirs-sys"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -471,7 +478,6 @@ dependencies = [
 name = "dumb_analyzer"
 version = "0.1.0"
 dependencies = [
- "once_cell",
  "serde_json",
 ]
 
@@ -1144,7 +1150,7 @@ dependencies = [
  "chrono",
  "chrono-humanize",
  "clap",
- "directories",
+ "dirs",
  "dumb_analyzer",
  "filter",
  "futures",
@@ -1156,6 +1162,7 @@ dependencies = [
  "matcher",
  "once_cell",
  "parking_lot",
+ "paths",
  "pattern",
  "percent-encoding",
  "printer",
@@ -1334,6 +1341,15 @@ dependencies = [
  "redox_syscall 0.3.5",
  "smallvec",
  "windows-targets 0.48.5",
+]
+
+[[package]]
+name = "paths"
+version = "0.1.0"
+dependencies = [
+ "dirs",
+ "itertools",
+ "serde",
 ]
 
 [[package]]

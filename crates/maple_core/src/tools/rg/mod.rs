@@ -299,7 +299,7 @@ impl RgTokioCommand {
     pub async fn create_cache(self) -> Result<Digest> {
         let cache_file = self.shell_cmd.cache_file_path()?;
 
-        let std_cmd = rg_command(&self.shell_cmd.cwd);
+        let std_cmd = rg_command(&self.shell_cmd.dir);
         let mut tokio_cmd = tokio::process::Command::from(std_cmd);
         crate::process::tokio::write_stdout_to_file(&mut tokio_cmd, &cache_file).await?;
 

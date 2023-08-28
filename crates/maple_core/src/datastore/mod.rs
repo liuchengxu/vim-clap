@@ -1,9 +1,9 @@
 //! This module provides the feature of persistent data store via file system.
 
-use crate::cache::{CacheInfo, MAX_DIGESTS};
-use crate::dirs::PROJECT_DIRS;
+use crate::cache::CacheInfo;
 use crate::recent_files::SortedRecentFiles;
 use crate::stdio_server::InputHistory;
+use dirs::Dirs;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use serde::de::DeserializeOwned;
@@ -19,8 +19,8 @@ static CACHE_METADATA_PATH: Lazy<Option<PathBuf>> =
     Lazy::new(|| generate_data_file_path(CACHE_FILENAME).ok());
 
 pub static CACHE_INFO_IN_MEMORY: Lazy<Arc<Mutex<CacheInfo>>> = Lazy::new(|| {
-    let mut maybe_persistent = load_json::<CacheInfo, _>(CACHE_METADATA_PATH.as_deref())
-        .unwrap_or_else(|| CacheInfo::with_capacity(MAX_DIGESTS));
+    let mut maybe_persistent =
+        load_json::<CacheInfo, _>(CACHE_METADATA_PATH.as_deref()).unwrap_or_else(CacheInfo::new);
     maybe_persistent.remove_invalid_and_old_entries();
     Arc::new(Mutex::new(maybe_persistent))
 });
@@ -57,14 +57,14 @@ pub fn cache_metadata_path() -> Option<&'static PathBuf> {
 
 /// Returns a `PathBuf` using given file name under the project data directory.
 pub fn generate_data_file_path(filename: &str) -> std::io::Result<PathBuf> {
-    let data_dir = PROJECT_DIRS.data_dir();
+    let data_dir = Dirs::project().data_dir();
     std::fs::create_dir_all(data_dir)?;
     Ok(data_dir.join(filename))
 }
 
 /// Returns a `PathBuf` using given file name under the project cache directory.
 pub fn generate_cache_file_path(filename: impl AsRef<Path>) -> std::io::Result<PathBuf> {
-    let cache_dir = PROJECT_DIRS.cache_dir();
+    let cache_dir = Dirs::project().cache_dir();
     std::fs::create_dir_all(cache_dir)?;
     Ok(cache_dir.join(filename))
 }

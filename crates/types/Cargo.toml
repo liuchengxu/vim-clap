@@ -5,5 +5,5 @@ authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-icon = { path = "../icon" }
-pattern = { path = "../pattern" }
+icon = { workspace = true }
+pattern = { workspace = true }

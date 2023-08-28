@@ -1,4 +1,4 @@
-use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
+use crate::stdio_server::provider::{BaseArgs, ClapProvider, Context, SearcherControl};
 use anyhow::Result;
 use clap::Parser;
 use matcher::MatchScope;
@@ -6,8 +6,6 @@ use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use types::Query;
-
-use super::BaseArgs;
 
 #[derive(Debug, Parser, PartialEq, Eq, Default)]
 #[command(name = ":Clap grep")]

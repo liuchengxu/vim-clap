@@ -1,6 +1,6 @@
-use crate::dirs::HOME;
 use crate::searcher::{SearchContext, SearcherMessage};
 use crate::stdio_server::VimProgressor;
+use dirs::Dirs;
 use filter::BestItems;
 use matcher::Matcher;
 use printer::Printer;
@@ -34,7 +34,7 @@ impl TagItem {
         let mut home_path = PathBuf::new();
         let path = Path::new(&self.path);
         let path = path.strip_prefix(cwd).unwrap_or({
-            path.strip_prefix(HOME.as_path())
+            path.strip_prefix(Dirs::base().home_dir())
                 .map(|path| {
                     home_path.push("~");
                     home_path = home_path.join(path);
@@ -373,16 +373,16 @@ mod tests {
         assert_eq!(tag.path, "crates/maple_cli/src/app.rs");
         assert_eq!(
             tag.address,
-            r#"/^	pub \/* \\\/ *\/ fn	run(self) -> Result<()> {$/"#
+            r"/^	pub \/* \\\/ *\/ fn	run(self) -> Result<()> {$/"
         );
         assert_eq!(tag.kind, "P");
 
         // With invalid escaped characters
-        let data = r#"tag_name	filepath_here.py	/def ta\g_name/	f	"#;
+        let data = r"tag_name	filepath_here.py	/def ta\g_name/	f	";
         let tag = TagItem::parse(&empty_path, data).unwrap();
         assert_eq!(tag.name, "tag_name");
         assert_eq!(tag.path, "filepath_here.py");
-        assert_eq!(tag.address, r#"/def ta\g_name/"#);
+        assert_eq!(tag.address, r"/def ta\g_name/");
         assert_eq!(tag.kind, "f");
 
         // with different characters after pattern

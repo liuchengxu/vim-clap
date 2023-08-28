@@ -1,4 +1,3 @@
-use crate::paths::{expand_tilde, truncate_absolute_path};
 use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
 use crate::previewer::{get_file_preview, FilePreview};
@@ -6,6 +5,7 @@ use crate::stdio_server::job;
 use crate::stdio_server::provider::{read_dir_entries, Context, ProviderSource};
 use crate::stdio_server::vim::preview_syntax;
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
+use paths::{expand_tilde, truncate_absolute_path};
 use pattern::*;
 use serde::{Deserialize, Serialize};
 use std::io::{Error, ErrorKind, Result};
@@ -256,7 +256,7 @@ impl<'a> CachedPreviewImpl<'a> {
         let preview_tag = HelpTagPreview::new(subject, doc_filename, runtimepath);
         if let Some((fname, lines)) = preview_tag.get_help_lines(self.preview_height) {
             let lines = std::iter::once(fname.clone())
-                .chain(lines.into_iter())
+                .chain(lines)
                 .collect::<Vec<_>>();
             Preview {
                 lines,

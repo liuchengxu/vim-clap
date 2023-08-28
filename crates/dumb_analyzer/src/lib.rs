@@ -1,8 +1,8 @@
 //! Poor man's language analyzer.
 
 use keywords::KeywordPriority;
-use once_cell::sync::OnceCell;
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
 mod keywords;
 
@@ -38,7 +38,7 @@ impl From<usize> for Priority {
 ///
 /// - `ext`: the extension of a file, e.g., `rs`.
 pub fn get_comment_syntax(ext: &str) -> &[&str] {
-    static LANGUAGE_COMMENT_TABLE: OnceCell<HashMap<&str, Vec<&str>>> = OnceCell::new();
+    static LANGUAGE_COMMENT_TABLE: OnceLock<HashMap<&str, Vec<&str>>> = OnceLock::new();
 
     let table = LANGUAGE_COMMENT_TABLE.get_or_init(|| {
         serde_json::from_str(include_str!("../../../scripts/dumb_jump/comments_map.json"))

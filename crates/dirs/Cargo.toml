@@ -1,7 +1,7 @@
 [package]
-name = "dumb_analyzer"
+name = "dirs"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-serde_json = { workspace = true }
+directories = { workspace = true }

@@ -224,7 +224,7 @@ mod tests {
     fn test_sort_by_cwd() {
         let mut sorted_recent_files = SortedRecentFiles::default();
 
-        let entries = vec![
+        let entries = [
             "/usr/local/share/test1.txt",
             "/home/xlc/.vimrc",
             "/home/xlc/test.txt",

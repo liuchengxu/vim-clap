@@ -103,7 +103,7 @@ impl ClapPlugin for CtagsPlugin {
         use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
 
         let PluginEvent::Autocmd(autocmd_event) = plugin_event else {
-          return Ok(());
+            return Ok(());
         };
 
         let (event_type, params) = autocmd_event;

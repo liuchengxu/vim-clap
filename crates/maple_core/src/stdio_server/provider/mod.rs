@@ -9,7 +9,6 @@ mod recent_files;
 mod tagfiles;
 
 pub use self::filer::read_dir_entries;
-use crate::paths::AbsPathBuf;
 use crate::searcher::blines::BlinesItem;
 use crate::searcher::SearchContext;
 use crate::stdio_server::handler::{
@@ -23,6 +22,7 @@ use icon::{Icon, IconKind};
 use matcher::{Bonus, MatchScope, Matcher, MatcherBuilder};
 use once_cell::sync::OnceCell;
 use parking_lot::RwLock;
+use paths::AbsPathBuf;
 use printer::Printer;
 use rpc::Params;
 use serde::{Deserialize, Serialize};
@@ -348,7 +348,7 @@ impl Context {
 
     // let root_markers = vec![".root".to_string(), ".git".to_string(), ".git/".to_string()];
     // let cwd = if start_buffer_path.exists() {
-    // match crate::paths::find_project_root(&start_buffer_path, &root_markers) {
+    // match paths::find_project_root(&start_buffer_path, &root_markers) {
     // Some(project_root) => project_root
     // .to_path_buf()
     // .try_into()
@@ -507,6 +507,7 @@ impl Context {
         Ok(())
     }
 
+    /// Sets input to the next query.
     pub async fn next_input(&mut self) -> Result<()> {
         if let Some(next) = self.input_recorder.move_to_next() {
             if self.env.is_nvim {
@@ -519,8 +520,9 @@ impl Context {
         Ok(())
     }
 
-    pub async fn previous_input(&mut self) -> Result<()> {
-        if let Some(previous) = self.input_recorder.move_to_previous() {
+    /// Sets input to the previous query.
+    pub async fn prev_input(&mut self) -> Result<()> {
+        if let Some(previous) = self.input_recorder.move_to_prev() {
             if self.env.is_nvim {
                 self.vim.exec("clap#state#set_input", [previous])?;
             } else {
@@ -789,7 +791,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
             KeyEventType::ShiftUp => ctx.scroll_preview(Direction::Up).await?,
             KeyEventType::ShiftDown => ctx.scroll_preview(Direction::Down).await?,
             KeyEventType::CtrlN => ctx.next_input().await?,
-            KeyEventType::CtrlP => ctx.previous_input().await?,
+            KeyEventType::CtrlP => ctx.prev_input().await?,
             _ => {}
         }
         Ok(())

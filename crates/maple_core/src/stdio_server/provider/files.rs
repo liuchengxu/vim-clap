@@ -1,8 +1,8 @@
-use crate::paths::AbsPathBuf;
 use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use matcher::{Bonus, MatchScope};
+use paths::AbsPathBuf;
 use serde_json::json;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;

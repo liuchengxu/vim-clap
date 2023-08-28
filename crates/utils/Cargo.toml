@@ -5,8 +5,8 @@ authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
-memchr = "2.5"
-simdutf8 = "0.1"
+bytecount = { workspace = true }
+memchr = { workspace = true }
+simdutf8 = { workspace = true }
 
-types = { path = "../types" }
+types = { workspace = true }

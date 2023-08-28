@@ -235,7 +235,7 @@ pub fn truncate_grep_lines(
     let mut lnum = 0usize;
     let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = lines
         .into_iter()
-        .zip(indices.into_iter())
+        .zip(indices)
         .map(|(line, mut indices)| {
             lnum += 1;
 

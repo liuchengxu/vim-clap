@@ -9,28 +9,28 @@ homepage = "https://github.com/liuchengxu/vim-clap"
 description = "CLI for vim-clap Rust backend"
 
 [dependencies]
-anyhow = "1.0"
-clap = { version = "4.2", features = ["derive"] }
-futures = "0.3"
-itertools = "0.10"
-num_cpus = "1.13"
-tokio = { version = "1.19", features = ["fs", "rt", "process", "macros", "rt-multi-thread", "sync", "time"] }
-rayon = "1.5"
-regex = "1"
-serde_json = "1"
-subprocess = { git = "https://github.com/hniksic/rust-subprocess" }
-tracing = "0.1"
-tracing-appender = "0.2"
-tracing-subscriber = "0.3"
+anyhow = { workspace = true }
+clap = { workspace = true }
+futures = { workspace = true }
+itertools = { workspace = true }
+num_cpus = { workspace = true }
+tokio = { workspace = true, features = ["fs", "rt", "process", "macros", "rt-multi-thread", "sync", "time"] }
+rayon = { workspace = true }
+regex = { workspace = true }
+serde_json = { workspace = true }
+subprocess = { workspace = true }
+tracing = { workspace = true }
+tracing-appender = { workspace = true }
+tracing-subscriber = { workspace = true }
 
-filter = { path = "../filter" }
-icon = { path = "../icon" }
-matcher = { path = "../matcher" }
-maple_core = { path = "../maple_core" }
-pattern = { path = "../pattern" }
-printer = { path = "../printer" }
-types = { path = "../types" }
-utils = { path = "../utils" }
+filter = { workspace = true }
+icon = { workspace = true }
+matcher = { workspace = true }
+maple_core = { workspace = true }
+pattern = { workspace = true }
+printer = { workspace = true }
+types = { workspace = true }
+utils = { workspace = true }
 
 [dev-dependencies]
 criterion = "0.3"

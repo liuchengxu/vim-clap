@@ -1,6 +1,6 @@
 pub mod vim_help;
 
-use crate::paths::truncate_absolute_path;
+use paths::truncate_absolute_path;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;

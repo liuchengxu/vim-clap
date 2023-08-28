@@ -217,7 +217,7 @@ fn parse_blame_info(stdout: Vec<u8>) -> Result<Option<BlameInfo>> {
 fn in_git_repo(filepath: &Path) -> Option<&Path> {
     filepath
         .exists()
-        .then(|| crate::paths::find_git_root(filepath))
+        .then(|| paths::find_git_root(filepath))
         .flatten()
 }
 
@@ -428,7 +428,7 @@ impl ClapPlugin for GitPlugin {
                         };
 
                         let Some(rev) = stdout.split('\n').next() else {
-                            return Ok(())
+                            return Ok(());
                         };
 
                         let lnum = self.vim.line(".").await?;

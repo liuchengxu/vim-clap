@@ -2,7 +2,6 @@ mod searcher;
 
 use self::searcher::{SearchEngine, SearchWorker};
 use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, UsageMatcher, Usages};
-use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::CachedPreviewImpl;
 use crate::stdio_server::job;
 use crate::stdio_server::provider::{BaseArgs, ClapProvider, Context};
@@ -12,6 +11,7 @@ use anyhow::Result;
 use filter::Query;
 use futures::Future;
 use itertools::Itertools;
+use paths::AbsPathBuf;
 use rayon::prelude::*;
 use serde_json::json;
 use std::path::PathBuf;
