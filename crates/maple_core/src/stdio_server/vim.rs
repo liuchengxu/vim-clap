@@ -9,7 +9,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::ops::Deref;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -453,6 +453,7 @@ impl Vim {
     /////////////////////////////////////////////////////////////////
     //    General helpers
     /////////////////////////////////////////////////////////////////
+
     pub fn echo_info(&self, msg: impl AsRef<str>) -> Result<()> {
         self.exec("clap#helper#echo_info", [msg.as_ref()])
     }
@@ -465,6 +466,10 @@ impl Vim {
         self.getbufvar::<u32>(bufnr, "&modified")
             .await
             .map(|m| m == 1u32)
+    }
+
+    pub async fn bufabspath(&self, bufnr: impl Display) -> Result<String> {
+        self.expand(format!("#{bufnr}:p")).await
     }
 
     pub async fn current_winid(&self) -> Result<usize> {

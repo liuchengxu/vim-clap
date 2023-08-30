@@ -62,7 +62,7 @@ augroup VimClap
     autocmd BufDelete    * call clap#client#notify('BufDelete',    [+expand('<abuf>')])
     autocmd BufWritePost * call clap#client#notify('BufWritePost', [+expand('<abuf>')])
     autocmd BufWinEnter  * call clap#client#notify('BufWinEnter',  [+expand('<abuf>')])
-    autocmd BufWinLeave  * call clap#client#notify('BufWinLeave',  [+expand('<abuf>')])
+    autocmd BufWinLeave  * call clap#client#notify('BufWinLeave',  [+expand('<abuf>'), bufwinid(+expand('<abuf>'))])
   endif
 
   " yanks provider

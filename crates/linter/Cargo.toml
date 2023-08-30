@@ -1,0 +1,12 @@
+[package]
+name = "linter"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lsp-types = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+
+paths = { workspace = true }

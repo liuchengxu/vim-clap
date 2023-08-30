@@ -9,8 +9,8 @@ mod vim;
 pub use self::input::InputHistory;
 use self::input::{ActionEvent, Event, ProviderEvent};
 use self::plugin::{
-    ActionType, ClapPlugin, CtagsPlugin, CursorWordHighlighter, GitPlugin, MarkdownPlugin,
-    PluginId, SystemPlugin,
+    ActionType, ClapPlugin, CtagsPlugin, CursorWordHighlighter, GitPlugin, LinterPlugin,
+    MarkdownPlugin, PluginId, SystemPlugin,
 };
 use self::provider::{create_provider, Context};
 use self::service::ServiceManager;
@@ -92,6 +92,7 @@ pub async fn start(config_err: Option<toml::de::Error>) {
 
     register_plugin(Box::new(SystemPlugin::new(vim.clone())));
     register_plugin(Box::new(GitPlugin::new(vim.clone())));
+    register_plugin(Box::new(LinterPlugin::new(vim.clone())));
 
     let plugin_config = &crate::config::config().plugin;
 
