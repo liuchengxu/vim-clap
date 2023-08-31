@@ -1100,6 +1100,7 @@ name = "linter"
 version = "0.1.0"
 dependencies = [
  "lsp-types",
+ "once_cell",
  "paths",
  "serde",
  "serde_json",

@@ -1,4 +1,4 @@
-use crate::{Code, Diagnostic, LintEngine, LintResult, PartialSpan};
+use crate::{Code, Diagnostic, HandleLintResult, LintEngine, LintResult, PartialSpan};
 use lsp_types::DiagnosticSeverity;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -21,6 +21,32 @@ pub struct RustLinter {
 }
 
 impl RustLinter {
+    pub fn spawn_jobs<Handler: HandleLintResult + Send + Sync + Clone + 'static>(
+        self,
+        handler: Handler,
+    ) {
+        tokio::task::spawn_blocking({
+            let handler = handler.clone();
+            let linter = self.clone();
+
+            move || {
+                if let Ok(lint_result) = linter.cargo_check() {
+                    let _ = handler.handle_lint_result(lint_result);
+                }
+            }
+        });
+
+        tokio::task::spawn_blocking({
+            let linter = self;
+
+            move || {
+                if let Ok(lint_result) = linter.cargo_clippy() {
+                    let _ = handler.handle_lint_result(lint_result);
+                }
+            }
+        });
+    }
+
     pub fn cargo_check(&self) -> std::io::Result<LintResult> {
         let output = std::process::Command::new("cargo")
             .args(["check", "--frozen", "--message-format=json", "-q"])

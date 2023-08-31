@@ -5,19 +5,40 @@ use crate::stdio_server::plugin::{
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use linter::Diagnostic;
+use once_cell::sync::Lazy;
 use parking_lot::RwLock;
+use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
-struct ShareableDiagnostics(Arc<RwLock<Vec<Diagnostic>>>);
+struct ShareableDiagnostics {
+    refreshed: Arc<AtomicBool>,
+    diagnostics: Arc<RwLock<Vec<Diagnostic>>>,
+}
+
+impl Serialize for ShareableDiagnostics {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.diagnostics.read().serialize(serializer)
+    }
+}
 
 impl ShareableDiagnostics {
-    fn update(&self, new: Vec<Diagnostic>) {
-        let mut diagnostics = self.0.write();
-        *diagnostics = new;
+    fn extend(&self, new: Vec<Diagnostic>) {
+        let mut diagnostics = self.diagnostics.write();
+        diagnostics.extend(new);
+    }
+
+    fn reset(&self) {
+        self.refreshed.store(false, Ordering::SeqCst);
+        let mut diagnostics = self.diagnostics.write();
+        diagnostics.clear();
     }
 }
 
@@ -40,12 +61,28 @@ impl LintResultHandler {
 
 impl linter::HandleLintResult for LintResultHandler {
     fn handle_lint_result(&self, lint_result: linter::LintResult) -> std::io::Result<()> {
-        let mut diagnostics = lint_result.diagnostics;
-        diagnostics.sort_by(|a, b| a.line_start.cmp(&b.line_start));
-        let _ = self
-            .vim
-            .exec("clap#plugin#linter#show", (self.bufnr, &diagnostics));
-        self.diagnostics.update(diagnostics);
+        let mut new_diagnostics = lint_result.diagnostics;
+        new_diagnostics.sort_by(|a, b| a.line_start.cmp(&b.line_start));
+
+        // Refresh if the first new diagnostics results arrive.
+        if self
+            .diagnostics
+            .refreshed
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok()
+        {
+            let _ = self
+                .vim
+                .exec("clap#plugin#linter#refresh", (self.bufnr, &new_diagnostics));
+        } else {
+            let _ = self
+                .vim
+                .exec("clap#plugin#linter#update", (self.bufnr, &new_diagnostics));
+        }
+
+        // Join the results from all the lint engines.
+        self.diagnostics.extend(new_diagnostics);
+
         Ok(())
     }
 }
@@ -58,12 +95,47 @@ struct BufferLinterInfo {
     diagnostics: ShareableDiagnostics,
 }
 
+impl BufferLinterInfo {
+    fn new(workspace: PathBuf) -> Self {
+        Self {
+            workspace,
+            diagnostics: ShareableDiagnostics {
+                refreshed: Arc::new(AtomicBool::new(false)),
+                diagnostics: Arc::new(RwLock::new(Vec::new())),
+            },
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct LinterPlugin {
     vim: Vim,
     bufs: HashMap<usize, BufferLinterInfo>,
     toggle: Toggle,
 }
+
+#[derive(Debug, Clone)]
+enum WorkspaceFinder {
+    RootMarkers(&'static [&'static str]),
+    /// Use the parent directory as the workspace if no explicit root markers.
+    ParentOfSourceFile,
+}
+
+impl WorkspaceFinder {
+    pub fn find_workspace<'a>(&'a self, source_file: &'a Path) -> Option<&Path> {
+        match self {
+            Self::RootMarkers(root_markers) => paths::find_project_root(source_file, root_markers),
+            Self::ParentOfSourceFile => Some(source_file.parent().unwrap_or(source_file)),
+        }
+    }
+}
+
+static SUPPORTED_LANGUAGE: Lazy<HashMap<&str, WorkspaceFinder>> = Lazy::new(|| {
+    HashMap::from_iter([
+        ("rust", WorkspaceFinder::RootMarkers(&["Cargo.toml"])),
+        ("sh", WorkspaceFinder::ParentOfSourceFile),
+    ])
+});
 
 impl LinterPlugin {
     pub const ID: PluginId = PluginId::Linter;
@@ -86,16 +158,22 @@ impl LinterPlugin {
 
     async fn lint_buffer(&self, bufnr: usize, buf_linter_info: &BufferLinterInfo) -> Result<()> {
         let source_file = self.vim.bufabspath(bufnr).await?;
-        let handler =
-            LintResultHandler::new(bufnr, self.vim.clone(), buf_linter_info.diagnostics.clone());
+
+        buf_linter_info.diagnostics.reset();
 
         linter::lint_in_background(
             PathBuf::from(source_file),
             &buf_linter_info.workspace,
-            handler,
+            LintResultHandler::new(bufnr, self.vim.clone(), buf_linter_info.diagnostics.clone()),
         );
 
         Ok(())
+    }
+
+    async fn workspace_finder(&self, bufnr: usize) -> Result<Option<&WorkspaceFinder>> {
+        let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+
+        Ok(SUPPORTED_LANGUAGE.get(filetype.as_str()))
     }
 }
 
@@ -115,7 +193,7 @@ impl ClapPlugin for LinterPlugin {
         match plugin_event {
             PluginEvent::Autocmd((autocmd_event_type, params)) => {
                 use AutocmdEventType::{
-                    BufDelete, BufEnter, BufWinLeave, BufWritePost, CursorMoved, InsertEnter,
+                    BufDelete, BufEnter, BufWritePost, CursorMoved, InsertEnter,
                 };
 
                 if self.toggle.is_off() {
@@ -126,37 +204,32 @@ impl ClapPlugin for LinterPlugin {
 
                 match autocmd_event_type {
                     BufEnter => {
-                        let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
-
-                        const ENABLED_FILETYPES: &[&'static str] = &["rust"];
-                        if !ENABLED_FILETYPES.contains(&filetype.as_str()) {
-                            return Ok(());
-                        }
-
                         let source_file = self.vim.bufabspath(bufnr).await?;
                         let source_file = PathBuf::from(source_file);
-                        if let Some(workspace) =
-                            paths::find_project_root(&source_file, &["Cargo.toml"])
-                        {
-                            let buf_linter_info = BufferLinterInfo {
-                                workspace: workspace.to_path_buf(),
-                                diagnostics: ShareableDiagnostics(Arc::new(
-                                    RwLock::new(Vec::new()),
-                                )),
-                            };
 
-                            self.lint_buffer(bufnr, &buf_linter_info).await?;
-
-                            self.bufs.insert(bufnr, buf_linter_info);
+                        let Some(workspace) =
+                            self.workspace_finder(bufnr)
+                                .await?
+                                .and_then(|workspace_finder| {
+                                    workspace_finder.find_workspace(&source_file)
+                                })
+                        else {
                             return Ok(());
-                        }
+                        };
+
+                        let buf_linter_info = BufferLinterInfo::new(workspace.to_path_buf());
+                        self.lint_buffer(bufnr, &buf_linter_info).await?;
+                        self.bufs.insert(bufnr, buf_linter_info);
+
+                        return Ok(());
                     }
                     BufWritePost => {
-                        let maybe_workspace = self.bufs.get(&bufnr).map(|info| &info.workspace);
-
                         if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
                             self.lint_buffer(bufnr, buf_linter_info).await?;
                         }
+                    }
+                    BufDelete => {
+                        self.bufs.remove(&bufnr);
                     }
                     CursorMoved => {}
                     _ => {}
@@ -168,25 +241,22 @@ impl ClapPlugin for LinterPlugin {
                 let PluginAction { method, params: _ } = plugin_action;
                 match method.as_str() {
                     Self::LINT => {
+                        let bufnr = self.vim.bufnr("").await?;
                         let source_file = self.vim.current_buffer_path().await?;
                         let source_file = PathBuf::from(source_file);
+
                         let Some(workspace) =
-                            paths::find_project_root(&source_file, &["Cargo.toml"])
+                            self.workspace_finder(bufnr)
+                                .await?
+                                .and_then(|workspace_finder| {
+                                    workspace_finder.find_workspace(&source_file)
+                                })
                         else {
                             return Ok(());
                         };
 
                         let mut diagnostics = linter::lint_file(&source_file, workspace)?;
-
                         diagnostics.sort_by(|a, b| a.line_start.cmp(&b.line_start));
-
-                        tracing::debug!("{} diagnostics: {diagnostics:?}", diagnostics.len());
-
-                        // let lnum = self.vim.line(".").await?;
-                        // let current_diagnostics = diagnostics
-                        // .iter()
-                        // .filter(|d| d.line_start == lnum)
-                        // .collect::<Vec<_>>();
 
                         let current_diagnostics = diagnostics;
 
@@ -198,7 +268,7 @@ impl ClapPlugin for LinterPlugin {
 
                             let bufnr = self.vim.bufnr("").await?;
                             self.vim
-                                .exec("clap#plugin#linter#show", (bufnr, current_diagnostics))?;
+                                .exec("clap#plugin#linter#refresh", (bufnr, current_diagnostics))?;
                         }
                     }
                     Self::TOGGLE => {

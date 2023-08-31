@@ -1,4 +1,5 @@
 mod rust;
+mod sh;
 
 use lsp_types::DiagnosticSeverity;
 use serde::{Deserialize, Serialize};
@@ -48,9 +49,8 @@ pub struct PartialSpan {
 pub enum LintEngine {
     CargoCheck,
     CargoClippy,
+    ShellCheck,
 }
-
-// extensions => filetype => multiple linters
 
 #[derive(Debug, Clone)]
 pub struct LintResult {
@@ -67,34 +67,27 @@ pub fn lint_in_background<Handler: HandleLintResult + Send + Sync + Clone + 'sta
     workspace: &Path,
     handler: Handler,
 ) {
-    let linter = self::rust::RustLinter {
-        source_file: source_file.clone(),
-        workspace: workspace.to_path_buf(),
-    };
+    if let Some(ext) = source_file.extension().and_then(|s| s.to_str()) {
+        match ext {
+            "rs" => {
+                let linter = self::rust::RustLinter {
+                    source_file,
+                    workspace: workspace.to_path_buf(),
+                };
 
-    tokio::task::spawn_blocking({
-        let handler = handler.clone();
-        let linter = linter.clone();
-
-        move || {
-            if let Ok(lint_result) = linter.cargo_check() {
-                let _ = handler.handle_lint_result(lint_result);
+                linter.spawn_jobs(handler);
             }
-        }
-    });
-
-    tokio::task::spawn_blocking({
-        let linter = self::rust::RustLinter {
-            source_file: source_file.to_path_buf(),
-            workspace: workspace.to_path_buf(),
-        };
-
-        move || {
-            if let Ok(lint_result) = linter.cargo_clippy() {
-                let _ = handler.handle_lint_result(lint_result);
+            "sh" => {
+                if let Ok(diagnostics) = self::sh::lint_shell_script(&source_file, workspace) {
+                    let _ = handler.handle_lint_result(LintResult {
+                        engine: LintEngine::ShellCheck,
+                        diagnostics,
+                    });
+                }
             }
+            _ => {}
         }
-    });
+    }
 }
 
 pub fn lint_file(
@@ -107,10 +100,6 @@ pub fn lint_file(
     };
 
     linter.cargo_check().map(|res| res.diagnostics)
-
-    // let lint_result = linter.cargo_check()?;
-    // let lint_result = linter.cargo_clippy()?;
-    // handler.handle_lint_result(lint_result)?;
 }
 
 #[cfg(test)]
@@ -122,8 +111,8 @@ mod tests {
         let source_file =
             Path::new("/Users/xuliucheng/.vim/plugged/vim-clap/crates/linter/src/lib.rs");
 
-        let workspace = paths::find_project_root(&source_file, &["Cargo.toml"]).unwrap();
-        let diagonostics = lint_file(&source_file, workspace);
+        let workspace = paths::find_project_root(source_file, &["Cargo.toml"]).unwrap();
+        let diagonostics = lint_file(source_file, workspace);
         println!("======= diagonostics: {diagonostics:#?}");
     }
 }
