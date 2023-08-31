@@ -1,9 +1,9 @@
-use crate::{Code, Diagnostic, PartialSpan};
+use crate::{Code, Diagnostic, LintEngine, LintResult, PartialSpan};
 use lsp_types::DiagnosticSeverity;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -14,36 +14,29 @@ struct CargoCheckErrorMessage {
     spans: Vec<PartialSpan>,
 }
 
-pub struct RustLinter<'a, P> {
-    pub source_file: P,
-    pub workspace: &'a Path,
+#[derive(Clone)]
+pub struct RustLinter {
+    pub source_file: PathBuf,
+    pub workspace: PathBuf,
 }
 
-#[derive(Debug, Clone)]
-pub enum LinterSource {
-    CargoCheck,
-    CargoClippy,
-}
-
-#[derive(Debug, Clone)]
-pub struct LinterResult {
-    pub source: LinterSource,
-    pub diagonostics: Vec<Diagnostic>,
-}
-
-impl<'a, P: AsRef<Path>> RustLinter<'a, P> {
-    pub fn cargo_check(&self) -> std::io::Result<Vec<Diagnostic>> {
+impl RustLinter {
+    pub fn cargo_check(&self) -> std::io::Result<LintResult> {
         let output = std::process::Command::new("cargo")
             .args(["check", "--frozen", "--message-format=json", "-q"])
             // .stderr(Stdio::null())
-            .current_dir(self.workspace)
-            .output()
-            .expect("Failed to run cargo check");
+            .current_dir(&self.workspace)
+            .output()?;
 
-        Ok(self.parse_cargo_message(&output.stdout))
+        let diagnostics = self.parse_cargo_message(&output.stdout);
+
+        Ok(LintResult {
+            engine: LintEngine::CargoCheck,
+            diagnostics,
+        })
     }
 
-    pub fn cargo_clippy(&self) -> std::io::Result<Vec<Diagnostic>> {
+    pub fn cargo_clippy(&self) -> std::io::Result<LintResult> {
         let output = std::process::Command::new("cargo")
             .args([
                 "clippy",
@@ -56,10 +49,15 @@ impl<'a, P: AsRef<Path>> RustLinter<'a, P> {
                 "-D",
                 "warnings",
             ])
-            .current_dir(self.workspace)
+            .current_dir(&self.workspace)
             .output()?;
 
-        Ok(self.parse_cargo_message(&output.stdout))
+        let diagnostics = self.parse_cargo_message(&output.stdout);
+
+        Ok(LintResult {
+            engine: LintEngine::CargoClippy,
+            diagnostics,
+        })
     }
 
     fn parse_cargo_message(&self, stdout: &[u8]) -> Vec<Diagnostic> {
@@ -67,11 +65,10 @@ impl<'a, P: AsRef<Path>> RustLinter<'a, P> {
 
         let source_filename = self
             .source_file
-            .as_ref()
-            .strip_prefix(self.workspace.parent().unwrap_or(self.workspace))
+            .strip_prefix(self.workspace.parent().unwrap_or(&self.workspace))
             .unwrap_or(self.source_file.as_ref())
             .to_str()
-            .expect("Filename must exist");
+            .expect("source_filename must not contain invalid unicode");
 
         let mut diagonostics = Vec::new();
 
@@ -102,11 +99,6 @@ impl<'a, P: AsRef<Path>> RustLinter<'a, P> {
 
                     if !spans.is_empty() {
                         for span in spans {
-                            tracing::debug!(
-                                "======== file_name: {}, source_file: {}",
-                                span.file_name,
-                                source_filename
-                            );
                             if span.file_name == source_filename {
                                 let diagonostic = Diagnostic {
                                     line_start: span.line_start,

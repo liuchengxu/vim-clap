@@ -8,5 +8,6 @@ lsp-types = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }
+tokio = { workspace = true, features = ["rt"] }
 
 paths = { workspace = true }

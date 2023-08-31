@@ -5,14 +5,57 @@ use crate::stdio_server::plugin::{
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use linter::Diagnostic;
+use parking_lot::RwLock;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+#[derive(Debug, Clone)]
+struct ShareableDiagnostics(Arc<RwLock<Vec<Diagnostic>>>);
+
+impl ShareableDiagnostics {
+    fn update(&self, new: Vec<Diagnostic>) {
+        let mut diagnostics = self.0.write();
+        *diagnostics = new;
+    }
+}
+
+#[derive(Clone)]
+struct LintResultHandler {
+    bufnr: usize,
+    vim: Vim,
+    diagnostics: ShareableDiagnostics,
+}
+
+impl LintResultHandler {
+    fn new(bufnr: usize, vim: Vim, diagnostics: ShareableDiagnostics) -> Self {
+        Self {
+            bufnr,
+            vim,
+            diagnostics,
+        }
+    }
+}
+
+impl linter::HandleLintResult for LintResultHandler {
+    fn handle_lint_result(&self, lint_result: linter::LintResult) -> std::io::Result<()> {
+        let mut diagnostics = lint_result.diagnostics;
+        diagnostics.sort_by(|a, b| a.line_start.cmp(&b.line_start));
+        let _ = self
+            .vim
+            .exec("clap#plugin#linter#show", (self.bufnr, &diagnostics));
+        self.diagnostics.update(diagnostics);
+        Ok(())
+    }
+}
+
+impl LintResultHandler {}
 
 #[derive(Debug, Clone)]
 struct BufferLinterInfo {
     workspace: PathBuf,
-    diagnostics: Vec<Diagnostic>,
+    diagnostics: ShareableDiagnostics,
 }
 
 #[derive(Debug, Clone)]
@@ -41,13 +84,18 @@ impl LinterPlugin {
         }
     }
 
-    async fn lint_buffer(&self, bufnr: usize, workspace: &Path) -> Result<Vec<Diagnostic>> {
+    async fn lint_buffer(&self, bufnr: usize, buf_linter_info: &BufferLinterInfo) -> Result<()> {
         let source_file = self.vim.bufabspath(bufnr).await?;
-        let mut diagnostics = linter::lint(source_file, workspace)?;
-        diagnostics.sort_by(|a, b| a.line_start.cmp(&b.line_start));
-        self.vim
-            .exec("clap#plugin#linter#show", (bufnr, &diagnostics))?;
-        Ok(diagnostics)
+        let handler =
+            LintResultHandler::new(bufnr, self.vim.clone(), buf_linter_info.diagnostics.clone());
+
+        linter::lint_in_background(
+            PathBuf::from(source_file),
+            &buf_linter_info.workspace,
+            handler,
+        );
+
+        Ok(())
     }
 }
 
@@ -90,15 +138,14 @@ impl ClapPlugin for LinterPlugin {
                         if let Some(workspace) =
                             paths::find_project_root(&source_file, &["Cargo.toml"])
                         {
-                            let mut buf_linter_info = BufferLinterInfo {
+                            let buf_linter_info = BufferLinterInfo {
                                 workspace: workspace.to_path_buf(),
-                                diagnostics: Vec::new(),
+                                diagnostics: ShareableDiagnostics(Arc::new(
+                                    RwLock::new(Vec::new()),
+                                )),
                             };
 
-                            let diagnostics =
-                                self.lint_buffer(bufnr, &buf_linter_info.workspace).await?;
-
-                            buf_linter_info.diagnostics = diagnostics;
+                            self.lint_buffer(bufnr, &buf_linter_info).await?;
 
                             self.bufs.insert(bufnr, buf_linter_info);
                             return Ok(());
@@ -107,11 +154,8 @@ impl ClapPlugin for LinterPlugin {
                     BufWritePost => {
                         let maybe_workspace = self.bufs.get(&bufnr).map(|info| &info.workspace);
 
-                        if let Some(workspace) = maybe_workspace {
-                            let diagnostics = self.lint_buffer(bufnr, workspace).await?;
-                            if let Some(buf_linter_info) = self.bufs.get_mut(&bufnr) {
-                                buf_linter_info.diagnostics = diagnostics;
-                            }
+                        if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
+                            self.lint_buffer(bufnr, buf_linter_info).await?;
                         }
                     }
                     CursorMoved => {}
@@ -132,7 +176,7 @@ impl ClapPlugin for LinterPlugin {
                             return Ok(());
                         };
 
-                        let mut diagnostics = linter::lint(&source_file, workspace)?;
+                        let mut diagnostics = linter::lint_file(&source_file, workspace)?;
 
                         diagnostics.sort_by(|a, b| a.line_start.cmp(&b.line_start));
 

@@ -2,7 +2,7 @@ mod rust;
 
 use lsp_types::DiagnosticSeverity;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub enum Linter {
@@ -44,15 +44,73 @@ pub struct PartialSpan {
     rendered: Option<String>,
 }
 
-pub fn lint(source_file: impl AsRef<Path>, workspace: &Path) -> std::io::Result<Vec<Diagnostic>> {
+#[derive(Debug, Clone)]
+pub enum LintEngine {
+    CargoCheck,
+    CargoClippy,
+}
+
+// extensions => filetype => multiple linters
+
+#[derive(Debug, Clone)]
+pub struct LintResult {
+    pub engine: LintEngine,
+    pub diagnostics: Vec<Diagnostic>,
+}
+
+pub trait HandleLintResult {
+    fn handle_lint_result(&self, lint_result: LintResult) -> std::io::Result<()>;
+}
+
+pub fn lint_in_background<Handler: HandleLintResult + Send + Sync + Clone + 'static>(
+    source_file: PathBuf,
+    workspace: &Path,
+    handler: Handler,
+) {
     let linter = self::rust::RustLinter {
-        source_file,
-        workspace,
+        source_file: source_file.clone(),
+        workspace: workspace.to_path_buf(),
     };
 
-    let mut diagonostics = linter.cargo_check()?;
-    // diagonostics.extend(linter.cargo_clippy()?);
-    Ok(diagonostics)
+    tokio::task::spawn_blocking({
+        let handler = handler.clone();
+        let linter = linter.clone();
+
+        move || {
+            if let Ok(lint_result) = linter.cargo_check() {
+                let _ = handler.handle_lint_result(lint_result);
+            }
+        }
+    });
+
+    tokio::task::spawn_blocking({
+        let linter = self::rust::RustLinter {
+            source_file: source_file.to_path_buf(),
+            workspace: workspace.to_path_buf(),
+        };
+
+        move || {
+            if let Ok(lint_result) = linter.cargo_clippy() {
+                let _ = handler.handle_lint_result(lint_result);
+            }
+        }
+    });
+}
+
+pub fn lint_file(
+    source_file: impl AsRef<Path>,
+    workspace: &Path,
+) -> std::io::Result<Vec<Diagnostic>> {
+    let linter = self::rust::RustLinter {
+        source_file: source_file.as_ref().to_path_buf(),
+        workspace: workspace.to_path_buf(),
+    };
+
+    linter.cargo_check().map(|res| res.diagnostics)
+
+    // let lint_result = linter.cargo_check()?;
+    // let lint_result = linter.cargo_clippy()?;
+    // handler.handle_lint_result(lint_result)?;
 }
 
 #[cfg(test)]
@@ -65,7 +123,7 @@ mod tests {
             Path::new("/Users/xuliucheng/.vim/plugged/vim-clap/crates/linter/src/lib.rs");
 
         let workspace = paths::find_project_root(&source_file, &["Cargo.toml"]).unwrap();
-        let diagonostics = lint(&source_file, workspace);
+        let diagonostics = lint_file(&source_file, workspace);
         println!("======= diagonostics: {diagonostics:#?}");
     }
 }
