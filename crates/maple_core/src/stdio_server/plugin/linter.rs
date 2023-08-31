@@ -169,12 +169,6 @@ impl LinterPlugin {
 
         Ok(())
     }
-
-    async fn workspace_finder(&self, bufnr: usize) -> Result<Option<&WorkspaceFinder>> {
-        let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
-
-        Ok(SUPPORTED_LANGUAGE.get(filetype.as_str()))
-    }
 }
 
 impl ClapAction for LinterPlugin {
@@ -192,9 +186,7 @@ impl ClapPlugin for LinterPlugin {
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
         match plugin_event {
             PluginEvent::Autocmd((autocmd_event_type, params)) => {
-                use AutocmdEventType::{
-                    BufDelete, BufEnter, BufWritePost, CursorMoved, InsertEnter,
-                };
+                use AutocmdEventType::{BufDelete, BufEnter, BufWritePost};
 
                 if self.toggle.is_off() {
                     return Ok(());
@@ -207,13 +199,11 @@ impl ClapPlugin for LinterPlugin {
                         let source_file = self.vim.bufabspath(bufnr).await?;
                         let source_file = PathBuf::from(source_file);
 
-                        let Some(workspace) =
-                            self.workspace_finder(bufnr)
-                                .await?
-                                .and_then(|workspace_finder| {
-                                    workspace_finder.find_workspace(&source_file)
-                                })
-                        else {
+                        let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+
+                        let Some(workspace) = SUPPORTED_LANGUAGE.get(filetype.as_str()).and_then(
+                            |workspace_finder| workspace_finder.find_workspace(&source_file),
+                        ) else {
                             return Ok(());
                         };
 
@@ -231,7 +221,6 @@ impl ClapPlugin for LinterPlugin {
                     BufDelete => {
                         self.bufs.remove(&bufnr);
                     }
-                    CursorMoved => {}
                     _ => {}
                 }
 
@@ -245,13 +234,11 @@ impl ClapPlugin for LinterPlugin {
                         let source_file = self.vim.current_buffer_path().await?;
                         let source_file = PathBuf::from(source_file);
 
-                        let Some(workspace) =
-                            self.workspace_finder(bufnr)
-                                .await?
-                                .and_then(|workspace_finder| {
-                                    workspace_finder.find_workspace(&source_file)
-                                })
-                        else {
+                        let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+
+                        let Some(workspace) = SUPPORTED_LANGUAGE.get(filetype.as_str()).and_then(
+                            |workspace_finder| workspace_finder.find_workspace(&source_file),
+                        ) else {
                             return Ok(());
                         };
 

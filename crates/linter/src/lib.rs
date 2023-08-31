@@ -10,13 +10,13 @@ pub enum Linter {
     Rust,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct Code {
     pub code: String,
     pub explanation: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct Diagnostic {
     pub line_start: usize,
     pub line_end: usize,
