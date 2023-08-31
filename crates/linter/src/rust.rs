@@ -57,7 +57,7 @@ impl RustLinter {
         let diagnostics = self.parse_cargo_message(&output.stdout);
 
         Ok(LintResult {
-            engine: LintEngine::CargoCheck,
+            engine: LintEngine::RustCargoCheck,
             diagnostics,
         })
     }
@@ -81,7 +81,7 @@ impl RustLinter {
         let diagnostics = self.parse_cargo_message(&output.stdout);
 
         Ok(LintResult {
-            engine: LintEngine::CargoClippy,
+            engine: LintEngine::RustCargoClippy,
             diagnostics,
         })
     }

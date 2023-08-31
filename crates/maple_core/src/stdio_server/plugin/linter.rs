@@ -74,14 +74,24 @@ impl linter::HandleLintResult for LintResultHandler {
             let _ = self
                 .vim
                 .exec("clap#plugin#linter#refresh", (self.bufnr, &new_diagnostics));
-        } else {
-            let _ = self
-                .vim
-                .exec("clap#plugin#linter#update", (self.bufnr, &new_diagnostics));
-        }
 
-        // Join the results from all the lint engines.
-        self.diagnostics.extend(new_diagnostics);
+            self.diagnostics.extend(new_diagnostics);
+        } else {
+            // Multiple linters can have an overlap over the diagnostics.
+            let existing = self.diagnostics.diagnostics.read();
+            let deduplicated_new = new_diagnostics
+                .into_iter()
+                .filter(|d| !existing.contains(d))
+                .collect::<Vec<_>>();
+            if !deduplicated_new.is_empty() {
+                let _ = self
+                    .vim
+                    .exec("clap#plugin#linter#update", (self.bufnr, &deduplicated_new));
+            }
+
+            // Join the results from all the lint engines.
+            self.diagnostics.extend(deduplicated_new);
+        }
 
         Ok(())
     }
@@ -122,7 +132,7 @@ enum WorkspaceFinder {
 }
 
 impl WorkspaceFinder {
-    pub fn find_workspace<'a>(&'a self, source_file: &'a Path) -> Option<&Path> {
+    fn find_workspace<'a>(&'a self, source_file: &'a Path) -> Option<&Path> {
         match self {
             Self::RootMarkers(root_markers) => paths::find_project_root(source_file, root_markers),
             Self::ParentOfSourceFile => Some(source_file.parent().unwrap_or(source_file)),
@@ -130,7 +140,7 @@ impl WorkspaceFinder {
     }
 }
 
-static SUPPORTED_LANGUAGE: Lazy<HashMap<&str, WorkspaceFinder>> = Lazy::new(|| {
+static WORKSPACE_FINDERS: Lazy<HashMap<&str, WorkspaceFinder>> = Lazy::new(|| {
     HashMap::from_iter([
         ("rust", WorkspaceFinder::RootMarkers(&["Cargo.toml"])),
         ("sh", WorkspaceFinder::ParentOfSourceFile),
@@ -201,9 +211,13 @@ impl ClapPlugin for LinterPlugin {
 
                         let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
 
-                        let Some(workspace) = SUPPORTED_LANGUAGE.get(filetype.as_str()).and_then(
-                            |workspace_finder| workspace_finder.find_workspace(&source_file),
-                        ) else {
+                        let Some(workspace) =
+                            WORKSPACE_FINDERS
+                                .get(filetype.as_str())
+                                .and_then(|workspace_finder| {
+                                    workspace_finder.find_workspace(&source_file)
+                                })
+                        else {
                             return Ok(());
                         };
 
@@ -236,9 +250,13 @@ impl ClapPlugin for LinterPlugin {
 
                         let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
 
-                        let Some(workspace) = SUPPORTED_LANGUAGE.get(filetype.as_str()).and_then(
-                            |workspace_finder| workspace_finder.find_workspace(&source_file),
-                        ) else {
+                        let Some(workspace) =
+                            WORKSPACE_FINDERS
+                                .get(filetype.as_str())
+                                .and_then(|workspace_finder| {
+                                    workspace_finder.find_workspace(&source_file)
+                                })
+                        else {
                             return Ok(());
                         };
 

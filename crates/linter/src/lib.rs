@@ -47,8 +47,8 @@ pub struct PartialSpan {
 
 #[derive(Debug, Clone)]
 pub enum LintEngine {
-    CargoCheck,
-    CargoClippy,
+    RustCargoCheck,
+    RustCargoClippy,
     ShellCheck,
 }
 
