@@ -5,10 +5,11 @@ edition = "2021"
 
 [dependencies]
 lsp-types = { workspace = true }
+once_cell = { workspace = true }
+regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-tracing = { workspace = true }
 tokio = { workspace = true, features = ["rt"] }
-once_cell = { workspace = true }
+tracing = { workspace = true }
 
 paths = { workspace = true }

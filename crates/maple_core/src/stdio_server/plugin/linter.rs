@@ -76,7 +76,7 @@ impl linter::HandleLintResult for LintResultHandler {
                 .vim
                 .exec("clap#plugin#linter#refresh", (self.bufnr, &new_diagnostics));
 
-            self.diagnostics.extend(new_diagnostics);
+            self.shareable_diagnostics.extend(new_diagnostics);
         } else {
             // Multiple linters can have an overlap over the diagnostics.
             let existing = self.shareable_diagnostics.diagnostics.read();
@@ -150,6 +150,7 @@ impl WorkspaceFinder {
 static WORKSPACE_FINDERS: Lazy<HashMap<&str, WorkspaceFinder>> = Lazy::new(|| {
     HashMap::from_iter([
         ("rust", WorkspaceFinder::RootMarkers(&["Cargo.toml"])),
+        ("go", WorkspaceFinder::RootMarkers(&["go.mod", ".git"])),
         ("sh", WorkspaceFinder::ParentOfSourceFile),
     ])
 });

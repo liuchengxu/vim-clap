@@ -1102,6 +1102,7 @@ dependencies = [
  "lsp-types",
  "once_cell",
  "paths",
+ "regex",
  "serde",
  "serde_json",
  "tokio",
