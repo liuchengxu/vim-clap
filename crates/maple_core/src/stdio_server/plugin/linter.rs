@@ -6,13 +6,14 @@ use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use linter::Diagnostic;
 use once_cell::sync::Lazy;
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use tokio::task::JoinHandle;
 
 #[derive(Debug, Clone)]
 struct ShareableDiagnostics {
@@ -46,15 +47,15 @@ impl ShareableDiagnostics {
 struct LintResultHandler {
     bufnr: usize,
     vim: Vim,
-    diagnostics: ShareableDiagnostics,
+    shareable_diagnostics: ShareableDiagnostics,
 }
 
 impl LintResultHandler {
-    fn new(bufnr: usize, vim: Vim, diagnostics: ShareableDiagnostics) -> Self {
+    fn new(bufnr: usize, vim: Vim, shareable_diagnostics: ShareableDiagnostics) -> Self {
         Self {
             bufnr,
             vim,
-            diagnostics,
+            shareable_diagnostics,
         }
     }
 }
@@ -66,7 +67,7 @@ impl linter::HandleLintResult for LintResultHandler {
 
         // Refresh if the first new diagnostics results arrive.
         if self
-            .diagnostics
+            .shareable_diagnostics
             .refreshed
             .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
             .is_ok()
@@ -78,7 +79,7 @@ impl linter::HandleLintResult for LintResultHandler {
             self.diagnostics.extend(new_diagnostics);
         } else {
             // Multiple linters can have an overlap over the diagnostics.
-            let existing = self.diagnostics.diagnostics.read();
+            let existing = self.shareable_diagnostics.diagnostics.read();
             let deduplicated_new = new_diagnostics
                 .into_iter()
                 .filter(|d| !existing.contains(d))
@@ -90,7 +91,7 @@ impl linter::HandleLintResult for LintResultHandler {
             }
 
             // Join the results from all the lint engines.
-            self.diagnostics.extend(deduplicated_new);
+            self.shareable_diagnostics.extend(deduplicated_new);
         }
 
         Ok(())
@@ -99,20 +100,26 @@ impl linter::HandleLintResult for LintResultHandler {
 
 impl LintResultHandler {}
 
+type LinterJob = JoinHandle<()>;
+
 #[derive(Debug, Clone)]
 struct BufferLinterInfo {
     workspace: PathBuf,
+    source_file: PathBuf,
     diagnostics: ShareableDiagnostics,
+    current_jobs: Arc<Mutex<Vec<LinterJob>>>,
 }
 
 impl BufferLinterInfo {
-    fn new(workspace: PathBuf) -> Self {
+    fn new(workspace: PathBuf, source_file: PathBuf) -> Self {
         Self {
             workspace,
+            source_file,
             diagnostics: ShareableDiagnostics {
                 refreshed: Arc::new(AtomicBool::new(false)),
                 diagnostics: Arc::new(RwLock::new(Vec::new())),
             },
+            current_jobs: Arc::new(Mutex::new(Vec::new())),
         }
     }
 }
@@ -166,16 +173,24 @@ impl LinterPlugin {
         }
     }
 
-    async fn lint_buffer(&self, bufnr: usize, buf_linter_info: &BufferLinterInfo) -> Result<()> {
-        let source_file = self.vim.bufabspath(bufnr).await?;
-
+    fn lint_buffer(&self, bufnr: usize, buf_linter_info: &BufferLinterInfo) -> Result<()> {
         buf_linter_info.diagnostics.reset();
 
-        linter::lint_in_background(
-            PathBuf::from(source_file),
+        let mut current_jobs = buf_linter_info.current_jobs.lock();
+
+        if !current_jobs.is_empty() {
+            for job in &*current_jobs {
+                job.abort();
+            }
+        }
+
+        let jobs = linter::lint_in_background(
+            buf_linter_info.source_file.clone(),
             &buf_linter_info.workspace,
             LintResultHandler::new(bufnr, self.vim.clone(), buf_linter_info.diagnostics.clone()),
         );
+
+        *current_jobs = jobs;
 
         Ok(())
     }
@@ -196,13 +211,17 @@ impl ClapPlugin for LinterPlugin {
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
         match plugin_event {
             PluginEvent::Autocmd((autocmd_event_type, params)) => {
-                use AutocmdEventType::{BufDelete, BufEnter, BufWritePost};
+                use AutocmdEventType::{
+                    BufDelete, BufEnter, BufWritePost, TextChanged, TextChangedI,
+                };
 
                 if self.toggle.is_off() {
                     return Ok(());
                 }
 
                 let bufnr = params.parse_bufnr()?;
+
+                tracing::debug!("======= event: {autocmd_event_type:?}");
 
                 match autocmd_event_type {
                     BufEnter => {
@@ -221,15 +240,16 @@ impl ClapPlugin for LinterPlugin {
                             return Ok(());
                         };
 
-                        let buf_linter_info = BufferLinterInfo::new(workspace.to_path_buf());
-                        self.lint_buffer(bufnr, &buf_linter_info).await?;
+                        let buf_linter_info =
+                            BufferLinterInfo::new(workspace.to_path_buf(), source_file);
+                        self.lint_buffer(bufnr, &buf_linter_info)?;
                         self.bufs.insert(bufnr, buf_linter_info);
 
                         return Ok(());
                     }
-                    BufWritePost => {
+                    BufWritePost | TextChanged | TextChangedI => {
                         if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
-                            self.lint_buffer(bufnr, buf_linter_info).await?;
+                            self.lint_buffer(bufnr, buf_linter_info)?;
                         }
                     }
                     BufDelete => {
@@ -263,7 +283,11 @@ impl ClapPlugin for LinterPlugin {
                         let mut diagnostics = linter::lint_file(&source_file, workspace)?;
                         diagnostics.sort_by(|a, b| a.line_start.cmp(&b.line_start));
 
-                        let current_diagnostics = diagnostics;
+                        let lnum = self.vim.line(".").await?;
+                        let current_diagnostics = diagnostics
+                            .into_iter()
+                            .filter(|d| d.line_start == lnum)
+                            .collect::<Vec<_>>();
 
                         if !current_diagnostics.is_empty() {
                             tracing::debug!("====== diagnostics: {current_diagnostics:?}");
@@ -271,7 +295,6 @@ impl ClapPlugin for LinterPlugin {
                                 self.vim.echo_info(current_diagnostic.human_message())?;
                             }
 
-                            let bufnr = self.vim.bufnr("").await?;
                             self.vim
                                 .exec("clap#plugin#linter#refresh", (bufnr, current_diagnostics))?;
                         }

@@ -78,7 +78,7 @@ pub async fn start(config_err: Option<toml::de::Error>) {
 
     let mut service_manager = ServiceManager::default();
 
-    let mut register_plugin = |plugin: Box<dyn ClapPlugin>| {
+    let mut register_plugin = |plugin: Box<dyn ClapPlugin>, debounce: Option<Duration>| {
         callable_action_methods.extend(
             plugin
                 .actions(ActionType::Callable)
@@ -86,26 +86,29 @@ pub async fn start(config_err: Option<toml::de::Error>) {
                 .map(|a| a.method),
         );
 
-        let (plugin_id, actions) = service_manager.register_plugin(plugin);
+        let (plugin_id, actions) = service_manager.register_plugin(plugin, debounce);
         all_actions.insert(plugin_id, actions);
     };
 
-    register_plugin(Box::new(SystemPlugin::new(vim.clone())));
-    register_plugin(Box::new(GitPlugin::new(vim.clone())));
-    register_plugin(Box::new(LinterPlugin::new(vim.clone())));
+    register_plugin(Box::new(SystemPlugin::new(vim.clone())), None);
+    register_plugin(Box::new(GitPlugin::new(vim.clone())), None);
+    register_plugin(
+        Box::new(LinterPlugin::new(vim.clone())),
+        Some(Duration::from_millis(100)),
+    );
 
     let plugin_config = &crate::config::config().plugin;
 
     if plugin_config.ctags.enable {
-        register_plugin(Box::new(CtagsPlugin::new(vim.clone())));
+        register_plugin(Box::new(CtagsPlugin::new(vim.clone())), None);
     }
 
     if plugin_config.markdown.enable {
-        register_plugin(Box::new(MarkdownPlugin::new(vim.clone())));
+        register_plugin(Box::new(MarkdownPlugin::new(vim.clone())), None);
     }
 
     if plugin_config.cursor_word_highlighter.enable {
-        register_plugin(Box::new(CursorWordHighlighter::new(vim.clone())));
+        register_plugin(Box::new(CursorWordHighlighter::new(vim.clone())), None);
     }
 
     tokio::spawn({

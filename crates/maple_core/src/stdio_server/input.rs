@@ -19,7 +19,12 @@ impl PluginEvent {
     pub fn should_debounce(&self) -> bool {
         match self {
             Self::Autocmd((autocmd_event_type, _)) => {
-                matches!(autocmd_event_type, AutocmdEventType::CursorMoved)
+                matches!(
+                    autocmd_event_type,
+                    AutocmdEventType::CursorMoved
+                        | AutocmdEventType::TextChanged
+                        | AutocmdEventType::TextChangedI
+                )
             }
             _ => false,
         }
@@ -74,6 +79,8 @@ pub enum AutocmdEventType {
     BufWritePost,
     BufWinEnter,
     BufWinLeave,
+    TextChanged,
+    TextChangedI,
 }
 
 pub type ActionEvent = (PluginId, PluginAction);
@@ -138,6 +145,8 @@ impl Event {
             "BufWritePost" => Ok(Self::Autocmd((BufWritePost, notification.params))),
             "BufWinEnter" => Ok(Self::Autocmd((BufWinEnter, notification.params))),
             "BufWinLeave" => Ok(Self::Autocmd((BufWinLeave, notification.params))),
+            "TextChanged" => Ok(Self::Autocmd((TextChanged, notification.params))),
+            "TextChangedI" => Ok(Self::Autocmd((TextChangedI, notification.params))),
             _ => Ok(Self::Action(action_parser(notification)?)),
         }
     }

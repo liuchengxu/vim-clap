@@ -4,6 +4,7 @@ mod sh;
 use lsp_types::DiagnosticSeverity;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use tokio::task::JoinHandle;
 
 #[derive(Debug)]
 pub enum Linter {
@@ -16,16 +17,42 @@ pub struct Code {
     pub explanation: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq)]
+pub enum Severity {
+    Error,
+    Warning,
+    Info,
+    Hint,
+    Help,
+    Style,
+    Unknown,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Diagnostic {
     pub line_start: usize,
     pub line_end: usize,
     pub column_start: usize,
     pub column_end: usize,
     pub code: Code,
-    pub severity: Option<DiagnosticSeverity>,
+    pub severity: Severity,
     pub message: String,
 }
+
+impl PartialEq for Diagnostic {
+    fn eq(&self, other: &Self) -> bool {
+        // If two diagnostics point to the same location and have the
+        // same message, they visually make no differences. For instance,
+        // some linter does not provide the severity property but has the
+        // rest fields as same as the other linters.
+        self.line_start == other.line_start
+            && self.column_start == other.column_start
+            && self.column_end == other.column_end
+            && self.message == other.message
+    }
+}
+
+impl Eq for Diagnostic {}
 
 impl Diagnostic {
     pub fn human_message(&self) -> String {
@@ -66,7 +93,7 @@ pub fn lint_in_background<Handler: HandleLintResult + Send + Sync + Clone + 'sta
     source_file: PathBuf,
     workspace: &Path,
     handler: Handler,
-) {
+) -> Vec<JoinHandle<()>> {
     if let Some(ext) = source_file.extension().and_then(|s| s.to_str()) {
         match ext {
             "rs" => {
@@ -75,7 +102,7 @@ pub fn lint_in_background<Handler: HandleLintResult + Send + Sync + Clone + 'sta
                     workspace: workspace.to_path_buf(),
                 };
 
-                linter.spawn_jobs(handler);
+                return linter.start(handler);
             }
             "sh" => {
                 if let Ok(diagnostics) = self::sh::lint_shell_script(&source_file, workspace) {
@@ -88,6 +115,8 @@ pub fn lint_in_background<Handler: HandleLintResult + Send + Sync + Clone + 'sta
             _ => {}
         }
     }
+
+    Vec::new()
 }
 
 pub fn lint_file(

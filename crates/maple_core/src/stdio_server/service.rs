@@ -375,8 +375,12 @@ impl ServiceManager {
         }
     }
 
-    /// Creates a new plugin session with the default debounce setting.
-    pub fn register_plugin(&mut self, plugin: Box<dyn ClapPlugin>) -> (PluginId, Vec<String>) {
+    /// Creates a new plugin session with the default debounce setting (50ms).
+    pub fn register_plugin(
+        &mut self,
+        plugin: Box<dyn ClapPlugin>,
+        maybe_debounce: Option<Duration>,
+    ) -> (PluginId, Vec<String>) {
         let plugin_id = plugin.id();
 
         let all_actions = plugin
@@ -385,10 +389,10 @@ impl ServiceManager {
             .map(|s| s.method.to_string())
             .collect();
 
-        self.plugins.insert(
-            plugin_id,
-            PluginSession::create(plugin, Some(Duration::from_millis(50))),
-        );
+        let debounce = Some(maybe_debounce.unwrap_or(Duration::from_millis(50)));
+
+        self.plugins
+            .insert(plugin_id, PluginSession::create(plugin, debounce));
 
         (plugin_id, all_actions)
     }

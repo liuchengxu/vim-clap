@@ -1,10 +1,10 @@
-use crate::{Code, Diagnostic, HandleLintResult, LintEngine, LintResult, PartialSpan};
-use lsp_types::DiagnosticSeverity;
+use crate::{Code, Diagnostic, HandleLintResult, LintEngine, LintResult, PartialSpan, Severity};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use tokio::task::JoinHandle;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct CargoCheckErrorMessage {
@@ -21,11 +21,12 @@ pub struct RustLinter {
 }
 
 impl RustLinter {
-    pub fn spawn_jobs<Handler: HandleLintResult + Send + Sync + Clone + 'static>(
+    pub fn start<Handler: HandleLintResult + Send + Sync + Clone + 'static>(
         self,
         handler: Handler,
-    ) {
-        tokio::task::spawn_blocking({
+    ) -> Vec<JoinHandle<()>> {
+        let mut handles = Vec::with_capacity(2);
+        let worker = tokio::task::spawn_blocking({
             let handler = handler.clone();
             let linter = self.clone();
 
@@ -35,8 +36,9 @@ impl RustLinter {
                 }
             }
         });
+        handles.push(worker);
 
-        tokio::task::spawn_blocking({
+        let worker = tokio::task::spawn_blocking({
             let linter = self;
 
             move || {
@@ -45,6 +47,9 @@ impl RustLinter {
                 }
             }
         });
+        handles.push(worker);
+
+        handles
     }
 
     pub fn cargo_check(&self) -> std::io::Result<LintResult> {
@@ -55,6 +60,8 @@ impl RustLinter {
             .output()?;
 
         let diagnostics = self.parse_cargo_message(&output.stdout);
+
+        tracing::debug!("========= [cargo_check] diagnostics: {diagnostics:?}");
 
         Ok(LintResult {
             engine: LintEngine::RustCargoCheck,
@@ -119,8 +126,9 @@ impl RustLinter {
                     } = error_message;
 
                     let severity = match level.as_str() {
-                        "warning" => Some(DiagnosticSeverity::WARNING),
-                        _ => None,
+                        "error" => Severity::Error,
+                        "warning" => Severity::Warning,
+                        _ => Severity::Unknown,
                     };
 
                     if !spans.is_empty() {

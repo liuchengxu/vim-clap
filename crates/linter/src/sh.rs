@@ -27,6 +27,12 @@ pub struct ShellCheckMessage {
 
 impl ShellCheckMessage {
     fn into_diagnostic(self) -> Diagnostic {
+        let severity = match &self.level {
+            Severity::Error => crate::Severity::Error,
+            Severity::Warning => crate::Severity::Warning,
+            Severity::Info => crate::Severity::Info,
+            Severity::Style => crate::Severity::Style,
+        };
         Diagnostic {
             line_start: self.line,
             line_end: self.end_line,
@@ -36,7 +42,7 @@ impl ShellCheckMessage {
                 code: Default::default(),
                 explanation: None,
             },
-            severity: None,
+            severity,
             message: self.message,
         }
     }
