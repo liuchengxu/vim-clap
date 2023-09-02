@@ -17,7 +17,7 @@ function! s:render_diagnostics(bufnr, diagnostics) abort
   let extmark_ids = []
 
   for diagnostic in a:diagnostics
-    " try
+    try
       call nvim_buf_add_highlight(a:bufnr, s:linter_highlight_ns_id, 'ClapLinterUnderline', diagnostic.line_start - 1, diagnostic.column_start - 1, diagnostic.column_end - 1)
 
       if diagnostic.severity ==? 'error'
@@ -36,8 +36,9 @@ function! s:render_diagnostics(bufnr, diagnostics) abort
       call add(extmark_ids, id)
 
     " Suppress error: Invalid 'col': out of range
-    " catch /^Vim\%((\a\+)\)\=:E5555/
-    " endtry
+    catch /^Vim\%((\a\+)\)\=:E5555/
+      echom v:exception.', diagnostic:'.string(diagnostic)
+    endtry
   endfor
 
   return extmark_ids

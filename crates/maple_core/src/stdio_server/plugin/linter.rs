@@ -78,12 +78,17 @@ impl linter::HandleLintResult for LintResultHandler {
 
             self.shareable_diagnostics.extend(new_diagnostics);
         } else {
-            // Multiple linters can have an overlap over the diagnostics.
+            // It's possible to have an overlap of the diagnostics from multiple linters.
             let existing = self.shareable_diagnostics.diagnostics.read();
             let deduplicated_new = new_diagnostics
                 .into_iter()
                 .filter(|d| !existing.contains(d))
                 .collect::<Vec<_>>();
+
+            // Must drop the lock otherwise the deadlock occurs as the write lock will be acquired
+            // later.
+            drop(existing);
+
             if !deduplicated_new.is_empty() {
                 let _ = self
                     .vim
@@ -97,8 +102,6 @@ impl linter::HandleLintResult for LintResultHandler {
         Ok(())
     }
 }
-
-impl LintResultHandler {}
 
 type LinterJob = JoinHandle<()>;
 
@@ -222,8 +225,6 @@ impl ClapPlugin for LinterPlugin {
 
                 let bufnr = params.parse_bufnr()?;
 
-                tracing::debug!("======= event: {autocmd_event_type:?}");
-
                 match autocmd_event_type {
                     BufEnter => {
                         let source_file = self.vim.bufabspath(bufnr).await?;
@@ -248,7 +249,7 @@ impl ClapPlugin for LinterPlugin {
 
                         return Ok(());
                     }
-                    BufWritePost | TextChanged | TextChangedI => {
+                    BufWritePost => {
                         if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
                             self.lint_buffer(bufnr, buf_linter_info)?;
                         }

@@ -286,7 +286,9 @@ impl PluginSession {
     }
 
     fn start_event_loop(mut self, event_delay: Duration) {
-        tracing::debug!(id = ?self.plugin.id(), debounce = ?event_delay, "Starting a new plugin service");
+        let id = self.plugin.id();
+
+        tracing::debug!(?id, debounce = ?event_delay, "Starting a new plugin service");
 
         tokio::spawn(async move {
             // If the debounce timer isn't active, it will be set to expire "never",
@@ -303,12 +305,13 @@ impl PluginSession {
                     maybe_plugin_event = self.plugin_events.recv() => {
                         match maybe_plugin_event {
                             Some(plugin_event) => {
+                                let event = plugin_event.clone();
                                 if plugin_event.should_debounce() {
                                     pending_plugin_event.replace(plugin_event);
                                     notification_dirty = true;
                                     notification_timer.as_mut().reset(Instant::now() + event_delay);
                                 } else if let Err(err) = self.plugin.on_plugin_event(plugin_event.clone()).await {
-                                    tracing::error!(?err, "Failed to process plugin event: {plugin_event:?}");
+                                    tracing::error!(?err, "[{id}] Failed to process plugin event: {plugin_event:?}");
                                 }
                             }
                             None => break, // channel has closed.
@@ -319,8 +322,8 @@ impl PluginSession {
                         notification_timer.as_mut().reset(Instant::now() + NEVER);
 
                         if let Some(autocmd) = pending_plugin_event.take() {
-                            if let Err(err) = self.plugin.on_plugin_event(autocmd).await {
-                                tracing::error!(?err, "Failed to process debounced plugin event");
+                            if let Err(err) = self.plugin.on_plugin_event(autocmd.clone()).await {
+                                tracing::error!(?err, "[{id}] Failed to process debounced plugin event");
                             }
                         }
                     }
