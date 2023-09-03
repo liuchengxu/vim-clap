@@ -5,12 +5,12 @@ use std::path::Path;
 // [{"file_path": "autoload/clap.vim", "line_number": 212, "column_number": 98, "severity": "warning", "description": "Prefer single quoted strings", "policy_name": "ProhibitUnnecessaryDoubleQuote", "reference": "Google VimScript Style Guide (Strings)"}]
 #[derive(Debug, Deserialize)]
 struct VintMessage {
-    file_path: String,
+    // file_path: String,
     line_number: usize,
     column_number: usize,
     severity: String,
     description: String,
-    policy_name: String,
+    // policy_name: String,
 }
 
 impl VintMessage {

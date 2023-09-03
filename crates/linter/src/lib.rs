@@ -1,15 +1,10 @@
-mod go;
-mod rust;
-mod sh;
-mod vim;
+mod linters;
 
 use lsp_types::DiagnosticSeverity;
 use once_cell::sync::Lazy;
-use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use tokio::task::JoinHandle;
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone, Eq, PartialEq)]
@@ -59,18 +54,6 @@ impl Diagnostic {
     pub fn human_message(&self) -> String {
         format!("[{}] {}", self.code.code, self.message)
     }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct PartialSpan {
-    line_start: usize,
-    line_end: usize,
-    column_start: usize,
-    column_end: usize,
-    file_name: String,
-    label: Option<String>,
-    level: Option<String>,
-    rendered: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -128,53 +111,39 @@ pub fn lint_in_background<Handler: HandleLintResult + Send + Sync + Clone + 'sta
     source_file: PathBuf,
     workspace: &Path,
     handler: Handler,
-) -> Vec<JoinHandle<()>> {
+) -> std::io::Result<Option<Vec<JoinHandle<()>>>> {
     if let Some(ext) = source_file.extension().and_then(|s| s.to_str()) {
-        match ext {
+        let diagnostics = match ext {
             "rs" => {
-                let linter = self::rust::RustLinter {
+                let linter = linters::rust::RustLinter {
                     source_file,
                     workspace: workspace.to_path_buf(),
                 };
 
-                return linter.start(handler);
+                return Ok(Some(linter.start(handler)));
             }
-            "sh" => {
-                if let Ok(diagnostics) = self::sh::lint_shell_script(&source_file, workspace) {
-                    let _ = handler.handle_lint_result(LintResult {
-                        engine: LintEngine::ShellCheck,
-                        diagnostics,
-                    });
-                }
+            "sh" => linters::sh::lint_shell_script(&source_file, workspace)?,
+            "go" => linters::go::start_gopls(&source_file, workspace)?,
+            "vim" => linters::vim::start_vint(&source_file, workspace)?,
+            _ => {
+                return Ok(None);
             }
-            "go" => {
-                if let Ok(diagnostics) = self::go::start_gopls(&source_file, workspace) {
-                    let _ = handler.handle_lint_result(LintResult {
-                        engine: LintEngine::Gopls,
-                        diagnostics,
-                    });
-                }
-            }
-            "vim" => {
-                if let Ok(diagnostics) = self::vim::start_vint(&source_file, workspace) {
-                    let _ = handler.handle_lint_result(LintResult {
-                        engine: LintEngine::Vint,
-                        diagnostics,
-                    });
-                }
-            }
-            _ => {}
-        }
+        };
+
+        let _ = handler.handle_lint_result(LintResult {
+            engine: LintEngine::ShellCheck,
+            diagnostics,
+        });
     }
 
-    Vec::new()
+    Ok(None)
 }
 
 pub fn lint_file(
     source_file: impl AsRef<Path>,
     workspace: &Path,
 ) -> std::io::Result<Vec<Diagnostic>> {
-    let linter = self::rust::RustLinter {
+    let linter = linters::rust::RustLinter {
         source_file: source_file.as_ref().to_path_buf(),
         workspace: workspace.to_path_buf(),
     };

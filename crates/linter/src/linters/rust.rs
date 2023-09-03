@@ -1,10 +1,22 @@
-use crate::{Code, Diagnostic, HandleLintResult, LintEngine, LintResult, PartialSpan, Severity};
+use crate::{Code, Diagnostic, HandleLintResult, LintEngine, LintResult, Severity};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::task::JoinHandle;
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PartialSpan {
+    line_start: usize,
+    line_end: usize,
+    column_start: usize,
+    column_end: usize,
+    file_name: String,
+    label: Option<String>,
+    level: Option<String>,
+    rendered: Option<String>,
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 struct CargoCheckErrorMessage {
@@ -65,7 +77,7 @@ impl RustLinter {
         })
     }
 
-    pub fn cargo_clippy(&self) -> std::io::Result<LintResult> {
+    fn cargo_clippy(&self) -> std::io::Result<LintResult> {
         let output = std::process::Command::new("cargo")
             .args([
                 "clippy",

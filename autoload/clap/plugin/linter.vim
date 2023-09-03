@@ -54,13 +54,19 @@ function! clap#plugin#linter#update(bufnr, diagnostics) abort
 endfunction
 
 function! clap#plugin#linter#refresh(bufnr, diagnostics) abort
+  call clap#plugin#linter#clear(a:bufnr)
+
+  let extmark_ids = s:render_diagnostics(a:bufnr, a:diagnostics)
+
+  call setbufvar(a:bufnr, 'clap_linter', { 'extmark_ids': extmark_ids })
+endfunction
+
+function! clap#plugin#linter#clear(bufnr) abort
   let clap_linter = getbufvar(a:bufnr, 'clap_linter', {})
   for id in get(clap_linter, 'extmark_ids', [])
     call nvim_buf_del_extmark(a:bufnr, s:linter_ns_id, id)
   endfor
   call nvim_buf_clear_namespace(a:bufnr, s:linter_highlight_ns_id, 0, -1)
 
-  let clap_linter.extmark_ids = s:render_diagnostics(a:bufnr, a:diagnostics)
-
-  call setbufvar(a:bufnr, 'clap_linter', clap_linter)
+  call setbufvar(a:bufnr, 'clap_linter', {})
 endfunction

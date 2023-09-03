@@ -153,24 +153,43 @@ impl LinterPlugin {
         }
     }
 
+    async fn on_buf_enter(&mut self, bufnr: usize) -> Result<()> {
+        let source_file = self.vim.bufabspath(bufnr).await?;
+        let source_file = PathBuf::from(source_file);
+
+        let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+
+        let Some(workspace) = linter::find_workspace(filetype, &source_file) else {
+            return Ok(());
+        };
+
+        let buf_linter_info = BufferLinterInfo::new(workspace.to_path_buf(), source_file);
+        self.lint_buffer(bufnr, &buf_linter_info)?;
+        self.bufs.insert(bufnr, buf_linter_info);
+
+        Ok(())
+    }
+
     fn lint_buffer(&self, bufnr: usize, buf_linter_info: &BufferLinterInfo) -> Result<()> {
         buf_linter_info.diagnostics.reset();
 
         let mut current_jobs = buf_linter_info.current_jobs.lock();
 
         if !current_jobs.is_empty() {
-            for job in &*current_jobs {
+            for job in current_jobs.drain(..) {
                 job.abort();
             }
         }
 
-        let jobs = linter::lint_in_background(
+        let maybe_jobs = linter::lint_in_background(
             buf_linter_info.source_file.clone(),
             &buf_linter_info.workspace,
             LintResultHandler::new(bufnr, self.vim.clone(), buf_linter_info.diagnostics.clone()),
-        );
+        )?;
 
-        *current_jobs = jobs;
+        if let Some(jobs) = maybe_jobs {
+            *current_jobs = jobs;
+        }
 
         Ok(())
     }
@@ -202,23 +221,7 @@ impl ClapPlugin for LinterPlugin {
                 let bufnr = params.parse_bufnr()?;
 
                 match autocmd_event_type {
-                    BufEnter => {
-                        let source_file = self.vim.bufabspath(bufnr).await?;
-                        let source_file = PathBuf::from(source_file);
-
-                        let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
-
-                        let Some(workspace) = linter::find_workspace(filetype, &source_file) else {
-                            return Ok(());
-                        };
-
-                        let buf_linter_info =
-                            BufferLinterInfo::new(workspace.to_path_buf(), source_file);
-                        self.lint_buffer(bufnr, &buf_linter_info)?;
-                        self.bufs.insert(bufnr, buf_linter_info);
-
-                        return Ok(());
-                    }
+                    BufEnter => self.on_buf_enter(bufnr).await?,
                     BufWritePost => {
                         if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
                             self.lint_buffer(bufnr, buf_linter_info)?;
@@ -268,14 +271,13 @@ impl ClapPlugin for LinterPlugin {
                     Self::TOGGLE => {
                         match self.toggle {
                             Toggle::On => {
-                                // for bufnr in self.bufs.keys() {
-                                // self.vim.exec("clap#plugin#git#clear_blame_info", [bufnr])?;
-                                // }
+                                for bufnr in self.bufs.keys() {
+                                    self.vim.exec("clap#plugin#linter#clear", [bufnr])?;
+                                }
                             }
                             Toggle::Off => {
                                 let bufnr = self.vim.bufnr("").await?;
-
-                                // self.on_cursor_moved(bufnr).await?;
+                                self.on_buf_enter(bufnr).await?;
                             }
                         }
                         self.toggle.switch();
