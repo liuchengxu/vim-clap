@@ -7,7 +7,7 @@ use std::path::Path;
 static RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?m)^([^:]+):([0-9]+):([0-9]+)-([0-9]+): (.+)$").unwrap());
 
-pub fn start_gopls(source_file: &Path, workspace: &Path) -> std::io::Result<Vec<Diagnostic>> {
+pub fn run_gopls(source_file: &Path, workspace: &Path) -> std::io::Result<Vec<Diagnostic>> {
     // Use relative path as the workspace is specified explicitly, otherwise it's
     // possible to run into a glitch when the directory is a symlink?
     let source_file = source_file.strip_prefix(workspace).unwrap_or(source_file);
@@ -23,7 +23,7 @@ pub fn start_gopls(source_file: &Path, workspace: &Path) -> std::io::Result<Vec<
 
     for line in stdout.split('\n') {
         if !line.is_empty() {
-            for (_, [path, line, column_start, column_end, message]) in
+            for (_, [_path, line, column_start, column_end, message]) in
                 RE.captures_iter(line).map(|c| c.extract())
             {
                 let line = line.parse::<usize>().expect("line must be a Number");

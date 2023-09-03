@@ -5,12 +5,10 @@ use crate::stdio_server::plugin::{
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use linter::Diagnostic;
-use once_cell::sync::Lazy;
 use parking_lot::{Mutex, RwLock};
 use serde::Serialize;
-use serde_json::Value;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::task::JoinHandle;
@@ -210,9 +208,7 @@ impl ClapPlugin for LinterPlugin {
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
         match plugin_event {
             PluginEvent::Autocmd((autocmd_event_type, params)) => {
-                use AutocmdEventType::{
-                    BufDelete, BufEnter, BufWritePost, TextChanged, TextChangedI,
-                };
+                use AutocmdEventType::{BufDelete, BufEnter, BufWritePost};
 
                 if self.toggle.is_off() {
                     return Ok(());

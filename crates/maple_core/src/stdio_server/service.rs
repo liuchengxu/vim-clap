@@ -305,7 +305,6 @@ impl PluginSession {
                     maybe_plugin_event = self.plugin_events.recv() => {
                         match maybe_plugin_event {
                             Some(plugin_event) => {
-                                let event = plugin_event.clone();
                                 if plugin_event.should_debounce() {
                                     pending_plugin_event.replace(plugin_event);
                                     notification_dirty = true;
@@ -322,9 +321,9 @@ impl PluginSession {
                         notification_timer.as_mut().reset(Instant::now() + NEVER);
 
                         if let Some(autocmd) = pending_plugin_event.take() {
-                            if let Err(err) = self.plugin.on_plugin_event(autocmd.clone()).await {
-                                tracing::error!(?err, "[{id}] Failed to process debounced plugin event");
-                            }
+                          if let Err(err) = self.plugin.on_plugin_event(autocmd.clone()).await {
+                              tracing::error!(?err, "[{id}] Failed to process debounced plugin event {autocmd:?}");
+                          }
                         }
                     }
                 }

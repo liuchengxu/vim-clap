@@ -35,7 +35,7 @@ impl VintMessage {
     }
 }
 
-pub fn start_vint(source_file: &Path, workspace: &Path) -> std::io::Result<Vec<Diagnostic>> {
+pub fn run_vint(source_file: &Path, workspace: &Path) -> std::io::Result<Vec<Diagnostic>> {
     let output = std::process::Command::new("vint")
         .arg("-j")
         .arg(source_file)

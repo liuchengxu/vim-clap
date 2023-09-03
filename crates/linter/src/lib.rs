@@ -1,6 +1,5 @@
 mod linters;
 
-use lsp_types::DiagnosticSeverity;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -122,9 +121,9 @@ pub fn lint_in_background<Handler: HandleLintResult + Send + Sync + Clone + 'sta
 
                 return Ok(Some(linter.start(handler)));
             }
-            "sh" => linters::sh::lint_shell_script(&source_file, workspace)?,
-            "go" => linters::go::start_gopls(&source_file, workspace)?,
-            "vim" => linters::vim::start_vint(&source_file, workspace)?,
+            "sh" => linters::sh::run_shellcheck(&source_file, workspace)?,
+            "go" => linters::go::run_gopls(&source_file, workspace)?,
+            "vim" => linters::vim::run_vint(&source_file, workspace)?,
             _ => {
                 return Ok(None);
             }

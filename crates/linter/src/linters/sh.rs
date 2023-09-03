@@ -48,10 +48,7 @@ impl ShellCheckMessage {
     }
 }
 
-pub fn lint_shell_script(
-    script_file: &Path,
-    workspace: &Path,
-) -> std::io::Result<Vec<Diagnostic>> {
+pub fn run_shellcheck(script_file: &Path, workspace: &Path) -> std::io::Result<Vec<Diagnostic>> {
     let output = std::process::Command::new("shellcheck")
         .arg("--format=json")
         .arg(script_file)
