@@ -91,7 +91,7 @@ impl WorkspaceFinder {
 }
 
 /// Returns the working directory for running the command of lint engine.
-pub fn find_workspace<'a>(filetype: impl AsRef<str>, source_file: &'a Path) -> Option<&'a Path> {
+pub fn find_workspace(filetype: impl AsRef<str>, source_file: &Path) -> Option<&Path> {
     static WORKSPACE_FINDERS: Lazy<HashMap<&str, WorkspaceFinder>> = Lazy::new(|| {
         HashMap::from_iter([
             ("rust", WorkspaceFinder::RootMarkers(&["Cargo.toml"])),
@@ -103,7 +103,7 @@ pub fn find_workspace<'a>(filetype: impl AsRef<str>, source_file: &'a Path) -> O
 
     WORKSPACE_FINDERS
         .get(filetype.as_ref())
-        .and_then(|workspace_finder| workspace_finder.find_workspace(&source_file))
+        .and_then(|workspace_finder| workspace_finder.find_workspace(source_file))
 }
 
 pub fn lint_in_background<Handler: HandleLintResult + Send + Sync + Clone + 'static>(
@@ -148,19 +148,4 @@ pub fn lint_file(
     };
 
     linter.cargo_check().map(|res| res.diagnostics)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_cargo() {
-        let source_file =
-            Path::new("/Users/xuliucheng/.vim/plugged/vim-clap/crates/linter/src/lib.rs");
-
-        let workspace = paths::find_project_root(source_file, &["Cargo.toml"]).unwrap();
-        let diagonostics = lint_file(source_file, workspace);
-        println!("======= diagonostics: {diagonostics:#?}");
-    }
 }

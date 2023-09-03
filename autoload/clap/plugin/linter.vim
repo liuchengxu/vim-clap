@@ -1,3 +1,11 @@
+" Author: liuchengxu <xuliuchengxlc@gmail.com>
+
+scriptencoding utf-8
+
+let s:save_cpo = &cpoptions
+set cpoptions&vim
+
+
 hi ClapLinterUnderline cterm=underline,bold gui=undercurl,italic,bold ctermfg=173 guifg=#e18254
 
 hi default link DiagnosticError ErrorMsg
@@ -70,3 +78,6 @@ function! clap#plugin#linter#clear(bufnr) abort
 
   call setbufvar(a:bufnr, 'clap_linter', {})
 endfunction
+
+let &cpoptions = s:save_cpo
+unlet s:save_cpo
