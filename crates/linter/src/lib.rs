@@ -1,16 +1,16 @@
 mod go;
 mod rust;
 mod sh;
+mod vim;
 
 use lsp_types::DiagnosticSeverity;
+use once_cell::sync::Lazy;
+use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tokio::task::JoinHandle;
-
-#[derive(Debug)]
-pub enum Linter {
-    Rust,
-}
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone, Eq, PartialEq)]
 pub struct Code {
@@ -79,6 +79,7 @@ pub enum LintEngine {
     RustCargoCheck,
     RustCargoClippy,
     ShellCheck,
+    Vint,
 }
 
 #[derive(Debug, Clone)]
@@ -89,6 +90,38 @@ pub struct LintResult {
 
 pub trait HandleLintResult {
     fn handle_lint_result(&self, lint_result: LintResult) -> std::io::Result<()>;
+}
+
+#[derive(Debug, Clone)]
+enum WorkspaceFinder {
+    RootMarkers(&'static [&'static str]),
+    /// Use the parent directory as the workspace if no explicit root markers.
+    ParentOfSourceFile,
+}
+
+impl WorkspaceFinder {
+    fn find_workspace<'a>(&'a self, source_file: &'a Path) -> Option<&Path> {
+        match self {
+            Self::RootMarkers(root_markers) => paths::find_project_root(source_file, root_markers),
+            Self::ParentOfSourceFile => Some(source_file.parent().unwrap_or(source_file)),
+        }
+    }
+}
+
+/// Returns the working directory for running the command of lint engine.
+pub fn find_workspace<'a>(filetype: impl AsRef<str>, source_file: &'a Path) -> Option<&'a Path> {
+    static WORKSPACE_FINDERS: Lazy<HashMap<&str, WorkspaceFinder>> = Lazy::new(|| {
+        HashMap::from_iter([
+            ("rust", WorkspaceFinder::RootMarkers(&["Cargo.toml"])),
+            ("go", WorkspaceFinder::RootMarkers(&["go.mod", ".git"])),
+            ("sh", WorkspaceFinder::ParentOfSourceFile),
+            ("vim", WorkspaceFinder::ParentOfSourceFile),
+        ])
+    });
+
+    WORKSPACE_FINDERS
+        .get(filetype.as_ref())
+        .and_then(|workspace_finder| workspace_finder.find_workspace(&source_file))
 }
 
 pub fn lint_in_background<Handler: HandleLintResult + Send + Sync + Clone + 'static>(
@@ -115,12 +148,20 @@ pub fn lint_in_background<Handler: HandleLintResult + Send + Sync + Clone + 'sta
                 }
             }
             "go" => {
-                let diagnostics = self::go::start_gopls(&source_file, workspace).unwrap();
-
-                let _ = handler.handle_lint_result(LintResult {
-                    engine: LintEngine::Gopls,
-                    diagnostics,
-                });
+                if let Ok(diagnostics) = self::go::start_gopls(&source_file, workspace) {
+                    let _ = handler.handle_lint_result(LintResult {
+                        engine: LintEngine::Gopls,
+                        diagnostics,
+                    });
+                }
+            }
+            "vim" => {
+                if let Ok(diagnostics) = self::vim::start_vint(&source_file, workspace) {
+                    let _ = handler.handle_lint_result(LintResult {
+                        engine: LintEngine::Vint,
+                        diagnostics,
+                    });
+                }
             }
             _ => {}
         }

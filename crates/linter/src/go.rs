@@ -26,9 +26,13 @@ pub fn start_gopls(source_file: &Path, workspace: &Path) -> std::io::Result<Vec<
             for (_, [path, line, column_start, column_end, message]) in
                 RE.captures_iter(line).map(|c| c.extract())
             {
-                let line = line.parse::<usize>().unwrap();
-                let column_start = column_start.parse::<usize>().unwrap();
-                let column_end = column_end.parse::<usize>().unwrap();
+                let line = line.parse::<usize>().expect("line must be a Number");
+                let column_start = column_start
+                    .parse::<usize>()
+                    .expect("column_start must be a Number");
+                let column_end = column_end
+                    .parse::<usize>()
+                    .expect("column_end must be a Number");
                 diagnostics.push(Diagnostic {
                     line_start: line,
                     line_end: line,

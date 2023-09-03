@@ -134,30 +134,6 @@ pub struct LinterPlugin {
     toggle: Toggle,
 }
 
-#[derive(Debug, Clone)]
-enum WorkspaceFinder {
-    RootMarkers(&'static [&'static str]),
-    /// Use the parent directory as the workspace if no explicit root markers.
-    ParentOfSourceFile,
-}
-
-impl WorkspaceFinder {
-    fn find_workspace<'a>(&'a self, source_file: &'a Path) -> Option<&Path> {
-        match self {
-            Self::RootMarkers(root_markers) => paths::find_project_root(source_file, root_markers),
-            Self::ParentOfSourceFile => Some(source_file.parent().unwrap_or(source_file)),
-        }
-    }
-}
-
-static WORKSPACE_FINDERS: Lazy<HashMap<&str, WorkspaceFinder>> = Lazy::new(|| {
-    HashMap::from_iter([
-        ("rust", WorkspaceFinder::RootMarkers(&["Cargo.toml"])),
-        ("go", WorkspaceFinder::RootMarkers(&["go.mod", ".git"])),
-        ("sh", WorkspaceFinder::ParentOfSourceFile),
-    ])
-});
-
 impl LinterPlugin {
     pub const ID: PluginId = PluginId::Linter;
 
@@ -232,13 +208,7 @@ impl ClapPlugin for LinterPlugin {
 
                         let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
 
-                        let Some(workspace) =
-                            WORKSPACE_FINDERS
-                                .get(filetype.as_str())
-                                .and_then(|workspace_finder| {
-                                    workspace_finder.find_workspace(&source_file)
-                                })
-                        else {
+                        let Some(workspace) = linter::find_workspace(filetype, &source_file) else {
                             return Ok(());
                         };
 
@@ -272,13 +242,7 @@ impl ClapPlugin for LinterPlugin {
 
                         let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
 
-                        let Some(workspace) =
-                            WORKSPACE_FINDERS
-                                .get(filetype.as_str())
-                                .and_then(|workspace_finder| {
-                                    workspace_finder.find_workspace(&source_file)
-                                })
-                        else {
+                        let Some(workspace) = linter::find_workspace(filetype, &source_file) else {
                             return Ok(());
                         };
 

@@ -2,7 +2,7 @@ use crate::{Code, Diagnostic, HandleLintResult, LintEngine, LintResult, PartialS
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::task::JoinHandle;
 
@@ -55,17 +55,13 @@ impl RustLinter {
     pub fn cargo_check(&self) -> std::io::Result<LintResult> {
         let output = std::process::Command::new("cargo")
             .args(["check", "--frozen", "--message-format=json", "-q"])
-            // .stderr(Stdio::null())
+            .stderr(Stdio::null())
             .current_dir(&self.workspace)
             .output()?;
 
-        let diagnostics = self.parse_cargo_message(&output.stdout);
-
-        tracing::debug!("========= [cargo_check] diagnostics: {diagnostics:?}");
-
         Ok(LintResult {
             engine: LintEngine::RustCargoCheck,
-            diagnostics,
+            diagnostics: self.parse_cargo_message(&output.stdout),
         })
     }
 
@@ -82,20 +78,17 @@ impl RustLinter {
                 "-D",
                 "warnings",
             ])
+            .stderr(Stdio::null())
             .current_dir(&self.workspace)
             .output()?;
 
-        let diagnostics = self.parse_cargo_message(&output.stdout);
-
         Ok(LintResult {
             engine: LintEngine::RustCargoClippy,
-            diagnostics,
+            diagnostics: self.parse_cargo_message(&output.stdout),
         })
     }
 
     fn parse_cargo_message(&self, stdout: &[u8]) -> Vec<Diagnostic> {
-        let stdout = String::from_utf8_lossy(stdout);
-
         let source_filename = self
             .source_file
             .strip_prefix(self.workspace.parent().unwrap_or(&self.workspace))
@@ -105,36 +98,32 @@ impl RustLinter {
 
         let mut diagonostics = Vec::new();
 
-        for line in stdout.split('\n') {
-            if !line.is_empty() {
-                let line: HashMap<String, Value> = serde_json::from_str(line).unwrap();
+        let lines = stdout
+            .split(|&b| b == b'\n')
+            .map(|line| line.strip_suffix(b"\r").unwrap_or(line));
 
-                if let Some(error) = line.get("message") {
-                    let error_message: CargoCheckErrorMessage =
-                        match serde_json::from_value(error.clone()).ok() {
-                            Some(v) => v,
-                            None => {
-                                continue;
-                            }
+        for line in lines {
+            if let Ok(mut line) = serde_json::from_slice::<HashMap<String, Value>>(line) {
+                if let Some(message) = line.remove("message") {
+                    if let Ok(error_message) =
+                        serde_json::from_value::<CargoCheckErrorMessage>(message)
+                    {
+                        let CargoCheckErrorMessage {
+                            code,
+                            level,
+                            message,
+                            spans,
+                        } = error_message;
+
+                        let severity = match level.as_str() {
+                            "error" => Severity::Error,
+                            "warning" => Severity::Warning,
+                            _ => Severity::Unknown,
                         };
 
-                    let CargoCheckErrorMessage {
-                        code,
-                        level,
-                        message,
-                        spans,
-                    } = error_message;
-
-                    let severity = match level.as_str() {
-                        "error" => Severity::Error,
-                        "warning" => Severity::Warning,
-                        _ => Severity::Unknown,
-                    };
-
-                    if !spans.is_empty() {
-                        for span in spans {
+                        let line_diagnostics = spans.into_iter().filter_map(|span| {
                             if span.file_name == source_filename {
-                                let diagonostic = Diagnostic {
+                                Some(Diagnostic {
                                     line_start: span.line_start,
                                     line_end: span.line_end,
                                     column_start: span.column_start,
@@ -142,10 +131,13 @@ impl RustLinter {
                                     code: code.clone(),
                                     severity,
                                     message: message.clone(),
-                                };
-                                diagonostics.push(diagonostic);
+                                })
+                            } else {
+                                None
                             }
-                        }
+                        });
+
+                        diagonostics.extend(line_diagnostics);
                     }
                 }
             }
