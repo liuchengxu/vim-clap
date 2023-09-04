@@ -38,10 +38,7 @@ impl ShellCheckMessage {
             line_end: self.end_line,
             column_start: self.column,
             column_end: self.end_column,
-            code: Code {
-                code: Default::default(),
-                explanation: None,
-            },
+            code: Code::default(),
             severity,
             message: self.message,
         }

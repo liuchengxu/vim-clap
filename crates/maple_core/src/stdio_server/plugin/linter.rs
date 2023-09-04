@@ -7,7 +7,7 @@ use anyhow::{anyhow, Result};
 use linter::Diagnostic;
 use parking_lot::{Mutex, RwLock};
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -62,14 +62,15 @@ impl linter::HandleLintResult for LintResultHandler {
     fn handle_lint_result(&self, lint_result: linter::LintResult) -> std::io::Result<()> {
         let mut new_diagnostics = lint_result.diagnostics;
         new_diagnostics.sort_by(|a, b| a.line_start.cmp(&b.line_start));
+        new_diagnostics.dedup();
 
-        // Refresh if the first new diagnostics results arrive.
-        if self
+        let first_linter_result_arrives = self
             .shareable_diagnostics
             .refreshed
             .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-            .is_ok()
-        {
+            .is_ok();
+
+        if first_linter_result_arrives {
             let _ = self
                 .vim
                 .exec("clap#plugin#linter#refresh", (self.bufnr, &new_diagnostics));
@@ -78,10 +79,12 @@ impl linter::HandleLintResult for LintResultHandler {
         } else {
             // It's possible to have an overlap of the diagnostics from multiple linters.
             let existing = self.shareable_diagnostics.diagnostics.read();
-            let deduplicated_new = new_diagnostics
+            let mut deduplicated_new = new_diagnostics
                 .into_iter()
                 .filter(|d| !existing.contains(d))
                 .collect::<Vec<_>>();
+
+            deduplicated_new.dedup();
 
             // Must drop the lock otherwise the deadlock occurs as the write lock will be acquired
             // later.
@@ -93,7 +96,6 @@ impl linter::HandleLintResult for LintResultHandler {
                     .exec("clap#plugin#linter#update", (self.bufnr, &deduplicated_new));
             }
 
-            // Join the results from all the lint engines.
             self.shareable_diagnostics.extend(deduplicated_new);
         }
 

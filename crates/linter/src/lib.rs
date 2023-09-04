@@ -9,7 +9,8 @@ use tokio::task::JoinHandle;
 #[derive(Serialize, Deserialize, Default, Debug, Clone, Eq, PartialEq)]
 pub struct Code {
     pub code: String,
-    pub explanation: Option<String>,
+    // Ignore `explanation` as it is too verbose and nevery displayed.
+    // pub explanation: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq)]
@@ -29,6 +30,7 @@ pub struct Diagnostic {
     pub line_end: usize,
     pub column_start: usize,
     pub column_end: usize,
+    #[serde(flatten)]
     pub code: Code,
     pub severity: Severity,
     pub message: String,
@@ -36,6 +38,8 @@ pub struct Diagnostic {
 
 impl PartialEq for Diagnostic {
     fn eq(&self, other: &Self) -> bool {
+        let is_same_code = || !self.code.code.is_empty() && self.code.code == other.code.code;
+
         // If two diagnostics point to the same location and have the
         // same message, they visually make no differences. For instance,
         // some linter does not provide the severity property but has the
@@ -43,7 +47,9 @@ impl PartialEq for Diagnostic {
         self.line_start == other.line_start
             && self.column_start == other.column_start
             && self.column_end == other.column_end
-            && self.message == other.message
+            // Having two diagnostics with the same code but different message is possible, which
+            // points to the same error essentially.
+            && (is_same_code() || self.message == other.message)
     }
 }
 
@@ -105,6 +111,8 @@ pub fn find_workspace(filetype: impl AsRef<str>, source_file: &Path) -> Option<&
         .get(filetype.as_ref())
         .and_then(|workspace_finder| workspace_finder.find_workspace(source_file))
 }
+
+// source_file => Available Linters => Enabled Linters => Run
 
 pub fn lint_in_background<Handler: HandleLintResult + Send + Sync + Clone + 'static>(
     source_file: PathBuf,

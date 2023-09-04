@@ -28,15 +28,17 @@ function! s:render_diagnostics(bufnr, diagnostics) abort
     try
       call nvim_buf_add_highlight(a:bufnr, s:linter_highlight_ns_id, 'ClapLinterUnderline', diagnostic.line_start - 1, diagnostic.column_start - 1, diagnostic.column_end - 1)
 
+      let code = empty(diagnostic.code) ? '' : ' '.diagnostic.code
+
       if diagnostic.severity ==? 'error'
         let highlight = 'DiagnosticError'
-        let message = '[E] '.diagnostic.message
+        let message = printf('[E] %s%s', diagnostic.message, code)
       elseif diagnostic.severity ==? 'warning'
         let highlight = 'DiagnosticWarn'
-        let message = '[W] '.diagnostic.message
+        let message = printf('[W] %s%s', diagnostic.message, code)
       else
         let highlight = 'Normal'
-        let message = diagnostic.message
+        let message = printf('%s%s', diagnostic.message, code)
       endif
 
       let opts = { 'virt_text': [[message, highlight]], 'virt_text_pos': 'eol' }
@@ -53,15 +55,18 @@ function! s:render_diagnostics(bufnr, diagnostics) abort
 endfunction
 
 function! clap#plugin#linter#update(bufnr, diagnostics) abort
+  call extend(g:clap_linter, a:diagnostics)
   let extmark_ids = s:render_diagnostics(a:bufnr, a:diagnostics)
 
   let clap_linter = getbufvar(a:bufnr, 'clap_linter', {})
-  call extend(clap_linter.extmark_ids, extmark_ids)
-
-  call setbufvar(a:bufnr, 'clap_linter', clap_linter)
+  if has_key(clap_linter, 'extmark_ids')
+    call extend(clap_linter.extmark_ids, extmark_ids)
+    call setbufvar(a:bufnr, 'clap_linter', clap_linter)
+  endif
 endfunction
 
 function! clap#plugin#linter#refresh(bufnr, diagnostics) abort
+  let g:clap_linter = a:diagnostics
   call clap#plugin#linter#clear(a:bufnr)
 
   let extmark_ids = s:render_diagnostics(a:bufnr, a:diagnostics)
