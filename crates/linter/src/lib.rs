@@ -67,6 +67,7 @@ pub enum LintEngine {
     RustCargoCheck,
     RustCargoClippy,
     ShellCheck,
+    Typos,
     Vint,
 }
 
@@ -119,6 +120,20 @@ pub fn lint_in_background<Handler: HandleLintResult + Send + Sync + Clone + 'sta
     workspace: &Path,
     handler: Handler,
 ) -> std::io::Result<Option<Vec<JoinHandle<()>>>> {
+    tokio::task::spawn_blocking({
+        let handler = handler.clone();
+        let source_file = source_file.clone();
+        let workspace = workspace.to_path_buf();
+        move || {
+            if let Ok(diagnostics) = linters::typos::run_typos(&source_file, &workspace) {
+                let _ = handler.handle_lint_result(LintResult {
+                    engine: LintEngine::Typos,
+                    diagnostics,
+                });
+            }
+        }
+    });
+
     if let Some(ext) = source_file.extension().and_then(|s| s.to_str()) {
         let diagnostics = match ext {
             "rs" => {

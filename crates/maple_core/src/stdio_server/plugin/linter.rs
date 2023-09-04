@@ -7,7 +7,7 @@ use anyhow::{anyhow, Result};
 use linter::Diagnostic;
 use parking_lot::{Mutex, RwLock};
 use serde::Serialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -79,24 +79,25 @@ impl linter::HandleLintResult for LintResultHandler {
         } else {
             // It's possible to have an overlap of the diagnostics from multiple linters.
             let existing = self.shareable_diagnostics.diagnostics.read();
-            let mut deduplicated_new = new_diagnostics
+            let mut followup_diagnostics = new_diagnostics
                 .into_iter()
                 .filter(|d| !existing.contains(d))
                 .collect::<Vec<_>>();
 
-            deduplicated_new.dedup();
+            followup_diagnostics.dedup();
 
             // Must drop the lock otherwise the deadlock occurs as the write lock will be acquired
             // later.
             drop(existing);
 
-            if !deduplicated_new.is_empty() {
-                let _ = self
-                    .vim
-                    .exec("clap#plugin#linter#update", (self.bufnr, &deduplicated_new));
+            if !followup_diagnostics.is_empty() {
+                let _ = self.vim.exec(
+                    "clap#plugin#linter#update",
+                    (self.bufnr, &followup_diagnostics),
+                );
             }
 
-            self.shareable_diagnostics.extend(deduplicated_new);
+            self.shareable_diagnostics.extend(followup_diagnostics);
         }
 
         Ok(())
@@ -238,33 +239,23 @@ impl ClapPlugin for LinterPlugin {
                 match method.as_str() {
                     Self::LINT => {
                         let bufnr = self.vim.bufnr("").await?;
-                        let source_file = self.vim.current_buffer_path().await?;
-                        let source_file = PathBuf::from(source_file);
 
-                        let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+                        if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
+                            let lnum = self.vim.line(".").await?;
+                            let diagnostics = buf_linter_info.diagnostics.diagnostics.read();
+                            let current_diagnostics = diagnostics
+                                .iter()
+                                .filter(|d| d.line_start == lnum)
+                                .collect::<Vec<_>>();
 
-                        let Some(workspace) = linter::find_workspace(filetype, &source_file) else {
-                            return Ok(());
-                        };
-
-                        let mut diagnostics = linter::lint_file(&source_file, workspace)?;
-                        diagnostics.sort_by(|a, b| a.line_start.cmp(&b.line_start));
-
-                        let lnum = self.vim.line(".").await?;
-                        let current_diagnostics = diagnostics
-                            .into_iter()
-                            .filter(|d| d.line_start == lnum)
-                            .collect::<Vec<_>>();
-
-                        if !current_diagnostics.is_empty() {
-                            tracing::debug!("====== diagnostics: {current_diagnostics:?}");
-                            if let Some(current_diagnostic) = current_diagnostics.first() {
-                                self.vim.echo_info(current_diagnostic.human_message())?;
+                            for diagnostic in current_diagnostics {
+                                self.vim.echo_info(diagnostic.human_message())?;
                             }
 
-                            self.vim
-                                .exec("clap#plugin#linter#refresh", (bufnr, current_diagnostics))?;
+                            return Ok(());
                         }
+
+                        self.on_buf_enter(bufnr).await?;
                     }
                     Self::TOGGLE => {
                         match self.toggle {

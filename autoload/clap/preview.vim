@@ -1,10 +1,12 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Various preview support.
 
+scriptencoding utf-8
+
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-let s:path_seperator = has('win32') ? '\' : '/'
+let s:path_separator = has('win32') ? '\' : '/'
 let s:default_size = 5
 
 function! clap#preview#direction() abort
@@ -73,7 +75,7 @@ function! clap#preview#file(fname) abort
     call s:peek_file(a:fname, fpath)
     return
   elseif exists('g:__clap_provider_cwd')
-    let fpath_with_cwd = g:__clap_provider_cwd.s:path_seperator.fpath
+    let fpath_with_cwd = g:__clap_provider_cwd.s:path_separator.fpath
     if filereadable(fpath_with_cwd)
       call s:peek_file(a:fname, fpath_with_cwd)
       return
@@ -88,8 +90,8 @@ function! clap#preview#file_at(fpath, lnum) abort
     let lines = readfile(a:fpath)[start : end]
   else
     let cwd = clap#rooter#working_dir()
-    if filereadable(cwd.s:path_seperator.a:fpath)
-      let lines = readfile(cwd.s:path_seperator.a:fpath)[start : end]
+    if filereadable(cwd.s:path_separator.a:fpath)
+      let lines = readfile(cwd.s:path_separator.a:fpath)[start : end]
     else
       return
     endif
