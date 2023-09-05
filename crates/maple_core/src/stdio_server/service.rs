@@ -15,12 +15,14 @@ use tokio::time::Instant;
 
 use super::input::{AutocmdEvent, PluginAction};
 use super::plugin::PluginId;
+use super::provider::ProviderId;
 
 pub type ProviderSessionId = u64;
 
 #[derive(Debug)]
 pub struct ProviderSession {
     ctx: Context,
+    id: ProviderId,
     provider_session_id: ProviderSessionId,
     /// Each provider session can have its own message processing logic.
     provider: Box<dyn ClapProvider>,
@@ -37,8 +39,11 @@ impl ProviderSession {
 
         ctx.set_provider_event_sender(provider_event_sender.clone());
 
+        let id = ctx.env.provider_id.clone();
+
         let provider_session = ProviderSession {
             ctx,
+            id,
             provider_session_id,
             provider,
             provider_events: provider_event_receiver,
@@ -99,7 +104,7 @@ impl ProviderSession {
                 maybe_event = self.provider_events.recv() => {
                     match maybe_event {
                         Some(event) => {
-                            tracing::trace!("[with_debounce] Received event: {event:?}");
+                            tracing::trace!(debounce = true, "[{}] Received event: {event:?}", self.id);
 
                             match event {
                                 ProviderEvent::Internal(internal_event) => {
@@ -160,7 +165,7 @@ impl ProviderSession {
 
     async fn run_event_loop_without_debounce(mut self) {
         while let Some(event) = self.provider_events.recv().await {
-            tracing::trace!("[without_debounce] Received event: {event:?}");
+            tracing::trace!(debounce = false, "[{}] Received event: {event:?}", self.id);
 
             match event {
                 ProviderEvent::Internal(internal_event) => {
