@@ -211,7 +211,7 @@ impl ClapPlugin for LinterPlugin {
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
         match plugin_event {
             PluginEvent::Autocmd((autocmd_event_type, params)) => {
-                use AutocmdEventType::{BufDelete, BufEnter, BufWritePost};
+                use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
 
                 if self.toggle.is_off() {
                     return Ok(());
@@ -228,6 +228,25 @@ impl ClapPlugin for LinterPlugin {
                     }
                     BufDelete => {
                         self.bufs.remove(&bufnr);
+                    }
+                    CursorMoved => {
+                        if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
+                            let lnum = self.vim.line(".").await?;
+                            let diagnostics = buf_linter_info.diagnostics.diagnostics.read();
+                            let current_diagnostics = diagnostics
+                                .iter()
+                                .filter(|d| d.line_start == lnum)
+                                .collect::<Vec<_>>();
+
+                            if current_diagnostics.is_empty() {
+                                self.vim.bare_exec("clap#plugin#linter#clear_top_right")?;
+                            } else {
+                                self.vim.exec(
+                                    "clap#plugin#linter#display_top_right",
+                                    [current_diagnostics],
+                                )?;
+                            }
+                        }
                     }
                     _ => {}
                 }

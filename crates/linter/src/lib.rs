@@ -62,10 +62,15 @@ impl Diagnostic {
 }
 
 #[derive(Debug, Clone)]
+pub enum RustLintEngine {
+    CargoCheck,
+    CargoClippy,
+}
+
+#[derive(Debug, Clone)]
 pub enum LintEngine {
     Gopls,
-    RustCargoCheck,
-    RustCargoClippy,
+    Rust(RustLintEngine),
     ShellCheck,
     Typos,
     Vint,
@@ -115,11 +120,14 @@ pub fn find_workspace(filetype: impl AsRef<str>, source_file: &Path) -> Option<&
 
 // source_file => Available Linters => Enabled Linters => Run
 
-pub fn lint_in_background<Handler: HandleLintResult + Send + Sync + Clone + 'static>(
+pub fn lint_in_background<Handler>(
     source_file: PathBuf,
     workspace: &Path,
     handler: Handler,
-) -> std::io::Result<Option<Vec<JoinHandle<()>>>> {
+) -> std::io::Result<Option<Vec<JoinHandle<()>>>>
+where
+    Handler: HandleLintResult + Send + Sync + Clone + 'static,
+{
     tokio::task::spawn_blocking({
         let handler = handler.clone();
         let source_file = source_file.clone();
@@ -137,12 +145,10 @@ pub fn lint_in_background<Handler: HandleLintResult + Send + Sync + Clone + 'sta
     if let Some(ext) = source_file.extension().and_then(|s| s.to_str()) {
         let diagnostics = match ext {
             "rs" => {
-                let linter = linters::rust::RustLinter {
-                    source_file,
-                    workspace: workspace.to_path_buf(),
-                };
-
-                return Ok(Some(linter.start(handler)));
+                return Ok(Some(
+                    linters::rust::RustLinter::new(source_file, workspace.to_path_buf())
+                        .run(handler),
+                ));
             }
             "sh" => linters::sh::run_shellcheck(&source_file, workspace)?,
             "go" => linters::go::run_gopls(&source_file, workspace)?,
@@ -165,10 +171,8 @@ pub fn lint_file(
     source_file: impl AsRef<Path>,
     workspace: &Path,
 ) -> std::io::Result<Vec<Diagnostic>> {
-    let linter = linters::rust::RustLinter {
-        source_file: source_file.as_ref().to_path_buf(),
-        workspace: workspace.to_path_buf(),
-    };
+    let linter =
+        linters::rust::RustLinter::new(source_file.as_ref().to_path_buf(), workspace.to_path_buf());
 
     linter.cargo_check().map(|res| res.diagnostics)
 }

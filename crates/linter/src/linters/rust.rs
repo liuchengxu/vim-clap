@@ -1,4 +1,4 @@
-use crate::{Code, Diagnostic, HandleLintResult, LintEngine, LintResult, Severity};
+use crate::{Code, Diagnostic, HandleLintResult, LintEngine, LintResult, RustLintEngine, Severity};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -28,12 +28,19 @@ struct CargoCheckErrorMessage {
 
 #[derive(Clone)]
 pub struct RustLinter {
-    pub source_file: PathBuf,
-    pub workspace: PathBuf,
+    source_file: PathBuf,
+    workspace: PathBuf,
 }
 
 impl RustLinter {
-    pub fn start<Handler: HandleLintResult + Send + Sync + Clone + 'static>(
+    pub fn new(source_file: PathBuf, workspace: PathBuf) -> Self {
+        Self {
+            source_file,
+            workspace,
+        }
+    }
+
+    pub fn run<Handler: HandleLintResult + Send + Sync + Clone + 'static>(
         self,
         handler: Handler,
     ) -> Vec<JoinHandle<()>> {
@@ -72,7 +79,7 @@ impl RustLinter {
             .output()?;
 
         Ok(LintResult {
-            engine: LintEngine::RustCargoCheck,
+            engine: LintEngine::Rust(RustLintEngine::CargoCheck),
             diagnostics: self.parse_cargo_message(&output.stdout),
         })
     }
@@ -95,7 +102,7 @@ impl RustLinter {
             .output()?;
 
         Ok(LintResult {
-            engine: LintEngine::RustCargoClippy,
+            engine: LintEngine::Rust(RustLintEngine::CargoClippy),
             diagnostics: self.parse_cargo_message(&output.stdout),
         })
     }
