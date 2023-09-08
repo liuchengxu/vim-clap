@@ -120,7 +120,7 @@ impl ClapProvider for FilesProvider {
                     }
                 }
 
-                ctx.vim.set_var("g:__clap_provider_cwd", json!([ctx.cwd]))?;
+                ctx.vim.set_var("g:__clap_provider_cwd", json!(ctx.cwd))?;
             }
         }
 
