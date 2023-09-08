@@ -193,7 +193,7 @@ impl InputHistory {
     }
 
     pub fn all_inputs(&self) -> VecDeque<String> {
-        // HashSet gurantees no duplicated elements.
+        // HashSet guarantees no duplicated elements.
         self.0
             .values()
             .flatten()

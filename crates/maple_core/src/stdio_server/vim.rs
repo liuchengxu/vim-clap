@@ -3,7 +3,6 @@ use anyhow::{anyhow, Result};
 use once_cell::sync::{Lazy, OnceCell};
 use paths::AbsPathBuf;
 use printer::DisplayLines;
-use rayon::prelude::*;
 use rpc::RpcClient;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -17,12 +16,13 @@ use std::sync::Arc;
 use types::ProgressUpdate;
 
 static FILENAME_SYNTAX_MAP: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
-    vec![
+    HashMap::from([
         ("bashrc", "bash"),
         (".bashrc", "bash"),
         ("BUCK", "bzl"),
         ("BUILD", "bzl"),
         ("BUILD.bazel", "bzl"),
+        ("CMakeLists.txt", "cmake"),
         ("Tiltfile", "bzl"),
         ("WORKSPACE", "bz"),
         ("configure.ac", "config"),
@@ -43,17 +43,16 @@ static FILENAME_SYNTAX_MAP: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
         ("vimrc", "vim"),
         ("_vimrc", "vim"),
         ("_viminfo", "viminfo"),
-    ]
-    .into_iter()
-    .collect()
+    ])
 });
 
-/// Map of file extension to vim syntax mapping.
-static SYNTAX_MAP: OnceCell<HashMap<String, String>> = OnceCell::new();
+/// Map of file extension to vim filetype mapping.
+static EXTENSION_TO_FILETYPE_MAP: OnceCell<HashMap<String, String>> = OnceCell::new();
 
-pub fn initialize_syntax_map(output: &str) -> HashMap<&str, &str> {
+pub fn initialize_filetype_map(output: &str) -> HashMap<&str, &str> {
     let ext_map: HashMap<&str, &str> = output
-        .par_split(|x| x == '\n')
+        .split(|x| x == '\n')
+        // Only process the normal cases.
         .filter(|s| s.contains("setf"))
         .filter_map(|s| {
             // *.mkiv    setf context
@@ -69,7 +68,7 @@ pub fn initialize_syntax_map(output: &str) -> HashMap<&str, &str> {
             // Lines as followed can not be parsed correctly, thus the preview highlight of
             // related file will be broken. Ref #800
             // *.c       call dist#ft#FTlpc()
-            vec![
+            [
                 ("hpp", "cpp"),
                 ("vimrc", "vim"),
                 ("cc", "cpp"),
@@ -77,40 +76,37 @@ pub fn initialize_syntax_map(output: &str) -> HashMap<&str, &str> {
                 ("c", "c"),
                 ("h", "c"),
                 ("cmd", "dosbatch"),
-                ("CMakeLists.txt", "cmake"),
                 ("Dockerfile", "dockerfile"),
                 ("directory", "desktop"),
                 ("patch", "diff"),
                 ("dircolors", "dircolors"),
                 ("editorconfig", "dosini"),
-                ("COMMIT_EDITMSG", "gitcommit"),
+                ("worktree", "gitconfig"),
+                ("gitconfig", "gitconfig"),
+                ("gitmodules", "gitconfig"),
                 ("MERGE_MSG", "gitcommit"),
                 ("TAG_EDITMSG", "gitcommit"),
                 ("NOTES_EDITMSG", "gitcommit"),
+                ("COMMIT_EDITMSG", "gitcommit"),
                 ("EDIT_DESCRIPTION", "gitcommit"),
-                ("gitconfig", "gitconfig"),
-                ("worktree", "gitconfig"),
-                ("gitmodules", "gitconfig"),
                 ("htm", "html"),
                 ("html", "html"),
                 ("shtml", "html"),
                 ("stm", "html"),
                 ("toml", "toml"),
-            ]
-            .into_par_iter(),
+            ],
         )
-        .map(|(ext, ft)| (ext, ft))
         .collect();
 
-    if let Err(e) = SYNTAX_MAP.set(
+    if let Err(e) = EXTENSION_TO_FILETYPE_MAP.set(
         ext_map
-            .par_iter()
+            .iter()
             .map(|(k, v)| (String::from(*k), String::from(*v)))
             .collect(),
     ) {
-        tracing::debug!(error = ?e, "Failed to initialized SYNTAX_MAP");
+        tracing::debug!(error = ?e, "Failed to initialized EXTENSION_TO_FILETYPE_MAP");
     } else {
-        tracing::debug!("SYNTAX_MAP initialized successfully");
+        tracing::debug!("EXTENSION_TO_FILETYPE_MAP initialized successfully");
     }
 
     ext_map
@@ -125,10 +121,11 @@ pub fn preview_syntax(path: &Path) -> Option<&str> {
         .and_then(|x| x.to_str())
         .and_then(|filename| FILENAME_SYNTAX_MAP.deref().get(filename))
     {
-        None => path
-            .extension()
-            .and_then(|x| x.to_str())
-            .and_then(|ext| SYNTAX_MAP.get().and_then(|m| m.get(ext).map(AsRef::as_ref))),
+        None => path.extension().and_then(|x| x.to_str()).and_then(|ext| {
+            EXTENSION_TO_FILETYPE_MAP
+                .get()
+                .and_then(|m| m.get(ext).map(AsRef::as_ref))
+        }),
         Some(s) => Some(s),
     }
 }
@@ -189,7 +186,7 @@ impl ProgressUpdate<DisplayLines> for VimProgressor {
 
         let _ = self.vim.exec(
             "clap#state#process_progress",
-            json!([total_matched, total_processed]),
+            [total_matched, total_processed],
         );
     }
 
@@ -204,7 +201,7 @@ impl ProgressUpdate<DisplayLines> for VimProgressor {
         }
         let _ = self.vim.exec(
             "clap#state#process_progress_full",
-            json!([display_lines, total_matched, total_processed]),
+            (display_lines, total_matched, total_processed),
         );
     }
 
@@ -219,7 +216,7 @@ impl ProgressUpdate<DisplayLines> for VimProgressor {
         }
         let _ = self.vim.exec(
             "clap#state#process_progress_full",
-            json!([display_lines, total_matched, total_processed]),
+            (display_lines, total_matched, total_processed),
         );
     }
 }

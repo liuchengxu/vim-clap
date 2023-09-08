@@ -26,8 +26,6 @@ if !exists('s:linter_msg_highlight_ns_id')
   let s:linter_msg_highlight_ns_id = nvim_create_namespace('clap_linter_msg_highlight')
 endif
 
-
-
 function! s:display_on_top_right(lines, line_highlights) abort
   if !exists('s:diagnostic_info_buffer') || !nvim_buf_is_valid(s:diagnostic_info_buffer)
     let s:diagnostic_info_buffer = nvim_create_buf(v:false, v:true)
@@ -42,7 +40,7 @@ function! s:display_on_top_right(lines, line_highlights) abort
           \ 'row': 0,
           \ 'col': winwidth(0),
           \ 'width': max(map(copy(a:lines), 'strlen(v:val)')),
-          \ 'height': 1,
+          \ 'height': len(a:lines),
           \ 'style': 'minimal',
           \ 'border': 'single',
           \ 'anchor': 'NE',
@@ -59,11 +57,12 @@ function! s:display_on_top_right(lines, line_highlights) abort
 
   call nvim_buf_set_lines(s:diagnostic_info_buffer, 0, -1, v:false, a:lines)
 
-  echom string(a:line_highlights)
+  let line = 0
   for line_highlight in a:line_highlights
     for [highlight_group, col_start, col_end] in line_highlight
-      call nvim_buf_add_highlight(s:diagnostic_info_buffer, s:linter_msg_highlight_ns_id, highlight_group, 0, col_start, col_end)
+      call nvim_buf_add_highlight(s:diagnostic_info_buffer, s:linter_msg_highlight_ns_id, highlight_group, line, col_start, col_end)
     endfor
+    let line += 1
   endfor
 endfunction
 

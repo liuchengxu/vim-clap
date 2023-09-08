@@ -119,7 +119,7 @@ impl RegexSearcher {
                 let occurrences =
                     word_regex_search_with_extension(&word.raw, true, extension, dir.as_ref())?;
                 let mut usages = occurrences
-                    .into_par_iter()
+                    .into_iter()
                     .filter_map(|matched| {
                         usage_matcher
                             .match_jump_line(matched.build_jump_line("refs", &word))
@@ -143,7 +143,7 @@ impl RegexSearcher {
             let res = find_definitions_and_references(lang_regex_searcher, comments)?;
 
             let _usages = res
-                .into_par_iter()
+                .into_iter()
                 .flat_map(|(match_kind, matches)| render_classify(matches, &match_kind, &word))
                 .map(|(line, indices)| Usage::new(line, indices))
                 .collect::<Vec<_>>();
@@ -169,7 +169,7 @@ impl RegexSearcher {
         let defs = definitions.flatten();
 
         // There are some negative definitions we need to filter them out, e.g., the word
-        // is a subtring in some identifer but we consider every word is a valid identifer.
+        // is a substring in some identifier but we consider every word is a valid identifier.
         let positive_defs = defs
             .iter()
             .filter(|def| occurrences.contains(def))
@@ -178,10 +178,10 @@ impl RegexSearcher {
         let word = &lang_regex_searcher.word;
 
         let mut regex_usages = definitions
-            .into_par_iter()
+            .into_iter()
             .flat_map(|DefinitionSearchResult { kind, matches }| {
                 matches
-                    .into_par_iter()
+                    .into_iter()
                     .filter_map(|matched| {
                         if positive_defs.contains(&&matched) {
                             usage_matcher
@@ -197,7 +197,7 @@ impl RegexSearcher {
             })
             .chain(
                 // references are the occurrences that are not in the definition set.
-                occurrences.into_par_iter().filter_map(|matched| {
+                occurrences.into_iter().filter_map(|matched| {
                     if !defs.contains(&matched) {
                         let (kind, _) = resolve_reference_kind(matched.pattern(), &self.extension);
                         usage_matcher

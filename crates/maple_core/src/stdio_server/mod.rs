@@ -14,7 +14,7 @@ use self::plugin::{
 };
 use self::provider::{create_provider, Context};
 use self::service::ServiceManager;
-use self::vim::initialize_syntax_map;
+use self::vim::initialize_filetype_map;
 pub use self::vim::{Vim, VimProgressor};
 use anyhow::{anyhow, Result};
 use parking_lot::Mutex;
@@ -50,7 +50,7 @@ async fn initialize(
     let output: String = vim
         .call("execute", json!(["autocmd filetypedetect"]))
         .await?;
-    let ext_map = initialize_syntax_map(&output);
+    let ext_map = initialize_filetype_map(&output);
     vim.exec("clap#ext#set", json![ext_map])?;
 
     vim.set_var("g:clap_actions", json![actions])?;

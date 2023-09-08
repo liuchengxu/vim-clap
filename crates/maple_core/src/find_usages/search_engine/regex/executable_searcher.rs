@@ -98,13 +98,11 @@ impl LanguageRegexSearcher {
 
     /// Finds the occurrences and all definitions concurrently.
     pub fn all(&self, comments: &[&str]) -> (Definitions, Occurrences) {
-        let (definitions, occurrences) = (self.definitions(), self.occurrences(comments));
-
         (
             Definitions {
-                defs: definitions.unwrap_or_default(),
+                defs: self.definitions().unwrap_or_default(),
             },
-            Occurrences(occurrences.unwrap_or_default()),
+            Occurrences(self.occurrences(comments).unwrap_or_default()),
         )
     }
 
