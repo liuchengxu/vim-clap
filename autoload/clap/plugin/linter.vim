@@ -5,7 +5,7 @@ scriptencoding utf-8
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-let s:preview_winhl = 'Normal:ErrorMsg,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreview,ColorColumn:ClapPreview'
+let s:preview_winhl = 'Normal:Pmenu,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreview,ColorColumn:ClapPreview'
 
 hi ClapLinterUnderline cterm=underline,bold gui=undercurl,italic,bold ctermfg=173 guifg=#e18254
 
@@ -22,7 +22,13 @@ if !exists('s:linter_highlight_ns_id')
   let s:linter_highlight_ns_id = nvim_create_namespace('clap_linter_highlight')
 endif
 
-function! s:display_on_top_right(lines) abort
+if !exists('s:linter_msg_highlight_ns_id')
+  let s:linter_msg_highlight_ns_id = nvim_create_namespace('clap_linter_msg_highlight')
+endif
+
+
+
+function! s:display_on_top_right(lines, line_highlights) abort
   if !exists('s:diagnostic_info_buffer') || !nvim_buf_is_valid(s:diagnostic_info_buffer)
     let s:diagnostic_info_buffer = nvim_create_buf(v:false, v:true)
   endif
@@ -35,7 +41,7 @@ function! s:display_on_top_right(lines) abort
           \ 'win': nvim_get_current_win(),
           \ 'row': 0,
           \ 'col': winwidth(0),
-          \ 'width': max(map(a:lines, 'strlen(v:val)')),
+          \ 'width': max(map(copy(a:lines), 'strlen(v:val)')),
           \ 'height': 1,
           \ 'style': 'minimal',
           \ 'border': 'single',
@@ -52,34 +58,62 @@ function! s:display_on_top_right(lines) abort
   endif
 
   call nvim_buf_set_lines(s:diagnostic_info_buffer, 0, -1, v:false, a:lines)
+
+  echom string(a:line_highlights)
+  for line_highlight in a:line_highlights
+    for [highlight_group, col_start, col_end] in line_highlight
+      call nvim_buf_add_highlight(s:diagnostic_info_buffer, s:linter_msg_highlight_ns_id, highlight_group, 0, col_start, col_end)
+    endfor
+  endfor
 endfunction
 
 function! clap#plugin#linter#clear_top_right() abort
   if exists('s:diagnostic_info_winid')
     call nvim_win_close(s:diagnostic_info_winid, v:true)
     unlet s:diagnostic_info_winid
+    call nvim_buf_clear_namespace(s:diagnostic_info_buffer, s:linter_msg_highlight_ns_id, 0, -1)
   endif
 endfunction
 
 function! clap#plugin#linter#display_top_right(current_diagnostics) abort
   if !empty(a:current_diagnostics)
     let messages = []
+    let message_highlights = []
     for diagnostic in a:current_diagnostics
       let code = empty(diagnostic.code) ? '' : ' ['.diagnostic.code.']'
-      let message = printf('%s: %s%s', diagnostic.severity, diagnostic.message, code)
+
+      let highlights = []
+
+      let severity_len = strlen(diagnostic.severity)
+      call add(highlights, ['Error', 0, severity_len])
+
+      let message_len = strlen(diagnostic.message)
+      call add(highlights, ['Comment', severity_len + 2, severity_len + 2 + message_len])
+
+      let code_len = strlen(code)
+      call add(highlights, ['Title', severity_len + 2 + message_len, severity_len + 2 + message_len + code_len])
+      call add(message_highlights, highlights)
+
+      let message = printf('%s: %s%s ', diagnostic.severity, diagnostic.message, code)
       call add(messages, message)
     endfor
 
-    call s:display_on_top_right(messages)
+    call s:display_on_top_right(messages, message_highlights)
   endif
 endfunction
 
 function! s:render_diagnostics(bufnr, diagnostics) abort
   let extmark_ids = []
 
+  let skip_eol_highlight = v:true
+
   for diagnostic in a:diagnostics
     try
       call nvim_buf_add_highlight(a:bufnr, s:linter_highlight_ns_id, 'ClapLinterUnderline', diagnostic.line_start - 1, diagnostic.column_start - 1, diagnostic.column_end - 1)
+
+      if skip_eol_highlight
+        continue
+      endif
 
       let code = empty(diagnostic.code) ? '' : ' '.diagnostic.code
 
