@@ -64,13 +64,13 @@ impl linter::HandleLintResult for LintResultHandler {
         new_diagnostics.sort_by(|a, b| a.line_start.cmp(&b.line_start));
         new_diagnostics.dedup();
 
-        let first_linter_result_arrives = self
+        let first_lint_result_arrives = self
             .shareable_diagnostics
             .refreshed
             .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
             .is_ok();
 
-        if first_linter_result_arrives {
+        if first_lint_result_arrives {
             let _ = self
                 .vim
                 .exec("clap#plugin#linter#refresh", (self.bufnr, &new_diagnostics));

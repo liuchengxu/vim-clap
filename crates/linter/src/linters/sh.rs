@@ -1,8 +1,8 @@
 use crate::{Code, Diagnostic};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::path::Path;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Severity {
     Error,
@@ -11,7 +11,7 @@ pub enum Severity {
     Style,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ShellCheckMessage {
     pub file: String,

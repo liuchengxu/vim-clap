@@ -116,8 +116,8 @@ pub fn run_typos(source_file: &Path, workspace: &Path) -> std::io::Result<Vec<Di
         .stdout
         .split(|&b| b == b'\n')
         .map(|line| line.strip_suffix(b"\r").unwrap_or(line))
-        .filter_map(|l| {
-            serde_json::from_slice::<Message>(l)
+        .filter_map(|line| {
+            serde_json::from_slice::<Message>(line)
                 .ok()
                 .and_then(|message| message.try_into_diagnostic())
         })

@@ -46,7 +46,7 @@ pub fn run_vint(source_file: &Path, workspace: &Path) -> std::io::Result<Vec<Dia
         .stdout
         .split(|&b| b == b'\n')
         .map(|line| line.strip_suffix(b"\r").unwrap_or(line))
-        .filter_map(|l| serde_json::from_slice::<Vec<VintMessage>>(l).ok())
+        .filter_map(|line| serde_json::from_slice::<Vec<VintMessage>>(line).ok())
         .flatten()
         .map(|vint_message| vint_message.into_diagnostic())
         .collect())

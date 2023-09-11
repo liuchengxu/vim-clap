@@ -1,24 +1,27 @@
 use crate::{Code, Diagnostic, HandleLintResult, LintEngine, LintResult, RustLintEngine, Severity};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::task::JoinHandle;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct PartialSpan {
     line_start: usize,
     line_end: usize,
     column_start: usize,
     column_end: usize,
     file_name: String,
+    #[allow(unused)]
     label: Option<String>,
+    #[allow(unused)]
     level: Option<String>,
+    #[allow(unused)]
     rendered: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 struct CargoCheckErrorMessage {
     code: Code,
     level: String,

@@ -104,12 +104,14 @@ impl WorkspaceFinder {
 
 /// Returns the working directory for running the command of lint engine.
 pub fn find_workspace(filetype: impl AsRef<str>, source_file: &Path) -> Option<&Path> {
+    use WorkspaceFinder::{ParentOfSourceFile, RootMarkers};
+
     static WORKSPACE_FINDERS: Lazy<HashMap<&str, WorkspaceFinder>> = Lazy::new(|| {
-        HashMap::from_iter([
-            ("rust", WorkspaceFinder::RootMarkers(&["Cargo.toml"])),
-            ("go", WorkspaceFinder::RootMarkers(&["go.mod", ".git"])),
-            ("sh", WorkspaceFinder::ParentOfSourceFile),
-            ("vim", WorkspaceFinder::ParentOfSourceFile),
+        HashMap::from([
+            ("go", RootMarkers(&["go.mod", ".git"])),
+            ("rust", RootMarkers(&["Cargo.toml"])),
+            ("sh", ParentOfSourceFile),
+            ("vim", ParentOfSourceFile),
         ])
     });
 
@@ -143,25 +145,36 @@ where
     });
 
     if let Some(ext) = source_file.extension().and_then(|s| s.to_str()) {
-        let diagnostics = match ext {
+        let (engine, diagnostics) = match ext {
             "rs" => {
                 return Ok(Some(
                     linters::rust::RustLinter::new(source_file, workspace.to_path_buf())
                         .run(handler),
                 ));
             }
-            "sh" => linters::sh::run_shellcheck(&source_file, workspace)?,
-            "go" => linters::go::run_gopls(&source_file, workspace)?,
-            "vim" => linters::vim::run_vint(&source_file, workspace)?,
+            "sh" => (
+                LintEngine::ShellCheck,
+                linters::sh::run_shellcheck(&source_file, workspace)?,
+            ),
+            "go" => (
+                LintEngine::Gopls,
+                linters::go::run_gopls(&source_file, workspace)?,
+            ),
+            "vim" => (
+                LintEngine::Vint,
+                linters::vim::run_vint(&source_file, workspace)?,
+            ),
             _ => {
                 return Ok(None);
             }
         };
 
-        let _ = handler.handle_lint_result(LintResult {
-            engine: LintEngine::ShellCheck,
+        if let Err(err) = handler.handle_lint_result(LintResult {
+            engine,
             diagnostics,
-        });
+        }) {
+            tracing::error!(?err, "Error occurred in handling the linter result");
+        }
     }
 
     Ok(None)

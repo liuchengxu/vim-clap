@@ -5,12 +5,13 @@ scriptencoding utf-8
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-let s:preview_winhl = 'Normal:Pmenu,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreview,ColorColumn:ClapPreview'
+let s:diagnostic_winhl = 'Normal:Pmenu,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer'
 
 hi ClapLinterUnderline cterm=underline,bold gui=undercurl,italic,bold ctermfg=173 guifg=#e18254
 
-hi default link DiagnosticError ErrorMsg
 hi DiagnosticWarn ctermfg=136 guifg=#b1951d
+
+hi default link DiagnosticError ErrorMsg
 hi default link DiagnosticInfo Normal
 hi default link DiagnosticHint Normal
 
@@ -31,9 +32,7 @@ function! s:display_on_top_right(lines, line_highlights) abort
     let s:diagnostic_info_buffer = nvim_create_buf(v:false, v:true)
   endif
 
-  if exists('s:diagnostic_info_winid') &&  nvim_win_is_valid(s:diagnostic_info_winid)
-    " Win is already open.
-  else
+  if !exists('s:diagnostic_info_winid') || nvim_win_is_valid(s:diagnostic_info_winid)
     let config = {
           \ 'relative': 'win',
           \ 'win': nvim_get_current_win(),
@@ -50,7 +49,7 @@ function! s:display_on_top_right(lines, line_highlights) abort
     silent let s:diagnostic_info_winid = nvim_open_win(s:diagnostic_info_buffer, v:false, config)
 
     call setwinvar(s:diagnostic_info_winid, '&spell', 0)
-    call setwinvar(s:diagnostic_info_winid, '&winhl', s:preview_winhl)
+    call setwinvar(s:diagnostic_info_winid, '&winhl', s:diagnostic_winhl)
 
     call setbufvar(s:diagnostic_info_buffer, '&signcolumn', 'no')
   endif
