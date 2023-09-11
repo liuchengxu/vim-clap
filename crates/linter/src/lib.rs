@@ -135,57 +135,32 @@ where
         let source_file = source_file.clone();
         let workspace = workspace.to_path_buf();
         move || {
-            if let Ok(diagnostics) = linters::typos::run_typos(&source_file, &workspace) {
-                let _ = handler.handle_lint_result(LintResult {
-                    engine: LintEngine::Typos,
-                    diagnostics,
-                });
+            if let Ok(lint_result) = linters::typos::run_typos(&source_file, &workspace) {
+                let _ = handler.handle_lint_result(lint_result);
             }
         }
     });
 
     if let Some(ext) = source_file.extension().and_then(|s| s.to_str()) {
-        let (engine, diagnostics) = match ext {
+        let lint_result = match ext {
             "rs" => {
                 return Ok(Some(
                     linters::rust::RustLinter::new(source_file, workspace.to_path_buf())
                         .run(handler),
                 ));
             }
-            "sh" => (
-                LintEngine::ShellCheck,
-                linters::sh::run_shellcheck(&source_file, workspace)?,
-            ),
-            "go" => (
-                LintEngine::Gopls,
-                linters::go::run_gopls(&source_file, workspace)?,
-            ),
-            "vim" => (
-                LintEngine::Vint,
-                linters::vim::run_vint(&source_file, workspace)?,
-            ),
+            "sh" => linters::sh::run_shellcheck(&source_file, workspace)?,
+            "go" => linters::go::run_gopls(&source_file, workspace)?,
+            "vim" => linters::vim::run_vint(&source_file, workspace)?,
             _ => {
                 return Ok(None);
             }
         };
 
-        if let Err(err) = handler.handle_lint_result(LintResult {
-            engine,
-            diagnostics,
-        }) {
+        if let Err(err) = handler.handle_lint_result(lint_result) {
             tracing::error!(?err, "Error occurred in handling the linter result");
         }
     }
 
     Ok(None)
-}
-
-pub fn lint_file(
-    source_file: impl AsRef<Path>,
-    workspace: &Path,
-) -> std::io::Result<Vec<Diagnostic>> {
-    let linter =
-        linters::rust::RustLinter::new(source_file.as_ref().to_path_buf(), workspace.to_path_buf());
-
-    linter.cargo_check().map(|res| res.diagnostics)
 }

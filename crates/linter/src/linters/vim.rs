@@ -1,4 +1,4 @@
-use crate::{Code, Diagnostic, Severity};
+use crate::{Code, Diagnostic, LintResult, Severity};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -35,19 +35,24 @@ impl VintMessage {
     }
 }
 
-pub fn run_vint(source_file: &Path, workspace: &Path) -> std::io::Result<Vec<Diagnostic>> {
+pub fn run_vint(source_file: &Path, workspace: &Path) -> std::io::Result<LintResult> {
     let output = std::process::Command::new("vint")
         .arg("-j")
         .arg(source_file)
         .current_dir(workspace)
         .output()?;
 
-    Ok(output
+    let diagnostics = output
         .stdout
         .split(|&b| b == b'\n')
         .map(|line| line.strip_suffix(b"\r").unwrap_or(line))
         .filter_map(|line| serde_json::from_slice::<Vec<VintMessage>>(line).ok())
         .flatten()
         .map(|vint_message| vint_message.into_diagnostic())
-        .collect())
+        .collect();
+
+    Ok(LintResult {
+        engine: crate::LintEngine::Vint,
+        diagnostics,
+    })
 }

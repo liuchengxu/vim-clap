@@ -33,6 +33,9 @@ function! s:display_on_top_right(lines, line_highlights) abort
   endif
 
   if !exists('s:diagnostic_info_winid') || nvim_win_is_valid(s:diagnostic_info_winid)
+    " Clear the invalid ones.
+    call clap#plugin#linter#clear_top_right()
+
     let config = {
           \ 'relative': 'win',
           \ 'win': nvim_get_current_win(),
@@ -68,8 +71,8 @@ endfunction
 function! clap#plugin#linter#clear_top_right() abort
   if exists('s:diagnostic_info_winid')
     call nvim_win_close(s:diagnostic_info_winid, v:true)
-    unlet s:diagnostic_info_winid
     call nvim_buf_clear_namespace(s:diagnostic_info_buffer, s:linter_msg_highlight_ns_id, 0, -1)
+    unlet s:diagnostic_info_winid
   endif
 endfunction
 

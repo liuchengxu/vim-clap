@@ -1,4 +1,4 @@
-use crate::{Code, Diagnostic, Severity};
+use crate::{Code, Diagnostic, LintResult, Severity};
 use std::borrow::Cow;
 use std::path::Path;
 
@@ -105,14 +105,14 @@ impl<'m> Message<'m> {
     }
 }
 
-pub fn run_typos(source_file: &Path, workspace: &Path) -> std::io::Result<Vec<Diagnostic>> {
+pub fn run_typos(source_file: &Path, workspace: &Path) -> std::io::Result<LintResult> {
     let output = std::process::Command::new("typos")
         .arg("--format=json")
         .arg(source_file)
         .current_dir(workspace)
         .output()?;
 
-    Ok(output
+    let diagnostics = output
         .stdout
         .split(|&b| b == b'\n')
         .map(|line| line.strip_suffix(b"\r").unwrap_or(line))
@@ -121,5 +121,10 @@ pub fn run_typos(source_file: &Path, workspace: &Path) -> std::io::Result<Vec<Di
                 .ok()
                 .and_then(|message| message.try_into_diagnostic())
         })
-        .collect())
+        .collect();
+
+    Ok(LintResult {
+        engine: crate::LintEngine::Typos,
+        diagnostics,
+    })
 }
