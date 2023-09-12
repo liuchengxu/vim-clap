@@ -77,7 +77,7 @@ impl linter::HandleLintResult for LintResultHandler {
 
             self.shareable_diagnostics.extend(new_diagnostics);
         } else {
-            // It's possible to have an overlap of the diagnostics from multiple linters.
+            // Remove the potential duplicated results from multiple linters.
             let existing = self.shareable_diagnostics.diagnostics.read();
             let mut followup_diagnostics = new_diagnostics
                 .into_iter()
@@ -86,8 +86,8 @@ impl linter::HandleLintResult for LintResultHandler {
 
             followup_diagnostics.dedup();
 
-            // Must drop the lock otherwise the deadlock occurs as the write lock will be acquired
-            // later.
+            // Must drop the lock otherwise the deadlock occurs as
+            // the write lock will be acquired later.
             drop(existing);
 
             if !followup_diagnostics.is_empty() {
@@ -182,14 +182,14 @@ impl LinterPlugin {
             }
         }
 
-        let maybe_jobs = linter::lint_in_background(
+        let new_jobs = linter::lint_in_background(
             buf_linter_info.source_file.clone(),
             &buf_linter_info.workspace,
             LintResultHandler::new(bufnr, self.vim.clone(), buf_linter_info.diagnostics.clone()),
-        )?;
+        );
 
-        if let Some(jobs) = maybe_jobs {
-            *current_jobs = jobs;
+        if !new_jobs.is_empty() {
+            *current_jobs = new_jobs;
         }
 
         Ok(())

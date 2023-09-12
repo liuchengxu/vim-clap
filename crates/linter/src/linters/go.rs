@@ -7,15 +7,16 @@ use std::path::Path;
 static RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?m)^([^:]+):([0-9]+):([0-9]+)-([0-9]+): (.+)$").unwrap());
 
-pub fn run_gopls(source_file: &Path, workspace: &Path) -> std::io::Result<LintResult> {
+pub async fn run_gopls(source_file: &Path, workspace: &Path) -> std::io::Result<LintResult> {
     // Use relative path as the workspace is specified explicitly, otherwise it's
     // possible to run into a glitch when the directory is a symlink?
     let source_file = source_file.strip_prefix(workspace).unwrap_or(source_file);
-    let output = std::process::Command::new("gopls")
+    let output = tokio::process::Command::new("gopls")
         .arg("check")
         .arg(source_file)
         .current_dir(workspace)
-        .output()?;
+        .output()
+        .await?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
 

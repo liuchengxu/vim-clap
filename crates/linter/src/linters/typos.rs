@@ -105,12 +105,13 @@ impl<'m> Message<'m> {
     }
 }
 
-pub fn run_typos(source_file: &Path, workspace: &Path) -> std::io::Result<LintResult> {
-    let output = std::process::Command::new("typos")
+pub async fn run_typos(source_file: &Path, workspace: &Path) -> std::io::Result<LintResult> {
+    let output = tokio::process::Command::new("typos")
         .arg("--format=json")
         .arg(source_file)
         .current_dir(workspace)
-        .output()?;
+        .output()
+        .await?;
 
     let diagnostics = output
         .stdout

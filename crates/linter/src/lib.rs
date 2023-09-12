@@ -3,6 +3,7 @@ mod linters;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::future::Future;
 use std::path::{Path, PathBuf};
 use tokio::task::JoinHandle;
 
@@ -122,45 +123,74 @@ pub fn find_workspace(filetype: impl AsRef<str>, source_file: &Path) -> Option<&
 
 // source_file => Available Linters => Enabled Linters => Run
 
-pub fn lint_in_background<Handler>(
-    source_file: PathBuf,
-    workspace: &Path,
+fn spawn_linter_job<Handler>(
+    job: impl Future<Output = std::io::Result<LintResult>> + Send + 'static,
     handler: Handler,
-) -> std::io::Result<Option<Vec<JoinHandle<()>>>>
+) -> tokio::task::JoinHandle<()>
 where
     Handler: HandleLintResult + Send + Sync + Clone + 'static,
 {
-    tokio::task::spawn_blocking({
-        let handler = handler.clone();
-        let source_file = source_file.clone();
-        let workspace = workspace.to_path_buf();
-        move || {
-            if let Ok(lint_result) = linters::typos::run_typos(&source_file, &workspace) {
-                let _ = handler.handle_lint_result(lint_result);
-            }
-        }
-    });
-
-    if let Some(ext) = source_file.extension().and_then(|s| s.to_str()) {
-        let lint_result = match ext {
-            "rs" => {
-                return Ok(Some(
-                    linters::rust::RustLinter::new(source_file, workspace.to_path_buf())
-                        .run(handler),
-                ));
-            }
-            "sh" => linters::sh::run_shellcheck(&source_file, workspace)?,
-            "go" => linters::go::run_gopls(&source_file, workspace)?,
-            "vim" => linters::vim::run_vint(&source_file, workspace)?,
-            _ => {
-                return Ok(None);
+    tokio::spawn(async move {
+        let lint_result = match job.await {
+            Ok(res) => res,
+            Err(err) => {
+                tracing::error!(?err, "Error occurred running linter");
+                return;
             }
         };
 
         if let Err(err) = handler.handle_lint_result(lint_result) {
             tracing::error!(?err, "Error occurred in handling the linter result");
         }
+    })
+}
+
+pub fn lint_in_background<Handler>(
+    source_file: PathBuf,
+    workspace: &Path,
+    handler: Handler,
+) -> Vec<JoinHandle<()>>
+where
+    Handler: HandleLintResult + Send + Sync + Clone + 'static,
+{
+    let mut handles = Vec::new();
+
+    handles.push(tokio::spawn({
+        let handler = handler.clone();
+        let source_file = source_file.clone();
+        let workspace = workspace.to_path_buf();
+        async move {
+            if let Ok(lint_result) = linters::typos::run_typos(&source_file, &workspace).await {
+                let _ = handler.handle_lint_result(lint_result);
+            }
+        }
+    }));
+
+    if let Some(ext) = source_file.extension().and_then(|s| s.to_str()) {
+        let workspace = workspace.to_path_buf();
+        match ext {
+            "rs" => {
+                handles.extend(linters::rust::RustLinter::new(source_file, workspace).run(handler));
+            }
+            "sh" => {
+                let job =
+                    async move { linters::sh::run_shellcheck(&source_file, &workspace).await };
+
+                handles.push(spawn_linter_job(job, handler));
+            }
+            "go" => {
+                let job = async move { linters::go::run_gopls(&source_file, &workspace).await };
+
+                handles.push(spawn_linter_job(job, handler));
+            }
+            "vim" => {
+                let job = async move { linters::vim::run_vint(&source_file, &workspace).await };
+
+                handles.push(spawn_linter_job(job, handler));
+            }
+            _ => {}
+        };
     }
 
-    Ok(None)
+    handles
 }
