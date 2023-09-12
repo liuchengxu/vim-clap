@@ -111,12 +111,14 @@ impl RustLinter {
     }
 
     fn parse_cargo_message(&self, stdout: &[u8]) -> Vec<Diagnostic> {
-        let source_filename = self
+        let Some(source_filename) = self
             .source_file
             .strip_prefix(self.workspace.parent().unwrap_or(&self.workspace))
             .unwrap_or(self.source_file.as_ref())
             .to_str()
-            .expect("source_filename must not contain invalid unicode");
+        else {
+            return Vec::new();
+        };
 
         let mut diagonostics = Vec::new();
 

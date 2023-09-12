@@ -32,7 +32,7 @@ function! s:display_on_top_right(lines, line_highlights) abort
     let s:diagnostic_info_buffer = nvim_create_buf(v:false, v:true)
   endif
 
-  if !exists('s:diagnostic_info_winid') || nvim_win_is_valid(s:diagnostic_info_winid)
+  if !exists('s:diagnostic_info_winid') || !nvim_win_is_valid(s:diagnostic_info_winid)
     " Clear the invalid ones.
     call clap#plugin#linter#clear_top_right()
 
