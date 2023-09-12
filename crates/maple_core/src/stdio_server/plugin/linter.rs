@@ -42,13 +42,13 @@ impl ShareableDiagnostics {
 }
 
 #[derive(Clone)]
-struct LintResultHandler {
+struct LinterResultHandler {
     bufnr: usize,
     vim: Vim,
     shareable_diagnostics: ShareableDiagnostics,
 }
 
-impl LintResultHandler {
+impl LinterResultHandler {
     fn new(bufnr: usize, vim: Vim, shareable_diagnostics: ShareableDiagnostics) -> Self {
         Self {
             bufnr,
@@ -58,9 +58,9 @@ impl LintResultHandler {
     }
 }
 
-impl linter::HandleLintResult for LintResultHandler {
-    fn handle_lint_result(&self, lint_result: linter::LintResult) -> std::io::Result<()> {
-        let mut new_diagnostics = lint_result.diagnostics;
+impl linter::HandleLinterResult for LinterResultHandler {
+    fn handle_linter_result(&self, linter_result: linter::LinterResult) -> std::io::Result<()> {
+        let mut new_diagnostics = linter_result.diagnostics;
         new_diagnostics.sort_by(|a, b| a.line_start.cmp(&b.line_start));
         new_diagnostics.dedup();
 
@@ -185,7 +185,7 @@ impl LinterPlugin {
         let new_jobs = linter::lint_in_background(
             buf_linter_info.source_file.clone(),
             &buf_linter_info.workspace,
-            LintResultHandler::new(bufnr, self.vim.clone(), buf_linter_info.diagnostics.clone()),
+            LinterResultHandler::new(bufnr, self.vim.clone(), buf_linter_info.diagnostics.clone()),
         );
 
         if !new_jobs.is_empty() {

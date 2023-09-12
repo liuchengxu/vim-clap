@@ -1,4 +1,4 @@
-use crate::{Code, Diagnostic, LintResult};
+use crate::{Code, Diagnostic, LinterResult};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -45,7 +45,7 @@ impl ShellCheckMessage {
     }
 }
 
-pub async fn run_shellcheck(script_file: &Path, workspace: &Path) -> std::io::Result<LintResult> {
+pub async fn run_shellcheck(script_file: &Path, workspace: &Path) -> std::io::Result<LinterResult> {
     let output = tokio::process::Command::new("shellcheck")
         .arg("--format=json")
         .arg(script_file)
@@ -55,13 +55,13 @@ pub async fn run_shellcheck(script_file: &Path, workspace: &Path) -> std::io::Re
 
     if let Ok(messages) = serde_json::from_slice::<Vec<ShellCheckMessage>>(&output.stdout) {
         let diagnostics = messages.into_iter().map(|m| m.into_diagnostic()).collect();
-        return Ok(LintResult {
+        return Ok(LinterResult {
             engine: crate::LintEngine::ShellCheck,
             diagnostics,
         });
     }
 
-    Ok(LintResult {
+    Ok(LinterResult {
         engine: crate::LintEngine::ShellCheck,
         diagnostics: Vec::new(),
     })

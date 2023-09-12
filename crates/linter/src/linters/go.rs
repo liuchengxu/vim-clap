@@ -1,4 +1,4 @@
-use crate::{Code, Diagnostic, LintResult, Severity};
+use crate::{Code, Diagnostic, LinterResult, Severity};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::path::Path;
@@ -7,7 +7,7 @@ use std::path::Path;
 static RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?m)^([^:]+):([0-9]+):([0-9]+)-([0-9]+): (.+)$").unwrap());
 
-pub async fn run_gopls(source_file: &Path, workspace: &Path) -> std::io::Result<LintResult> {
+pub async fn run_gopls(source_file: &Path, workspace: &Path) -> std::io::Result<LinterResult> {
     // Use relative path as the workspace is specified explicitly, otherwise it's
     // possible to run into a glitch when the directory is a symlink?
     let source_file = source_file.strip_prefix(workspace).unwrap_or(source_file);
@@ -47,7 +47,7 @@ pub async fn run_gopls(source_file: &Path, workspace: &Path) -> std::io::Result<
         }
     }
 
-    Ok(LintResult {
+    Ok(LinterResult {
         engine: crate::LintEngine::Gopls,
         diagnostics,
     })

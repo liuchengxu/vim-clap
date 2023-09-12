@@ -78,13 +78,13 @@ pub enum LintEngine {
 }
 
 #[derive(Debug, Clone)]
-pub struct LintResult {
+pub struct LinterResult {
     pub engine: LintEngine,
     pub diagnostics: Vec<Diagnostic>,
 }
 
-pub trait HandleLintResult {
-    fn handle_lint_result(&self, lint_result: LintResult) -> std::io::Result<()>;
+pub trait HandleLinterResult {
+    fn handle_linter_result(&self, linter_result: LinterResult) -> std::io::Result<()>;
 }
 
 #[derive(Debug, Clone)]
@@ -124,14 +124,14 @@ pub fn find_workspace(filetype: impl AsRef<str>, source_file: &Path) -> Option<&
 // source_file => Available Linters => Enabled Linters => Run
 
 fn spawn_linter_job<Handler>(
-    job: impl Future<Output = std::io::Result<LintResult>> + Send + 'static,
+    job: impl Future<Output = std::io::Result<LinterResult>> + Send + 'static,
     handler: Handler,
 ) -> tokio::task::JoinHandle<()>
 where
-    Handler: HandleLintResult + Send + Sync + Clone + 'static,
+    Handler: HandleLinterResult + Send + Sync + Clone + 'static,
 {
     tokio::spawn(async move {
-        let lint_result = match job.await {
+        let linter_result = match job.await {
             Ok(res) => res,
             Err(err) => {
                 tracing::error!(?err, "Error occurred running linter");
@@ -139,7 +139,7 @@ where
             }
         };
 
-        if let Err(err) = handler.handle_lint_result(lint_result) {
+        if let Err(err) = handler.handle_linter_result(linter_result) {
             tracing::error!(?err, "Error occurred in handling the linter result");
         }
     })
@@ -151,7 +151,7 @@ pub fn lint_in_background<Handler>(
     handler: Handler,
 ) -> Vec<JoinHandle<()>>
 where
-    Handler: HandleLintResult + Send + Sync + Clone + 'static,
+    Handler: HandleLinterResult + Send + Sync + Clone + 'static,
 {
     let mut handles = Vec::new();
 
@@ -160,8 +160,8 @@ where
         let source_file = source_file.clone();
         let workspace = workspace.to_path_buf();
         async move {
-            if let Ok(lint_result) = linters::typos::run_typos(&source_file, &workspace).await {
-                let _ = handler.handle_lint_result(lint_result);
+            if let Ok(linter_result) = linters::typos::run_typos(&source_file, &workspace).await {
+                let _ = handler.handle_linter_result(linter_result);
             }
         }
     }));

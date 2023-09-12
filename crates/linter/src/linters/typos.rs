@@ -1,4 +1,4 @@
-use crate::{Code, Diagnostic, LintResult, Severity};
+use crate::{Code, Diagnostic, LinterResult, Severity};
 use std::borrow::Cow;
 use std::path::Path;
 
@@ -105,7 +105,7 @@ impl<'m> Message<'m> {
     }
 }
 
-pub async fn run_typos(source_file: &Path, workspace: &Path) -> std::io::Result<LintResult> {
+pub async fn run_typos(source_file: &Path, workspace: &Path) -> std::io::Result<LinterResult> {
     let output = tokio::process::Command::new("typos")
         .arg("--format=json")
         .arg(source_file)
@@ -124,7 +124,7 @@ pub async fn run_typos(source_file: &Path, workspace: &Path) -> std::io::Result<
         })
         .collect();
 
-    Ok(LintResult {
+    Ok(LinterResult {
         engine: crate::LintEngine::Typos,
         diagnostics,
     })
