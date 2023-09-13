@@ -123,29 +123,8 @@ pub fn find_workspace(filetype: impl AsRef<str>, source_file: &Path) -> Option<&
 
 // source_file => Available Linters => Enabled Linters => Run
 
-fn spawn_linter_job<Handler>(
-    job: impl Future<Output = std::io::Result<LinterResult>> + Send + 'static,
-    handler: Handler,
-) -> tokio::task::JoinHandle<()>
-where
-    Handler: HandleLinterResult + Send + Sync + Clone + 'static,
-{
-    tokio::spawn(async move {
-        let linter_result = match job.await {
-            Ok(res) => res,
-            Err(err) => {
-                tracing::error!(?err, "Error occurred running linter");
-                return;
-            }
-        };
-
-        if let Err(err) = handler.handle_linter_result(linter_result) {
-            tracing::error!(?err, "Error occurred in handling the linter result");
-        }
-    })
-}
-
 pub fn lint_in_background<Handler>(
+    filetype: &str,
     source_file: PathBuf,
     workspace: &Path,
     handler: Handler,
@@ -166,31 +145,51 @@ where
         }
     }));
 
-    if let Some(ext) = source_file.extension().and_then(|s| s.to_str()) {
-        let workspace = workspace.to_path_buf();
-        match ext {
-            "rs" => {
-                handles.extend(linters::rust::RustLinter::new(source_file, workspace).run(handler));
-            }
-            "sh" => {
-                let job =
-                    async move { linters::sh::run_shellcheck(&source_file, &workspace).await };
+    let workspace = workspace.to_path_buf();
 
-                handles.push(spawn_linter_job(job, handler));
-            }
-            "go" => {
-                let job = async move { linters::go::run_gopls(&source_file, &workspace).await };
+    match filetype {
+        "go" => {
+            let job = async move { linters::go::run_gopls(&source_file, &workspace).await };
 
-                handles.push(spawn_linter_job(job, handler));
-            }
-            "vim" => {
-                let job = async move { linters::vim::run_vint(&source_file, &workspace).await };
+            handles.push(spawn_linter_job(job, handler));
+        }
+        "rust" => {
+            handles.extend(linters::rust::RustLinter::new(source_file, workspace).run(handler));
+        }
+        "sh" => {
+            let job = async move { linters::sh::run_shellcheck(&source_file, &workspace).await };
 
-                handles.push(spawn_linter_job(job, handler));
-            }
-            _ => {}
-        };
+            handles.push(spawn_linter_job(job, handler));
+        }
+        "vim" => {
+            let job = async move { linters::vim::run_vint(&source_file, &workspace).await };
+
+            handles.push(spawn_linter_job(job, handler));
+        }
+        _ => {}
     }
 
     handles
+}
+
+fn spawn_linter_job<Handler>(
+    job: impl Future<Output = std::io::Result<LinterResult>> + Send + 'static,
+    handler: Handler,
+) -> tokio::task::JoinHandle<()>
+where
+    Handler: HandleLinterResult + Send + Sync + Clone + 'static,
+{
+    tokio::spawn(async move {
+        let linter_result = match job.await {
+            Ok(res) => res,
+            Err(err) => {
+                tracing::error!(?err, "Error occurred running linter");
+                return;
+            }
+        };
+
+        if let Err(err) = handler.handle_linter_result(linter_result) {
+            tracing::error!(?err, "Error occurred in handling the linter result");
+        }
+    })
 }

@@ -108,6 +108,7 @@ type LinterJob = JoinHandle<()>;
 
 #[derive(Debug, Clone)]
 struct BufferLinterInfo {
+    filetype: String,
     workspace: PathBuf,
     source_file: PathBuf,
     diagnostics: ShareableDiagnostics,
@@ -115,8 +116,9 @@ struct BufferLinterInfo {
 }
 
 impl BufferLinterInfo {
-    fn new(workspace: PathBuf, source_file: PathBuf) -> Self {
+    fn new(filetype: String, workspace: PathBuf, source_file: PathBuf) -> Self {
         Self {
+            filetype,
             workspace,
             source_file,
             diagnostics: ShareableDiagnostics {
@@ -160,11 +162,11 @@ impl LinterPlugin {
 
         let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
 
-        let Some(workspace) = linter::find_workspace(filetype, &source_file) else {
+        let Some(workspace) = linter::find_workspace(&filetype, &source_file) else {
             return Ok(());
         };
 
-        let buf_linter_info = BufferLinterInfo::new(workspace.to_path_buf(), source_file);
+        let buf_linter_info = BufferLinterInfo::new(filetype, workspace.to_path_buf(), source_file);
         self.lint_buffer(bufnr, &buf_linter_info)?;
         self.bufs.insert(bufnr, buf_linter_info);
 
@@ -183,6 +185,7 @@ impl LinterPlugin {
         }
 
         let new_jobs = linter::lint_in_background(
+            &buf_linter_info.filetype,
             buf_linter_info.source_file.clone(),
             &buf_linter_info.workspace,
             LinterResultHandler::new(bufnr, self.vim.clone(), buf_linter_info.diagnostics.clone()),
@@ -233,6 +236,7 @@ impl ClapPlugin for LinterPlugin {
                         if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
                             let lnum = self.vim.line(".").await?;
                             let diagnostics = buf_linter_info.diagnostics.diagnostics.read();
+
                             let current_diagnostics = diagnostics
                                 .iter()
                                 .filter(|d| d.line_start == lnum)
