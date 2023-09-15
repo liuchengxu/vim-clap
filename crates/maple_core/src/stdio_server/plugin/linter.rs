@@ -92,7 +92,7 @@ impl linter::HandleLinterResult for LinterResultHandler {
 
             if !followup_diagnostics.is_empty() {
                 let _ = self.vim.exec(
-                    "clap#plugin#linter#update",
+                    "clap#plugin#linter#update_highlights",
                     (self.bufnr, &followup_diagnostics),
                 );
             }

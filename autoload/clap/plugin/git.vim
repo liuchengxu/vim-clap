@@ -53,13 +53,15 @@ else
   endfunction
 
   function! clap#plugin#git#show_cursor_blame_info(bufnr, text) abort
-    let col_offset = &numberwidth + 4
-    let col_offset += &signcolumn ==# 'yes' ? 2 : 0
+    let col_offset = 4 + col('$') - col('.')
     let popup_id = getbufvar(a:bufnr, 'clap_git_blame_popup_id')
-    if empty(popup_id)
+    if empty(popup_id) || empty(popup_getpos(popup_id))
+      if !empty(popup_id)
+        call popup_close(popup_id)
+      endif
       let popup_id = popup_create(a:text, {
             \ 'line': 'cursor',
-            \ 'col': col('$') + col_offset,
+            \ 'col': printf('cursor+%d', col_offset),
             \ 'highlight': 'ClapBlameInfo',
             \ 'wrap': v:true,
             \ 'zindex': 100,
@@ -67,7 +69,8 @@ else
       call setbufvar(a:bufnr, 'clap_git_blame_popup_id', popup_id)
     else
       call popup_settext(popup_id, a:text)
-      call popup_move(popup_id, { 'line': 'cursor', 'col': col('$') + col_offset })
+      call popup_move(popup_id, { 'line': 'cursor', 'col': printf('cursor+%d', col_offset) })
+      call popup_show(popup_id)
     endif
   endfunction
 

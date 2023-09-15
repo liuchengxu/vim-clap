@@ -13,7 +13,36 @@ hi default link DiagnosticError ErrorMsg
 hi default link DiagnosticInfo Normal
 hi default link DiagnosticHint Normal
 
-let s:diagnostic_winhl = 'Normal:Pmenu,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer'
+function! s:convert_diagnostics_to_lines(current_diagnostics) abort
+  let lines = []
+  let line_highlights = []
+  for diagnostic in a:current_diagnostics
+    let code = empty(diagnostic.code) ? '' : ' ['.diagnostic.code.']'
+
+    let highlights = []
+
+    let severity_len = strlen(diagnostic.severity)
+    call add(highlights, ['Error', 0, severity_len])
+
+    let message_len = strlen(diagnostic.message)
+    " 2 = `: `
+    let offset = severity_len + 2
+    call add(highlights, ['Comment', offset, offset + message_len])
+
+    let code_len = strlen(code)
+    let offset = offset + message_len
+    call add(highlights, ['Title', offset, offset + code_len])
+    call add(line_highlights, highlights)
+
+    let line = printf('%s: %s%s', diagnostic.severity, diagnostic.message, code)
+    call add(lines, line)
+  endfor
+  return [lines, line_highlights]
+endfunction
+
+if has('nvim')
+
+let s:diagnostic_winhl = 'Normal:Normal,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer'
 
 if !exists('s:linter_ns_id')
   let s:linter_ns_id = nvim_create_namespace('clap_linter')
@@ -88,28 +117,8 @@ endfunction
 
 function! clap#plugin#linter#display_top_right(current_diagnostics) abort
   if !empty(a:current_diagnostics)
-    let messages = []
-    let message_highlights = []
-    for diagnostic in a:current_diagnostics
-      let code = empty(diagnostic.code) ? '' : ' ['.diagnostic.code.']'
-
-      let highlights = []
-
-      let severity_len = strlen(diagnostic.severity)
-      call add(highlights, ['Error', 0, severity_len])
-
-      let message_len = strlen(diagnostic.message)
-      call add(highlights, ['Comment', severity_len + 2, severity_len + 2 + message_len])
-
-      let code_len = strlen(code)
-      call add(highlights, ['Title', severity_len + 2 + message_len, severity_len + 2 + message_len + code_len])
-      call add(message_highlights, highlights)
-
-      let message = printf('%s: %s%s ', diagnostic.severity, diagnostic.message, code)
-      call add(messages, message)
-    endfor
-
-    call s:display_on_top_right(messages, message_highlights)
+    let [lines, line_highlights] = s:convert_diagnostics_to_lines(a:current_diagnostics)
+    call s:display_on_top_right(lines, line_highlights)
   endif
 endfunction
 
@@ -152,7 +161,7 @@ function! s:render_diagnostics(bufnr, diagnostics) abort
   return extmark_ids
 endfunction
 
-function! clap#plugin#linter#update(bufnr, diagnostics) abort
+function! clap#plugin#linter#update_highlights(bufnr, diagnostics) abort
   call extend(g:clap_linter, a:diagnostics)
   let extmark_ids = s:render_diagnostics(a:bufnr, a:diagnostics)
 
@@ -181,6 +190,69 @@ function! clap#plugin#linter#clear(bufnr) abort
 
   call setbufvar(a:bufnr, 'clap_linter', {})
 endfunction
+
+else
+
+function! clap#plugin#linter#clear_top_right() abort
+  if exists('s:diagnostic_msg_winid')
+    call popup_close(s:diagnostic_msg_winid)
+    unlet s:diagnostic_msg_winid
+  endif
+endfunction
+
+function! clap#plugin#linter#display_top_right(current_diagnostics) abort
+  if !empty(a:current_diagnostics)
+    let [lines, line_highlights] = s:convert_diagnostics_to_lines(a:current_diagnostics)
+
+    let max_text_len = max(map(copy(lines), 'strlen(v:val)'))
+    if &columns > max_text_len
+      let col = &columns - max_text_len
+    else
+      let col = 1
+    endif
+
+    if exists('s:diagnostic_msg_winid') && !empty(popup_getpos(s:diagnostic_msg_winid))
+      call popup_setoptions(s:diagnostic_msg_winid, { 'minheight': len(lines), 'col': col })
+      call popup_settext(s:diagnostic_msg_winid, lines)
+    else
+      call clap#plugin#linter#clear_top_right()
+
+      silent let s:diagnostic_msg_winid = popup_create(lines, {
+            \ 'zindex': 100,
+            \ 'title': 'Diagnostics',
+            \ 'mapping': v:false,
+            \ 'line': 1,
+            \ 'col': col,
+            \ 'pos': 'topleft',
+            \ 'scrollbar': 0,
+            \ 'minheight': len(lines),
+            \ 'border': [],
+            \ 'borderchars': ['─', '│', '─', '│', '┌', '┐', '┘', '└'],
+            \ })
+    endif
+  endif
+endfunction
+
+call prop_type_add('ClapLinterUnderline', {'highlight': 'ClapLinterUnderline'})
+
+function! clap#plugin#linter#update_highlights(bufnr, diagnostics) abort
+  for diagnostic in a:diagnostics
+    call prop_add(diagnostic.line_start, diagnostic.column_start, { 'type': 'ClapLinterUnderline', 'length': diagnostic.column_end - diagnostic.column_start, 'bufnr': a:bufnr })
+  endfor
+endfunction
+
+function! clap#plugin#linter#refresh(bufnr, diagnostics) abort
+  call prop_remove({ 'type': 'ClapLinterUnderline', 'bufnr': a:bufnr } )
+  for diagnostic in a:diagnostics
+    call prop_add(diagnostic.line_start, diagnostic.column_start, { 'type': 'ClapLinterUnderline', 'length': diagnostic.column_end - diagnostic.column_start, 'bufnr': a:bufnr })
+  endfor
+endfunction
+
+function! clap#plugin#linter#clear(bufnr) abort
+  call prop_remove({ 'type': 'ClapLinterUnderline', 'bufnr': a:bufnr } )
+endfunction
+
+endif
 
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
