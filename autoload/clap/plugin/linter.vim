@@ -172,16 +172,16 @@ function! clap#plugin#linter#update_highlights(bufnr, diagnostics) abort
   endif
 endfunction
 
-function! clap#plugin#linter#refresh(bufnr, diagnostics) abort
+function! clap#plugin#linter#refresh_highlights(bufnr, diagnostics) abort
   let g:clap_linter = a:diagnostics
-  call clap#plugin#linter#clear(a:bufnr)
+  call clap#plugin#linter#clear_highlights(a:bufnr)
 
   let extmark_ids = s:render_diagnostics(a:bufnr, a:diagnostics)
 
   call setbufvar(a:bufnr, 'clap_linter', { 'extmark_ids': extmark_ids })
 endfunction
 
-function! clap#plugin#linter#clear(bufnr) abort
+function! clap#plugin#linter#clear_highlights(bufnr) abort
   let clap_linter = getbufvar(a:bufnr, 'clap_linter', {})
   for id in get(clap_linter, 'extmark_ids', [])
     call nvim_buf_del_extmark(a:bufnr, s:linter_ns_id, id)
@@ -241,14 +241,14 @@ function! clap#plugin#linter#update_highlights(bufnr, diagnostics) abort
   endfor
 endfunction
 
-function! clap#plugin#linter#refresh(bufnr, diagnostics) abort
+function! clap#plugin#linter#refresh_highlights(bufnr, diagnostics) abort
   call prop_remove({ 'type': 'ClapLinterUnderline', 'bufnr': a:bufnr } )
   for diagnostic in a:diagnostics
     call prop_add(diagnostic.line_start, diagnostic.column_start, { 'type': 'ClapLinterUnderline', 'length': diagnostic.column_end - diagnostic.column_start, 'bufnr': a:bufnr })
   endfor
 endfunction
 
-function! clap#plugin#linter#clear(bufnr) abort
+function! clap#plugin#linter#clear_highlights(bufnr) abort
   call prop_remove({ 'type': 'ClapLinterUnderline', 'bufnr': a:bufnr } )
 endfunction
 

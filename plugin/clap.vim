@@ -63,8 +63,9 @@ augroup VimClap
     autocmd BufWritePost * call clap#client#notify('BufWritePost', [+expand('<abuf>')])
     autocmd BufWinEnter  * call clap#client#notify('BufWinEnter',  [+expand('<abuf>')])
     autocmd BufWinLeave  * call clap#client#notify('BufWinLeave',  [+expand('<abuf>'), bufwinid(+expand('<abuf>'))])
-    autocmd TextChanged  * call clap#client#notify('TextChanged',  [+expand('<abuf>')])
-    autocmd TextChangedI * call clap#client#notify('TextChangedI', [+expand('<abuf>')])
+    " Are these really needed?
+    " autocmd TextChanged  * call clap#client#notify('TextChanged',  [+expand('<abuf>')])
+    " autocmd TextChangedI * call clap#client#notify('TextChangedI', [+expand('<abuf>')])
   endif
 
   " yanks provider

@@ -71,9 +71,10 @@ impl linter::HandleLinterResult for LinterResultHandler {
             .is_ok();
 
         if first_lint_result_arrives {
-            let _ = self
-                .vim
-                .exec("clap#plugin#linter#refresh", (self.bufnr, &new_diagnostics));
+            let _ = self.vim.exec(
+                "clap#plugin#linter#refresh_highlights",
+                (self.bufnr, &new_diagnostics),
+            );
 
             self.shareable_diagnostics.extend(new_diagnostics);
         } else {
@@ -284,7 +285,8 @@ impl ClapPlugin for LinterPlugin {
                         match self.toggle {
                             Toggle::On => {
                                 for bufnr in self.bufs.keys() {
-                                    self.vim.exec("clap#plugin#linter#clear", [bufnr])?;
+                                    self.vim
+                                        .exec("clap#plugin#linter#clear_highlights", [bufnr])?;
                                 }
                             }
                             Toggle::Off => {

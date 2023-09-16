@@ -357,7 +357,7 @@ impl ClapPlugin for GitPlugin {
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
         match plugin_event {
             PluginEvent::Autocmd((autocmd_event_type, params)) => {
-                use AutocmdEventType::{BufDelete, BufEnter, CursorMoved, InsertEnter};
+                use AutocmdEventType::{BufDelete, BufEnter, BufLeave, CursorMoved, InsertEnter};
 
                 if self.toggle.is_off() {
                     return Ok(());
@@ -373,7 +373,7 @@ impl ClapPlugin for GitPlugin {
                     BufDelete => {
                         self.bufs.remove(&bufnr);
                     }
-                    InsertEnter => {
+                    InsertEnter | BufLeave => {
                         self.vim.exec("clap#plugin#git#clear_blame_info", [bufnr])?;
                     }
                     CursorMoved => self.on_cursor_moved(bufnr).await?,
