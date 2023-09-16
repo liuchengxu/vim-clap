@@ -104,7 +104,7 @@ impl RustLinter {
             .filter_map(process_line)
             .filter_map(|cargo_message| match cargo_message {
                 CargoMessage::Diagnostic(diagonostic) => {
-                    convert_cargo_diagnostic_to_our_diagnostic(diagonostic, source_filename)
+                    process_cargo_diagnostic(diagonostic, source_filename)
                 }
                 _ => None,
             })
@@ -112,7 +112,10 @@ impl RustLinter {
     }
 }
 
-fn convert_cargo_diagnostic_to_our_diagnostic(
+/// Filter out the diagnostics specific to `source_filename` and convert it to [`Diagnostic`].
+///
+/// NOTE: The diagnostic with empty spans will be discarded.
+fn process_cargo_diagnostic(
     cargo_diagnostic: cargo_metadata::diagnostic::Diagnostic,
     source_filename: &str,
 ) -> Option<Diagnostic> {

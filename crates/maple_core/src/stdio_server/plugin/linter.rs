@@ -236,6 +236,8 @@ impl ClapPlugin for LinterPlugin {
                     CursorMoved => {
                         if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
                             let lnum = self.vim.line(".").await?;
+                            let col = self.vim.col(".").await?;
+
                             let diagnostics = buf_linter_info.diagnostics.diagnostics.read();
 
                             let current_diagnostics = diagnostics
@@ -243,13 +245,32 @@ impl ClapPlugin for LinterPlugin {
                                 .filter(|d| d.spans.iter().any(|span| span.line_start == lnum))
                                 .collect::<Vec<_>>();
 
+                            tracing::debug!("========= CursorMoved current_diagnostics: {current_diagnostics:?}");
                             if current_diagnostics.is_empty() {
                                 self.vim.bare_exec("clap#plugin#linter#clear_top_right")?;
                             } else {
-                                self.vim.exec(
-                                    "clap#plugin#linter#display_top_right",
-                                    [current_diagnostics],
-                                )?;
+                                let diagnostic_at_cursor = current_diagnostics
+                                    .iter()
+                                    .filter(|d| {
+                                        d.spans.iter().any(|span| {
+                                            col >= span.column_start && col < span.column_end
+                                        })
+                                    })
+                                    .collect::<Vec<_>>();
+
+                                // Display the specific diagnostic if the cursor is on it, otherwise display all
+                                // the diagnostics in this line.
+                                if diagnostic_at_cursor.is_empty() {
+                                    self.vim.exec(
+                                        "clap#plugin#linter#display_top_right",
+                                        [current_diagnostics],
+                                    )?;
+                                } else {
+                                    self.vim.exec(
+                                        "clap#plugin#linter#display_top_right",
+                                        [diagnostic_at_cursor],
+                                    )?;
+                                }
                             }
                         }
                     }
@@ -272,6 +293,9 @@ impl ClapPlugin for LinterPlugin {
                                 .filter(|d| d.spans.iter().any(|span| span.line_start == lnum))
                                 .collect::<Vec<_>>();
 
+                            tracing::debug!(
+                                "========= current_diagnostics: {current_diagnostics:?}"
+                            );
                             for diagnostic in current_diagnostics {
                                 self.vim.echo_info(diagnostic.human_message())?;
                             }
