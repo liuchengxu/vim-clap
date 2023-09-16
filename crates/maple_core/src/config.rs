@@ -159,11 +159,19 @@ impl Default for GitPluginConfig {
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct LinterPluginConfig {
+    /// Whether to enable this plugin.
+    pub enable: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct PluginConfig {
     pub cursor_word_highlighter: CursorWordHighlighterConfig,
     pub markdown: MarkdownPluginConfig,
     pub ctags: CtagsPluginConfig,
     pub git: GitPluginConfig,
+    pub linter: LinterPluginConfig,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]

@@ -2,16 +2,14 @@ use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 
 fn rs_kind_alias() -> HashMap<&'static str, &'static str> {
-    vec![
+    HashMap::from([
         ("module", "mod"),
         ("typedef", "type"),
         ("function", "fn"),
         ("interface", "trait"),
         ("enumerator", "enum"),
         ("implementation", "impl"),
-    ]
-    .into_iter()
-    .collect()
+    ])
 }
 
 fn get_kind_alias<'a>(extension: &'a str, kind: &'a str) -> Option<&'a &'static str> {

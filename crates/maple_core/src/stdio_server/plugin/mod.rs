@@ -1,6 +1,7 @@
 mod ctags;
 mod cursor_word_highlighter;
 mod git;
+mod linter;
 mod markdown;
 mod system;
 
@@ -11,6 +12,7 @@ use std::fmt::Debug;
 pub use self::ctags::CtagsPlugin;
 pub use self::cursor_word_highlighter::CursorWordHighlighter;
 pub use self::git::GitPlugin;
+pub use self::linter::LinterPlugin;
 pub use self::markdown::MarkdownPlugin;
 pub use self::system::SystemPlugin;
 
@@ -21,6 +23,7 @@ pub enum PluginId {
     CursorWordHighlighter,
     Git,
     Markdown,
+    Linter,
 }
 
 impl std::fmt::Display for PluginId {
@@ -31,6 +34,7 @@ impl std::fmt::Display for PluginId {
             Self::CursorWordHighlighter => write!(f, "cursor-word-highlighter"),
             Self::Git => write!(f, "git"),
             Self::Markdown => write!(f, "markdown"),
+            Self::Linter => write!(f, "linter"),
         }
     }
 }
@@ -58,6 +62,32 @@ pub enum ActionType {
     All,
 }
 
+#[derive(Debug, Clone)]
+pub enum Toggle {
+    /// Plugin is enabled.
+    On,
+    /// Plugin is disabled.
+    Off,
+}
+
+impl Toggle {
+    pub fn switch(&mut self) {
+        match self {
+            Self::On => {
+                *self = Self::Off;
+            }
+            Self::Off => {
+                *self = Self::On;
+            }
+        }
+    }
+
+    pub fn is_off(&self) -> bool {
+        matches!(self, Self::Off)
+    }
+}
+
+/// Plugin interfaces to users.
 pub trait ClapAction {
     fn actions(&self, _action_type: ActionType) -> &[Action] {
         &[]

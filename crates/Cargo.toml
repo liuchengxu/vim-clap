@@ -1,10 +1,13 @@
 [workspace]
+resolver = "2"
+
 members = [
     "dirs",
     "dumb_analyzer",
     "filter",
     "icon",
     "cli",
+    "linter",
     "maple_core",
     "matcher",
     "matcher/extracted_fzy",
@@ -59,6 +62,7 @@ dirs = { path = "./dirs" }
 dumb_analyzer = { path = "./dumb_analyzer" }
 filter = { path = "./filter" }
 icon = { path = "./icon" }
+linter = { path = "./linter" }
 maple_core = { path = "./maple_core" }
 matcher = { path = "./matcher" }
 paths = { path = "./paths" }

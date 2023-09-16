@@ -1,6 +1,6 @@
 use crate::stdio_server::input::AutocmdEventType;
 use crate::stdio_server::plugin::{
-    Action, ActionType, ClapAction, ClapPlugin, PluginAction, PluginEvent, PluginId,
+    Action, ActionType, ClapAction, ClapPlugin, PluginAction, PluginEvent, PluginId, Toggle,
 };
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
@@ -33,6 +33,16 @@ impl Git {
             repo: git_root,
             user_name,
         })
+    }
+
+    fn is_tracked(&self, file: &Path) -> Result<bool> {
+        let output = std::process::Command::new("git")
+            .current_dir(&self.repo)
+            .arg("ls-files")
+            .arg("--error-unmatch")
+            .arg(file)
+            .output()?;
+        Ok(output.status.code().map(|c| c != 1).unwrap_or(false))
     }
 
     fn fetch_rev_parse(&self, arg: &str) -> Result<String> {
@@ -87,8 +97,11 @@ impl Git {
             Ok(output.stdout)
         } else {
             Err(anyhow!(
-                "Child process errors out: {}",
-                String::from_utf8_lossy(&output.stderr)
+                "child process errors out: {}, {}, \
+                command: `git blame --porcelain --incremental -L{lnum},{lnum} -- {}`",
+                String::from_utf8_lossy(&output.stderr),
+                output.status,
+                relative_path.display()
             ))
         }
     }
@@ -127,8 +140,11 @@ impl Git {
             Ok(output.stdout)
         } else {
             Err(anyhow!(
-                "Child process errors out: {}",
-                String::from_utf8_lossy(&output.stderr)
+                "child process errors out: {}, {}, \
+                command: `git blame --contents - -L {lnum},+1 --line-porcelain {}`",
+                String::from_utf8_lossy(&output.stderr),
+                output.status,
+                relative_path.display()
             ))
         }
     }
@@ -222,29 +238,6 @@ fn in_git_repo(filepath: &Path) -> Option<&Path> {
 }
 
 #[derive(Debug, Clone)]
-enum Toggle {
-    On,
-    Off,
-}
-
-impl Toggle {
-    fn switch(&mut self) {
-        match self {
-            Self::On => {
-                *self = Self::Off;
-            }
-            Self::Off => {
-                *self = Self::On;
-            }
-        }
-    }
-
-    fn is_off(&self) -> bool {
-        matches!(self, Self::Off)
-    }
-}
-
-#[derive(Debug, Clone)]
 pub struct GitPlugin {
     vim: Vim,
     bufs: HashMap<usize, (PathBuf, Git)>,
@@ -288,9 +281,11 @@ impl GitPlugin {
         let filepath = PathBuf::from(buf_path);
 
         if let Some(git_root) = in_git_repo(&filepath) {
-            let git_root = git_root.to_path_buf();
-            self.bufs.insert(bufnr, (filepath, Git::init(git_root)?));
-            return Ok(());
+            let git = Git::init(git_root.to_path_buf())?;
+            if git.is_tracked(&filepath)? {
+                self.bufs.insert(bufnr, (filepath, git));
+                return Ok(());
+            }
         }
 
         Ok(())
@@ -362,7 +357,7 @@ impl ClapPlugin for GitPlugin {
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
         match plugin_event {
             PluginEvent::Autocmd((autocmd_event_type, params)) => {
-                use AutocmdEventType::{BufDelete, BufEnter, CursorMoved, InsertEnter};
+                use AutocmdEventType::{BufDelete, BufEnter, BufLeave, CursorMoved, InsertEnter};
 
                 if self.toggle.is_off() {
                     return Ok(());
@@ -378,7 +373,7 @@ impl ClapPlugin for GitPlugin {
                     BufDelete => {
                         self.bufs.remove(&bufnr);
                     }
-                    InsertEnter => {
+                    InsertEnter | BufLeave => {
                         self.vim.exec("clap#plugin#git#clear_blame_info", [bufnr])?;
                     }
                     CursorMoved => self.on_cursor_moved(bufnr).await?,

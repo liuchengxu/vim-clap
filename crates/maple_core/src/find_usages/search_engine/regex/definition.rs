@@ -133,8 +133,8 @@ impl Definitions {
         self.defs.par_iter()
     }
 
-    pub fn into_par_iter(self) -> rayon::vec::IntoIter<DefinitionSearchResult> {
-        self.defs.into_par_iter()
+    pub fn into_iter(self) -> std::vec::IntoIter<DefinitionSearchResult> {
+        self.defs.into_iter()
     }
 }
 
@@ -151,8 +151,8 @@ impl Occurrences {
         self.0.par_iter()
     }
 
-    pub fn into_par_iter(self) -> rayon::vec::IntoIter<Match> {
-        self.0.into_par_iter()
+    pub fn into_iter(self) -> std::vec::IntoIter<Match> {
+        self.0.into_iter()
     }
 
     pub fn retain<F>(&mut self, f: F)
@@ -176,14 +176,14 @@ pub(super) fn find_definitions_and_references(
     let defs = definitions.flatten();
 
     // There are some negative definitions we need to filter them out, e.g., the word
-    // is a subtring in some identifer but we consider every word is a valid identifer.
+    // is a substring in some identifier but we consider every word is a valid identifier.
     let positive_defs = defs
-        .par_iter()
+        .iter()
         .filter(|def| occurrences.contains(def))
         .collect::<Vec<_>>();
 
     let res: HashMap<MatchKind, Vec<Match>> = definitions
-        .into_par_iter()
+        .into_iter()
         .filter_map(|DefinitionSearchResult { kind, mut matches }| {
             matches.retain(|ref def| positive_defs.contains(def));
             if matches.is_empty() {
@@ -192,7 +192,7 @@ pub(super) fn find_definitions_and_references(
                 Some((kind.into(), matches))
             }
         })
-        .chain(rayon::iter::once((MatchKind::Reference, {
+        .chain(std::iter::once((MatchKind::Reference, {
             occurrences.retain(|r| !defs.contains(r));
             occurrences.into_inner()
         })))

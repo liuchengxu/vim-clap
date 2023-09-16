@@ -1,10 +1,11 @@
 //! Each invocation of Clap provider is a session. When you exit the provider, the session ends.
 
 use crate::stdio_server::input::{
-    InternalProviderEvent, PluginEvent, ProviderEvent, ProviderEventSender,
+    AutocmdEvent, InternalProviderEvent, PluginAction, PluginEvent, ProviderEvent,
+    ProviderEventSender,
 };
-use crate::stdio_server::plugin::{ActionType, ClapPlugin};
-use crate::stdio_server::provider::{ClapProvider, Context};
+use crate::stdio_server::plugin::{ActionType, ClapPlugin, PluginId};
+use crate::stdio_server::provider::{ClapProvider, Context, ProviderId};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -13,14 +14,12 @@ use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;
 
-use super::input::{AutocmdEvent, PluginAction};
-use super::plugin::PluginId;
-
 pub type ProviderSessionId = u64;
 
 #[derive(Debug)]
 pub struct ProviderSession {
     ctx: Context,
+    id: ProviderId,
     provider_session_id: ProviderSessionId,
     /// Each provider session can have its own message processing logic.
     provider: Box<dyn ClapProvider>,
@@ -37,8 +36,11 @@ impl ProviderSession {
 
         ctx.set_provider_event_sender(provider_event_sender.clone());
 
+        let id = ctx.env.provider_id.clone();
+
         let provider_session = ProviderSession {
             ctx,
+            id,
             provider_session_id,
             provider,
             provider_events: provider_event_receiver,
@@ -99,7 +101,7 @@ impl ProviderSession {
                 maybe_event = self.provider_events.recv() => {
                     match maybe_event {
                         Some(event) => {
-                            tracing::trace!("[with_debounce] Received event: {event:?}");
+                            tracing::trace!(debounce = true, "[{}] Received event: {event:?}", self.id);
 
                             match event {
                                 ProviderEvent::Internal(internal_event) => {
@@ -160,7 +162,7 @@ impl ProviderSession {
 
     async fn run_event_loop_without_debounce(mut self) {
         while let Some(event) = self.provider_events.recv().await {
-            tracing::trace!("[without_debounce] Received event: {event:?}");
+            tracing::trace!(debounce = false, "[{}] Received event: {event:?}", self.id);
 
             match event {
                 ProviderEvent::Internal(internal_event) => {
@@ -286,7 +288,9 @@ impl PluginSession {
     }
 
     fn start_event_loop(mut self, event_delay: Duration) {
-        tracing::debug!(id = ?self.plugin.id(), debounce = ?event_delay, "Starting a new plugin service");
+        let id = self.plugin.id();
+
+        tracing::debug!(?id, debounce = ?event_delay, "Starting a new plugin service");
 
         tokio::spawn(async move {
             // If the debounce timer isn't active, it will be set to expire "never",
@@ -308,7 +312,7 @@ impl PluginSession {
                                     notification_dirty = true;
                                     notification_timer.as_mut().reset(Instant::now() + event_delay);
                                 } else if let Err(err) = self.plugin.on_plugin_event(plugin_event.clone()).await {
-                                    tracing::error!(?err, "Failed to process plugin event: {plugin_event:?}");
+                                    tracing::error!(?err, "[{id}] Failed to process plugin event: {plugin_event:?}");
                                 }
                             }
                             None => break, // channel has closed.
@@ -319,9 +323,9 @@ impl PluginSession {
                         notification_timer.as_mut().reset(Instant::now() + NEVER);
 
                         if let Some(autocmd) = pending_plugin_event.take() {
-                            if let Err(err) = self.plugin.on_plugin_event(autocmd).await {
-                                tracing::error!(?err, "Failed to process debounced plugin event");
-                            }
+                          if let Err(err) = self.plugin.on_plugin_event(autocmd.clone()).await {
+                              tracing::error!(?err, "[{id}] Failed to process debounced plugin event {autocmd:?}");
+                          }
                         }
                     }
                 }
@@ -375,8 +379,12 @@ impl ServiceManager {
         }
     }
 
-    /// Creates a new plugin session with the default debounce setting.
-    pub fn register_plugin(&mut self, plugin: Box<dyn ClapPlugin>) -> (PluginId, Vec<String>) {
+    /// Creates a new plugin session with the default debounce setting (50ms).
+    pub fn register_plugin(
+        &mut self,
+        plugin: Box<dyn ClapPlugin>,
+        maybe_debounce: Option<Duration>,
+    ) -> (PluginId, Vec<String>) {
         let plugin_id = plugin.id();
 
         let all_actions = plugin
@@ -385,10 +393,10 @@ impl ServiceManager {
             .map(|s| s.method.to_string())
             .collect();
 
-        self.plugins.insert(
-            plugin_id,
-            PluginSession::create(plugin, Some(Duration::from_millis(50))),
-        );
+        let debounce = Some(maybe_debounce.unwrap_or(Duration::from_millis(50)));
+
+        self.plugins
+            .insert(plugin_id, PluginSession::create(plugin, debounce));
 
         (plugin_id, all_actions)
     }

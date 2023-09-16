@@ -39,6 +39,7 @@ dirs = { workspace = true }
 dumb_analyzer = { workspace = true }
 filter = { workspace = true }
 icon = { workspace = true }
+linter = { workspace = true }
 matcher = { workspace = true }
 paths = { workspace = true }
 pattern = { workspace = true }
