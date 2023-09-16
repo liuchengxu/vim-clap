@@ -62,38 +62,46 @@ function! s:display_on_top_right(lines, line_highlights) abort
   endif
   let buffer = s:diagnostic_msg_buffer
 
-  if !exists('s:diagnostic_msg_winid') || !nvim_win_is_valid(s:diagnostic_msg_winid)
-    " Clear the invalid ones.
-    call clap#plugin#linter#clear_top_right()
+  let max_text_len = max(map(copy(a:lines), 'strlen(v:val)'))
 
-    let max_text_len = max(map(copy(a:lines), 'strlen(v:val)'))
+  if max_text_len > &columns
+    let width = &columns / 2
+    let height = len(a:lines) + max_text_len / width
+  else
+    let width = max_text_len
+    let height = len(a:lines)
+  endif
 
-    if max_text_len > &columns
-      let width = &columns / 2
-      let height = len(a:lines) + max_text_len / width
-    else
-      let width = max_text_len
-      let height = len(a:lines)
-    endif
+  let config = {
+        \ 'relative': 'win',
+        \ 'win': nvim_get_current_win(),
+        \ 'row': 0,
+        \ 'col': winwidth(0),
+        \ 'width': width,
+        \ 'height': height,
+        \ 'style': 'minimal',
+        \ 'border': 'single',
+        \ 'anchor': 'NE',
+        \ 'focusable': v:false,
+        \ }
 
-    let config = {
-          \ 'relative': 'win',
-          \ 'win': nvim_get_current_win(),
-          \ 'row': 0,
-          \ 'col': winwidth(0),
-          \ 'width': width,
-          \ 'height': height,
-          \ 'style': 'minimal',
-          \ 'border': 'single',
-          \ 'anchor': 'NE',
-          \ 'focusable': v:false,
-          \ }
-
+  if !exists('s:diagnostic_msg_winid')
     silent let s:diagnostic_msg_winid = nvim_open_win(buffer, v:false, config)
-
     call setwinvar(s:diagnostic_msg_winid, '&spell', 0)
     call setwinvar(s:diagnostic_msg_winid, '&wrap', 1)
     call setwinvar(s:diagnostic_msg_winid, '&winhl', s:diagnostic_winhl)
+  else
+    if nvim_win_is_valid(s:diagnostic_msg_winid)
+      call nvim_win_set_config(s:diagnostic_msg_winid, config)
+    else
+      " Make sure the invalid window is closed and create a new one.
+      call clap#plugin#linter#clear_top_right()
+
+      silent let s:diagnostic_msg_winid = nvim_open_win(buffer, v:false, config)
+      call setwinvar(s:diagnostic_msg_winid, '&spell', 0)
+      call setwinvar(s:diagnostic_msg_winid, '&wrap', 1)
+      call setwinvar(s:diagnostic_msg_winid, '&winhl', s:diagnostic_winhl)
+    endif
   endif
 
   call nvim_buf_set_lines(buffer, 0, -1, v:false, a:lines)
@@ -166,7 +174,6 @@ function! s:render_diagnostics(bufnr, diagnostics) abort
 endfunction
 
 function! clap#plugin#linter#update_highlights(bufnr, diagnostics) abort
-  call extend(g:clap_linter, a:diagnostics)
   let extmark_ids = s:render_diagnostics(a:bufnr, a:diagnostics)
 
   let clap_linter = getbufvar(a:bufnr, 'clap_linter', {})
@@ -177,7 +184,6 @@ function! clap#plugin#linter#update_highlights(bufnr, diagnostics) abort
 endfunction
 
 function! clap#plugin#linter#refresh_highlights(bufnr, diagnostics) abort
-  let g:clap_linter = a:diagnostics
   call clap#plugin#linter#clear_highlights(a:bufnr)
 
   let extmark_ids = s:render_diagnostics(a:bufnr, a:diagnostics)
