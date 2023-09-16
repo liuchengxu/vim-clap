@@ -40,12 +40,12 @@ pub struct DiagnosticSpan {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Diagnostic {
+    pub message: String,
     /// A list of source code spans this diagnostic is associated with.
     pub spans: Vec<DiagnosticSpan>,
     #[serde(flatten)]
     pub code: Code,
     pub severity: Severity,
-    pub message: String,
 }
 
 impl PartialEq for Diagnostic {
@@ -105,7 +105,7 @@ pub trait HandleLinterResult {
 #[derive(Debug, Clone)]
 enum WorkspaceFinder {
     RootMarkers(&'static [&'static str]),
-    /// Use the parent directory as the workspace if no explicit root markers.
+    /// Use the parent directory as the workspace_root if no explicit root markers.
     ParentOfSourceFile,
 }
 
@@ -141,7 +141,7 @@ pub fn find_workspace(filetype: impl AsRef<str>, source_file: &Path) -> Option<&
 pub fn lint_in_background<Handler>(
     filetype: &str,
     source_file: PathBuf,
-    workspace: &Path,
+    workspace_root: &Path,
     handler: Handler,
 ) -> Vec<JoinHandle<()>>
 where
@@ -152,32 +152,36 @@ where
     handles.push(tokio::spawn({
         let handler = handler.clone();
         let source_file = source_file.clone();
-        let workspace = workspace.to_path_buf();
+        let workspace_root = workspace_root.to_path_buf();
         async move {
-            if let Ok(linter_result) = linters::typos::run_typos(&source_file, &workspace).await {
+            if let Ok(linter_result) =
+                linters::typos::run_typos(&source_file, &workspace_root).await
+            {
                 let _ = handler.handle_linter_result(linter_result);
             }
         }
     }));
 
-    let workspace = workspace.to_path_buf();
+    let workspace_root = workspace_root.to_path_buf();
 
     match filetype {
         "go" => {
-            let job = async move { linters::go::run_gopls(&source_file, &workspace).await };
+            let job = async move { linters::go::run_gopls(&source_file, &workspace_root).await };
 
             handles.push(spawn_linter_job(job, handler));
         }
         "rust" => {
-            handles.extend(linters::rust::RustLinter::new(source_file, workspace).run(handler));
+            handles
+                .extend(linters::rust::RustLinter::new(source_file, workspace_root).run(handler));
         }
         "sh" => {
-            let job = async move { linters::sh::run_shellcheck(&source_file, &workspace).await };
+            let job =
+                async move { linters::sh::run_shellcheck(&source_file, &workspace_root).await };
 
             handles.push(spawn_linter_job(job, handler));
         }
         "vim" => {
-            let job = async move { linters::vim::run_vint(&source_file, &workspace).await };
+            let job = async move { linters::vim::run_vint(&source_file, &workspace_root).await };
 
             handles.push(spawn_linter_job(job, handler));
         }

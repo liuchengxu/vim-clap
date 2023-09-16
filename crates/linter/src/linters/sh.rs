@@ -47,11 +47,14 @@ impl ShellCheckMessage {
     }
 }
 
-pub async fn run_shellcheck(script_file: &Path, workspace: &Path) -> std::io::Result<LinterResult> {
+pub async fn run_shellcheck(
+    script_file: &Path,
+    workspace_root: &Path,
+) -> std::io::Result<LinterResult> {
     let output = tokio::process::Command::new("shellcheck")
         .arg("--format=json")
         .arg(script_file)
-        .current_dir(workspace)
+        .current_dir(workspace_root)
         .output()
         .await?;
 

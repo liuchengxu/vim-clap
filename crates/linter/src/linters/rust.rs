@@ -10,14 +10,14 @@ use tokio::task::JoinHandle;
 #[derive(Clone)]
 pub struct RustLinter {
     source_file: PathBuf,
-    workspace: PathBuf,
+    workspace_root: PathBuf,
 }
 
 impl RustLinter {
-    pub fn new(source_file: PathBuf, workspace: PathBuf) -> Self {
+    pub fn new(source_file: PathBuf, workspace_root: PathBuf) -> Self {
         Self {
             source_file,
-            workspace,
+            workspace_root,
         }
     }
 
@@ -56,7 +56,7 @@ impl RustLinter {
         let output = std::process::Command::new("cargo")
             .args(["check", "--frozen", "--message-format=json", "-q"])
             .stderr(Stdio::null())
-            .current_dir(&self.workspace)
+            .current_dir(&self.workspace_root)
             .output()?;
 
         Ok(LinterResult {
@@ -79,7 +79,7 @@ impl RustLinter {
                 "warnings",
             ])
             .stderr(Stdio::null())
-            .current_dir(&self.workspace)
+            .current_dir(&self.workspace_root)
             .output()?;
 
         Ok(LinterResult {
@@ -91,7 +91,7 @@ impl RustLinter {
     fn parse_cargo_message(&self, stdout: &[u8]) -> Vec<Diagnostic> {
         let Some(source_filename) = self
             .source_file
-            .strip_prefix(self.workspace.parent().unwrap_or(&self.workspace))
+            .strip_prefix(self.workspace_root.parent().unwrap_or(&self.workspace_root))
             .unwrap_or(self.source_file.as_ref())
             .to_str()
         else {

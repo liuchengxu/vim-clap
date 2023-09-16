@@ -107,11 +107,11 @@ impl<'m> Message<'m> {
     }
 }
 
-pub async fn run_typos(source_file: &Path, workspace: &Path) -> std::io::Result<LinterResult> {
+pub async fn run_typos(source_file: &Path, workspace_root: &Path) -> std::io::Result<LinterResult> {
     let output = tokio::process::Command::new("typos")
         .arg("--format=json")
         .arg(source_file)
-        .current_dir(workspace)
+        .current_dir(workspace_root)
         .output()
         .await?;
 
