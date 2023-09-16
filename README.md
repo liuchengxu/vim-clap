@@ -321,6 +321,7 @@ tiebreak = "score,-begin,-end,-length"
 <!-- - cursor-word-highlighter -->
 <!-- - git -->
 <!-- - markdown -->
+<!-- - linter -->
 
 ## How to define your own provider
 
