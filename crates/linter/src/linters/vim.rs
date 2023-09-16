@@ -1,4 +1,4 @@
-use crate::{Code, Diagnostic, LinterResult, Severity};
+use crate::{Code, Diagnostic, DiagnosticSpan, LinterResult, Severity};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -24,10 +24,12 @@ impl VintMessage {
         };
 
         Diagnostic {
-            line_start: self.line_number,
-            line_end: self.line_number,
-            column_start: self.column_number,
-            column_end: self.column_number + 1,
+            spans: vec![DiagnosticSpan {
+                line_start: self.line_number,
+                line_end: self.line_number,
+                column_start: self.column_number,
+                column_end: self.column_number + 1,
+            }],
             code: Code::default(),
             severity,
             message: self.description,

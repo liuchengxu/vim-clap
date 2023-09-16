@@ -122,6 +122,10 @@ function! clap#plugin#linter#display_top_right(current_diagnostics) abort
   endif
 endfunction
 
+function! s:highlight_span(bufnr, span) abort
+  call nvim_buf_add_highlight(a:bufnr, s:linter_highlight_ns_id, 'ClapLinterUnderline', a:span.line_start - 1, a:span.column_start - 1, a:span.column_end - 1)
+endfunction
+
 function! s:render_diagnostics(bufnr, diagnostics) abort
   let extmark_ids = []
 
@@ -129,7 +133,7 @@ function! s:render_diagnostics(bufnr, diagnostics) abort
 
   for diagnostic in a:diagnostics
     try
-      call nvim_buf_add_highlight(a:bufnr, s:linter_highlight_ns_id, 'ClapLinterUnderline', diagnostic.line_start - 1, diagnostic.column_start - 1, diagnostic.column_end - 1)
+      call map(diagnostic.spans, 's:highlight_span(a:bufnr, v:val)')
 
       if skip_eol_highlight
         continue
@@ -235,16 +239,21 @@ endfunction
 
 call prop_type_add('ClapLinterUnderline', {'highlight': 'ClapLinterUnderline'})
 
+function! s:highilight_span(bufnr, span) abort
+  call prop_add(a:span.line_start, a:span.column_start,
+        \ { 'type': 'ClapLinterUnderline', 'length': a:span.column_end - a:span.column_start, 'bufnr': a:bufnr })
+endfunction
+
 function! clap#plugin#linter#update_highlights(bufnr, diagnostics) abort
   for diagnostic in a:diagnostics
-    call prop_add(diagnostic.line_start, diagnostic.column_start, { 'type': 'ClapLinterUnderline', 'length': diagnostic.column_end - diagnostic.column_start, 'bufnr': a:bufnr })
+    call map(diagnostic.spans, 's:highlight_span(a:bufnr, v:val)')
   endfor
 endfunction
 
 function! clap#plugin#linter#refresh_highlights(bufnr, diagnostics) abort
   call prop_remove({ 'type': 'ClapLinterUnderline', 'bufnr': a:bufnr } )
   for diagnostic in a:diagnostics
-    call prop_add(diagnostic.line_start, diagnostic.column_start, { 'type': 'ClapLinterUnderline', 'length': diagnostic.column_end - diagnostic.column_start, 'bufnr': a:bufnr })
+    call map(diagnostic.spans, 's:highlight_span(a:bufnr, v:val)')
   endfor
 endfunction
 

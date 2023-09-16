@@ -61,7 +61,7 @@ impl LinterResultHandler {
 impl linter::HandleLinterResult for LinterResultHandler {
     fn handle_linter_result(&self, linter_result: linter::LinterResult) -> std::io::Result<()> {
         let mut new_diagnostics = linter_result.diagnostics;
-        new_diagnostics.sort_by(|a, b| a.line_start.cmp(&b.line_start));
+        new_diagnostics.sort_by(|a, b| a.spans[0].line_start.cmp(&b.spans[0].line_start));
         new_diagnostics.dedup();
 
         let first_lint_result_arrives = self
@@ -240,7 +240,7 @@ impl ClapPlugin for LinterPlugin {
 
                             let current_diagnostics = diagnostics
                                 .iter()
-                                .filter(|d| d.line_start == lnum)
+                                .filter(|d| d.spans.iter().any(|span| span.line_start == lnum))
                                 .collect::<Vec<_>>();
 
                             if current_diagnostics.is_empty() {
@@ -269,7 +269,7 @@ impl ClapPlugin for LinterPlugin {
                             let diagnostics = buf_linter_info.diagnostics.diagnostics.read();
                             let current_diagnostics = diagnostics
                                 .iter()
-                                .filter(|d| d.line_start == lnum)
+                                .filter(|d| d.spans.iter().any(|span| span.line_start == lnum))
                                 .collect::<Vec<_>>();
 
                             for diagnostic in current_diagnostics {

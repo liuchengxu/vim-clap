@@ -20,17 +20,28 @@ pub enum Severity {
     Warning,
     Info,
     Hint,
+    Note,
     Help,
     Style,
     Unknown,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+pub struct DiagnosticSpan {
+    /// 1-based.
+    pub line_start: usize,
+    /// 1-based.
+    pub line_end: usize,
+    /// 1-based. Character offset.
+    pub column_start: usize,
+    /// 1-based. Character offset
+    pub column_end: usize,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Diagnostic {
-    pub line_start: usize,
-    pub line_end: usize,
-    pub column_start: usize,
-    pub column_end: usize,
+    /// A list of source code spans this diagnostic is associated with.
+    pub spans: Vec<DiagnosticSpan>,
     #[serde(flatten)]
     pub code: Code,
     pub severity: Severity,
@@ -45,9 +56,13 @@ impl PartialEq for Diagnostic {
         // same message, they visually make no differences. For instance,
         // some linter does not provide the severity property but has the
         // rest fields as same as the other linters.
-        self.line_start == other.line_start
-            && self.column_start == other.column_start
-            && self.column_end == other.column_end
+        //
+        // TODO: custom DiagnosticSpan PartialEq impl?
+        // self.line_start == other.line_start
+        // && self.column_start == other.column_start
+        // && self.column_end == other.column_end
+
+        self.spans == other.spans
             // Having two diagnostics with the same code but different message is possible, which
             // points to the same error essentially.
             && (is_same_code() || self.message == other.message)

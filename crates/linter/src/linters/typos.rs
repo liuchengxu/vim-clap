@@ -1,4 +1,4 @@
-use crate::{Code, Diagnostic, LinterResult, Severity};
+use crate::{Code, Diagnostic, DiagnosticSpan, LinterResult, Severity};
 use std::borrow::Cow;
 use std::path::Path;
 
@@ -89,10 +89,12 @@ impl<'m> Message<'m> {
                 if let Some(line_num) = context.and_then(|cx| cx.line_num()) {
                     let message = corrections.message().into_owned();
                     Some(Diagnostic {
-                        line_start: line_num,
-                        line_end: line_num,
-                        column_start: byte_offset + 1,
-                        column_end: byte_offset + 1 + typo.len(),
+                        spans: vec![DiagnosticSpan {
+                            line_start: line_num,
+                            line_end: line_num,
+                            column_start: byte_offset + 1,
+                            column_end: byte_offset + 1 + typo.len(),
+                        }],
                         code: Code::default(),
                         severity: Severity::Warning,
                         message,

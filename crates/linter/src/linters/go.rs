@@ -1,4 +1,4 @@
-use crate::{Code, Diagnostic, LinterResult, Severity};
+use crate::{Code, Diagnostic, DiagnosticSpan, LinterResult, Severity};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::path::Path;
@@ -35,10 +35,12 @@ pub async fn run_gopls(source_file: &Path, workspace: &Path) -> std::io::Result<
                     .parse::<usize>()
                     .expect("column_end must be a Number");
                 diagnostics.push(Diagnostic {
-                    line_start: line,
-                    line_end: line,
-                    column_start,
-                    column_end,
+                    spans: vec![DiagnosticSpan {
+                        line_start: line,
+                        line_end: line,
+                        column_start,
+                        column_end,
+                    }],
                     code: Code::default(),
                     severity: Severity::Error,
                     message: message.to_string(),
