@@ -108,17 +108,17 @@ endfunction
 function! s:try_create_token_highlight_group(token_highlight) abort
   if !hlexists(a:token_highlight.group_name)
     execute printf(
-          \ 'hi %s ctermfg=%s guifg=%s ctermbg=%s guibg=%s cterm=%s gui=%s',
+          \ 'hi %s ctermfg=%s guifg=%s cterm=%s gui=%s',
           \ a:token_highlight.group_name,
           \ a:token_highlight.ctermfg,
           \ a:token_highlight.guifg,
-          \ 'None',
-          \ 'None',
           \ a:token_highlight.cterm,
           \ a:token_highlight.gui,
           \ )
-          " \ a:ctermbg,
-          " \ a:guibg,
+
+    if !has('nvim')
+      call prop_type_add(a:token_highlight.group_name, {'highlight': a:token_highlight.group_name})
+    endif
   endif
 endfunction
 
