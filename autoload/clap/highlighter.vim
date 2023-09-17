@@ -105,20 +105,18 @@ function! clap#highlighter#add_highlights(hl_lines) abort
   endtry
 endfunction
 
-function! s:try_create_token_highlight_group(token_highlight) abort
-  if !hlexists(a:token_highlight.group_name)
-    execute printf(
-          \ 'hi %s ctermfg=%s guifg=%s cterm=%s gui=%s',
-          \ a:token_highlight.group_name,
-          \ a:token_highlight.ctermfg,
-          \ a:token_highlight.guifg,
-          \ a:token_highlight.cterm,
-          \ a:token_highlight.gui,
-          \ )
+function! s:create_token_highlight_group(token_highlight) abort
+  execute printf(
+        \ 'hi %s ctermfg=%s guifg=%s cterm=%s gui=%s',
+        \ a:token_highlight.group_name,
+        \ a:token_highlight.ctermfg,
+        \ a:token_highlight.guifg,
+        \ a:token_highlight.cterm,
+        \ a:token_highlight.gui,
+        \ )
 
-    if !has('nvim')
-      call prop_type_add(a:token_highlight.group_name, {'highlight': a:token_highlight.group_name})
-    endif
+  if !has('nvim')
+    call prop_type_add(a:token_highlight.group_name, {'highlight': a:token_highlight.group_name})
   endif
 endfunction
 
@@ -127,7 +125,9 @@ endfunction
 " lnum is 1-based.
 function! clap#highlighter#highlight_line(bufnr, lnum, token_highlights) abort
   for token_highlight in a:token_highlights
-    call s:try_create_token_highlight_group(token_highlight)
+    if !hlexists(token_highlight.group_name)
+      call s:create_token_highlight_group(token_highlight)
+    endif
     call s:add_highlight_at(a:bufnr, a:lnum - 1, token_highlight.col_start, token_highlight.length, token_highlight.group_name)
   endfor
 endfunction
