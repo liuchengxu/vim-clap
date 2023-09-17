@@ -123,6 +123,8 @@ function! clap#plugin#linter#clear_top_right() abort
   endif
 endfunction
 
+" FIXME: The top right floating win can disturb the editing area when cursor
+" is at the top right location.
 function! clap#plugin#linter#display_top_right(current_diagnostics) abort
   if !empty(a:current_diagnostics)
     let [lines, line_highlights] = s:convert_diagnostics_to_lines(a:current_diagnostics)
