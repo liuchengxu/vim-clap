@@ -10,7 +10,7 @@ pub use self::input::InputHistory;
 use self::input::{ActionEvent, Event, ProviderEvent};
 use self::plugin::{
     ActionType, ClapPlugin, CtagsPlugin, CursorWordHighlighter, GitPlugin, LinterPlugin,
-    MarkdownPlugin, PluginId, SystemPlugin,
+    MarkdownPlugin, PluginId, SyntaxHighlighterPlugin, SystemPlugin,
 };
 use self::provider::{create_provider, Context};
 use self::service::ServiceManager;
@@ -92,6 +92,7 @@ pub async fn start(config_err: Option<toml::de::Error>) {
 
     register_plugin(Box::new(SystemPlugin::new(vim.clone())), None);
     register_plugin(Box::new(GitPlugin::new(vim.clone())), None);
+    register_plugin(Box::new(SyntaxHighlighterPlugin::new(vim.clone())), None);
 
     let plugin_config = &crate::config::config().plugin;
 

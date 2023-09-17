@@ -10,6 +10,7 @@ use serde::Serialize;
 use std::path::PathBuf;
 use truncation::truncate_grep_results;
 use types::MatchedItem;
+use utils::char_indices_to_byte_indices;
 
 pub use self::trimmer::v1::{trim_text, TrimInfo, TrimmedText};
 pub use self::truncation::{
@@ -86,20 +87,6 @@ impl DisplayLines {
 
         println_json!(lines, indices, truncated_map, icon_added, total);
     }
-}
-
-/// Converts the char positions to byte positions as Vim and Neovim highlights is byte-positioned.
-fn char_indices_to_byte_indices(s: &str, char_indices: &[usize]) -> Vec<usize> {
-    s.char_indices()
-        .enumerate()
-        .filter_map(|(char_idx, (byte_idx, _char))| {
-            if char_indices.contains(&char_idx) {
-                Some(byte_idx)
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<_>>()
 }
 
 fn convert_truncated_matched_items_to_display_lines(

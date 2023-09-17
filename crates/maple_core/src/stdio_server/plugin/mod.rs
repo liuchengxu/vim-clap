@@ -3,6 +3,7 @@ mod cursor_word_highlighter;
 mod git;
 mod linter;
 mod markdown;
+mod syntax_highlighter;
 mod system;
 
 use crate::stdio_server::input::{PluginAction, PluginEvent};
@@ -14,6 +15,7 @@ pub use self::cursor_word_highlighter::CursorWordHighlighter;
 pub use self::git::GitPlugin;
 pub use self::linter::LinterPlugin;
 pub use self::markdown::MarkdownPlugin;
+pub use self::syntax_highlighter::SyntaxHighlighterPlugin;
 pub use self::system::SystemPlugin;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -21,6 +23,7 @@ pub enum PluginId {
     System,
     Ctags,
     CursorWordHighlighter,
+    SyntaxHighlighter,
     Git,
     Markdown,
     Linter,
@@ -32,6 +35,7 @@ impl std::fmt::Display for PluginId {
             Self::System => write!(f, "system"),
             Self::Ctags => write!(f, "ctags"),
             Self::CursorWordHighlighter => write!(f, "cursor-word-highlighter"),
+            Self::SyntaxHighlighter => write!(f, "syntax-highlighter"),
             Self::Git => write!(f, "git"),
             Self::Markdown => write!(f, "markdown"),
             Self::Linter => write!(f, "linter"),

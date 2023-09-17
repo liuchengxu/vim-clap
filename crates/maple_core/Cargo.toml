@@ -38,6 +38,7 @@ webbrowser = { workspace = true }
 dirs = { workspace = true }
 dumb_analyzer = { workspace = true }
 filter = { workspace = true }
+highlighter = { workspace = true }
 icon = { workspace = true }
 linter = { workspace = true }
 matcher = { workspace = true }
