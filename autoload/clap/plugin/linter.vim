@@ -5,6 +5,14 @@ scriptencoding utf-8
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+let s:severity_icons = {
+      \ 'error': '  ',
+      \ 'warning': '  ',
+      \ 'hint': '  ',
+      \ 'info': '  ',
+      \ 'other': '  ',
+      \ }
+
 hi ClapLinterUnderline cterm=underline,bold gui=undercurl,italic,bold ctermfg=173 guifg=#e18254
 
 hi DiagnosticWarn ctermfg=136 guifg=#b1951d
@@ -21,12 +29,14 @@ function! s:convert_diagnostics_to_lines(current_diagnostics) abort
 
     let highlights = []
 
-    let severity_len = strlen(diagnostic.severity)
-    call add(highlights, ['Error', 0, severity_len])
+    let severity_icon = get(s:severity_icons, diagnostic.severity, s:severity_icons.other)
+    let severity_len = strlen(severity_icon)
+
+    call add(highlights, ['DiagnosticError', 0, severity_len])
 
     let message_len = strlen(diagnostic.message)
-    " 2 = `: `
-    let offset = severity_len + 2
+    " 2 = ` `
+    let offset = severity_len + 1
     call add(highlights, ['Comment', offset, offset + message_len])
 
     let code_len = strlen(code)
@@ -34,7 +44,7 @@ function! s:convert_diagnostics_to_lines(current_diagnostics) abort
     call add(highlights, ['Title', offset, offset + code_len])
     call add(line_highlights, highlights)
 
-    let line = printf('%s: %s%s', diagnostic.severity, diagnostic.message, code)
+    let line = printf('%s %s%s', severity_icon, diagnostic.message, code)
     call add(lines, line)
   endfor
   return [lines, line_highlights]
@@ -56,7 +66,7 @@ if !exists('s:linter_msg_highlight_ns_id')
   let s:linter_msg_highlight_ns_id = nvim_create_namespace('clap_linter_msg_highlight')
 endif
 
-function! s:display_on_top_right(lines, line_highlights) abort
+function! s:render_on_top_right(lines, line_highlights) abort
   if !exists('s:diagnostic_msg_buffer') || !nvim_buf_is_valid(s:diagnostic_msg_buffer)
     let s:diagnostic_msg_buffer = nvim_create_buf(v:false, v:true)
   endif
@@ -128,7 +138,7 @@ endfunction
 function! clap#plugin#linter#display_top_right(current_diagnostics) abort
   if !empty(a:current_diagnostics)
     let [lines, line_highlights] = s:convert_diagnostics_to_lines(a:current_diagnostics)
-    call s:display_on_top_right(lines, line_highlights)
+    call s:render_on_top_right(lines, line_highlights)
   endif
 endfunction
 

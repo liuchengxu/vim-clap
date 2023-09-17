@@ -106,7 +106,6 @@ impl RustLinter {
                 CargoMessage::Diagnostic(diagonostic) => {
                     process_cargo_diagnostic(diagonostic, source_filename)
                 }
-                _ => None,
             })
             .collect()
     }
@@ -169,7 +168,7 @@ fn process_cargo_diagnostic(
 }
 
 enum CargoMessage {
-    CompilerArtifact(cargo_metadata::Artifact),
+    // CompilerArtifact(cargo_metadata::Artifact),
     Diagnostic(cargo_metadata::diagnostic::Diagnostic),
 }
 
@@ -189,9 +188,10 @@ fn process_line(line: &[u8]) -> Option<CargoMessage> {
         match message {
             // Skip certain kinds of messages to only spend time on what's useful
             JsonMessage::Cargo(message) => match message {
-                cargo_metadata::Message::CompilerArtifact(artifact) if !artifact.fresh => {
-                    return Some(CargoMessage::CompilerArtifact(artifact));
-                }
+                // CompilerArtifact can be used to report the progress, which is useless on our end.
+                // cargo_metadata::Message::CompilerArtifact(artifact) if !artifact.fresh => {
+                // return Some(CargoMessage::CompilerArtifact(artifact));
+                // }
                 cargo_metadata::Message::CompilerMessage(msg) => {
                     return Some(CargoMessage::Diagnostic(msg.message));
                 }
