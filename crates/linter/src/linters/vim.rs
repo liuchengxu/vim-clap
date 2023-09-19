@@ -1,4 +1,4 @@
-use crate::{Code, Diagnostic, LinterResult, Severity};
+use crate::{Code, Diagnostic, DiagnosticSpan, LinterResult, Severity};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -24,10 +24,12 @@ impl VintMessage {
         };
 
         Diagnostic {
-            line_start: self.line_number,
-            line_end: self.line_number,
-            column_start: self.column_number,
-            column_end: self.column_number + 1,
+            spans: vec![DiagnosticSpan {
+                line_start: self.line_number,
+                line_end: self.line_number,
+                column_start: self.column_number,
+                column_end: self.column_number + 1,
+            }],
             code: Code::default(),
             severity,
             message: self.description,
@@ -35,11 +37,11 @@ impl VintMessage {
     }
 }
 
-pub async fn run_vint(source_file: &Path, workspace: &Path) -> std::io::Result<LinterResult> {
+pub async fn run_vint(source_file: &Path, workspace_root: &Path) -> std::io::Result<LinterResult> {
     let output = tokio::process::Command::new("vint")
         .arg("-j")
         .arg(source_file)
-        .current_dir(workspace)
+        .current_dir(workspace_root)
         .output()
         .await?;
 

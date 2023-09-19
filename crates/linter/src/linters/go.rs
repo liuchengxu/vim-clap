@@ -1,4 +1,4 @@
-use crate::{Code, Diagnostic, LinterResult, Severity};
+use crate::{Code, Diagnostic, DiagnosticSpan, LinterResult, Severity};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::path::Path;
@@ -7,14 +7,16 @@ use std::path::Path;
 static RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?m)^([^:]+):([0-9]+):([0-9]+)-([0-9]+): (.+)$").unwrap());
 
-pub async fn run_gopls(source_file: &Path, workspace: &Path) -> std::io::Result<LinterResult> {
+pub async fn run_gopls(source_file: &Path, workspace_root: &Path) -> std::io::Result<LinterResult> {
     // Use relative path as the workspace is specified explicitly, otherwise it's
     // possible to run into a glitch when the directory is a symlink?
-    let source_file = source_file.strip_prefix(workspace).unwrap_or(source_file);
+    let source_file = source_file
+        .strip_prefix(workspace_root)
+        .unwrap_or(source_file);
     let output = tokio::process::Command::new("gopls")
         .arg("check")
         .arg(source_file)
-        .current_dir(workspace)
+        .current_dir(workspace_root)
         .output()
         .await?;
 
@@ -35,10 +37,12 @@ pub async fn run_gopls(source_file: &Path, workspace: &Path) -> std::io::Result<
                     .parse::<usize>()
                     .expect("column_end must be a Number");
                 diagnostics.push(Diagnostic {
-                    line_start: line,
-                    line_end: line,
-                    column_start,
-                    column_end,
+                    spans: vec![DiagnosticSpan {
+                        line_start: line,
+                        line_end: line,
+                        column_start,
+                        column_end,
+                    }],
                     code: Code::default(),
                     severity: Severity::Error,
                     message: message.to_string(),

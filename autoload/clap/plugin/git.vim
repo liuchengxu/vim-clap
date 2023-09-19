@@ -46,32 +46,19 @@ if has('nvim')
 else
 
   function! clap#plugin#git#clear_blame_info(bufnr) abort
-    let popup_id = getbufvar(a:bufnr, 'clap_git_blame_popup_id')
-    if !empty(popup_id)
-      call popup_hide(popup_id)
-    endif
+    " Popup will be closed automatically due to the `moved` option.
   endfunction
 
   function! clap#plugin#git#show_cursor_blame_info(bufnr, text) abort
     let col_offset = 4 + col('$') - col('.')
-    let popup_id = getbufvar(a:bufnr, 'clap_git_blame_popup_id')
-    if empty(popup_id) || empty(popup_getpos(popup_id))
-      if !empty(popup_id)
-        call popup_close(popup_id)
-      endif
-      let popup_id = popup_create(a:text, {
-            \ 'line': 'cursor',
-            \ 'col': printf('cursor+%d', col_offset),
-            \ 'highlight': 'ClapBlameInfo',
-            \ 'wrap': v:true,
-            \ 'zindex': 100,
-            \ })
-      call setbufvar(a:bufnr, 'clap_git_blame_popup_id', popup_id)
-    else
-      call popup_settext(popup_id, a:text)
-      call popup_move(popup_id, { 'line': 'cursor', 'col': printf('cursor+%d', col_offset) })
-      call popup_show(popup_id)
-    endif
+    let popup_id = popup_create(a:text, {
+          \ 'line': 'cursor',
+          \ 'col': printf('cursor+%d', col_offset),
+          \ 'highlight': 'ClapBlameInfo',
+          \ 'wrap': v:true,
+          \ 'zindex': 100,
+          \ 'moved': [line('.'), 1, -1],
+          \ })
   endfunction
 
 endif

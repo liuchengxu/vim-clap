@@ -1,4 +1,4 @@
-use crate::{Code, Diagnostic, LinterResult};
+use crate::{Code, Diagnostic, DiagnosticSpan, LinterResult};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -34,10 +34,12 @@ impl ShellCheckMessage {
             Severity::Style => crate::Severity::Style,
         };
         Diagnostic {
-            line_start: self.line,
-            line_end: self.end_line,
-            column_start: self.column,
-            column_end: self.end_column,
+            spans: vec![DiagnosticSpan {
+                line_start: self.line,
+                line_end: self.end_line,
+                column_start: self.column,
+                column_end: self.end_column,
+            }],
             code: Code::default(),
             severity,
             message: self.message,
@@ -45,11 +47,14 @@ impl ShellCheckMessage {
     }
 }
 
-pub async fn run_shellcheck(script_file: &Path, workspace: &Path) -> std::io::Result<LinterResult> {
+pub async fn run_shellcheck(
+    script_file: &Path,
+    workspace_root: &Path,
+) -> std::io::Result<LinterResult> {
     let output = tokio::process::Command::new("shellcheck")
         .arg("--format=json")
         .arg(script_file)
-        .current_dir(workspace)
+        .current_dir(workspace_root)
         .output()
         .await?;
 
