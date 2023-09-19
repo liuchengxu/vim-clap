@@ -307,6 +307,8 @@ impl PluginSession {
                     maybe_plugin_event = self.plugin_events.recv() => {
                         match maybe_plugin_event {
                             Some(plugin_event) => {
+                                tracing::trace!(?plugin_event, "[{id}] Received event");
+
                                 if plugin_event.should_debounce() {
                                     pending_plugin_event.replace(plugin_event);
                                     notification_dirty = true;

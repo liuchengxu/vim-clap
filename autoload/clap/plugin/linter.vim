@@ -50,9 +50,23 @@ function! s:convert_diagnostics_to_lines(current_diagnostics) abort
   return [lines, line_highlights]
 endfunction
 
+function! s:max_available_length_on_top() abort
+  let win_line_start = line('w0')
+  let max_top_line_len = max(map([win_line_start, win_line_start+1, win_line_start+2], "strlen(get(getbufline('', v:val), 0, ''))"))
+  let line_cap = &columns - &numberwidth
+  if &signcolumn ==# 'yes'
+    let line_cap -= 2
+  endif
+
+  " Buy some more space for the code display.
+  let line_cap -= 4
+
+  return line_cap - max_top_line_len
+endfunction
+
 if has('nvim')
 
-let s:diagnostic_winhl = 'Normal:Normal,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer'
+let s:diagnostic_winhl = 'Normal:Pmenu'
 let s:linter_eol_ns_id = nvim_create_namespace('clap_linter_eol')
 let s:linter_spans_highlight_ns_id = nvim_create_namespace('clap_linter_spans_highlight')
 let s:linter_msg_highlight_ns_id = nvim_create_namespace('clap_linter_msg_highlight')
@@ -71,6 +85,14 @@ function! s:render_on_top_right(lines, line_highlights) abort
   else
     let width = max_text_len
     let height = len(a:lines)
+  endif
+
+  " Make sure the diagnostic win won't interfere with the existing code
+  " display.
+  let max_available_on_top = s:max_available_length_on_top()
+  if width > max_available_on_top
+    let width = max_available_on_top
+    let height += 1
   endif
 
   let config = {
@@ -124,8 +146,6 @@ function! clap#plugin#linter#clear_top_right() abort
   endif
 endfunction
 
-" FIXME: The top right floating win can disturb the editing area when cursor
-" is at the top right location.
 function! clap#plugin#linter#display_top_right(current_diagnostics) abort
   if !empty(a:current_diagnostics)
     let [lines, line_highlights] = s:convert_diagnostics_to_lines(a:current_diagnostics)
@@ -220,6 +240,18 @@ function! clap#plugin#linter#display_top_right(current_diagnostics) abort
       let col = 1
     endif
 
+    let height = len(lines)
+
+    " Make sure the diagnostic win won't interfere with the existing code
+    " display.
+    let max_available_on_top = s:max_available_length_on_top()
+    if max_text_len > max_available_on_top
+      let maxwidth = max_available_on_top
+      let col += max_text_len - max_available_on_top
+    else
+      let maxwidth = max_text_len
+    endif
+
     if exists('s:diagnostic_msg_winid') && !empty(popup_getpos(s:diagnostic_msg_winid))
       call popup_setoptions(s:diagnostic_msg_winid, { 'minheight': len(lines), 'col': col })
       call popup_settext(s:diagnostic_msg_winid, lines)
@@ -234,7 +266,8 @@ function! clap#plugin#linter#display_top_right(current_diagnostics) abort
             \ 'col': col,
             \ 'pos': 'topleft',
             \ 'scrollbar': 0,
-            \ 'minheight': len(lines),
+            \ 'maxwidth': maxwidth,
+            \ 'minheight': height,
             \ 'border': [],
             \ 'borderchars': ['─', '│', '─', '│', '┌', '┐', '┘', '└'],
             \ })
