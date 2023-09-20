@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::stdio_server::input::{AutocmdEventType, PluginEvent};
 use crate::stdio_server::plugin::{
     Action, ActionType, ClapAction, ClapPlugin, PluginAction, PluginId, Toggle,
@@ -13,6 +15,7 @@ static HIGHLIGHTER: Lazy<highlighter::SyntaxHighlighter> =
 #[derive(Debug, Clone)]
 pub struct SyntaxHighlighterPlugin {
     vim: Vim,
+    bufs: HashMap<usize, String>,
     toggle: Toggle,
 }
 
@@ -46,29 +49,35 @@ impl SyntaxHighlighterPlugin {
     pub fn new(vim: Vim) -> Self {
         Self {
             vim,
+            bufs: HashMap::new(),
             toggle: Toggle::On,
         }
     }
 
     async fn on_buf_enter(&mut self, bufnr: usize) -> Result<()> {
+        let fpath = self.vim.bufabspath(bufnr).await?;
+        if let Some(extension) = std::path::Path::new(&fpath)
+            .extension()
+            .and_then(|e| e.to_str())
+        {
+            self.bufs.insert(bufnr, extension.to_string());
+        }
+
         Ok(())
     }
 
     // TODO: this may be inaccurate, e.g., the lines are part of a bigger block of comments.
-    async fn highlight_visual_lines(&self, bufnr: usize) -> anyhow::Result<()> {
-        let fpath = self.vim.current_buffer_path().await?;
-        let Some(extension) = std::path::Path::new(&fpath)
-            .extension()
-            .and_then(|e| e.to_str())
-        else {
+    async fn highlight_visual_lines(&self, bufnr: usize, extension: &str) -> anyhow::Result<()> {
+        let highlighter = &HIGHLIGHTER;
+
+        let Some(syntax) = highlighter.syntax_set.find_syntax_by_extension(extension) else {
+            tracing::debug!("Can not find syntax for extension {extension}");
             return Ok(());
         };
 
         let line_start = self.vim.line("w0").await?;
         let end = self.vim.line("w$").await?;
         let lines = self.vim.getbufline(bufnr, line_start, end).await?;
-
-        let highlighter = &HIGHLIGHTER;
 
         tracing::debug!(
             "=========== themes: {:?}, fg: {:?}",
@@ -77,11 +86,6 @@ impl SyntaxHighlighterPlugin {
                 .settings
                 .foreground
         );
-
-        let syntax = highlighter
-            .syntax_set
-            .find_syntax_by_extension(extension)
-            .ok_or_else(|| anyhow!("Can not find syntax for extension {extension}"))?;
 
         // const THEME: &str = "Coldark-Dark";
         const THEME: &str = "Visual Studio Dark+";
@@ -139,9 +143,13 @@ impl ClapPlugin for SyntaxHighlighterPlugin {
                 match autocmd_event_type {
                     BufEnter => self.on_buf_enter(bufnr).await?,
                     BufWritePost => {}
-                    BufDelete => {}
+                    BufDelete => {
+                        self.bufs.remove(&bufnr);
+                    }
                     CursorMoved => {
-                        self.highlight_visual_lines(bufnr).await?;
+                        if let Some(extension) = self.bufs.get(&bufnr) {
+                            self.highlight_visual_lines(bufnr, &extension).await?;
+                        }
                     }
                     _ => {}
                 }
@@ -153,7 +161,10 @@ impl ClapPlugin for SyntaxHighlighterPlugin {
                 match method.as_str() {
                     Self::SYNTAX_ON => {
                         let bufnr = self.vim.bufnr("").await?;
-                        self.highlight_visual_lines(bufnr).await?;
+                        self.on_buf_enter(bufnr).await?;
+                        if let Some(extension) = self.bufs.get(&bufnr) {
+                            self.highlight_visual_lines(bufnr, &extension).await?;
+                        }
                     }
                     Self::LIST_THEMES => {
                         let highlighter = &HIGHLIGHTER;
