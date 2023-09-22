@@ -67,9 +67,12 @@ impl SyntaxHighlighterPlugin {
     }
 
     // TODO: this may be inaccurate, e.g., the lines are part of a bigger block of comments.
-    async fn highlight_visual_lines(&self, bufnr: usize, extension: &str) -> anyhow::Result<()> {
-        let highlighter = &HIGHLIGHTER;
+    async fn highlight_visual_lines(&mut self, bufnr: usize) -> anyhow::Result<()> {
+        let Some(extension) = self.bufs.get(&bufnr) else {
+            return Ok(());
+        };
 
+        let highlighter = &HIGHLIGHTER;
         let Some(syntax) = highlighter.syntax_set.find_syntax_by_extension(extension) else {
             tracing::debug!("Can not find syntax for extension {extension}");
             return Ok(());
@@ -114,8 +117,11 @@ impl SyntaxHighlighterPlugin {
             })
             .collect::<Vec<_>>();
 
-        self.vim
-            .exec("clap#highlighter#highlight_lines", (bufnr, line_highlights))?;
+        // TODO: Clear the outdated highlights first and then render the new highlights.
+        self.vim.exec(
+            "clap#highlighter#highlight_lines",
+            (bufnr, &line_highlights),
+        )?;
 
         tracing::debug!("Lines highlight elapsed: {:?}ms", now.elapsed().as_millis());
 
@@ -147,9 +153,7 @@ impl ClapPlugin for SyntaxHighlighterPlugin {
                         self.bufs.remove(&bufnr);
                     }
                     CursorMoved => {
-                        if let Some(extension) = self.bufs.get(&bufnr) {
-                            self.highlight_visual_lines(bufnr, &extension).await?;
-                        }
+                        self.highlight_visual_lines(bufnr).await?;
                     }
                     _ => {}
                 }
@@ -162,9 +166,7 @@ impl ClapPlugin for SyntaxHighlighterPlugin {
                     Self::SYNTAX_ON => {
                         let bufnr = self.vim.bufnr("").await?;
                         self.on_buf_enter(bufnr).await?;
-                        if let Some(extension) = self.bufs.get(&bufnr) {
-                            self.highlight_visual_lines(bufnr, &extension).await?;
-                        }
+                        self.highlight_visual_lines(bufnr).await?;
                     }
                     Self::LIST_THEMES => {
                         let highlighter = &HIGHLIGHTER;

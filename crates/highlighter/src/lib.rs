@@ -71,7 +71,7 @@ impl HighlightArgs {
     }
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct TokenHighlight {
     pub cterm: AttrList,
     pub ctermfg: u8,
@@ -190,6 +190,7 @@ impl SyntaxHighlighter {
         self.theme_set.themes.keys().cloned().collect()
     }
 
+    /// Converts the foreground color of the theme to Normal highlight
     pub fn get_normal_highlight(&self, theme: &str) -> Option<(String, u8)> {
         if let Some(normal_fg_color) = self
             .theme_set
