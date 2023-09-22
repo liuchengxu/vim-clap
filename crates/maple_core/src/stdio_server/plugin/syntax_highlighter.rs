@@ -50,7 +50,7 @@ impl SyntaxHighlighterPlugin {
         Self {
             vim,
             bufs: HashMap::new(),
-            toggle: Toggle::On,
+            toggle: Toggle::Off,
         }
     }
 
