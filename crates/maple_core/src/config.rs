@@ -83,6 +83,10 @@ impl MatcherConfig {
 pub struct PickerConfig {
     /// Specifies how many items will be displayed in the results window.
     pub max_display_size: Option<usize>,
+    /// Render the preview highlight with specified theme using syntect backend.
+    ///
+    /// If the theme is not found, the default theme (`Visual Studio Dark+`) will be used.
+    pub syntect_highlight_theme: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

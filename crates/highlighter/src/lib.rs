@@ -192,6 +192,10 @@ impl SyntaxHighlighter {
         self.theme_set.themes.keys().cloned().collect()
     }
 
+    pub fn theme_exists(&self, theme: &str) -> bool {
+        self.theme_set.themes.contains_key(theme)
+    }
+
     /// Converts the foreground color of the theme to Normal highlight
     pub fn get_normal_highlight(&self, theme: &str) -> Option<(String, u8)> {
         if let Some(normal_fg_color) = self

@@ -104,7 +104,7 @@ impl SyntaxHighlighterPlugin {
         }
 
         let now = std::time::Instant::now();
-        let line_highlights = highlight_lines(syntax, &lines, line_start);
+        let line_highlights = highlight_lines(syntax, &lines, line_start, THEME);
 
         // TODO: Clear the outdated highlights first and then render the new highlights.
         self.vim.exec(
@@ -122,16 +122,15 @@ pub fn highlight_lines(
     syntax: &SyntaxReference,
     lines: &[String],
     line_start_number: usize,
+    theme: &str,
 ) -> Vec<(usize, Vec<TokenHighlight>)> {
-    const THEME: &str = "Visual Studio Dark+";
-
     let highlighter = &HIGHLIGHTER;
 
     lines
         .iter()
         .enumerate()
         .filter_map(|(index, line)| {
-            match highlighter.get_token_highlights_in_line(syntax, line, THEME) {
+            match highlighter.get_token_highlights_in_line(syntax, line, theme) {
                 Ok(token_highlights) => Some((line_start_number + index, token_highlights)),
                 Err(err) => {
                     tracing::error!(?line, ?err, "Error at fetching line highlight");
