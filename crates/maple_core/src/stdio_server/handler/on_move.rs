@@ -5,6 +5,7 @@ use crate::stdio_server::job;
 use crate::stdio_server::provider::{read_dir_entries, Context, ProviderSource};
 use crate::stdio_server::vim::preview_syntax;
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
+use highlighter::TokenHighlight;
 use paths::{expand_tilde, truncate_absolute_path};
 use pattern::*;
 use serde::{Deserialize, Serialize};
@@ -24,6 +25,7 @@ pub struct Preview {
     pub fname: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hi_lnum: Option<usize>,
+    pub line_highlights: Vec<(usize, Vec<TokenHighlight>)>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scrollbar: Option<(usize, usize)>,
 }
@@ -261,9 +263,8 @@ impl<'a> CachedPreviewImpl<'a> {
             Preview {
                 lines,
                 hi_lnum: Some(1),
-                fname: Some(fname),
                 syntax: Some("help".into()),
-                scrollbar: None,
+                ..Default::default()
             }
         } else {
             tracing::debug!(?preview_tag, "Can not find the preview help lines");
@@ -475,6 +476,20 @@ impl<'a> CachedPreviewImpl<'a> {
 
                 let context_lines_is_empty = context_lines.is_empty();
 
+                use crate::stdio_server::plugin::syntax_highlighter::{
+                    highlight_lines, HIGHLIGHTER,
+                };
+
+                // 1 (header line) + 1 (1-based line number)
+                let line_number_offset = context_lines.len() + 1 + 1;
+                let maybe_line_highlights = path
+                    .extension()
+                    .and_then(|s| s.to_str())
+                    .and_then(|extension| {
+                        HIGHLIGHTER.syntax_set.find_syntax_by_extension(extension)
+                    })
+                    .map(|syntax| highlight_lines(syntax, &lines, line_number_offset));
+
                 let header_line = truncated_preview_header();
                 let lines = std::iter::once(header_line)
                     .chain(context_lines.into_iter())
@@ -513,21 +528,30 @@ impl<'a> CachedPreviewImpl<'a> {
                     None
                 };
 
-                if let Some(syntax) = preview_syntax(path) {
+                let hi_lnum = Some(highlight_lnum);
+                if let Some(line_highlights) = maybe_line_highlights {
                     Preview {
                         lines,
-                        syntax: Some(syntax.into()),
-                        hi_lnum: Some(highlight_lnum),
-                        fname: None,
+                        hi_lnum,
                         scrollbar,
+                        line_highlights,
+                        ..Default::default()
+                    }
+                } else if let Some(syntax) = preview_syntax(path) {
+                    Preview {
+                        lines,
+                        hi_lnum,
+                        scrollbar,
+                        syntax: Some(syntax.into()),
+                        ..Default::default()
                     }
                 } else {
                     Preview {
                         lines,
-                        syntax: None,
-                        hi_lnum: Some(highlight_lnum),
-                        fname: Some(fname),
+                        hi_lnum,
                         scrollbar,
+                        fname: Some(fname),
+                        ..Default::default()
                     }
                 }
             }

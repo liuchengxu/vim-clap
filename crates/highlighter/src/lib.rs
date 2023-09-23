@@ -5,13 +5,15 @@ use std::ops::Range;
 use syntect::highlighting::{
     Color, FontStyle, HighlightIterator, HighlightState, Highlighter, Style, Theme, ThemeSet,
 };
-use syntect::parsing::{ParseState, ScopeStack, SyntaxReference, SyntaxSet};
+use syntect::parsing::{ParseState, ScopeStack, SyntaxSet};
+
+pub use syntect::parsing::SyntaxReference;
 
 pub const DEFAULT_SYNTAXSET: &[u8] = include_bytes!("../../../assets/syntaxes.bin");
 pub const DEFAULT_THEMESET: &[u8] = include_bytes!("../../../assets/themes.bin");
 
 /// `:h attr-list`
-#[derive(Clone, Debug, Default, serde::Serialize)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub enum AttrList {
     Bold,
     Underline,
@@ -71,7 +73,7 @@ impl HighlightArgs {
     }
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TokenHighlight {
     pub cterm: AttrList,
     pub ctermfg: u8,

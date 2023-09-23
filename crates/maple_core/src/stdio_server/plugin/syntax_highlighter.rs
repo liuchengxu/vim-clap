@@ -6,10 +6,11 @@ use crate::stdio_server::plugin::{
 };
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
+use highlighter::{SyntaxReference, TokenHighlight};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 
-static HIGHLIGHTER: Lazy<highlighter::SyntaxHighlighter> =
+pub static HIGHLIGHTER: Lazy<highlighter::SyntaxHighlighter> =
     Lazy::new(highlighter::SyntaxHighlighter::new);
 
 #[derive(Debug, Clone)]
@@ -103,19 +104,7 @@ impl SyntaxHighlighterPlugin {
         }
 
         let now = std::time::Instant::now();
-        let line_highlights = lines
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, line)| {
-                match highlighter.get_token_highlights_in_line(syntax, line, THEME) {
-                    Ok(token_highlights) => Some((line_start + idx, token_highlights)),
-                    Err(err) => {
-                        tracing::error!(?line, ?err, "Error at fetching line highlight");
-                        None
-                    }
-                }
-            })
-            .collect::<Vec<_>>();
+        let line_highlights = highlight_lines(syntax, &lines, line_start);
 
         // TODO: Clear the outdated highlights first and then render the new highlights.
         self.vim.exec(
@@ -127,6 +116,30 @@ impl SyntaxHighlighterPlugin {
 
         Ok(())
     }
+}
+
+pub fn highlight_lines(
+    syntax: &SyntaxReference,
+    lines: &[String],
+    line_start_number: usize,
+) -> Vec<(usize, Vec<TokenHighlight>)> {
+    const THEME: &str = "Visual Studio Dark+";
+
+    let highlighter = &HIGHLIGHTER;
+
+    lines
+        .iter()
+        .enumerate()
+        .filter_map(|(index, line)| {
+            match highlighter.get_token_highlights_in_line(syntax, line, THEME) {
+                Ok(token_highlights) => Some((line_start_number + index, token_highlights)),
+                Err(err) => {
+                    tracing::error!(?line, ?err, "Error at fetching line highlight");
+                    None
+                }
+            }
+        })
+        .collect::<Vec<_>>()
 }
 
 #[async_trait::async_trait]

@@ -3,7 +3,7 @@ mod cursor_word_highlighter;
 mod git;
 mod linter;
 mod markdown;
-mod syntax_highlighter;
+pub mod syntax_highlighter;
 mod system;
 
 use crate::stdio_server::input::{PluginAction, PluginEvent};
