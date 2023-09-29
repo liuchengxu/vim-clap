@@ -3,16 +3,13 @@ name = "highlighter"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-anyhow = "1.0"
-bincode = "1.0"
-colorsys = "0.6.7"
+anyhow = { workspace = true }
+colorsys = { workspace = true }
 once_cell = { workspace = true }
-rgb2ansi256 = "0.1.1"
+rgb2ansi256 = { workspace = true }
 serde = { workspace = true,  features = ["derive"] }
-syntect = "5.0.0"
+syntect = { workspace = true }
 tracing = { workspace = true }
 
 utils = { workspace = true }

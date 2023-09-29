@@ -880,7 +880,6 @@ name = "highlighter"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bincode",
  "colorsys",
  "once_cell",
  "rgb2ansi256",
