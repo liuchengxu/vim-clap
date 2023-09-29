@@ -483,8 +483,8 @@ impl<'a> CachedPreviewImpl<'a> {
                     &crate::config::config().picker.syntect_highlight_theme
                 {
                     const THEME: &str = "Visual Studio Dark+";
-                    let theme = if HIGHLIGHTER.theme_exists(&theme) {
-                        &theme
+                    let theme = if HIGHLIGHTER.theme_exists(theme) {
+                        theme
                     } else {
                         THEME
                     };
