@@ -7,9 +7,9 @@ set cpoptions&vim
 let s:default_priority = 10
 
 if has('nvim')
-  function! s:add_highlight_at(lnum, col, hl_group) abort
-    " 0-based
-    call nvim_buf_add_highlight(g:clap.display.bufnr, -1, a:hl_group, a:lnum, a:col, a:col+1)
+  " lnum is 0-based.
+  function! s:add_highlight_at(bufnr, lnum, col, length, hl_group) abort
+    call nvim_buf_add_highlight(a:bufnr, -1, a:hl_group, a:lnum, a:col, a:col+a:length)
   endfunction
 
   " lnum and col are 0-based.
@@ -66,9 +66,9 @@ if has('nvim')
   endif
 
 else
-  function! s:add_highlight_at(lnum, col, hl_group) abort
-    " 1-based
-    call prop_add(a:lnum+1, a:col+1, {'length': 1, 'type': a:hl_group, 'bufnr': g:clap.display.bufnr})
+    " lnum is 0-based.
+  function! s:add_highlight_at(bufnr, lnum, col, length, hl_group) abort
+    call prop_add(a:lnum+1, a:col+1, {'length': a:length, 'type': a:hl_group, 'bufnr': a:bufnr})
   endfunction
 
   function! s:add_display_highlights(hl_lines) abort
@@ -83,10 +83,10 @@ else
       let group_idx = 1
       for idx in indices
         if group_idx < g:__clap_fuzzy_matches_hl_group_cnt + 1
-          call s:add_highlight_at(lnum, idx, 'ClapFuzzyMatches'.group_idx)
+          call s:add_highlight_at(g:clap.display.bufnr, lnum, idx, 1, 'ClapFuzzyMatches'.group_idx)
           let group_idx += 1
         else
-          call s:add_highlight_at(lnum, idx, g:__clap_fuzzy_last_hl_group)
+          call s:add_highlight_at(g:clap.display.bufnr, lnum, idx, 1, g:__clap_fuzzy_last_hl_group)
         endif
       endfor
       let lnum += 1
@@ -103,6 +103,40 @@ function! clap#highlighter#add_highlights(hl_lines) abort
   catch
     return
   endtry
+endfunction
+
+function! s:create_token_highlight_group(token_highlight) abort
+  execute printf(
+        \ 'hi %s ctermfg=%s guifg=%s cterm=%s gui=%s',
+        \ a:token_highlight.group_name,
+        \ a:token_highlight.ctermfg,
+        \ a:token_highlight.guifg,
+        \ a:token_highlight.cterm,
+        \ a:token_highlight.gui,
+        \ )
+
+  if !has('nvim')
+    call prop_type_add(a:token_highlight.group_name, {'highlight': a:token_highlight.group_name})
+  endif
+endfunction
+
+" Highlight all the tokens at a specific line.
+"
+" lnum is 1-based.
+function! clap#highlighter#highlight_line(bufnr, lnum, token_highlights) abort
+  for token_highlight in a:token_highlights
+    if !hlexists(token_highlight.group_name)
+      call s:create_token_highlight_group(token_highlight)
+    endif
+    call s:add_highlight_at(a:bufnr, a:lnum - 1, token_highlight.col_start, token_highlight.length, token_highlight.group_name)
+  endfor
+endfunction
+
+" Highlight a list of lines.
+function! clap#highlighter#highlight_lines(bufnr, line_highlights) abort
+  for [lnum, line_highlight] in a:line_highlights
+    call clap#highlighter#highlight_line(a:bufnr, lnum, line_highlight)
+  endfor
 endfunction
 
 let &cpoptions = s:save_cpo

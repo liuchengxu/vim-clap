@@ -1,0 +1,15 @@
+[package]
+name = "highlighter"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = { workspace = true }
+colorsys = { workspace = true }
+once_cell = { workspace = true }
+rgb2ansi256 = { workspace = true }
+serde = { workspace = true,  features = ["derive"] }
+syntect = { workspace = true }
+tracing = { workspace = true }
+
+utils = { workspace = true }

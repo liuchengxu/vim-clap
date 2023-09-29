@@ -118,6 +118,14 @@ function! clap#state#render_preview(preview) abort
       call g:clap.preview.set_syntax(a:preview.syntax)
     elseif has_key(a:preview, 'fname')
       call g:clap.preview.set_syntax(clap#ext#into_filetype(a:preview.fname))
+    elseif has_key(a:preview, 'line_highlights')
+      for [lnum, line_highlight] in a:preview.line_highlights
+        try
+          call clap#highlighter#highlight_line(g:clap.preview.bufnr, lnum, line_highlight)
+        catch
+          " Ignore any potential errors as the line might be truncated.
+        endtry
+      endfor
     endif
     call clap#preview#highlight_header()
 

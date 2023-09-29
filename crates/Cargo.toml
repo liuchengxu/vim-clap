@@ -5,6 +5,7 @@ members = [
     "dirs",
     "dumb_analyzer",
     "filter",
+    "highlighter",
     "icon",
     "cli",
     "linter",
@@ -29,6 +30,7 @@ cargo_metadata = "0.18.0"
 chrono = { version = "0.4", features = ["serde"] }
 chrono-humanize = "0.2.3"
 clap = { version = "4.2", features = ["derive"] }
+colorsys = "0.6.7"
 directories = "4.0"
 futures = "0.3"
 fuzzy-matcher = "0.3"
@@ -45,9 +47,11 @@ percent-encoding = "2.2.0"
 parking_lot = "0.12"
 rayon = "1.5"
 regex = "1"
+rgb2ansi256 = "0.1.1"
 serde = { version = "1.0",  features = ["derive"] }
 serde_json = "1.0"
 simdutf8 = "0.1"
+syntect = "5.0.0"
 subprocess = { git = "https://github.com/hniksic/rust-subprocess" }
 tokio = "1.32"
 toml = "0.5"
@@ -62,6 +66,7 @@ cli = { path = "./cli" }
 dirs = { path = "./dirs" }
 dumb_analyzer = { path = "./dumb_analyzer" }
 filter = { path = "./filter" }
+highlighter = { path = "./highlighter" }
 icon = { path = "./icon" }
 linter = { path = "./linter" }
 maple_core = { path = "./maple_core" }
