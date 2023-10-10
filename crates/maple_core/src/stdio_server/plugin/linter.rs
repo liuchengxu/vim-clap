@@ -16,7 +16,7 @@ use tokio::task::JoinHandle;
 #[derive(Debug, Clone)]
 struct ShareableDiagnostics {
     refreshed: Arc<AtomicBool>,
-    diagnostics: Arc<RwLock<Vec<Diagnostic>>>,
+    inner: Arc<RwLock<Vec<Diagnostic>>>,
 }
 
 impl Serialize for ShareableDiagnostics {
@@ -24,19 +24,19 @@ impl Serialize for ShareableDiagnostics {
     where
         S: serde::Serializer,
     {
-        self.diagnostics.read().serialize(serializer)
+        self.inner.read().serialize(serializer)
     }
 }
 
 impl ShareableDiagnostics {
     fn extend(&self, new: Vec<Diagnostic>) {
-        let mut diagnostics = self.diagnostics.write();
+        let mut diagnostics = self.inner.write();
         diagnostics.extend(new);
     }
 
     fn reset(&self) {
         self.refreshed.store(false, Ordering::SeqCst);
-        let mut diagnostics = self.diagnostics.write();
+        let mut diagnostics = self.inner.write();
         diagnostics.clear();
     }
 }
@@ -87,7 +87,7 @@ impl linter::HandleLinterResult for LinterResultHandler {
             self.shareable_diagnostics.extend(new_diagnostics);
         } else {
             // Remove the potential duplicated results from multiple linters.
-            let existing = self.shareable_diagnostics.diagnostics.read();
+            let existing = self.shareable_diagnostics.inner.read();
             let mut followup_diagnostics = new_diagnostics
                 .into_iter()
                 .filter(|d| !existing.contains(d))
@@ -132,7 +132,7 @@ impl BufferLinterInfo {
             source_file,
             diagnostics: ShareableDiagnostics {
                 refreshed: Arc::new(AtomicBool::new(false)),
-                diagnostics: Arc::new(RwLock::new(Vec::new())),
+                inner: Arc::new(RwLock::new(Vec::new())),
             },
             current_jobs: Arc::new(Mutex::new(Vec::new())),
         }
@@ -246,7 +246,7 @@ impl ClapPlugin for LinterPlugin {
                             let lnum = self.vim.line(".").await?;
                             let col = self.vim.col(".").await?;
 
-                            let diagnostics = buf_linter_info.diagnostics.diagnostics.read();
+                            let diagnostics = buf_linter_info.diagnostics.inner.read();
 
                             let current_diagnostics = diagnostics
                                 .iter()
@@ -295,7 +295,7 @@ impl ClapPlugin for LinterPlugin {
 
                         if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
                             let lnum = self.vim.line(".").await?;
-                            let diagnostics = buf_linter_info.diagnostics.diagnostics.read();
+                            let diagnostics = buf_linter_info.diagnostics.inner.read();
                             let current_diagnostics = diagnostics
                                 .iter()
                                 .filter(|d| d.spans.iter().any(|span| span.line_start == lnum))
