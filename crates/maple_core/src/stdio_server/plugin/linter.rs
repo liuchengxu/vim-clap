@@ -58,8 +58,16 @@ impl LinterResultHandler {
     }
 }
 
+#[async_trait::async_trait]
 impl linter::HandleLinterResult for LinterResultHandler {
-    fn handle_linter_result(&self, linter_result: linter::LinterResult) -> std::io::Result<()> {
+    async fn handle_linter_result(
+        &self,
+        linter_result: linter::LinterResult,
+    ) -> std::io::Result<()> {
+        if !self.vim.buf_is_valid(self.bufnr).await.unwrap_or(false) {
+            return Ok(());
+        }
+
         let mut new_diagnostics = linter_result.diagnostics;
         new_diagnostics.sort_by(|a, b| a.spans[0].line_start.cmp(&b.spans[0].line_start));
         new_diagnostics.dedup();
