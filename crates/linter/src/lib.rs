@@ -98,9 +98,8 @@ pub struct LinterResult {
     pub diagnostics: Vec<Diagnostic>,
 }
 
-#[async_trait::async_trait]
 pub trait HandleLinterResult {
-    async fn handle_linter_result(&self, linter_result: LinterResult) -> std::io::Result<()>;
+    fn handle_linter_result(&self, linter_result: LinterResult) -> std::io::Result<()>;
 }
 
 #[derive(Debug, Clone)]
@@ -208,7 +207,7 @@ where
             }
         };
 
-        if let Err(err) = handler.handle_linter_result(linter_result).await {
+        if let Err(err) = handler.handle_linter_result(linter_result) {
             tracing::error!(?err, "Error occurred in handling the linter result");
         }
     })

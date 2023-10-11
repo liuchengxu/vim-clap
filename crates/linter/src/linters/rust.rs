@@ -138,11 +138,19 @@ fn process_cargo_diagnostic(
         return None;
     }
 
+    let mut primary_span_label = String::default();
+
     let spans = cargo_diagnostic
         .spans
         .iter()
         .filter_map(|span| {
             if span.file_name == source_filename {
+                match (span.is_primary, &span.label) {
+                    (true, Some(label)) => {
+                        primary_span_label.push_str(&label);
+                    }
+                    _ => {}
+                }
                 Some(DiagnosticSpan {
                     line_start: span.line_start,
                     line_end: span.line_end,
@@ -159,11 +167,18 @@ fn process_cargo_diagnostic(
         return None;
     }
 
+    // Enrich the display message by merging the potential primary span label.
+    let mut message = cargo_diagnostic.message;
+    if !primary_span_label.is_empty() {
+        message.push_str(", ");
+        message.push_str(&primary_span_label);
+    }
+
     Some(Diagnostic {
         spans,
         code,
         severity,
-        message: cargo_diagnostic.message,
+        message,
     })
 }
 
