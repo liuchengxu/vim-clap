@@ -146,15 +146,12 @@ fn process_cargo_diagnostic(
         .iter()
         .filter_map(|span| {
             if span.file_name == source_filename {
-                match (span.is_primary, &span.label) {
-                    (true, Some(label)) => {
-                        primary_span_label.push_str(&label);
-                        if let Some(suggestion) = &span.suggested_replacement {
-                            let message = format!("{} `{suggestion}`", cargo_diagnostic.message);
-                            suggested_replacement.replace(message);
-                        }
+                if let (true, Some(label)) = (span.is_primary, &span.label) {
+                    primary_span_label.push_str(&label);
+                    if let Some(suggestion) = &span.suggested_replacement {
+                        let message = format!("{} `{suggestion}`", cargo_diagnostic.message);
+                        suggested_replacement.replace(message);
                     }
-                    _ => {}
                 }
                 Some(DiagnosticSpan {
                     line_start: span.line_start,
@@ -172,13 +169,10 @@ fn process_cargo_diagnostic(
         // Stop at the first suggested_replacement.
         let _ = diagnostic.spans.iter().try_for_each(|span| {
             if span.file_name == source_filename {
-                match (span.is_primary, &span.suggested_replacement) {
-                    (true, Some(suggestion)) => {
-                        let message = format!("{} `{suggestion}`", diagnostic.message);
-                        suggested_replacement.replace(message);
-                        return Err(());
-                    }
-                    _ => {}
+                if let (true, Some(suggestion)) = (span.is_primary, &span.suggested_replacement) {
+                    let message = format!("{} `{suggestion}`", diagnostic.message);
+                    suggested_replacement.replace(message);
+                    return Err(());
                 }
             }
             Ok(())
