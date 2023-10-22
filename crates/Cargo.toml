@@ -5,6 +5,7 @@ members = [
     "dirs",
     "dumb_analyzer",
     "filter",
+    "formatter",
     "highlighter",
     "icon",
     "cli",
@@ -66,6 +67,7 @@ cli = { path = "./cli" }
 dirs = { path = "./dirs" }
 dumb_analyzer = { path = "./dumb_analyzer" }
 filter = { path = "./filter" }
+formatter = { path = "./formatter" }
 highlighter = { path = "./highlighter" }
 icon = { path = "./icon" }
 linter = { path = "./linter" }

@@ -147,7 +147,10 @@ impl LinterPlugin {
     const TOGGLE: &'static str = "linter/toggle";
     const TOGGLE_ACTION: Action = Action::callable(Self::TOGGLE);
 
-    const ACTIONS: &[Action] = &[Self::LINT_ACTION, Self::TOGGLE_ACTION];
+    const DEBUG: &'static str = "linter/debug";
+    const DEBUG_ACTION: Action = Action::callable(Self::DEBUG);
+
+    const ACTIONS: &[Action] = &[Self::LINT_ACTION, Self::TOGGLE_ACTION, Self::DEBUG_ACTION];
 
     pub fn new(vim: Vim) -> Self {
         Self {
@@ -303,6 +306,10 @@ impl ClapPlugin for LinterPlugin {
                             return Ok(());
                         }
 
+                        self.on_buf_enter(bufnr).await?;
+                    }
+                    Self::DEBUG => {
+                        let bufnr = self.vim.bufnr("").await?;
                         self.on_buf_enter(bufnr).await?;
                     }
                     Self::TOGGLE => {
