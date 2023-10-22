@@ -26,34 +26,34 @@ pub async fn run_gopls(source_file: &Path, workspace_root: &Path) -> std::io::Re
 
     let mut diagnostics = Vec::new();
 
-    for line in stdout.split('\n') {
-        if !line.is_empty() {
-            for (_, [_path, line, column_start, column_end, message]) in
-                RE.captures_iter(line).map(|c| c.extract())
-            {
-                let Ok(line) = line.parse::<usize>() else {
-                    continue;
-                };
-                let Ok(column_start) = column_start.parse::<usize>() else {
-                    continue;
-                };
-                let Ok(column_end) = column_end.parse::<usize>() else {
-                    continue;
-                };
-                diagnostics.push(Diagnostic {
-                    spans: vec![DiagnosticSpan {
-                        line_start: line,
-                        line_end: line,
-                        column_start,
-                        column_end,
-                    }],
-                    code: Code::default(),
-                    severity: Severity::Error,
-                    message: message.to_string(),
-                });
-            }
-        }
-    }
+    // for line in stdout.split('\n') {
+    // if !line.is_empty() {
+    // for (_, [_path, line, column_start, column_end, message]) in
+    // RE.captures_iter(line).map(|c| c.extract())
+    // {
+    // let Ok(line) = line.parse::<usize>() else {
+    // continue;
+    // };
+    // let Ok(column_start) = column_start.parse::<usize>() else {
+    // continue;
+    // };
+    // let Ok(column_end) = column_end.parse::<usize>() else {
+    // continue;
+    // };
+    // diagnostics.push(Diagnostic {
+    // spans: vec![DiagnosticSpan {
+    // line_start: line,
+    // line_end: line,
+    // column_start,
+    // column_end,
+    // }],
+    // code: Code::default(),
+    // severity: Severity::Error,
+    // message: message.to_string(),
+    // });
+    // }
+    // }
+    // }
 
     Ok(LinterResult {
         engine: crate::LintEngine::Gopls,
