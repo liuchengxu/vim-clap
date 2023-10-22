@@ -1,19 +1,33 @@
+use std::collections::HashSet;
+
 use proc_macro::{self, TokenStream};
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput, Ident, LitStr};
+use syn::punctuated::Punctuated;
+use syn::{parse_macro_input, DeriveInput, Ident, LitStr, Meta, Token};
 
-#[proc_macro_derive(ClapPlugin, attributes(action))]
+#[proc_macro_derive(ClapPlugin, attributes(action, actions))]
 pub fn derive(input: TokenStream) -> TokenStream {
     // Parse the input tokens into a syntax tree
     let input = parse_macro_input!(input as DeriveInput);
 
-    let mut actions = Vec::<String>::new();
+    let mut action_parsed = Vec::<String>::new();
+    let mut actions_parsed = None::<Vec<String>>;
 
     // Extract the attribute values from the struct level
     for attr in input.attrs {
         if attr.path().is_ident("action") {
             let lit: LitStr = attr.parse_args().expect("Failed to parse MetaList");
-            actions.push(lit.value());
+            action_parsed.push(lit.value());
+        }
+
+        if attr.path().is_ident("actions") {
+            if let Meta::List(list) = attr.meta {
+                let args = list
+                    .parse_args_with(Punctuated::<LitStr, Token![,]>::parse_terminated)
+                    .expect("Parse MetaList");
+                let args = args.iter().map(|arg| arg.value()).collect::<Vec<_>>();
+                actions_parsed.replace(args);
+            }
         }
     }
 
@@ -21,12 +35,29 @@ pub fn derive(input: TokenStream) -> TokenStream {
 
     let mut actions_ident = Vec::new();
 
+    let mut used_actions = HashSet::new();
+
+    // Combine action(..) and actions(..)
+    let mut args_parsed = action_parsed;
+    args_parsed.extend(actions_parsed.unwrap_or_default());
+
     // Generate constants from the attribute values
-    let constants = actions.iter().map(|action| {
+    let constants = args_parsed.iter().map(|action| {
         let mut parts = action.split('/');
-        let _plugin_name = parts.next().expect("Bad action, plugin_name not found");
+        let plugin_name = parts
+            .next()
+            .expect("Bad action {action}: plugin_name not found");
         // TODO: Validate actions
-        let action_name = parts.next().expect("Bad action, action_name not found");
+        let action_name = parts
+            .next()
+            .expect("Bad action {action}, action_name not found");
+
+        if used_actions.contains(action_name) {
+            panic!("duplicate {action_name} in {plugin_name}");
+        } else {
+            used_actions.insert(action_name);
+        }
+
         let action_lit = Ident::new(&action_name.to_uppercase(), ident.span());
         let action_var = Ident::new(
             &format!("ACTION_{}", action_name.to_uppercase()),

@@ -137,7 +137,7 @@ mod tests {
         let original_file = std::fs::read(&source_file).unwrap();
         let formatted_file = run_rustfmt(&source_file, &workspace_root).await.unwrap();
         let pos = find_newline_position(&formatted_file, 3).unwrap();
-        let (_, trimmed_formatted) = formatted_file.split_at(pos+1);
+        let (_, trimmed_formatted) = formatted_file.split_at(pos + 1);
         println!(
             "-------- formatted_file: \n{}",
             String::from_utf8_lossy(&trimmed_formatted)
