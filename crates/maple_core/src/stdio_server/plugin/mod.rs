@@ -17,6 +17,7 @@ pub use self::linter::LinterPlugin;
 pub use self::markdown::MarkdownPlugin;
 pub use self::syntax_highlighter::SyntaxHighlighterPlugin;
 pub use self::system::SystemPlugin;
+pub use types::{Action, ActionType};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum PluginId {
@@ -41,29 +42,6 @@ impl std::fmt::Display for PluginId {
             Self::Linter => write!(f, "linter"),
         }
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct Action {
-    pub ty: ActionType,
-    pub method: &'static str,
-}
-
-impl Action {
-    pub const fn callable(method: &'static str) -> Self {
-        Self {
-            ty: ActionType::Callable,
-            method,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum ActionType {
-    /// Actions that users can interact with.
-    Callable,
-    /// All actions.
-    All,
 }
 
 #[derive(Debug, Clone)]

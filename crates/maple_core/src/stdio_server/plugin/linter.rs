@@ -139,8 +139,6 @@ pub struct LinterPlugin {
 }
 
 impl LinterPlugin {
-    pub const ID: PluginId = PluginId::Linter;
-
     const LINT: &'static str = "linter/lint";
     const LINT_ACTION: Action = Action::callable(Self::LINT);
 
@@ -151,6 +149,10 @@ impl LinterPlugin {
     const DEBUG_ACTION: Action = Action::callable(Self::DEBUG);
 
     const ACTIONS: &[Action] = &[Self::LINT_ACTION, Self::TOGGLE_ACTION, Self::DEBUG_ACTION];
+}
+
+impl LinterPlugin {
+    pub const ID: PluginId = PluginId::Linter;
 
     pub fn new(vim: Vim) -> Self {
         Self {

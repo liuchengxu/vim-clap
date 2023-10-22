@@ -67,3 +67,26 @@ pub trait ProgressUpdate<DisplayLines> {
         total_processed: usize,
     );
 }
+
+#[derive(Debug, Clone)]
+pub enum ActionType {
+    /// Actions that users can interact with.
+    Callable,
+    /// All actions.
+    All,
+}
+
+#[derive(Debug, Clone)]
+pub struct Action {
+    pub ty: ActionType,
+    pub method: &'static str,
+}
+
+impl Action {
+    pub const fn callable(method: &'static str) -> Self {
+        Self {
+            ty: ActionType::Callable,
+            method,
+        }
+    }
+}

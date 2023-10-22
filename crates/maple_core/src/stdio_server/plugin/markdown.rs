@@ -219,15 +219,17 @@ impl MarkdownPlugin {
         Self::UPDATE_TOC_ACTION,
         Self::DELETE_TOC_ACTION,
     ];
-
-    pub fn new(vim: Vim) -> Self {
-        Self { vim }
-    }
 }
 
 impl ClapAction for MarkdownPlugin {
     fn actions(&self, _action_type: ActionType) -> &[Action] {
         Self::ACTIONS
+    }
+}
+
+impl MarkdownPlugin {
+    pub fn new(vim: Vim) -> Self {
+        Self { vim }
     }
 }
 

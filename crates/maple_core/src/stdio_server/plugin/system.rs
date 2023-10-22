@@ -9,8 +9,6 @@ pub struct SystemPlugin {
 }
 
 impl SystemPlugin {
-    pub const ID: PluginId = PluginId::System;
-
     const NOTE_RECENT_FILES: &'static str = "note_recent_files";
     const NOTE_RECENT_FILES_ACTION: Action = Action::callable(Self::NOTE_RECENT_FILES);
 
@@ -26,10 +24,6 @@ impl SystemPlugin {
         Self::OPEN_CONFIG_ACTION,
         Self::LIST_PLUGINS_ACTION,
     ];
-
-    pub fn new(vim: Vim) -> Self {
-        Self { vim }
-    }
 }
 
 impl ClapAction for SystemPlugin {
@@ -38,6 +32,14 @@ impl ClapAction for SystemPlugin {
             ActionType::Callable => Self::CALLABLE_ACTIONS,
             ActionType::All => Self::ACTIONS,
         }
+    }
+}
+
+impl SystemPlugin {
+    pub const ID: PluginId = PluginId::System;
+
+    pub fn new(vim: Vim) -> Self {
+        Self { vim }
     }
 }
 

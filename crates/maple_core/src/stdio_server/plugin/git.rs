@@ -245,8 +245,6 @@ pub struct GitPlugin {
 }
 
 impl GitPlugin {
-    pub const ID: PluginId = PluginId::Git;
-
     const BLAME: &'static str = "git/blame";
     const BLAME_ACTION: Action = Action::callable(Self::BLAME);
 
@@ -262,6 +260,10 @@ impl GitPlugin {
         Self::OPEN_CURRENT_LINE_IN_BROWSER_ACTION,
         Self::TOGGLE_ACTION,
     ];
+}
+
+impl GitPlugin {
+    pub const ID: PluginId = PluginId::Git;
 
     pub fn new(vim: Vim) -> Self {
         Self {
