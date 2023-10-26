@@ -83,3 +83,20 @@ pub trait ClapPlugin: ClapAction + Debug + Send + Sync + 'static {
 
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()>;
 }
+
+#[cfg(test)]
+mod tests {
+    #[derive(maple_derive::ClapPlugin)]
+    #[action("plugin/action1")]
+    #[action("plugin/action2")]
+    #[actions("plugin/action3", "plugin/action4")]
+    struct TestPlugin;
+
+    #[derive(maple_derive::ClapPlugin)]
+    struct EmptyPlugin;
+
+    #[test]
+    fn test_ClapPlugin() {
+        let expected = "";
+    }
+}

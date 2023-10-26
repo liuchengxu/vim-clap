@@ -41,19 +41,27 @@ pub fn derive(input: TokenStream) -> TokenStream {
     let mut args_parsed = action_parsed;
     args_parsed.extend(actions_parsed.unwrap_or_default());
 
+    if args_parsed.is_empty() {
+        return TokenStream::new();
+    }
+
     // Generate constants from the attribute values
     let constants = args_parsed.iter().map(|action| {
-        let mut parts = action.split('/');
-        let plugin_name = parts
-            .next()
-            .expect("Bad action {action}: plugin_name not found");
-        // TODO: Validate actions
-        let action_name = parts
-            .next()
-            .expect("Bad action {action}, action_name not found");
-
+        let (plugin_namespace, action_name) = if action.contains('/') {
+            let mut parts = action.split('/');
+            (
+                parts
+                    .next()
+                    .expect("Bad action {action}: plugin_namespace not found"),
+                parts
+                    .next()
+                    .expect("Bad action {action}, action_name not found"),
+            )
+        } else {
+            ("system", action.as_str())
+        };
         if used_actions.contains(action_name) {
-            panic!("duplicate {action_name} in {plugin_name}");
+            panic!("duplicate {action_name} in {plugin_namespace}");
         } else {
             used_actions.insert(action_name);
         }
