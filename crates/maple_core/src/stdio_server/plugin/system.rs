@@ -3,7 +3,7 @@ use crate::stdio_server::plugin::{Action, ActionType, ClapAction, ClapPlugin, Pl
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, maple_derive::ClapPlugin)]
 pub struct SystemPlugin {
     vim: Vim,
 }
