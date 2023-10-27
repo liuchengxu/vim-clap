@@ -55,10 +55,7 @@ pub trait ClapPlugin: ClapAction + Debug + Send + Sync + 'static {
 #[cfg(test)]
 mod tests {
     #[derive(maple_derive::ClapPlugin)]
-    #[clap_plugin(id = "plugin")]
-    #[action("action1")]
-    #[action("action2")]
-    #[actions("action3", "action4")]
+    #[clap_plugin(id = "plugin", actions = ["action1", "action2"])]
     struct TestPlugin;
 
     #[derive(maple_derive::ClapPlugin)]

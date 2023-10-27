@@ -130,8 +130,7 @@ impl BufferLinterInfo {
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "linter")]
-#[actions("lint", "toggle", "debug")]
+#[clap_plugin(id = "linter", actions = ["lint", "debug", "toggle"])]
 pub struct LinterPlugin {
     vim: Vim,
     bufs: HashMap<usize, BufferLinterInfo>,

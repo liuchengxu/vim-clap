@@ -4,10 +4,9 @@ use darling::FromMeta;
 use proc_macro::{self, TokenStream};
 use proc_macro2::Span;
 use quote::quote;
-use syn::punctuated::Punctuated;
-use syn::{DeriveInput, Error, Ident, LitStr, Meta, Token};
+use syn::{DeriveInput, Error, Expr, Ident, LitStr};
 
-#[proc_macro_derive(ClapPlugin, attributes(action, actions, clap_plugin))]
+#[proc_macro_derive(ClapPlugin, attributes(clap_plugin))]
 pub fn clap_plugin_derive(input: TokenStream) -> TokenStream {
     match syn::parse(input) {
         Ok(ast) => clap_plugin_derive_impl(&ast),
@@ -18,47 +17,43 @@ pub fn clap_plugin_derive(input: TokenStream) -> TokenStream {
 #[derive(Debug, Eq, PartialEq, FromMeta)]
 struct Plugin {
     id: LitStr,
+    actions: Option<Expr>,
 }
 
 fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
-    let mut action_parsed = Vec::<String>::new();
-    let mut actions_parsed = Vec::<String>::new();
-
     let mut maybe_plugin_id = None;
+    let mut actions_parsed = Vec::<String>::new();
 
     // Extract the attribute values from the struct level
     for attr in &input.attrs {
         if attr.path().is_ident("clap_plugin") {
             let plugin = Plugin::from_meta(&attr.meta).expect("Invalid clap_plugin attribute");
             maybe_plugin_id.replace(plugin.id.value());
-        }
 
-        if attr.path().is_ident("action") {
-            let lit: LitStr = attr.parse_args().expect("Failed to parse action args");
-            action_parsed.push(lit.value());
-        }
-
-        if attr.path().is_ident("actions") {
-            if let Meta::List(list) = &attr.meta {
-                let args = list
-                    .parse_args_with(Punctuated::<LitStr, Token![,]>::parse_terminated)
-                    .expect("Failed to parse actions args");
-                let args = args.iter().map(|arg| arg.value()).collect::<Vec<_>>();
-                let _ = std::mem::replace(&mut actions_parsed, args);
+            if let Some(actions) = plugin.actions {
+                if let syn::Expr::Array(expr_array) = actions {
+                    let args = expr_array
+                        .elems
+                        .iter()
+                        .filter_map(|expr| match expr {
+                            syn::Expr::Lit(lit) => String::from_value(&lit.lit).ok(),
+                            _ => panic!("actions expected array of string literals"),
+                        })
+                        .collect::<Vec<String>>();
+                    actions_parsed.extend(args);
+                } else {
+                    panic!("unexpected expr type, actions must be an expr of array")
+                }
             }
         }
     }
 
     let plugin_id = maybe_plugin_id.expect("Plugin id must be specified");
 
-    // Combine #[action(..)] and #[actions(..)]
-    let mut args_parsed = action_parsed;
-    args_parsed.extend(actions_parsed);
-
     let DeriveInput { ident, .. } = input;
 
     // No actions specified.
-    if args_parsed.is_empty() {
+    if actions_parsed.is_empty() {
         let output = quote! {
             impl types::ClapAction for #ident {
                 fn id(&self) -> &'static str {
@@ -81,7 +76,7 @@ fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
     let mut used_actions = HashSet::new();
 
     // Generate constants from the attribute values
-    let constants = args_parsed.iter().map(|action| {
+    let constants = actions_parsed.iter().map(|action| {
         let action_name = action.as_str();
 
         if used_actions.contains(action_name) {

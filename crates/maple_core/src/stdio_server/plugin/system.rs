@@ -4,8 +4,7 @@ use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "system")]
-#[actions("__note_recent_files", "open-config", "list-plugins")]
+#[clap_plugin(id = "system", actions = ["__note_recent_files", "open-config", "list-plugins"])]
 pub struct System {
     vim: Vim,
 }

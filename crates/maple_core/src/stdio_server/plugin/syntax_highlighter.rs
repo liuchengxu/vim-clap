@@ -12,8 +12,7 @@ pub static HIGHLIGHTER: Lazy<highlighter::SyntaxHighlighter> =
     Lazy::new(highlighter::SyntaxHighlighter::new);
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "syntax")]
-#[actions("on", "list-themes", "toggle")]
+#[clap_plugin(id = "syntax", actions = ["on", "list-themes", "toggle"])]
 pub struct SyntaxHighlighterPlugin {
     vim: Vim,
     bufs: HashMap<usize, String>,

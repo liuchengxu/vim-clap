@@ -236,8 +236,7 @@ fn in_git_repo(filepath: &Path) -> Option<&Path> {
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "git")]
-#[actions("blame", "open-current-line-in-browser", "toggle")]
+#[clap_plugin(id = "git", actions = ["blame", "open-current-line-in-browser", "toggle"])]
 pub struct GitPlugin {
     vim: Vim,
     bufs: HashMap<usize, (PathBuf, Git)>,

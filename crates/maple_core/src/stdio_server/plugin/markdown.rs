@@ -198,8 +198,7 @@ fn find_toc_range(input_file: impl AsRef<Path>) -> std::io::Result<Option<(usize
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "markdown")]
-#[actions("generate-toc", "update-toc", "delete-toc")]
+#[clap_plugin(id = "markdown", actions = ["generate-toc", "update-toc", "delete-toc"])]
 pub struct MarkdownPlugin {
     vim: Vim,
 }
