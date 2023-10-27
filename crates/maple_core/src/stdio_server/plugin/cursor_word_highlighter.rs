@@ -92,7 +92,7 @@ struct WinHighlights {
     match_ids: Vec<i32>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, maple_derive::ClapPlugin)]
 pub struct CursorWordHighlighter {
     vim: Vim,
     bufs: HashMap<usize, PathBuf>,
@@ -231,8 +231,6 @@ impl CursorWordHighlighter {
         Ok(())
     }
 }
-
-impl ClapAction for CursorWordHighlighter {}
 
 #[async_trait::async_trait]
 impl ClapPlugin for CursorWordHighlighter {

@@ -1,5 +1,5 @@
 use crate::stdio_server::input::{AutocmdEventType, PluginEvent};
-use crate::stdio_server::plugin::{ClapAction, ClapPlugin, PluginId};
+use crate::stdio_server::plugin::{ClapPlugin, PluginId};
 use crate::stdio_server::vim::Vim;
 use crate::tools::ctags::{BufferTag, Scope};
 use anyhow::Result;
@@ -26,7 +26,7 @@ impl<'a> ScopeRef<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, maple_derive::ClapPlugin)]
 pub struct CtagsPlugin {
     vim: Vim,
     last_cursor_tag: Option<BufferTag>,
@@ -90,8 +90,6 @@ impl CtagsPlugin {
         Ok(())
     }
 }
-
-impl ClapAction for CtagsPlugin {}
 
 #[async_trait::async_trait]
 impl ClapPlugin for CtagsPlugin {

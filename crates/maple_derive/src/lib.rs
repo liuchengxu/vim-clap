@@ -40,11 +40,20 @@ fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
     let mut args_parsed = action_parsed;
     args_parsed.extend(actions_parsed);
 
-    if args_parsed.is_empty() {
-        return TokenStream::new();
-    }
-
     let DeriveInput { ident, .. } = input;
+
+    // No actions specified.
+    if args_parsed.is_empty() {
+        let output = quote! {
+            impl types::ClapAction for #ident {
+                fn actions(&self, _action_type: types::ActionType) -> &[types::Action] {
+                  &[]
+                }
+            }
+        };
+
+        return output.into();
+    }
 
     let mut actions_list = Vec::new();
     let mut callable_actions_list = Vec::new();
@@ -126,6 +135,7 @@ fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
 
             quote! {
                 const #action_lit: &str = #action;
+                #[allow(non_upper_case_globals)]
                 const #action_var: types::Action = types::Action::internal(Self::#action_lit);
             }
         }
