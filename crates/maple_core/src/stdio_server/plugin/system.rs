@@ -1,38 +1,12 @@
 use crate::stdio_server::input::{PluginAction, PluginEvent};
-use crate::stdio_server::plugin::{Action, ActionType, ClapAction, ClapPlugin, PluginId};
+use crate::stdio_server::plugin::{ClapPlugin, PluginId};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
+#[actions("__note_recent_files", "open-config", "list-plugins")]
 pub struct SystemPlugin {
     vim: Vim,
-}
-
-impl SystemPlugin {
-    const NOTE_RECENT_FILES: &'static str = "note_recent_files";
-    const NOTE_RECENT_FILES_ACTION: Action = Action::callable(Self::NOTE_RECENT_FILES);
-
-    const OPEN_CONFIG: &'static str = "open-config";
-    const OPEN_CONFIG_ACTION: Action = Action::callable(Self::OPEN_CONFIG);
-
-    const LIST_PLUGINS: &'static str = "list-plugins";
-    const LIST_PLUGINS_ACTION: Action = Action::callable(Self::LIST_PLUGINS);
-
-    const CALLABLE_ACTIONS: &[Action] = &[Self::OPEN_CONFIG_ACTION, Self::LIST_PLUGINS_ACTION];
-    const ACTIONS: &[Action] = &[
-        Self::NOTE_RECENT_FILES_ACTION,
-        Self::OPEN_CONFIG_ACTION,
-        Self::LIST_PLUGINS_ACTION,
-    ];
-}
-
-impl ClapAction for SystemPlugin {
-    fn actions(&self, action_type: ActionType) -> &[Action] {
-        match action_type {
-            ActionType::Callable => Self::CALLABLE_ACTIONS,
-            ActionType::All => Self::ACTIONS,
-        }
-    }
 }
 
 impl SystemPlugin {

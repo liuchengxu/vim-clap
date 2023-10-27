@@ -1,49 +1,56 @@
 use std::collections::HashSet;
 
 use proc_macro::{self, TokenStream};
+use proc_macro2::Span;
 use quote::quote;
 use syn::punctuated::Punctuated;
-use syn::{parse_macro_input, DeriveInput, Ident, LitStr, Meta, Token};
+use syn::{DeriveInput, Error, Ident, LitStr, Meta, Token};
 
 #[proc_macro_derive(ClapPlugin, attributes(action, actions))]
-pub fn derive(input: TokenStream) -> TokenStream {
-    // Parse the input tokens into a syntax tree
-    let input = parse_macro_input!(input as DeriveInput);
+pub fn clap_plugin_derive(input: TokenStream) -> TokenStream {
+    match syn::parse(input) {
+        Ok(ast) => clap_plugin_derive_impl(&ast),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
 
+fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
     let mut action_parsed = Vec::<String>::new();
-    let mut actions_parsed = None::<Vec<String>>;
+    let mut actions_parsed = Vec::<String>::new();
 
     // Extract the attribute values from the struct level
-    for attr in input.attrs {
+    for attr in &input.attrs {
         if attr.path().is_ident("action") {
-            let lit: LitStr = attr.parse_args().expect("Failed to parse MetaList");
+            let lit: LitStr = attr.parse_args().expect("Failed to parse action args");
             action_parsed.push(lit.value());
         }
 
         if attr.path().is_ident("actions") {
-            if let Meta::List(list) = attr.meta {
+            if let Meta::List(list) = &attr.meta {
                 let args = list
                     .parse_args_with(Punctuated::<LitStr, Token![,]>::parse_terminated)
-                    .expect("Parse MetaList");
+                    .expect("Failed to parse actions args");
                 let args = args.iter().map(|arg| arg.value()).collect::<Vec<_>>();
-                actions_parsed.replace(args);
+                let _ = std::mem::replace(&mut actions_parsed, args);
             }
         }
     }
 
-    let DeriveInput { ident, .. } = input;
-
-    let mut actions_ident = Vec::new();
-
-    let mut used_actions = HashSet::new();
-
-    // Combine action(..) and actions(..)
+    // Combine #[action(..)] and #[actions(..)]
     let mut args_parsed = action_parsed;
-    args_parsed.extend(actions_parsed.unwrap_or_default());
+    args_parsed.extend(actions_parsed);
 
     if args_parsed.is_empty() {
         return TokenStream::new();
     }
+
+    let DeriveInput { ident, .. } = input;
+
+    let mut actions_list = Vec::new();
+    let mut callable_actions_list = Vec::new();
+    let mut internal_actions_list = Vec::new();
+
+    let mut used_actions = HashSet::new();
 
     // Generate constants from the attribute values
     let constants = args_parsed.iter().map(|action| {
@@ -60,21 +67,68 @@ pub fn derive(input: TokenStream) -> TokenStream {
         } else {
             ("system", action.as_str())
         };
+
         if used_actions.contains(action_name) {
-            panic!("duplicate {action_name} in {plugin_namespace}");
+            return Error::new(
+                Span::call_site(),
+                format!("Duplicated action ({action_name}) in plugin {plugin_namespace}"),
+            )
+            .to_compile_error();
         } else {
             used_actions.insert(action_name);
         }
 
-        let action_lit = Ident::new(&action_name.to_uppercase(), ident.span());
-        let action_var = Ident::new(
-            &format!("ACTION_{}", action_name.to_uppercase()),
-            ident.span(),
-        );
-        actions_ident.push(action_var.clone());
-        quote! {
-            const #action_lit: &str = #action;
-            const #action_var: types::Action = types::Action::callable(Self::#action_lit);
+        // Classify the action and extract the operation.
+        let (is_callable, action_operation) =
+            if let Some(action_operation) = action_name.strip_prefix("__") {
+                (false, action_operation)
+            } else {
+                (true, action_name)
+            };
+
+        let check_operation_validity = |operation: &str| {
+            let is_valid = operation
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
+
+            if is_valid {
+                None
+            } else {
+                Some(Error::new(
+                    Span::call_site(),
+                    format!("Invalid character in {action_name}: expect only ASCII alphanumeric character or [-_]"),
+                ))
+            }
+        };
+
+
+        if let Some(err) = check_operation_validity(action_operation) {
+            return err.to_compile_error();
+        }
+
+
+        let action_name = action_operation.replace('-', "_");
+
+        let uppercase_action = action_name.to_uppercase();
+        let action_lit = Ident::new(&uppercase_action, ident.span());
+        let action_var = Ident::new(&format!("ACTION_{uppercase_action}"), ident.span());
+
+        actions_list.push(action_var.clone());
+
+        if is_callable {
+            callable_actions_list.push(action_var.clone());
+
+            quote! {
+                const #action_lit: &str = #action;
+                const #action_var: types::Action = types::Action::callable(Self::#action_lit);
+            }
+        } else {
+            internal_actions_list.push(action_var.clone());
+
+            quote! {
+                const #action_lit: &str = #action;
+                const #action_var: types::Action = types::Action::internal(Self::#action_lit);
+            }
         }
     });
 
@@ -82,8 +136,24 @@ pub fn derive(input: TokenStream) -> TokenStream {
         impl #ident {
             #(#constants)*
 
-            const ACTIONS: &[types::Action] = &[#(Self::#actions_ident),*];
+            const CALLABLE_ACTIONS: &[types::Action] = &[#(Self::#callable_actions_list),*];
+            const INTERNAL_ACTIONS: &[types::Action] = &[#(Self::#internal_actions_list),*];
+            const ACTIONS: &[types::Action] = &[#(Self::#actions_list),*];
+
         }
+
+        impl types::ClapAction for #ident {
+            fn actions(&self, action_type: types::ActionType) -> &[types::Action] {
+                use types::ActionType;
+
+                match action_type {
+                    ActionType::Callable => Self::CALLABLE_ACTIONS,
+                    ActionType::Internal => Self::INTERNAL_ACTIONS,
+                    ActionType::All => Self::ACTIONS,
+                }
+            }
+        }
+
     };
 
     output.into()

@@ -68,10 +68,19 @@ pub trait ProgressUpdate<DisplayLines> {
     );
 }
 
+/// Plugin interfaces to users.
+pub trait ClapAction {
+    fn actions(&self, _action_type: ActionType) -> &[Action] {
+        &[]
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum ActionType {
     /// Actions that users can interact with.
     Callable,
+    /// Internal actions.
+    Internal,
     /// All actions.
     All,
 }
@@ -86,6 +95,13 @@ impl Action {
     pub const fn callable(method: &'static str) -> Self {
         Self {
             ty: ActionType::Callable,
+            method,
+        }
+    }
+
+    pub const fn internal(method: &'static str) -> Self {
+        Self {
+            ty: ActionType::Internal,
             method,
         }
     }

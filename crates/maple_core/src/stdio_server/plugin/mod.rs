@@ -17,7 +17,7 @@ pub use self::linter::LinterPlugin;
 pub use self::markdown::MarkdownPlugin;
 pub use self::syntax_highlighter::SyntaxHighlighterPlugin;
 pub use self::system::SystemPlugin;
-pub use types::{Action, ActionType};
+pub use types::{Action, ActionType, ClapAction};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum PluginId {
@@ -66,13 +66,6 @@ impl Toggle {
 
     pub fn is_off(&self) -> bool {
         matches!(self, Self::Off)
-    }
-}
-
-/// Plugin interfaces to users.
-pub trait ClapAction {
-    fn actions(&self, _action_type: ActionType) -> &[Action] {
-        &[]
     }
 }
 
