@@ -1,5 +1,5 @@
 use crate::stdio_server::input::{PluginAction, PluginEvent};
-use crate::stdio_server::plugin::{Action, ActionType, ClapAction, ClapPlugin, PluginId};
+use crate::stdio_server::plugin::{ClapPlugin, PluginId};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
@@ -197,7 +197,8 @@ fn find_toc_range(input_file: impl AsRef<Path>) -> std::io::Result<Option<(usize
     Ok(None)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, maple_derive::ClapPlugin)]
+#[actions("markdown/generate-toc", "markdown/update-toc", "markdown/delete-toc")]
 pub struct MarkdownPlugin {
     vim: Vim,
 }
@@ -205,29 +206,6 @@ pub struct MarkdownPlugin {
 impl MarkdownPlugin {
     pub const ID: PluginId = PluginId::Markdown;
 
-    const GENERATE_TOC: &'static str = "markdown/generate-toc";
-    const GENERATE_TOC_ACTION: Action = Action::callable(Self::GENERATE_TOC);
-
-    const UPDATE_TOC: &'static str = "markdown/update-toc";
-    const UPDATE_TOC_ACTION: Action = Action::callable(Self::UPDATE_TOC);
-
-    const DELETE_TOC: &'static str = "markdown/delete-toc";
-    const DELETE_TOC_ACTION: Action = Action::callable(Self::DELETE_TOC);
-
-    const ACTIONS: &[Action] = &[
-        Self::GENERATE_TOC_ACTION,
-        Self::UPDATE_TOC_ACTION,
-        Self::DELETE_TOC_ACTION,
-    ];
-}
-
-impl ClapAction for MarkdownPlugin {
-    fn actions(&self, _action_type: ActionType) -> &[Action] {
-        Self::ACTIONS
-    }
-}
-
-impl MarkdownPlugin {
     pub fn new(vim: Vim) -> Self {
         Self { vim }
     }

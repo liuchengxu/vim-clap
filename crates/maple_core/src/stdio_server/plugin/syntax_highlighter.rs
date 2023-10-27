@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 
 use crate::stdio_server::input::{AutocmdEventType, PluginEvent};
-use crate::stdio_server::plugin::{
-    Action, ActionType, ClapAction, ClapPlugin, PluginAction, PluginId, Toggle,
-};
+use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginId, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use highlighter::{SyntaxReference, TokenHighlight};
@@ -13,35 +11,12 @@ use once_cell::sync::Lazy;
 pub static HIGHLIGHTER: Lazy<highlighter::SyntaxHighlighter> =
     Lazy::new(highlighter::SyntaxHighlighter::new);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, maple_derive::ClapPlugin)]
+#[actions("syntax/on", "syntax/list-themes", "syntax/toggle")]
 pub struct SyntaxHighlighterPlugin {
     vim: Vim,
     bufs: HashMap<usize, String>,
     toggle: Toggle,
-}
-
-// TODO: use a derive macro.
-impl SyntaxHighlighterPlugin {
-    const SYNTAX_ON: &'static str = "syntax/on";
-    const SYNTAX_ON_ACTION: Action = Action::callable(Self::SYNTAX_ON);
-
-    const LIST_THEMES: &'static str = "syntax/list-themes";
-    const LIST_THEMES_ACTION: Action = Action::callable(Self::LIST_THEMES);
-
-    const TOGGLE: &'static str = "syntax/toggle";
-    const TOGGLE_ACTION: Action = Action::callable(Self::TOGGLE);
-
-    const ACTIONS: &[Action] = &[
-        Self::SYNTAX_ON_ACTION,
-        Self::LIST_THEMES_ACTION,
-        Self::TOGGLE_ACTION,
-    ];
-}
-
-impl ClapAction for SyntaxHighlighterPlugin {
-    fn actions(&self, _action_type: ActionType) -> &[Action] {
-        Self::ACTIONS
-    }
 }
 
 impl SyntaxHighlighterPlugin {
@@ -175,7 +150,7 @@ impl ClapPlugin for SyntaxHighlighterPlugin {
             PluginEvent::Action(plugin_action) => {
                 let PluginAction { method, params: _ } = plugin_action;
                 match method.as_str() {
-                    Self::SYNTAX_ON => {
+                    Self::ON => {
                         let bufnr = self.vim.bufnr("").await?;
                         self.on_buf_enter(bufnr).await?;
                         self.highlight_visual_lines(bufnr).await?;

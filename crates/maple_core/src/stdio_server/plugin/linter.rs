@@ -1,7 +1,5 @@
 use crate::stdio_server::input::{AutocmdEventType, PluginEvent};
-use crate::stdio_server::plugin::{
-    Action, ActionType, ClapAction, ClapPlugin, PluginAction, PluginId, Toggle,
-};
+use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginId, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use linter::Diagnostic;
@@ -131,24 +129,12 @@ impl BufferLinterInfo {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, maple_derive::ClapPlugin)]
+#[actions("linter/lint", "linter/toggle", "linter/debug")]
 pub struct LinterPlugin {
     vim: Vim,
     bufs: HashMap<usize, BufferLinterInfo>,
     toggle: Toggle,
-}
-
-impl LinterPlugin {
-    const LINT: &'static str = "linter/lint";
-    const LINT_ACTION: Action = Action::callable(Self::LINT);
-
-    const TOGGLE: &'static str = "linter/toggle";
-    const TOGGLE_ACTION: Action = Action::callable(Self::TOGGLE);
-
-    const DEBUG: &'static str = "linter/debug";
-    const DEBUG_ACTION: Action = Action::callable(Self::DEBUG);
-
-    const ACTIONS: &[Action] = &[Self::LINT_ACTION, Self::TOGGLE_ACTION, Self::DEBUG_ACTION];
 }
 
 impl LinterPlugin {
@@ -202,12 +188,6 @@ impl LinterPlugin {
         }
 
         Ok(())
-    }
-}
-
-impl ClapAction for LinterPlugin {
-    fn actions(&self, _action_type: ActionType) -> &[Action] {
-        Self::ACTIONS
     }
 }
 

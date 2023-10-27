@@ -1,7 +1,5 @@
 use crate::stdio_server::input::AutocmdEventType;
-use crate::stdio_server::plugin::{
-    Action, ActionType, ClapAction, ClapPlugin, PluginAction, PluginEvent, PluginId, Toggle,
-};
+use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginEvent, PluginId, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use chrono::{TimeZone, Utc};
@@ -237,29 +235,12 @@ fn in_git_repo(filepath: &Path) -> Option<&Path> {
         .flatten()
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, maple_derive::ClapPlugin)]
+#[actions("git/blame", "git/open-current-line-in-browser", "git/toggle")]
 pub struct GitPlugin {
     vim: Vim,
     bufs: HashMap<usize, (PathBuf, Git)>,
     toggle: Toggle,
-}
-
-impl GitPlugin {
-    const BLAME: &'static str = "git/blame";
-    const BLAME_ACTION: Action = Action::callable(Self::BLAME);
-
-    const OPEN_CURRENT_LINE_IN_BROWSER: &'static str = "git/open-current-line-in-browser";
-    const OPEN_CURRENT_LINE_IN_BROWSER_ACTION: Action =
-        Action::callable(Self::OPEN_CURRENT_LINE_IN_BROWSER);
-
-    const TOGGLE: &'static str = "git/toggle";
-    const TOGGLE_ACTION: Action = Action::callable(Self::TOGGLE);
-
-    const ACTIONS: &[Action] = &[
-        Self::BLAME_ACTION,
-        Self::OPEN_CURRENT_LINE_IN_BROWSER_ACTION,
-        Self::TOGGLE_ACTION,
-    ];
 }
 
 impl GitPlugin {
@@ -341,12 +322,6 @@ impl GitPlugin {
         }
 
         Ok(())
-    }
-}
-
-impl ClapAction for GitPlugin {
-    fn actions(&self, _action_type: ActionType) -> &[Action] {
-        Self::ACTIONS
     }
 }
 
