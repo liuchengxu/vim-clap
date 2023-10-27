@@ -1,4 +1,4 @@
-use crate::stdio_server::input::{AutocmdEventType, PluginEvent};
+use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType, PluginAction};
 use crate::stdio_server::plugin::ClapPlugin;
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
@@ -233,16 +233,16 @@ impl CursorWordHighlighter {
 
 #[async_trait::async_trait]
 impl ClapPlugin for CursorWordHighlighter {
-    async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
+    async fn handle_action(&mut self, _action: PluginAction) -> Result<()> {
+        Ok(())
+    }
+
+    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
         use AutocmdEventType::{
             BufDelete, BufEnter, BufLeave, BufWinEnter, BufWinLeave, CursorMoved, InsertEnter,
         };
 
-        let PluginEvent::Autocmd(autocmd_event) = plugin_event else {
-            return Ok(());
-        };
-
-        let (event_type, params) = autocmd_event;
+        let (event_type, params) = autocmd;
         let bufnr = params.parse_bufnr()?;
 
         match event_type {

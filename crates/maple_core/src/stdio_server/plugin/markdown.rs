@@ -1,4 +1,4 @@
-use crate::stdio_server::input::{PluginAction, PluginEvent};
+use crate::stdio_server::input::{AutocmdEvent, PluginAction};
 use crate::stdio_server::plugin::ClapPlugin;
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
@@ -211,48 +211,47 @@ impl MarkdownPlugin {
 
 #[async_trait::async_trait]
 impl ClapPlugin for MarkdownPlugin {
-    async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
-        match plugin_event {
-            PluginEvent::Autocmd(_) => Ok(()),
-            PluginEvent::Action(plugin_action) => {
-                let PluginAction { method, params: _ } = plugin_action;
-                match method.as_str() {
-                    Self::GENERATE_TOC => {
-                        let curlnum = self.vim.line(".").await?;
-                        let file = self.vim.current_buffer_path().await?;
-                        let shiftwidth = self.vim.getbufvar("", "&shiftwidth").await?;
-                        let mut toc = generate_toc(file, curlnum, shiftwidth)?;
-                        let prev_line = self.vim.curbufline(curlnum - 1).await?;
-                        if !prev_line.map(|line| line.is_empty()).unwrap_or(false) {
-                            toc.push_front(Default::default());
-                        }
-                        self.vim
-                            .exec("append_and_write", json!([curlnum - 1, toc]))?;
-                    }
-                    Self::UPDATE_TOC => {
-                        let file = self.vim.current_buffer_path().await?;
-                        let bufnr = self.vim.bufnr("").await?;
-                        if let Some((start, end)) = find_toc_range(&file)? {
-                            let shiftwidth = self.vim.getbufvar("", "&shiftwidth").await?;
-                            // TODO: skip update if the new doc is the same as the old one.
-                            let new_toc = generate_toc(file, start + 1, shiftwidth)?;
-                            self.vim.deletebufline(bufnr, start + 1, end + 1).await?;
-                            self.vim.exec("append_and_write", json!([start, new_toc]))?;
-                        }
-                    }
-                    Self::DELETE_TOC => {
-                        let file = self.vim.current_buffer_path().await?;
-                        let bufnr = self.vim.bufnr("").await?;
-                        if let Some((start, end)) = find_toc_range(file)? {
-                            self.vim.deletebufline(bufnr, start + 1, end + 1).await?;
-                        }
-                    }
-                    unknown_action => return Err(anyhow!("Unknown action: {unknown_action:?}")),
-                }
+    async fn handle_autocmd(&mut self, _autocmd: AutocmdEvent) -> Result<()> {
+        Ok(())
+    }
 
-                Ok(())
+    async fn handle_action(&mut self, action: PluginAction) -> Result<()> {
+        let PluginAction { method, params: _ } = action;
+        match method.as_str() {
+            Self::GENERATE_TOC => {
+                let curlnum = self.vim.line(".").await?;
+                let file = self.vim.current_buffer_path().await?;
+                let shiftwidth = self.vim.getbufvar("", "&shiftwidth").await?;
+                let mut toc = generate_toc(file, curlnum, shiftwidth)?;
+                let prev_line = self.vim.curbufline(curlnum - 1).await?;
+                if !prev_line.map(|line| line.is_empty()).unwrap_or(false) {
+                    toc.push_front(Default::default());
+                }
+                self.vim
+                    .exec("append_and_write", json!([curlnum - 1, toc]))?;
             }
+            Self::UPDATE_TOC => {
+                let file = self.vim.current_buffer_path().await?;
+                let bufnr = self.vim.bufnr("").await?;
+                if let Some((start, end)) = find_toc_range(&file)? {
+                    let shiftwidth = self.vim.getbufvar("", "&shiftwidth").await?;
+                    // TODO: skip update if the new doc is the same as the old one.
+                    let new_toc = generate_toc(file, start + 1, shiftwidth)?;
+                    self.vim.deletebufline(bufnr, start + 1, end + 1).await?;
+                    self.vim.exec("append_and_write", json!([start, new_toc]))?;
+                }
+            }
+            Self::DELETE_TOC => {
+                let file = self.vim.current_buffer_path().await?;
+                let bufnr = self.vim.bufnr("").await?;
+                if let Some((start, end)) = find_toc_range(file)? {
+                    self.vim.deletebufline(bufnr, start + 1, end + 1).await?;
+                }
+            }
+            unknown_action => return Err(anyhow!("Unknown action: {unknown_action:?}")),
         }
+
+        Ok(())
     }
 }
 

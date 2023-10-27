@@ -1,4 +1,4 @@
-use crate::stdio_server::input::{PluginAction, PluginEvent};
+use crate::stdio_server::input::{AutocmdEvent, PluginAction};
 use crate::stdio_server::plugin::ClapPlugin;
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
@@ -17,32 +17,31 @@ impl System {
 
 #[async_trait::async_trait]
 impl ClapPlugin for System {
-    async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
-        match plugin_event {
-            PluginEvent::Autocmd(_) => Ok(()),
-            PluginEvent::Action(plugin_action) => {
-                let PluginAction { method, params } = plugin_action;
-                match method.as_str() {
-                    Self::__NOTE_RECENT_FILES => {
-                        let bufnr: Vec<usize> = params.parse()?;
-                        let bufnr = bufnr
-                            .first()
-                            .ok_or(anyhow!("bufnr not found in `note_recent_files`"))?;
-                        let file_path: String = self.vim.expand(format!("#{bufnr}:p")).await?;
-                        crate::stdio_server::handler::messages::note_recent_file(file_path)
-                    }
-                    Self::OPEN_CONFIG => {
-                        let config_file = crate::config::config_file();
-                        self.vim
-                            .exec("execute", format!("edit {}", config_file.display()))
-                    }
-                    Self::LIST_PLUGINS => {
-                        // Handled upper level.
-                        Ok(())
-                    }
-                    _ => Ok(()),
-                }
+    async fn handle_autocmd(&mut self, _autocmd: AutocmdEvent) -> Result<()> {
+        Ok(())
+    }
+
+    async fn handle_action(&mut self, action: PluginAction) -> Result<()> {
+        let PluginAction { method, params } = action;
+        match method.as_str() {
+            Self::__NOTE_RECENT_FILES => {
+                let bufnr: Vec<usize> = params.parse()?;
+                let bufnr = bufnr
+                    .first()
+                    .ok_or(anyhow!("bufnr not found in `note_recent_files`"))?;
+                let file_path: String = self.vim.expand(format!("#{bufnr}:p")).await?;
+                crate::stdio_server::handler::messages::note_recent_file(file_path)
             }
+            Self::OPEN_CONFIG => {
+                let config_file = crate::config::config_file();
+                self.vim
+                    .exec("execute", format!("edit {}", config_file.display()))
+            }
+            Self::LIST_PLUGINS => {
+                // Handled upper level.
+                Ok(())
+            }
+            _ => Ok(()),
         }
     }
 }
