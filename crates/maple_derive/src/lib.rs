@@ -47,7 +47,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
 
     // Generate constants from the attribute values
     let constants = args_parsed.iter().map(|action| {
-        let (plugin_namespace, action_name) = if action.contains("/") {
+        let (plugin_namespace, action_name) = if action.contains('/') {
             let mut parts = action.split('/');
             (
                 parts
