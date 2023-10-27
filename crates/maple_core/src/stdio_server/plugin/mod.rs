@@ -64,7 +64,5 @@ mod tests {
     struct EmptyPlugin;
 
     #[test]
-    fn test_ClapPlugin() {
-        let expected = "";
-    }
+    fn test_clap_plugin_attribute() {}
 }
