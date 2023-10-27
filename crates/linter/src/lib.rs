@@ -166,9 +166,9 @@ where
 
     match filetype {
         "go" => {
-            let job = async move { linters::go::run_gopls(&source_file, &workspace_root).await };
+            // let job = async move { linters::go::run_gopls(&source_file, &workspace_root).await };
 
-            handles.push(spawn_linter_job(job, handler));
+            // handles.push(spawn_linter_job(job, handler));
         }
         "rust" => {
             handles

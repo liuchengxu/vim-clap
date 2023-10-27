@@ -1,28 +1,23 @@
 use crate::stdio_server::input::{PluginAction, PluginEvent};
-use crate::stdio_server::plugin::{ClapPlugin, PluginId};
+use crate::stdio_server::plugin::ClapPlugin;
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
+#[clap_plugin(id = "system")]
 #[actions("__note_recent_files", "open-config", "list-plugins")]
-pub struct SystemPlugin {
+pub struct System {
     vim: Vim,
 }
 
-impl SystemPlugin {
-    pub const ID: PluginId = PluginId::System;
-
+impl System {
     pub fn new(vim: Vim) -> Self {
         Self { vim }
     }
 }
 
 #[async_trait::async_trait]
-impl ClapPlugin for SystemPlugin {
-    fn id(&self) -> PluginId {
-        Self::ID
-    }
-
+impl ClapPlugin for System {
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
         match plugin_event {
             PluginEvent::Autocmd(_) => Ok(()),

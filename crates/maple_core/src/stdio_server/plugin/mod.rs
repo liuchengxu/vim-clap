@@ -16,33 +16,10 @@ pub use self::git::GitPlugin;
 pub use self::linter::LinterPlugin;
 pub use self::markdown::MarkdownPlugin;
 pub use self::syntax_highlighter::SyntaxHighlighterPlugin;
-pub use self::system::SystemPlugin;
+pub use self::system::System as SystemPlugin;
 pub use types::{Action, ActionType, ClapAction};
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub enum PluginId {
-    System,
-    Ctags,
-    CursorWordHighlighter,
-    SyntaxHighlighter,
-    Git,
-    Markdown,
-    Linter,
-}
-
-impl std::fmt::Display for PluginId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::System => write!(f, "system"),
-            Self::Ctags => write!(f, "ctags"),
-            Self::CursorWordHighlighter => write!(f, "cursor-word-highlighter"),
-            Self::SyntaxHighlighter => write!(f, "syntax-highlighter"),
-            Self::Git => write!(f, "git"),
-            Self::Markdown => write!(f, "markdown"),
-            Self::Linter => write!(f, "linter"),
-        }
-    }
-}
+pub type PluginId = &'static str;
 
 #[derive(Debug, Clone)]
 pub enum Toggle {
@@ -72,20 +49,20 @@ impl Toggle {
 /// A trait each Clap plugin must implement.
 #[async_trait::async_trait]
 pub trait ClapPlugin: ClapAction + Debug + Send + Sync + 'static {
-    fn id(&self) -> PluginId;
-
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()>;
 }
 
 #[cfg(test)]
 mod tests {
     #[derive(maple_derive::ClapPlugin)]
-    #[action("plugin/action1")]
-    #[action("plugin/action2")]
-    #[actions("plugin/action3", "plugin/action4")]
+    #[clap_plugin(id = "plugin")]
+    #[action("action1")]
+    #[action("action2")]
+    #[actions("action3", "action4")]
     struct TestPlugin;
 
     #[derive(maple_derive::ClapPlugin)]
+    #[clap_plugin(id = "empty")]
     struct EmptyPlugin;
 
     #[test]

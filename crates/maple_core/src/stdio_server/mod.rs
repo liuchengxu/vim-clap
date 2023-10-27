@@ -53,6 +53,12 @@ async fn initialize(
     let ext_map = initialize_filetype_map(&output);
     vim.exec("clap#ext#set", json![ext_map])?;
 
+    let (mut other_actions, mut system_actions): (Vec<_>, Vec<_>) =
+        actions.into_iter().partition(|action| action.contains('/'));
+    other_actions.sort();
+    system_actions.sort();
+    let mut actions = system_actions;
+    actions.extend(other_actions);
     vim.set_var("g:clap_actions", json![actions])?;
 
     tracing::debug!("Client initialized successfully");
@@ -279,7 +285,7 @@ impl Client {
                 self.service_manager.lock().notify_plugins(autocmd_event);
             }
             Event::Action((plugin_id, plugin_action)) => {
-                if plugin_id == PluginId::System && plugin_action.method == "list-plugins" {
+                if plugin_id == "system" && plugin_action.method == "list-plugins" {
                     let lines = self
                         .service_manager
                         .lock()

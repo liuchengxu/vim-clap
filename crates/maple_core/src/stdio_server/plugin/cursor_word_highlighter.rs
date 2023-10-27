@@ -1,5 +1,5 @@
 use crate::stdio_server::input::{AutocmdEventType, PluginEvent};
-use crate::stdio_server::plugin::{ClapPlugin, PluginId};
+use crate::stdio_server::plugin::ClapPlugin;
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
 use matcher::WordMatcher;
@@ -93,6 +93,7 @@ struct WinHighlights {
 }
 
 #[derive(Debug, maple_derive::ClapPlugin)]
+#[clap_plugin(id = "cursor-word-highlighter")]
 pub struct CursorWordHighlighter {
     vim: Vim,
     bufs: HashMap<usize, PathBuf>,
@@ -102,8 +103,6 @@ pub struct CursorWordHighlighter {
 }
 
 impl CursorWordHighlighter {
-    pub const ID: PluginId = PluginId::CursorWordHighlighter;
-
     pub fn new(vim: Vim) -> Self {
         let (ignore_extensions, ignore_file_names): (Vec<_>, Vec<_>) = crate::config::config()
             .plugin
@@ -234,10 +233,6 @@ impl CursorWordHighlighter {
 
 #[async_trait::async_trait]
 impl ClapPlugin for CursorWordHighlighter {
-    fn id(&self) -> PluginId {
-        Self::ID
-    }
-
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
         use AutocmdEventType::{
             BufDelete, BufEnter, BufLeave, BufWinEnter, BufWinLeave, CursorMoved, InsertEnter,

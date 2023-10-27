@@ -1,5 +1,5 @@
 use crate::stdio_server::input::AutocmdEventType;
-use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginEvent, PluginId, Toggle};
+use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginEvent, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use chrono::{TimeZone, Utc};
@@ -236,7 +236,8 @@ fn in_git_repo(filepath: &Path) -> Option<&Path> {
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[actions("git/blame", "git/open-current-line-in-browser", "git/toggle")]
+#[clap_plugin(id = "git")]
+#[actions("blame", "open-current-line-in-browser", "toggle")]
 pub struct GitPlugin {
     vim: Vim,
     bufs: HashMap<usize, (PathBuf, Git)>,
@@ -244,8 +245,6 @@ pub struct GitPlugin {
 }
 
 impl GitPlugin {
-    pub const ID: PluginId = PluginId::Git;
-
     pub fn new(vim: Vim) -> Self {
         Self {
             vim,
@@ -327,10 +326,6 @@ impl GitPlugin {
 
 #[async_trait::async_trait]
 impl ClapPlugin for GitPlugin {
-    fn id(&self) -> PluginId {
-        Self::ID
-    }
-
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
         match plugin_event {
             PluginEvent::Autocmd((autocmd_event_type, params)) => {

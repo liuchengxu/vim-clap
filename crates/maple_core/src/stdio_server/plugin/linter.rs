@@ -1,5 +1,5 @@
 use crate::stdio_server::input::{AutocmdEventType, PluginEvent};
-use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginId, Toggle};
+use crate::stdio_server::plugin::{ClapPlugin, PluginAction, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use linter::Diagnostic;
@@ -130,7 +130,8 @@ impl BufferLinterInfo {
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[actions("linter/lint", "linter/toggle", "linter/debug")]
+#[clap_plugin(id = "linter")]
+#[actions("lint", "toggle", "debug")]
 pub struct LinterPlugin {
     vim: Vim,
     bufs: HashMap<usize, BufferLinterInfo>,
@@ -138,8 +139,6 @@ pub struct LinterPlugin {
 }
 
 impl LinterPlugin {
-    pub const ID: PluginId = PluginId::Linter;
-
     pub fn new(vim: Vim) -> Self {
         Self {
             vim,
@@ -193,10 +192,6 @@ impl LinterPlugin {
 
 #[async_trait::async_trait]
 impl ClapPlugin for LinterPlugin {
-    fn id(&self) -> PluginId {
-        Self::ID
-    }
-
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
         match plugin_event {
             PluginEvent::Autocmd((autocmd_event_type, params)) => {

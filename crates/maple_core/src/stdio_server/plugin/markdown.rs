@@ -1,5 +1,5 @@
 use crate::stdio_server::input::{PluginAction, PluginEvent};
-use crate::stdio_server::plugin::{ClapPlugin, PluginId};
+use crate::stdio_server::plugin::ClapPlugin;
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
@@ -198,14 +198,13 @@ fn find_toc_range(input_file: impl AsRef<Path>) -> std::io::Result<Option<(usize
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[actions("markdown/generate-toc", "markdown/update-toc", "markdown/delete-toc")]
+#[clap_plugin(id = "markdown")]
+#[actions("generate-toc", "update-toc", "delete-toc")]
 pub struct MarkdownPlugin {
     vim: Vim,
 }
 
 impl MarkdownPlugin {
-    pub const ID: PluginId = PluginId::Markdown;
-
     pub fn new(vim: Vim) -> Self {
         Self { vim }
     }
@@ -213,10 +212,6 @@ impl MarkdownPlugin {
 
 #[async_trait::async_trait]
 impl ClapPlugin for MarkdownPlugin {
-    fn id(&self) -> PluginId {
-        Self::ID
-    }
-
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
         match plugin_event {
             PluginEvent::Autocmd(_) => Ok(()),

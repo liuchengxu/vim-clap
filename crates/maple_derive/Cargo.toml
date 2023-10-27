@@ -11,3 +11,4 @@ syn = { version = "2", features = ["full", "parsing"] }
 proc-macro2 = "1.0"
 quote = "1.0"
 types = { workspace = true }
+darling = "0.20.3"

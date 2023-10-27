@@ -70,6 +70,8 @@ pub trait ProgressUpdate<DisplayLines> {
 
 /// Plugin interfaces to users.
 pub trait ClapAction {
+    fn id(&self) -> &'static str;
+
     fn actions(&self, _action_type: ActionType) -> &[Action] {
         &[]
     }

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::stdio_server::input::{AutocmdEventType, PluginEvent};
-use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginId, Toggle};
+use crate::stdio_server::plugin::{ClapPlugin, PluginAction, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use highlighter::{SyntaxReference, TokenHighlight};
@@ -12,7 +12,8 @@ pub static HIGHLIGHTER: Lazy<highlighter::SyntaxHighlighter> =
     Lazy::new(highlighter::SyntaxHighlighter::new);
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[actions("syntax/on", "syntax/list-themes", "syntax/toggle")]
+#[clap_plugin(id = "syntax")]
+#[actions("on", "list-themes", "toggle")]
 pub struct SyntaxHighlighterPlugin {
     vim: Vim,
     bufs: HashMap<usize, String>,
@@ -20,8 +21,6 @@ pub struct SyntaxHighlighterPlugin {
 }
 
 impl SyntaxHighlighterPlugin {
-    pub const ID: PluginId = PluginId::SyntaxHighlighter;
-
     pub fn new(vim: Vim) -> Self {
         Self {
             vim,
@@ -118,10 +117,6 @@ pub fn highlight_lines(
 
 #[async_trait::async_trait]
 impl ClapPlugin for SyntaxHighlighterPlugin {
-    fn id(&self) -> PluginId {
-        Self::ID
-    }
-
     async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
         match plugin_event {
             PluginEvent::Autocmd((autocmd_event_type, params)) => {
