@@ -9,7 +9,6 @@ mod recent_files;
 pub mod searcher;
 pub mod stdio_server;
 pub mod tools;
-mod xlc;
 
 /// For benchmarks.
 pub use self::cache::find_largest_cache_digest;
