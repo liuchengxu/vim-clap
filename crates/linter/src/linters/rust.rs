@@ -147,7 +147,7 @@ fn process_cargo_diagnostic(
         .filter_map(|span| {
             if span.file_name == source_filename {
                 if let (true, Some(label)) = (span.is_primary, &span.label) {
-                    primary_span_label.push_str(&label);
+                    primary_span_label.push_str(label);
                     if let Some(suggestion) = &span.suggested_replacement {
                         let message = format!("{} `{suggestion}`", cargo_diagnostic.message);
                         suggested_replacement.replace(message);
