@@ -29,7 +29,7 @@ impl ClapPlugin for SystemPlugin {
             PluginEvent::Action(plugin_action) => {
                 let PluginAction { method, params } = plugin_action;
                 match method.as_str() {
-                    Self::NOTE_RECENT_FILES => {
+                    Self::__NOTE_RECENT_FILES => {
                         let bufnr: Vec<usize> = params.parse()?;
                         let bufnr = bufnr
                             .first()

@@ -106,8 +106,7 @@ fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
             return err.to_compile_error();
         }
 
-
-        let action_name = action_operation.replace('-', "_");
+        let action_name = action_name.replace('-', "_");
 
         let uppercase_action = action_name.to_uppercase();
         let action_lit = Ident::new(&uppercase_action, ident.span());
