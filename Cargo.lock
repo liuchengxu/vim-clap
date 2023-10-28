@@ -1340,6 +1340,7 @@ name = "maple_derive"
 version = "0.1.0"
 dependencies = [
  "darling",
+ "once_cell",
  "proc-macro2",
  "quote",
  "syn",

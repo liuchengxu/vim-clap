@@ -1,6 +1,8 @@
 use std::collections::HashSet;
+use std::sync::Mutex;
 
 use darling::FromMeta;
+use once_cell::sync::Lazy;
 use proc_macro::{self, TokenStream};
 use proc_macro2::Span;
 use quote::quote;
@@ -13,6 +15,8 @@ pub fn clap_plugin_derive(input: TokenStream) -> TokenStream {
         Err(e) => e.to_compile_error().into(),
     }
 }
+
+static PLUGINS: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| Mutex::new(HashSet::new()));
 
 #[derive(Debug, Eq, PartialEq, FromMeta)]
 struct Plugin {
@@ -49,6 +53,12 @@ fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
     }
 
     let plugin_id = maybe_plugin_id.expect("Plugin id must be specified");
+
+    let mut registered_plugins = PLUGINS.lock().unwrap();
+    if !registered_plugins.insert(plugin_id.to_string()) {
+        panic!("Conflicting plugin id: {plugin_id}");
+    }
+    drop(registered_plugins);
 
     let DeriveInput { ident, .. } = input;
 
