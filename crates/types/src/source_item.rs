@@ -339,7 +339,7 @@ impl Ord for MatchedItem {
 
 impl PartialOrd for MatchedItem {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.rank.partial_cmp(&other.rank)
+        Some(self.cmp(other))
     }
 }
 

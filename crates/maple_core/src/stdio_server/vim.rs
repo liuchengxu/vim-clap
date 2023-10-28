@@ -507,6 +507,11 @@ impl Vim {
         let value: Value = self.call("win_is_valid", [winid]).await?;
         Ok(from_vim_bool(value))
     }
+
+    pub async fn buf_is_valid(&self, buf: usize) -> Result<bool> {
+        let value: Value = self.call("buf_is_valid", [buf]).await?;
+        Ok(from_vim_bool(value))
+    }
 }
 
 #[cfg(test)]

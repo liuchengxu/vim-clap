@@ -4,8 +4,10 @@ use regex::Regex;
 use std::path::Path;
 
 // /home/xlc/Data0/src/github.com/ethereum-optimism/optimism/op-node/rollup/superchain.go:38:27-43: undefined: eth.XXXXSystemConfig
-static RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?m)^([^:]+):([0-9]+):([0-9]+)-([0-9]+): (.+)$").unwrap());
+static RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?m)^([^:]+):([0-9]+):([0-9]+)-([0-9]+): (.+)$")
+        .expect("Regex for parsing gopls output must be correct otherwise the format is changed")
+});
 
 pub async fn run_gopls(source_file: &Path, workspace_root: &Path) -> std::io::Result<LinterResult> {
     // Use relative path as the workspace is specified explicitly, otherwise it's
@@ -29,13 +31,15 @@ pub async fn run_gopls(source_file: &Path, workspace_root: &Path) -> std::io::Re
             for (_, [_path, line, column_start, column_end, message]) in
                 RE.captures_iter(line).map(|c| c.extract())
             {
-                let line = line.parse::<usize>().expect("line must be a Number");
-                let column_start = column_start
-                    .parse::<usize>()
-                    .expect("column_start must be a Number");
-                let column_end = column_end
-                    .parse::<usize>()
-                    .expect("column_end must be a Number");
+                let Ok(line) = line.parse::<usize>() else {
+                    continue;
+                };
+                let Ok(column_start) = column_start.parse::<usize>() else {
+                    continue;
+                };
+                let Ok(column_end) = column_end.parse::<usize>() else {
+                    continue;
+                };
                 diagnostics.push(Diagnostic {
                     spans: vec![DiagnosticSpan {
                         line_start: line,

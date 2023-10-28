@@ -1,7 +1,5 @@
-use crate::stdio_server::input::{AutocmdEventType, PluginEvent};
-use crate::stdio_server::plugin::{
-    Action, ActionType, ClapAction, ClapPlugin, PluginAction, PluginId, Toggle,
-};
+use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
+use crate::stdio_server::plugin::{ClapPlugin, PluginAction, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use linter::Diagnostic;
@@ -16,7 +14,7 @@ use tokio::task::JoinHandle;
 #[derive(Debug, Clone)]
 struct ShareableDiagnostics {
     refreshed: Arc<AtomicBool>,
-    diagnostics: Arc<RwLock<Vec<Diagnostic>>>,
+    inner: Arc<RwLock<Vec<Diagnostic>>>,
 }
 
 impl Serialize for ShareableDiagnostics {
@@ -24,19 +22,19 @@ impl Serialize for ShareableDiagnostics {
     where
         S: serde::Serializer,
     {
-        self.diagnostics.read().serialize(serializer)
+        self.inner.read().serialize(serializer)
     }
 }
 
 impl ShareableDiagnostics {
     fn extend(&self, new: Vec<Diagnostic>) {
-        let mut diagnostics = self.diagnostics.write();
+        let mut diagnostics = self.inner.write();
         diagnostics.extend(new);
     }
 
     fn reset(&self) {
         self.refreshed.store(false, Ordering::SeqCst);
-        let mut diagnostics = self.diagnostics.write();
+        let mut diagnostics = self.inner.write();
         diagnostics.clear();
     }
 }
@@ -79,7 +77,7 @@ impl linter::HandleLinterResult for LinterResultHandler {
             self.shareable_diagnostics.extend(new_diagnostics);
         } else {
             // Remove the potential duplicated results from multiple linters.
-            let existing = self.shareable_diagnostics.diagnostics.read();
+            let existing = self.shareable_diagnostics.inner.read();
             let mut followup_diagnostics = new_diagnostics
                 .into_iter()
                 .filter(|d| !existing.contains(d))
@@ -124,14 +122,15 @@ impl BufferLinterInfo {
             source_file,
             diagnostics: ShareableDiagnostics {
                 refreshed: Arc::new(AtomicBool::new(false)),
-                diagnostics: Arc::new(RwLock::new(Vec::new())),
+                inner: Arc::new(RwLock::new(Vec::new())),
             },
             current_jobs: Arc::new(Mutex::new(Vec::new())),
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, maple_derive::ClapPlugin)]
+#[clap_plugin(id = "linter", actions = ["lint", "debug", "toggle"])]
 pub struct LinterPlugin {
     vim: Vim,
     bufs: HashMap<usize, BufferLinterInfo>,
@@ -139,16 +138,6 @@ pub struct LinterPlugin {
 }
 
 impl LinterPlugin {
-    pub const ID: PluginId = PluginId::Linter;
-
-    const LINT: &'static str = "linter/lint";
-    const LINT_ACTION: Action = Action::callable(Self::LINT);
-
-    const TOGGLE: &'static str = "linter/toggle";
-    const TOGGLE_ACTION: Action = Action::callable(Self::TOGGLE);
-
-    const ACTIONS: &[Action] = &[Self::LINT_ACTION, Self::TOGGLE_ACTION];
-
     pub fn new(vim: Vim) -> Self {
         Self {
             vim,
@@ -200,130 +189,123 @@ impl LinterPlugin {
     }
 }
 
-impl ClapAction for LinterPlugin {
-    fn actions(&self, _action_type: ActionType) -> &[Action] {
-        Self::ACTIONS
-    }
-}
-
 #[async_trait::async_trait]
 impl ClapPlugin for LinterPlugin {
-    fn id(&self) -> PluginId {
-        Self::ID
+    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
+        use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
+
+        if self.toggle.is_off() {
+            return Ok(());
+        }
+
+        let (autocmd_event_type, params) = autocmd;
+
+        let bufnr = params.parse_bufnr()?;
+
+        match autocmd_event_type {
+            BufEnter => self.on_buf_enter(bufnr).await?,
+            BufWritePost => {
+                if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
+                    self.lint_buffer(bufnr, buf_linter_info)?;
+                }
+            }
+            BufDelete => {
+                self.bufs.remove(&bufnr);
+            }
+            CursorMoved => {
+                if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
+                    let lnum = self.vim.line(".").await?;
+                    let col = self.vim.col(".").await?;
+
+                    let diagnostics = buf_linter_info.diagnostics.inner.read();
+
+                    let current_diagnostics = diagnostics
+                        .iter()
+                        .filter(|d| d.spans.iter().any(|span| span.line_start == lnum))
+                        .collect::<Vec<_>>();
+
+                    tracing::debug!(
+                        "========= CursorMoved current_diagnostics: {current_diagnostics:?}"
+                    );
+                    if current_diagnostics.is_empty() {
+                        self.vim.bare_exec("clap#plugin#linter#clear_top_right")?;
+                    } else {
+                        let diagnostic_at_cursor = current_diagnostics
+                            .iter()
+                            .filter(|d| {
+                                d.spans
+                                    .iter()
+                                    .any(|span| col >= span.column_start && col < span.column_end)
+                            })
+                            .collect::<Vec<_>>();
+
+                        // Display the specific diagnostic if the cursor is on it, otherwise display all
+                        // the diagnostics in this line.
+                        if diagnostic_at_cursor.is_empty() {
+                            self.vim.exec(
+                                "clap#plugin#linter#display_top_right",
+                                [current_diagnostics],
+                            )?;
+                        } else {
+                            self.vim.exec(
+                                "clap#plugin#linter#display_top_right",
+                                [diagnostic_at_cursor],
+                            )?;
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        Ok(())
     }
 
-    async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
-        match plugin_event {
-            PluginEvent::Autocmd((autocmd_event_type, params)) => {
-                use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
+    async fn handle_action(&mut self, action: PluginAction) -> Result<()> {
+        let PluginAction { method, params: _ } = action;
+        match method.as_str() {
+            Self::LINT => {
+                let bufnr = self.vim.bufnr("").await?;
 
-                if self.toggle.is_off() {
+                if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
+                    let lnum = self.vim.line(".").await?;
+                    let diagnostics = buf_linter_info.diagnostics.inner.read();
+                    let current_diagnostics = diagnostics
+                        .iter()
+                        .filter(|d| d.spans.iter().any(|span| span.line_start == lnum))
+                        .collect::<Vec<_>>();
+
+                    tracing::debug!("========= current_diagnostics: {current_diagnostics:?}");
+                    for diagnostic in current_diagnostics {
+                        self.vim.echo_info(diagnostic.human_message())?;
+                    }
+
                     return Ok(());
                 }
 
-                let bufnr = params.parse_bufnr()?;
-
-                match autocmd_event_type {
-                    BufEnter => self.on_buf_enter(bufnr).await?,
-                    BufWritePost => {
-                        if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
-                            self.lint_buffer(bufnr, buf_linter_info)?;
-                        }
-                    }
-                    BufDelete => {
-                        self.bufs.remove(&bufnr);
-                    }
-                    CursorMoved => {
-                        if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
-                            let lnum = self.vim.line(".").await?;
-                            let col = self.vim.col(".").await?;
-
-                            let diagnostics = buf_linter_info.diagnostics.diagnostics.read();
-
-                            let current_diagnostics = diagnostics
-                                .iter()
-                                .filter(|d| d.spans.iter().any(|span| span.line_start == lnum))
-                                .collect::<Vec<_>>();
-
-                            tracing::debug!("========= CursorMoved current_diagnostics: {current_diagnostics:?}");
-                            if current_diagnostics.is_empty() {
-                                self.vim.bare_exec("clap#plugin#linter#clear_top_right")?;
-                            } else {
-                                let diagnostic_at_cursor = current_diagnostics
-                                    .iter()
-                                    .filter(|d| {
-                                        d.spans.iter().any(|span| {
-                                            col >= span.column_start && col < span.column_end
-                                        })
-                                    })
-                                    .collect::<Vec<_>>();
-
-                                // Display the specific diagnostic if the cursor is on it, otherwise display all
-                                // the diagnostics in this line.
-                                if diagnostic_at_cursor.is_empty() {
-                                    self.vim.exec(
-                                        "clap#plugin#linter#display_top_right",
-                                        [current_diagnostics],
-                                    )?;
-                                } else {
-                                    self.vim.exec(
-                                        "clap#plugin#linter#display_top_right",
-                                        [diagnostic_at_cursor],
-                                    )?;
-                                }
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-
-                Ok(())
+                self.on_buf_enter(bufnr).await?;
             }
-            PluginEvent::Action(plugin_action) => {
-                let PluginAction { method, params: _ } = plugin_action;
-                match method.as_str() {
-                    Self::LINT => {
-                        let bufnr = self.vim.bufnr("").await?;
-
-                        if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
-                            let lnum = self.vim.line(".").await?;
-                            let diagnostics = buf_linter_info.diagnostics.diagnostics.read();
-                            let current_diagnostics = diagnostics
-                                .iter()
-                                .filter(|d| d.spans.iter().any(|span| span.line_start == lnum))
-                                .collect::<Vec<_>>();
-
-                            tracing::debug!(
-                                "========= current_diagnostics: {current_diagnostics:?}"
-                            );
-                            for diagnostic in current_diagnostics {
-                                self.vim.echo_info(diagnostic.human_message())?;
-                            }
-
-                            return Ok(());
+            Self::DEBUG => {
+                let bufnr = self.vim.bufnr("").await?;
+                self.on_buf_enter(bufnr).await?;
+            }
+            Self::TOGGLE => {
+                match self.toggle {
+                    Toggle::On => {
+                        for bufnr in self.bufs.keys() {
+                            self.vim.exec("clap#plugin#linter#toggle_off", [bufnr])?;
                         }
-
+                    }
+                    Toggle::Off => {
+                        let bufnr = self.vim.bufnr("").await?;
                         self.on_buf_enter(bufnr).await?;
                     }
-                    Self::TOGGLE => {
-                        match self.toggle {
-                            Toggle::On => {
-                                for bufnr in self.bufs.keys() {
-                                    self.vim.exec("clap#plugin#linter#toggle_off", [bufnr])?;
-                                }
-                            }
-                            Toggle::Off => {
-                                let bufnr = self.vim.bufnr("").await?;
-                                self.on_buf_enter(bufnr).await?;
-                            }
-                        }
-                        self.toggle.switch();
-                    }
-                    unknown_action => return Err(anyhow!("Unknown action: {unknown_action:?}")),
                 }
-
-                Ok(())
+                self.toggle.switch();
             }
+            unknown_action => return Err(anyhow!("Unknown action: {unknown_action:?}")),
         }
+
+        Ok(())
     }
 }

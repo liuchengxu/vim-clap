@@ -10,6 +10,7 @@ members = [
     "cli",
     "linter",
     "maple_core",
+    "maple_derive",
     "matcher",
     "matcher/extracted_fzy",
     "paths",
@@ -70,6 +71,7 @@ highlighter = { path = "./highlighter" }
 icon = { path = "./icon" }
 linter = { path = "./linter" }
 maple_core = { path = "./maple_core" }
+maple_derive = { path = "./maple_derive" }
 matcher = { path = "./matcher" }
 paths = { path = "./paths" }
 pattern = { path = "./pattern" }

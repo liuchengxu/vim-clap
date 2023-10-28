@@ -1,7 +1,5 @@
-use crate::stdio_server::input::AutocmdEventType;
-use crate::stdio_server::plugin::{
-    Action, ActionType, ClapAction, ClapPlugin, PluginAction, PluginEvent, PluginId, Toggle,
-};
+use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
+use crate::stdio_server::plugin::{ClapPlugin, PluginAction, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use chrono::{TimeZone, Utc};
@@ -237,7 +235,8 @@ fn in_git_repo(filepath: &Path) -> Option<&Path> {
         .flatten()
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, maple_derive::ClapPlugin)]
+#[clap_plugin(id = "git", actions = ["blame", "open-current-line-in-browser", "toggle"])]
 pub struct GitPlugin {
     vim: Vim,
     bufs: HashMap<usize, (PathBuf, Git)>,
@@ -245,24 +244,6 @@ pub struct GitPlugin {
 }
 
 impl GitPlugin {
-    pub const ID: PluginId = PluginId::Git;
-
-    const BLAME: &'static str = "git/blame";
-    const BLAME_ACTION: Action = Action::callable(Self::BLAME);
-
-    const OPEN_CURRENT_LINE_IN_BROWSER: &'static str = "git/open-current-line-in-browser";
-    const OPEN_CURRENT_LINE_IN_BROWSER_ACTION: Action =
-        Action::callable(Self::OPEN_CURRENT_LINE_IN_BROWSER);
-
-    const TOGGLE: &'static str = "git/toggle";
-    const TOGGLE_ACTION: Action = Action::callable(Self::TOGGLE);
-
-    const ACTIONS: &[Action] = &[
-        Self::BLAME_ACTION,
-        Self::OPEN_CURRENT_LINE_IN_BROWSER_ACTION,
-        Self::TOGGLE_ACTION,
-    ];
-
     pub fn new(vim: Vim) -> Self {
         Self {
             vim,
@@ -342,107 +323,96 @@ impl GitPlugin {
     }
 }
 
-impl ClapAction for GitPlugin {
-    fn actions(&self, _action_type: ActionType) -> &[Action] {
-        Self::ACTIONS
-    }
-}
-
 #[async_trait::async_trait]
 impl ClapPlugin for GitPlugin {
-    fn id(&self) -> PluginId {
-        Self::ID
+    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
+        use AutocmdEventType::{BufDelete, BufEnter, BufLeave, CursorMoved, InsertEnter};
+
+        let (autocmd_event_type, params) = autocmd;
+
+        if self.toggle.is_off() {
+            return Ok(());
+        }
+
+        let bufnr = params.parse_bufnr()?;
+
+        match autocmd_event_type {
+            BufEnter => {
+                self.try_track_buffer(bufnr).await?;
+                self.on_cursor_moved(bufnr).await?;
+            }
+            BufDelete => {
+                self.bufs.remove(&bufnr);
+            }
+            InsertEnter | BufLeave => {
+                self.vim.exec("clap#plugin#git#clear_blame_info", [bufnr])?;
+            }
+            CursorMoved => self.on_cursor_moved(bufnr).await?,
+            _ => {}
+        }
+
+        Ok(())
     }
 
-    async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()> {
-        match plugin_event {
-            PluginEvent::Autocmd((autocmd_event_type, params)) => {
-                use AutocmdEventType::{BufDelete, BufEnter, BufLeave, CursorMoved, InsertEnter};
+    async fn handle_action(&mut self, action: PluginAction) -> Result<()> {
+        let PluginAction { method, params: _ } = action;
+        match method.as_str() {
+            Self::TOGGLE => {
+                match self.toggle {
+                    Toggle::On => {
+                        for bufnr in self.bufs.keys() {
+                            self.vim.exec("clap#plugin#git#clear_blame_info", [bufnr])?;
+                        }
+                    }
+                    Toggle::Off => {
+                        let bufnr = self.vim.bufnr("").await?;
 
-                if self.toggle.is_off() {
-                    return Ok(());
-                }
-
-                let bufnr = params.parse_bufnr()?;
-
-                match autocmd_event_type {
-                    BufEnter => {
-                        self.try_track_buffer(bufnr).await?;
                         self.on_cursor_moved(bufnr).await?;
                     }
-                    BufDelete => {
-                        self.bufs.remove(&bufnr);
-                    }
-                    InsertEnter | BufLeave => {
-                        self.vim.exec("clap#plugin#git#clear_blame_info", [bufnr])?;
-                    }
-                    CursorMoved => self.on_cursor_moved(bufnr).await?,
-                    _ => {}
                 }
-
-                Ok(())
+                self.toggle.switch();
             }
-            PluginEvent::Action(plugin_action) => {
-                let PluginAction { method, params: _ } = plugin_action;
-                match method.as_str() {
-                    Self::TOGGLE => {
-                        match self.toggle {
-                            Toggle::On => {
-                                for bufnr in self.bufs.keys() {
-                                    self.vim.exec("clap#plugin#git#clear_blame_info", [bufnr])?;
-                                }
-                            }
-                            Toggle::Off => {
-                                let bufnr = self.vim.bufnr("").await?;
+            Self::OPEN_CURRENT_LINE_IN_BROWSER => {
+                let buf_path = self.vim.current_buffer_path().await?;
+                let filepath = PathBuf::from(buf_path);
 
-                                self.on_cursor_moved(bufnr).await?;
-                            }
-                        }
-                        self.toggle.switch();
-                    }
-                    Self::OPEN_CURRENT_LINE_IN_BROWSER => {
-                        let buf_path = self.vim.current_buffer_path().await?;
-                        let filepath = PathBuf::from(buf_path);
+                let Some(git_root) = in_git_repo(&filepath) else {
+                    return Ok(());
+                };
 
-                        let Some(git_root) = in_git_repo(&filepath) else {
-                            return Ok(());
-                        };
+                let git = Git::init(git_root.to_path_buf())?;
 
-                        let git = Git::init(git_root.to_path_buf())?;
+                let relative_path = filepath.strip_prefix(&git.repo)?;
 
-                        let relative_path = filepath.strip_prefix(&git.repo)?;
+                let stdout = git.fetch_origin_url()?;
+                let remote_url = stdout.trim();
 
-                        let stdout = git.fetch_origin_url()?;
-                        let remote_url = stdout.trim();
+                // https://github.com/liuchengxu/vim-clap{.git}
+                let remote_url = remote_url.strip_suffix(".git").unwrap_or(remote_url);
 
-                        // https://github.com/liuchengxu/vim-clap{.git}
-                        let remote_url = remote_url.strip_suffix(".git").unwrap_or(remote_url);
+                let Ok(stdout) = git.fetch_rev_parse("HEAD") else {
+                    return Ok(());
+                };
 
-                        let Ok(stdout) = git.fetch_rev_parse("HEAD") else {
-                            return Ok(());
-                        };
+                let Some(rev) = stdout.split('\n').next() else {
+                    return Ok(());
+                };
 
-                        let Some(rev) = stdout.split('\n').next() else {
-                            return Ok(());
-                        };
+                let lnum = self.vim.line(".").await?;
+                let commit_url = format!(
+                    "{remote_url}/blob/{rev}/{}#L{lnum}",
+                    relative_path.display()
+                );
 
-                        let lnum = self.vim.line(".").await?;
-                        let commit_url = format!(
-                            "{remote_url}/blob/{rev}/{}#L{lnum}",
-                            relative_path.display()
-                        );
-
-                        if let Err(e) = webbrowser::open(&commit_url) {
-                            self.vim
-                                .echo_warn(format!("Failed to open {commit_url}: {e:?}"))?;
-                        }
-                    }
-                    Self::BLAME => self.show_blame_info().await?,
-                    unknown_action => return Err(anyhow!("Unknown action: {unknown_action:?}")),
+                if let Err(e) = webbrowser::open(&commit_url) {
+                    self.vim
+                        .echo_warn(format!("Failed to open {commit_url}: {e:?}"))?;
                 }
-
-                Ok(())
             }
+            Self::BLAME => self.show_blame_info().await?,
+            unknown_action => return Err(anyhow!("Unknown action: {unknown_action:?}")),
         }
+
+        Ok(())
     }
 }

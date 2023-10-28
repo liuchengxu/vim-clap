@@ -37,6 +37,7 @@ webbrowser = { workspace = true }
 
 dirs = { workspace = true }
 dumb_analyzer = { workspace = true }
+maple_derive = { workspace = true }
 filter = { workspace = true }
 highlighter = { workspace = true }
 icon = { workspace = true }

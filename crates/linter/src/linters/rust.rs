@@ -138,11 +138,21 @@ fn process_cargo_diagnostic(
         return None;
     }
 
+    let mut primary_span_label = String::default();
+    let mut suggested_replacement = None;
+
     let spans = cargo_diagnostic
         .spans
         .iter()
         .filter_map(|span| {
             if span.file_name == source_filename {
+                if let (true, Some(label)) = (span.is_primary, &span.label) {
+                    primary_span_label.push_str(label);
+                    if let Some(suggestion) = &span.suggested_replacement {
+                        let message = format!("{} `{suggestion}`", cargo_diagnostic.message);
+                        suggested_replacement.replace(message);
+                    }
+                }
                 Some(DiagnosticSpan {
                     line_start: span.line_start,
                     line_end: span.line_end,
@@ -155,15 +165,41 @@ fn process_cargo_diagnostic(
         })
         .collect::<Vec<_>>();
 
+    cargo_diagnostic.children.iter().for_each(|diagnostic| {
+        // Stop at the first suggested_replacement.
+        let _ = diagnostic.spans.iter().try_for_each(|span| {
+            if span.file_name == source_filename {
+                if let (true, Some(suggestion)) = (span.is_primary, &span.suggested_replacement) {
+                    let message = format!("{} `{suggestion}`", diagnostic.message);
+                    suggested_replacement.replace(message);
+                    return Err(());
+                }
+            }
+            Ok(())
+        });
+    });
+
     if spans.is_empty() {
         return None;
+    }
+
+    // Enrich the display message by merging the potential primary span label.
+    let mut message = cargo_diagnostic.message;
+    if !primary_span_label.is_empty() {
+        message.push_str(", ");
+        message.push_str(&primary_span_label);
+    }
+
+    if let Some(suggestion) = suggested_replacement {
+        message.push_str(", ");
+        message.push_str(&suggestion);
     }
 
     Some(Diagnostic {
         spans,
         code,
         severity,
-        message: cargo_diagnostic.message,
+        message,
     })
 }
 

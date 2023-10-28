@@ -6,7 +6,7 @@ mod markdown;
 pub mod syntax_highlighter;
 mod system;
 
-use crate::stdio_server::input::{PluginAction, PluginEvent};
+use crate::stdio_server::input::{AutocmdEvent, PluginAction};
 use anyhow::Result;
 use std::fmt::Debug;
 
@@ -16,55 +16,10 @@ pub use self::git::GitPlugin;
 pub use self::linter::LinterPlugin;
 pub use self::markdown::MarkdownPlugin;
 pub use self::syntax_highlighter::SyntaxHighlighterPlugin;
-pub use self::system::SystemPlugin;
+pub use self::system::System as SystemPlugin;
+pub use types::{Action, ActionType, ClapAction};
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub enum PluginId {
-    System,
-    Ctags,
-    CursorWordHighlighter,
-    SyntaxHighlighter,
-    Git,
-    Markdown,
-    Linter,
-}
-
-impl std::fmt::Display for PluginId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::System => write!(f, "system"),
-            Self::Ctags => write!(f, "ctags"),
-            Self::CursorWordHighlighter => write!(f, "cursor-word-highlighter"),
-            Self::SyntaxHighlighter => write!(f, "syntax-highlighter"),
-            Self::Git => write!(f, "git"),
-            Self::Markdown => write!(f, "markdown"),
-            Self::Linter => write!(f, "linter"),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Action {
-    pub ty: ActionType,
-    pub method: &'static str,
-}
-
-impl Action {
-    pub const fn callable(method: &'static str) -> Self {
-        Self {
-            ty: ActionType::Callable,
-            method,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum ActionType {
-    /// Actions that users can interact with.
-    Callable,
-    /// All actions.
-    All,
-}
+pub type PluginId = &'static str;
 
 #[derive(Debug, Clone)]
 pub enum Toggle {
@@ -91,17 +46,23 @@ impl Toggle {
     }
 }
 
-/// Plugin interfaces to users.
-pub trait ClapAction {
-    fn actions(&self, _action_type: ActionType) -> &[Action] {
-        &[]
-    }
-}
-
 /// A trait each Clap plugin must implement.
 #[async_trait::async_trait]
 pub trait ClapPlugin: ClapAction + Debug + Send + Sync + 'static {
-    fn id(&self) -> PluginId;
+    async fn handle_action(&mut self, action: PluginAction) -> Result<()>;
+    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()>;
+}
 
-    async fn on_plugin_event(&mut self, plugin_event: PluginEvent) -> Result<()>;
+#[cfg(test)]
+mod tests {
+    #[derive(maple_derive::ClapPlugin)]
+    #[clap_plugin(id = "plugin", actions = ["action1", "action2"])]
+    struct TestPlugin;
+
+    #[derive(maple_derive::ClapPlugin)]
+    #[clap_plugin(id = "empty")]
+    struct EmptyPlugin;
+
+    #[test]
+    fn test_clap_plugin_attribute() {}
 }

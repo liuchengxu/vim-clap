@@ -44,6 +44,10 @@ if s:is_nvim
     return nvim_win_is_valid(a:winid)
   endfunction
 
+  function! s:api.buf_is_valid(buf) abort
+    return nvim_buf_is_valid(a:buf)
+  endfunction
+
   function! s:api.get_var(name) abort
     return nvim_get_var(a:name)
   endfunction
@@ -52,10 +56,13 @@ else
     return win_screenpos(a:winid) != [0, 0]
   endfunction
 
+  function! s:api.buf_is_valid(buf) abort
+    return bufexists(a:buf) ? v:true : v:false
+  endfunction
+
   function! s:api.get_var(name) abort
     return get(g:, a:name, v:null)
   endfunction
-
 endif
 
 " The leading icon is stripped.

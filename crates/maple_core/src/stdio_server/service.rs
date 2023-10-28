@@ -275,8 +275,12 @@ impl PluginSession {
                 tokio::select! {
                   maybe_plugin_event = self.plugin_events.recv() => {
                       if let Some(plugin_event) = maybe_plugin_event {
-                          if let Err(err) = self.plugin.on_plugin_event(plugin_event).await {
-                              tracing::error!(?err, "Failed to process plugin_event");
+                          let res = match plugin_event.clone() {
+                              PluginEvent::Autocmd(autocmd) => self.plugin.handle_autocmd(autocmd).await,
+                              PluginEvent::Action(action) => self.plugin.handle_action(action).await,
+                          };
+                          if let Err(err) = res {
+                              tracing::error!(?err, id = self.plugin.id(), "Failed to process {plugin_event:?}");
                           }
                       } else {
                           break;
@@ -313,8 +317,14 @@ impl PluginSession {
                                     pending_plugin_event.replace(plugin_event);
                                     notification_dirty = true;
                                     notification_timer.as_mut().reset(Instant::now() + event_delay);
-                                } else if let Err(err) = self.plugin.on_plugin_event(plugin_event.clone()).await {
-                                    tracing::error!(?err, "[{id}] Failed to process plugin event: {plugin_event:?}");
+                                } else {
+                                    let res = match plugin_event.clone() {
+                                        PluginEvent::Autocmd(autocmd) => self.plugin.handle_autocmd(autocmd).await,
+                                        PluginEvent::Action(action) => self.plugin.handle_action(action).await,
+                                    };
+                                    if let Err(err) = res {
+                                        tracing::error!(?err, id, "Failed to process {plugin_event:?}");
+                                    }
                                 }
                             }
                             None => break, // channel has closed.
@@ -325,9 +335,13 @@ impl PluginSession {
                         notification_timer.as_mut().reset(Instant::now() + NEVER);
 
                         if let Some(autocmd) = pending_plugin_event.take() {
-                          if let Err(err) = self.plugin.on_plugin_event(autocmd.clone()).await {
-                              tracing::error!(?err, "[{id}] Failed to process debounced plugin event {autocmd:?}");
-                          }
+                            let res = match autocmd.clone() {
+                                PluginEvent::Autocmd(autocmd) => self.plugin.handle_autocmd(autocmd).await,
+                                PluginEvent::Action(action) => self.plugin.handle_action(action).await,
+                            };
+                            if let Err(err) = res {
+                                tracing::error!(?err, id, "Failed to process {autocmd:?}");
+                            }
                         }
                     }
                 }
