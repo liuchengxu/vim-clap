@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
 
-$version = 'v0.46'
+$version = 'v0.47'
 $APP = 'maple'
 $url = "https://github.com/liuchengxu/vim-clap/releases/download/$version/$APP-"
 $output = "$PSScriptRoot\bin\$APP.exe"
