@@ -17,7 +17,7 @@ function! clap#plugin#cursorword#add_highlights(word_highlights) abort
   if match_id > -1
     call add(match_ids, match_id)
   endif
-  for [lnum, col] in a:word_highlights.other_words_highlight
+  for [lnum, col] in a:word_highlights.twins_words_highlight
     let match_id = matchaddpos('ClapCursorWordTwins', [[lnum, col+1, cword_len]])
     if match_id > -1
       call add(match_ids, match_id)

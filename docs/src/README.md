@@ -15,9 +15,9 @@ Vim-clap stands as a comprehensive and efficient solution, providing powerful fu
 
 [More screenshots](https://github.com/liuchengxu/vim-clap/issues/1)
 
-Vim-clap was initially written in pure VimScript, but later incorporated a Rust dependency to enhance performance. Presently, the Rust binary `maple` is a must-have for ensuring smooth and optimal functionality.
-
 ## Features
+
+Vim-clap was initially written in pure VimScript, but later incorporated a Rust dependency to enhance performance. Presently, the Rust binary `maple` is a must-have for ensuring smooth and optimal functionality. The principle of Vim-Clap in this regard is to offload all the heavy computation to the Rust backend and make Vim/NeoVim a super lightweight layer focusing on UI.
 
 - [x] Blazingly fast thanks to the powerful Rust backend
 - [x] Consistent command interface with [clap-rs/clap](https://github.com/clap-rs/clap)

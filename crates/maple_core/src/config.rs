@@ -107,7 +107,7 @@ impl Default for LogConfig {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
-pub struct CursorWordHighlighterConfig {
+pub struct CursorWordConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
     /// Whether to ignore the comment line
@@ -116,7 +116,7 @@ pub struct CursorWordHighlighterConfig {
     pub ignore_files: String,
 }
 
-impl Default for CursorWordHighlighterConfig {
+impl Default for CursorWordConfig {
     fn default() -> Self {
         Self {
             enable: false,
@@ -171,7 +171,7 @@ pub struct LinterPluginConfig {
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct PluginConfig {
-    pub cursor_word_highlighter: CursorWordHighlighterConfig,
+    pub cursorword: CursorWordConfig,
     pub markdown: MarkdownPluginConfig,
     pub ctags: CtagsPluginConfig,
     pub git: GitPluginConfig,

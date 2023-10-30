@@ -29,7 +29,7 @@ Additional requirement means the potential extra tool needed for the particular 
 | `Clap commits`                         | Git commits                                            | **[git][git]**                                                          |
 | `Clap gfiles` or `Clap git_files`      | Files managed by git                                   | **[git][git]**                                                          |
 | `Clap git_diff_files`                  | Files managed by git and having uncommitted changes    | **[git][git]**                                                          |
-| `Clap live_grep`**<sup>+</sup>**       | Grep using word-regexp matcher                         | **[rg][rg]**                                                            |
+| _`Clap live_grep` (**deprecated**)_          | Grep using word-regexp matcher                         | **[rg][rg]**                                                            |
 | `Clap dumb_jump`                       | Definitions/References using regexp with grep fallback | **[rg][rg]** with `--pcre2`                                             |
 | `Clap files`                           | Files                                                  | _none_
 | `Clap filer`                           | Ivy-like file explorer                                 | _none_

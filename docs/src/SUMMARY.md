@@ -12,3 +12,4 @@
     - [Search Syntax](providers/search_syntax.md)
 - [Clap Plugins](plugins/intro.md)
   - [Configuration](plugins/config.md)
+  - [Available Plugins](plugins/plugins.md)

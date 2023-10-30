@@ -125,11 +125,12 @@ impl Git {
             .stderr(Stdio::null())
             .spawn()?;
 
-        let lines = lines.into_iter().join("\n");
         let stdin = p
             .stdin
             .as_mut()
             .ok_or_else(|| anyhow!("stdin unavailable"))?;
+
+        let lines = lines.into_iter().join("\n");
         stdin.write_all(lines.as_bytes())?;
 
         let output = p.wait_with_output()?;
@@ -328,12 +329,11 @@ impl ClapPlugin for GitPlugin {
     async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
         use AutocmdEventType::{BufDelete, BufEnter, BufLeave, CursorMoved, InsertEnter};
 
-        let (autocmd_event_type, params) = autocmd;
-
         if self.toggle.is_off() {
             return Ok(());
         }
 
+        let (autocmd_event_type, params) = autocmd;
         let bufnr = params.parse_bufnr()?;
 
         match autocmd_event_type {

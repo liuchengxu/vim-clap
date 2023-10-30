@@ -6,7 +6,7 @@ use std::path::Path;
 // /home/xlc/Data0/src/github.com/ethereum-optimism/optimism/op-node/rollup/superchain.go:38:27-43: undefined: eth.XXXXSystemConfig
 static RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?m)^([^:]+):([0-9]+):([0-9]+)-([0-9]+): (.+)$")
-        .expect("Regex for parsing gopls output must be correct otherwise the format is changed")
+        .expect("Regex for parsing gopls output must be correct otherwise the upstream format must have been changed")
 });
 
 pub async fn run_gopls(source_file: &Path, workspace_root: &Path) -> std::io::Result<LinterResult> {

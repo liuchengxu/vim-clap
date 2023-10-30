@@ -4,26 +4,14 @@
 
 Vim-Clap was originally a mere Vim fuzzy picker plugin, however, the integration of a robust Rust backend unveiled the potential to implement various additional functionalities effortlessly, for enjoyable expermentation and potential performance enhancements.
 
-Note that the following plugins may not feature-complete as the alternatives, they are mainly created for the plugin author's uses. Bugs are expected as these plugins are not extensively tested, feel free to use if you are brave enough.
+Note that the vim-Clap plugins were mainly created for the plugin author's personal uses, thus they may not be feature-complete as their alternatives. Bugs are expected as these plugins are not extensively tested, feel free to use if you are brave enough.
 
-## ctags
 
-- Alternatives
-    - vista.vim
-
-## cursor-word-highlighter
+All the non-system plugins are disabled by default. To enable the plugins, you must create a [config file](./config.md) first and set `enable = true` explicitly for the plugins in the config file.
 
 ```toml
-[plugin.cursor-word-highlighter]
+[plugin.git]
 enable = true
 ```
 
-Highlight the word under the cursor.
-
-- Alternatives: [vim_current_word](https://github.com/dominikduda/vim_current_word), [vim-illuminate](https://github.com/RRethy/vim-illuminate), [vim-cursorword](https://github.com/itchyny/vim-cursorword), [vim-brightest](https://github.com/osyo-manga/vim-brightest)
-
-## git
-
-## markdown
-
-## linter
+Check out [Available Plugins](./plugins.md) for more info.

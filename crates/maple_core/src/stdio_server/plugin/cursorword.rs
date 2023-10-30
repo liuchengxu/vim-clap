@@ -97,7 +97,7 @@ struct CursorHighlights {
 
 #[derive(Debug, maple_derive::ClapPlugin)]
 #[clap_plugin(id = "cursorword")]
-pub struct CursorWordHighlighter {
+pub struct CursorWordPlugin {
     vim: Vim,
     bufs: HashMap<usize, PathBuf>,
     cursor_highlights: Option<CursorHighlights>,
@@ -105,11 +105,11 @@ pub struct CursorWordHighlighter {
     ignore_file_names: Vec<&'static str>,
 }
 
-impl CursorWordHighlighter {
+impl CursorWordPlugin {
     pub fn new(vim: Vim) -> Self {
         let (ignore_extensions, ignore_file_names): (Vec<_>, Vec<_>) = crate::config::config()
             .plugin
-            .cursor_word_highlighter
+            .cursorword
             .ignore_files
             .split(',')
             .partition(|s| s.starts_with("*."));
@@ -141,7 +141,7 @@ impl CursorWordHighlighter {
 
         if crate::config::config()
             .plugin
-            .cursor_word_highlighter
+            .cursorword
             .ignore_comment_line
         {
             if let Some(ext) = source_file.extension().and_then(|s| s.to_str()) {
@@ -172,10 +172,7 @@ impl CursorWordHighlighter {
         {
             let match_ids: Vec<i32> = self
                 .vim
-                .call(
-                    "clap#plugin#highlight_cursor_word#add_highlights",
-                    word_highlights,
-                )
+                .call("clap#plugin#cursorword#add_highlights", word_highlights)
                 .await?;
             return Ok(Some(CursorHighlights { match_ids, winid }));
         }
@@ -235,7 +232,7 @@ impl CursorWordHighlighter {
 }
 
 #[async_trait::async_trait]
-impl ClapPlugin for CursorWordHighlighter {
+impl ClapPlugin for CursorWordPlugin {
     async fn handle_action(&mut self, _action: PluginAction) -> Result<()> {
         Ok(())
     }

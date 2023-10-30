@@ -11,7 +11,7 @@ use anyhow::Result;
 use std::fmt::Debug;
 
 pub use self::ctags::CtagsPlugin;
-pub use self::cursorword::CursorWordHighlighter;
+pub use self::cursorword::CursorWordPlugin;
 pub use self::git::GitPlugin;
 pub use self::linter::LinterPlugin;
 pub use self::markdown::MarkdownPlugin;
