@@ -88,7 +88,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../index.html">Introduction</a></li><li class="chapter-item expanded affix "><li class="part-title">User Guide</li><li class="chapter-item expanded "><a href="../guide/installation.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../guide/install_rust.html"><strong aria-hidden="true">1.1.</strong> Install Rust Dependency</a></li></ol></li><li class="chapter-item expanded "><a href="../providers/intro.html"><strong aria-hidden="true">2.</strong> Clap Providers</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../providers/theme.html"><strong aria-hidden="true">2.1.</strong> Theme</a></li><li class="chapter-item expanded "><a href="../providers/keybindings.html"><strong aria-hidden="true">2.2.</strong> Keybindings</a></li><li class="chapter-item expanded "><a href="../providers/search_syntax.html"><strong aria-hidden="true">2.3.</strong> Search Syntax</a></li></ol></li><li class="chapter-item expanded "><a href="../plugins/intro.html" class="active"><strong aria-hidden="true">3.</strong> Clap Plugins</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../plugins/config.html"><strong aria-hidden="true">3.1.</strong> Configuration</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../index.html">Introduction</a></li><li class="chapter-item expanded affix "><li class="part-title">User Guide</li><li class="chapter-item expanded "><a href="../guide/installation.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../guide/install_rust.html"><strong aria-hidden="true">1.1.</strong> Install Rust Dependency</a></li></ol></li><li class="chapter-item expanded "><a href="../providers/intro.html"><strong aria-hidden="true">2.</strong> Clap Providers</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../providers/theme.html"><strong aria-hidden="true">2.1.</strong> Theme</a></li><li class="chapter-item expanded "><a href="../providers/keybindings.html"><strong aria-hidden="true">2.2.</strong> Keybindings</a></li><li class="chapter-item expanded "><a href="../providers/search_syntax.html"><strong aria-hidden="true">2.3.</strong> Search Syntax</a></li></ol></li><li class="chapter-item expanded "><a href="../plugins/intro.html" class="active"><strong aria-hidden="true">3.</strong> Clap Plugins</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../plugins/config.html"><strong aria-hidden="true">3.1.</strong> Configuration</a></li><li class="chapter-item expanded "><a href="../plugins/plugins.html"><strong aria-hidden="true">3.2.</strong> Available Plugins</a></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -176,26 +176,12 @@
 <p>WARN: This is an expermental feature, use at your own risk!</p>
 </blockquote>
 <p>Vim-Clap was originally a mere Vim fuzzy picker plugin, however, the integration of a robust Rust backend unveiled the potential to implement various additional functionalities effortlessly, for enjoyable expermentation and potential performance enhancements.</p>
-<p>Note that the following plugins may not feature-complete as the alternatives, they are mainly created for the plugin author's uses. Bugs are expected as these plugins are not extensively tested, feel free to use if you are brave enough.</p>
-<h2 id="ctags"><a class="header" href="#ctags">ctags</a></h2>
-<ul>
-<li>Alternatives
-<ul>
-<li>vista.vim</li>
-</ul>
-</li>
-</ul>
-<h2 id="cursor-word-highlighter"><a class="header" href="#cursor-word-highlighter">cursor-word-highlighter</a></h2>
-<pre><code class="language-toml">[plugin.cursor-word-highlighter]
+<p>Note that the vim-Clap plugins were mainly created for the plugin author's personal uses, thus they may not be feature-complete as their alternatives. Bugs are expected as these plugins are not extensively tested, feel free to use if you are brave enough.</p>
+<p>All the non-system plugins are disabled by default. To enable the plugins, you must create a <a href="./config.html">config file</a> first and set <code>enable = true</code> explicitly for the plugins in the config file.</p>
+<pre><code class="language-toml">[plugin.git]
 enable = true
 </code></pre>
-<p>Highlight the word under the cursor.</p>
-<ul>
-<li>Alternatives: <a href="https://github.com/dominikduda/vim_current_word">vim_current_word</a>, <a href="https://github.com/RRethy/vim-illuminate">vim-illuminate</a>, <a href="https://github.com/itchyny/vim-cursorword">vim-cursorword</a>, <a href="https://github.com/osyo-manga/vim-brightest">vim-brightest</a></li>
-</ul>
-<h2 id="git"><a class="header" href="#git">git</a></h2>
-<h2 id="markdown"><a class="header" href="#markdown">markdown</a></h2>
-<h2 id="linter"><a class="header" href="#linter">linter</a></h2>
+<p>Check out <a href="./plugins.html">Available Plugins</a> for more info.</p>
 
                     </main>
 

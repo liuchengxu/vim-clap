@@ -89,7 +89,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="index.html">Introduction</a></li><li class="chapter-item expanded affix "><li class="part-title">User Guide</li><li class="chapter-item expanded "><a href="guide/installation.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guide/install_rust.html"><strong aria-hidden="true">1.1.</strong> Install Rust Dependency</a></li></ol></li><li class="chapter-item expanded "><a href="providers/intro.html"><strong aria-hidden="true">2.</strong> Clap Providers</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="providers/theme.html"><strong aria-hidden="true">2.1.</strong> Theme</a></li><li class="chapter-item expanded "><a href="providers/keybindings.html"><strong aria-hidden="true">2.2.</strong> Keybindings</a></li><li class="chapter-item expanded "><a href="providers/search_syntax.html"><strong aria-hidden="true">2.3.</strong> Search Syntax</a></li></ol></li><li class="chapter-item expanded "><a href="plugins/intro.html"><strong aria-hidden="true">3.</strong> Clap Plugins</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="plugins/config.html"><strong aria-hidden="true">3.1.</strong> Configuration</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="index.html">Introduction</a></li><li class="chapter-item expanded affix "><li class="part-title">User Guide</li><li class="chapter-item expanded "><a href="guide/installation.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guide/install_rust.html"><strong aria-hidden="true">1.1.</strong> Install Rust Dependency</a></li></ol></li><li class="chapter-item expanded "><a href="providers/intro.html"><strong aria-hidden="true">2.</strong> Clap Providers</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="providers/theme.html"><strong aria-hidden="true">2.1.</strong> Theme</a></li><li class="chapter-item expanded "><a href="providers/keybindings.html"><strong aria-hidden="true">2.2.</strong> Keybindings</a></li><li class="chapter-item expanded "><a href="providers/search_syntax.html"><strong aria-hidden="true">2.3.</strong> Search Syntax</a></li></ol></li><li class="chapter-item expanded "><a href="plugins/intro.html"><strong aria-hidden="true">3.</strong> Clap Plugins</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="plugins/config.html"><strong aria-hidden="true">3.1.</strong> Configuration</a></li><li class="chapter-item expanded "><a href="plugins/plugins.html"><strong aria-hidden="true">3.2.</strong> Available Plugins</a></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -181,8 +181,8 @@
   <img width="400px" src="https://user-images.githubusercontent.com/8850248/73323347-24467380-4282-11ea-8dac-5ef5a1ee63bb.gif">
 </p>
 <p><a href="https://github.com/liuchengxu/vim-clap/issues/1">More screenshots</a></p>
-<p>Vim-clap was initially written in pure VimScript, but later incorporated a Rust dependency to enhance performance. Presently, the Rust binary <code>maple</code> is a must-have for ensuring smooth and optimal functionality.</p>
 <h2 id="features"><a class="header" href="#features">Features</a></h2>
+<p>Vim-clap was initially written in pure VimScript, but later incorporated a Rust dependency to enhance performance. Presently, the Rust binary <code>maple</code> is a must-have for ensuring smooth and optimal functionality. The principle of Vim-Clap in this regard is to offload all the heavy computation to the Rust backend and make Vim/NeoVim a super lightweight layer focusing on UI.</p>
 <ul>
 <li><input disabled="" type="checkbox" checked=""/>
 Blazingly fast thanks to the powerful Rust backend</li>
@@ -303,7 +303,7 @@ $ ./bin/maple version
 <tr><td style="text-align: left"><code>Clap commits</code></td><td style="text-align: left">Git commits</td><td style="text-align: left"><strong><a href="https://github.com/git/git">git</a></strong></td></tr>
 <tr><td style="text-align: left"><code>Clap gfiles</code> or <code>Clap git_files</code></td><td style="text-align: left">Files managed by git</td><td style="text-align: left"><strong><a href="https://github.com/git/git">git</a></strong></td></tr>
 <tr><td style="text-align: left"><code>Clap git_diff_files</code></td><td style="text-align: left">Files managed by git and having uncommitted changes</td><td style="text-align: left"><strong><a href="https://github.com/git/git">git</a></strong></td></tr>
-<tr><td style="text-align: left"><code>Clap live_grep</code><strong><sup>+</sup></strong></td><td style="text-align: left">Grep using word-regexp matcher</td><td style="text-align: left"><strong><a href="https://github.com/BurntSushi/ripgrep">rg</a></strong></td></tr>
+<tr><td style="text-align: left"><em><code>Clap live_grep</code> (<strong>deprecated</strong>)</em></td><td style="text-align: left">Grep using word-regexp matcher</td><td style="text-align: left"><strong><a href="https://github.com/BurntSushi/ripgrep">rg</a></strong></td></tr>
 <tr><td style="text-align: left"><code>Clap dumb_jump</code></td><td style="text-align: left">Definitions/References using regexp with grep fallback</td><td style="text-align: left"><strong><a href="https://github.com/BurntSushi/ripgrep">rg</a></strong> with <code>--pcre2</code></td></tr>
 <tr><td style="text-align: left"><code>Clap files</code></td><td style="text-align: left">Files</td><td style="text-align: left"><em>none</em></td></tr>
 <tr><td style="text-align: left"><code>Clap filer</code></td><td style="text-align: left">Ivy-like file explorer</td><td style="text-align: left"><em>none</em></td></tr>
@@ -492,26 +492,12 @@ Use <code>:q</code> to exit.</li>
 <p>WARN: This is an expermental feature, use at your own risk!</p>
 </blockquote>
 <p>Vim-Clap was originally a mere Vim fuzzy picker plugin, however, the integration of a robust Rust backend unveiled the potential to implement various additional functionalities effortlessly, for enjoyable expermentation and potential performance enhancements.</p>
-<p>Note that the following plugins may not feature-complete as the alternatives, they are mainly created for the plugin author's uses. Bugs are expected as these plugins are not extensively tested, feel free to use if you are brave enough.</p>
-<h2 id="ctags"><a class="header" href="#ctags">ctags</a></h2>
-<ul>
-<li>Alternatives
-<ul>
-<li>vista.vim</li>
-</ul>
-</li>
-</ul>
-<h2 id="cursor-word-highlighter"><a class="header" href="#cursor-word-highlighter">cursor-word-highlighter</a></h2>
-<pre><code class="language-toml">[plugin.cursor-word-highlighter]
+<p>Note that the vim-Clap plugins were mainly created for the plugin author's personal uses, thus they may not be feature-complete as their alternatives. Bugs are expected as these plugins are not extensively tested, feel free to use if you are brave enough.</p>
+<p>All the non-system plugins are disabled by default. To enable the plugins, you must create a <a href="plugins/./config.html">config file</a> first and set <code>enable = true</code> explicitly for the plugins in the config file.</p>
+<pre><code class="language-toml">[plugin.git]
 enable = true
 </code></pre>
-<p>Highlight the word under the cursor.</p>
-<ul>
-<li>Alternatives: <a href="https://github.com/dominikduda/vim_current_word">vim_current_word</a>, <a href="https://github.com/RRethy/vim-illuminate">vim-illuminate</a>, <a href="https://github.com/itchyny/vim-cursorword">vim-cursorword</a>, <a href="https://github.com/osyo-manga/vim-brightest">vim-brightest</a></li>
-</ul>
-<h2 id="git"><a class="header" href="#git">git</a></h2>
-<h2 id="markdown"><a class="header" href="#markdown">markdown</a></h2>
-<h2 id="linter"><a class="header" href="#linter">linter</a></h2>
+<p>Check out <a href="plugins/./plugins.html">Available Plugins</a> for more info.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
 <p>User config file is loaded from:</p>
 <ul>
@@ -529,6 +515,56 @@ max-level = &quot;debug&quot;
 # you can specify how the records are sorted using `tiebreak`.
 tiebreak = &quot;score,-begin,-end,-length&quot;
 </code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="available-plugins"><a class="header" href="#available-plugins">Available Plugins</a></h1>
+<h2 id="ctags"><a class="header" href="#ctags">ctags</a></h2>
+<ul>
+<li>Alternatives
+<ul>
+<li>vista.vim</li>
+</ul>
+</li>
+</ul>
+<h2 id="cursorword"><a class="header" href="#cursorword">cursorword</a></h2>
+<pre><code class="language-toml">[plugin.cursorword]
+enable = true
+</code></pre>
+<ul>
+<li>
+<p>Features</p>
+<ul>
+<li>highlight the word under the cursor.</li>
+</ul>
+</li>
+<li>
+<p>Alternatives</p>
+<ul>
+<li><a href="https://github.com/dominikduda/vim_current_word">vim_current_word</a></li>
+<li><a href="https://github.com/RRethy/vim-illuminate">vim-illuminate</a></li>
+<li><a href="https://github.com/itchyny/vim-cursorword">vim-cursorword</a></li>
+<li><a href="https://github.com/osyo-manga/vim-brightest">vim-brightest</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="git"><a class="header" href="#git">git</a></h2>
+<pre><code class="language-toml">[plugin.git]
+enable = true
+</code></pre>
+<ul>
+<li>
+<p>Features</p>
+<ul>
+<li>Show blame info at the end of line</li>
+</ul>
+</li>
+<li>
+<p>Alternatives</p>
+<ul>
+<li><a href="https://github.com/tveskag/nvim-blame-line">nvim-blame-line</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="linter"><a class="header" href="#linter">linter</a></h2>
+<h2 id="markdown"><a class="header" href="#markdown">markdown</a></h2>
 
                     </main>
 
