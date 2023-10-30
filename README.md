@@ -70,34 +70,6 @@ Vim-clap is a modern generic performant finder using the `floating_win` of neovi
 
 - Although a lot of effort has been made to unify the behavior of vim-clap between vim and neovim, and most part works in the same way, it just can't be exactly the same, for `floating_win` and `popup` are actually two different things anyway.
 
-## Requirement
-
-- Vim: `:echo has('patch-8.1.2114')`.
-- NeoVim: `:echo has('nvim-0.4.2')`.
-
-## Installation
-
-### [vim-plug](https://github.com/junegunn/vim-plug)
-
-```vim
-" Build the Rust binary if `cargo` exists on your system.
-Plug 'liuchengxu/vim-clap', { 'do': ':Clap install-binary' }
-
-" The bang version will try to download the prebuilt binary if `cargo` does not exist.
-Plug 'liuchengxu/vim-clap', { 'do': ':Clap install-binary!' }
-
-" `:Clap install-binary[!]` will always try to compile the binary locally.
-" If you do care about the disk used for the compilation, use the way of force download,
-" which will directly download the prebuilt binary even if `cargo` is available.
-Plug 'liuchengxu/vim-clap', { 'do': { -> clap#installer#force_download() } }
-
-" `:Clap install-binary[!]` will run using the terminal feature which is inherently async.
-" If you don't want that and hope to run the hook synchorously:
-Plug 'liuchengxu/vim-clap', { 'do': has('win32') ? 'cargo build --release' : 'make' }
-```
-
-It's recommended to install the Rust binary automatically via the `do` hook. If that does not work for you, please refer to [INSTALL.md](INSTALL.md) for installing it manually.
-
 ## Usage
 
 Vim-clap is utterly easy to use, just type, press Ctrl-J/K to locate the wanted entry, and press Enter to apply and exit. The default settings should work well for most people in most cases, but it's absolutely hackable too.

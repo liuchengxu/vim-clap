@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [ new-docs ]
+  pull_request:
+    branches: [ new-docs ]
+
+jobs:
+  build:
+    name: Build, Test and Deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # To push a branch
+      pull-requests: write  # To create a PR from that branch
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - run: (test -x $HOME/.cargo/bin/mdbook || cargo install --vers "^0.4" mdbook)
+      - run: mdbook build docs && mdbook test docs # In case of custom book path: mdbook build path/to/mybook && mdbook test path/to/mybook
+      - uses: JamesIves/github-pages-deploy-action@4.1.7
+        with:
+          branch: gh-pages # The branch the action should deploy to.
+          folder: docs/book # The folder the action should deploy.

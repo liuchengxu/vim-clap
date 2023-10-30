@@ -1,0 +1,6 @@
+[book]
+authors = ["Liu-Cheng Xu"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Vim-Clap Documentation"
