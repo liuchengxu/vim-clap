@@ -2,13 +2,11 @@ name: Docs
 
 on:
   push:
-    branches: [ new-docs ]
-  pull_request:
-    branches: [ new-docs ]
+    branches: [ master ]
 
 jobs:
   build:
-    name: Build, Test and Deploy Docs
+    name: Build, Test and Deploy
     runs-on: ubuntu-latest
     permissions:
       contents: write  # To push a branch
