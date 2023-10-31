@@ -172,6 +172,17 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="clap-providers"><a class="header" href="#clap-providers">Clap Providers</a></h1>
+<!-- clap-markdown-toc -->
+<ul>
+<li><a href="#builtin-providers">Builtin Providers</a>
+<ul>
+<li><a href="#global-variables">Global Variables</a></li>
+</ul>
+</li>
+<li><a href="#how-to-create-your-own-provider">How to Create Your Own Provider</a></li>
+<li><a href="#disable-auto-completion-plugin-in-clap-input-window">Disable Auto-Completion Plugin in Clap Input Window</a></li>
+</ul>
+<!-- /clap-markdown-toc -->
 <h2 id="builtin-providers"><a class="header" href="#builtin-providers">Builtin Providers</a></h2>
 <p>Additional requirement means the potential extra tool needed for the particular provider besides the Rust binary <a href="../guide/install_rust.html"><code>maple</code></a>.</p>
 <div class="table-wrapper"><table><thead><tr><th style="text-align: left">Command</th><th style="text-align: left">List</th><th style="text-align: left">Additional Requirement</th></tr></thead><tbody>
@@ -226,7 +237,7 @@
 </li>
 </ul>
 <p><a href="https://github.com/liuchengxu/vim-clap/pulls">Send a pull request</a> if certain provider is not listed here.</p>
-<h3 id="global-variables"><a class="header" href="#global-variables">Global variables</a></h3>
+<h3 id="global-variables"><a class="header" href="#global-variables">Global Variables</a></h3>
 <ul>
 <li>
 <p><code>g:clap_layout</code>: Dict, <code>{ 'width': '67%', 'height': '33%', 'row': '33%', 'col': '17%' }</code> by default. This variable controls the size and position of vim-clap window. By default, the vim-clap window is placed relative to the currently active window. To make it relative to the whole editor modify this variable as shown below:</p>
@@ -269,6 +280,26 @@ let g:clap_provider_alias = {'hist:': 'command_history'}
 </li>
 </ul>
 <p>See <code>:help clap-options</code> for more information.</p>
+<h2 id="how-to-create-your-own-provider"><a class="header" href="#how-to-create-your-own-provider">How to Create Your Own Provider</a></h2>
+<pre><code class="language-vim">&quot; `:Clap quick_open` to open some dotfiles quickly.
+&quot; `description` is actually optional, but if you want to show this provider
+&quot; when you call `:Clap`, the `description` is neccessary.
+let g:clap_provider_quick_open = {
+      \ 'source': ['~/.vimrc', '~/.spacevim', '~/.bashrc', '~/.tmux.conf'],
+      \ 'sink': 'e',
+      \ 'description': 'Quick open some dotfiles',
+      \ }
+</code></pre>
+<p>Find more examples at <a href="https://github.com/liuchengxu/vim-clap/wiki/Examples">wiki/Examples</a>.</p>
+<p>For complete guide about writing a clap provider please see <a href="PROVIDER.html">PROVIDER.md</a>.</p>
+<h2 id="disable-auto-completion-plugin-in-clap-input-window"><a class="header" href="#disable-auto-completion-plugin-in-clap-input-window">Disable Auto-Completion Plugin in Clap Input Window</a></h2>
+<p>Some of the auto-completion engines need to turn off to prevent bizarre behaviors(#580)</p>
+<p>For nvim-completion, add autocmd to your init.vim:</p>
+<pre><code class="language-vim">autocmd FileType clap_input let g:completion_enable_auto_pop = 0
+</code></pre>
+<p>For nvim-compe:</p>
+<pre><code class="language-vim">autocmd FileType clap_input call compe#setup({ 'enabled': v:false }, 0)
+</code></pre>
 
                     </main>
 

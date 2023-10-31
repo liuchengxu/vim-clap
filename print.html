@@ -204,6 +204,12 @@ Support <a href="https://github.com/junegunn/fzf#search-syntax">the search synta
 <p>While Vim-Clap strives to offer equal support for both Vim and NeoVim, certain nuances arise from the differing implementation details between the two. For example, the focusability of Vim's <code>popup</code> differs from NeoVim's <code>floating_win</code>.</p>
 </li>
 </ul>
+<h2 id="credit"><a class="header" href="#credit">Credit</a></h2>
+<ul>
+<li>Vim-clap is initially enlightened by <a href="https://github.com/manateelazycat/snails">snails</a>.</li>
+<li>Some providers' idea and code are borrowed from <a href="https://github.com/junegunn/fzf.vim">fzf.vim</a>.</li>
+<li>The built-in fzy python implementation is based on <a href="https://github.com/aslpavel/sweep.py">sweep.py</a>.</li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
 <h2 id="requirement"><a class="header" href="#requirement">Requirement</a></h2>
 <ul>
@@ -277,6 +283,17 @@ $ ./bin/maple version
 <li>Move <code>maple</code>/<code>maple.exe</code> to <code>bin</code> directory. Don't forget to assign execute permission to <code>maple</code> via <code>chmod a+x bin/maple</code> if you are using the Unix system.</li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="clap-providers"><a class="header" href="#clap-providers">Clap Providers</a></h1>
+<!-- clap-markdown-toc -->
+<ul>
+<li><a href="providers/intro.html#builtin-providers">Builtin Providers</a>
+<ul>
+<li><a href="providers/intro.html#global-variables">Global Variables</a></li>
+</ul>
+</li>
+<li><a href="providers/intro.html#how-to-create-your-own-provider">How to Create Your Own Provider</a></li>
+<li><a href="providers/intro.html#disable-auto-completion-plugin-in-clap-input-window">Disable Auto-Completion Plugin in Clap Input Window</a></li>
+</ul>
+<!-- /clap-markdown-toc -->
 <h2 id="builtin-providers"><a class="header" href="#builtin-providers">Builtin Providers</a></h2>
 <p>Additional requirement means the potential extra tool needed for the particular provider besides the Rust binary <a href="providers/../guide/install_rust.html"><code>maple</code></a>.</p>
 <div class="table-wrapper"><table><thead><tr><th style="text-align: left">Command</th><th style="text-align: left">List</th><th style="text-align: left">Additional Requirement</th></tr></thead><tbody>
@@ -331,7 +348,7 @@ $ ./bin/maple version
 </li>
 </ul>
 <p><a href="https://github.com/liuchengxu/vim-clap/pulls">Send a pull request</a> if certain provider is not listed here.</p>
-<h3 id="global-variables"><a class="header" href="#global-variables">Global variables</a></h3>
+<h3 id="global-variables"><a class="header" href="#global-variables">Global Variables</a></h3>
 <ul>
 <li>
 <p><code>g:clap_layout</code>: Dict, <code>{ 'width': '67%', 'height': '33%', 'row': '33%', 'col': '17%' }</code> by default. This variable controls the size and position of vim-clap window. By default, the vim-clap window is placed relative to the currently active window. To make it relative to the whole editor modify this variable as shown below:</p>
@@ -374,6 +391,26 @@ let g:clap_provider_alias = {'hist:': 'command_history'}
 </li>
 </ul>
 <p>See <code>:help clap-options</code> for more information.</p>
+<h2 id="how-to-create-your-own-provider"><a class="header" href="#how-to-create-your-own-provider">How to Create Your Own Provider</a></h2>
+<pre><code class="language-vim">&quot; `:Clap quick_open` to open some dotfiles quickly.
+&quot; `description` is actually optional, but if you want to show this provider
+&quot; when you call `:Clap`, the `description` is neccessary.
+let g:clap_provider_quick_open = {
+      \ 'source': ['~/.vimrc', '~/.spacevim', '~/.bashrc', '~/.tmux.conf'],
+      \ 'sink': 'e',
+      \ 'description': 'Quick open some dotfiles',
+      \ }
+</code></pre>
+<p>Find more examples at <a href="https://github.com/liuchengxu/vim-clap/wiki/Examples">wiki/Examples</a>.</p>
+<p>For complete guide about writing a clap provider please see <a href="providers/PROVIDER.html">PROVIDER.md</a>.</p>
+<h2 id="disable-auto-completion-plugin-in-clap-input-window"><a class="header" href="#disable-auto-completion-plugin-in-clap-input-window">Disable Auto-Completion Plugin in Clap Input Window</a></h2>
+<p>Some of the auto-completion engines need to turn off to prevent bizarre behaviors(#580)</p>
+<p>For nvim-completion, add autocmd to your init.vim:</p>
+<pre><code class="language-vim">autocmd FileType clap_input let g:completion_enable_auto_pop = 0
+</code></pre>
+<p>For nvim-compe:</p>
+<pre><code class="language-vim">autocmd FileType clap_input call compe#setup({ 'enabled': v:false }, 0)
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="theme"><a class="header" href="#theme">Theme</a></h1>
 <p>By default vim-clap would use the colors extracted from your current colorscheme, which is not guaranteed to suitable for all the colorschemes. You can try the built-in <code>material_design_dark</code> theme if the default theme does not work well:</p>
 <pre><code class="language-vim">let g:clap_theme = 'material_design_dark'
@@ -516,6 +553,15 @@ max-level = &quot;debug&quot;
 tiebreak = &quot;score,-begin,-end,-length&quot;
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="available-plugins"><a class="header" href="#available-plugins">Available Plugins</a></h1>
+<!-- clap-markdown-toc -->
+<ul>
+<li><a href="plugins/plugins.html#ctags">ctags</a></li>
+<li><a href="plugins/plugins.html#cursorword">cursorword</a></li>
+<li><a href="plugins/plugins.html#git">git</a></li>
+<li><a href="plugins/plugins.html#linter">linter</a></li>
+<li><a href="plugins/plugins.html#markdown">markdown</a></li>
+</ul>
+<!-- /clap-markdown-toc -->
 <h2 id="ctags"><a class="header" href="#ctags">ctags</a></h2>
 <ul>
 <li>Alternatives
@@ -528,43 +574,41 @@ tiebreak = &quot;score,-begin,-end,-length&quot;
 <pre><code class="language-toml">[plugin.cursorword]
 enable = true
 </code></pre>
-<ul>
-<li>
-<p>Features</p>
-<ul>
-<li>highlight the word under the cursor.</li>
-</ul>
-</li>
-<li>
-<p>Alternatives</p>
-<ul>
-<li><a href="https://github.com/dominikduda/vim_current_word">vim_current_word</a></li>
-<li><a href="https://github.com/RRethy/vim-illuminate">vim-illuminate</a></li>
-<li><a href="https://github.com/itchyny/vim-cursorword">vim-cursorword</a></li>
-<li><a href="https://github.com/osyo-manga/vim-brightest">vim-brightest</a></li>
-</ul>
-</li>
-</ul>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: left">Features</th><th style="text-align: left">Alternatives</th></tr></thead><tbody>
+<tr><td style="text-align: left">Highlight the word under the cursor</td><td style="text-align: left"><a href="https://github.com/tveskag/nvim-blame-line">nvim-blame-line</a></br><a href="https://github.com/RRethy/vim-illuminate">vim-illuminate</a></br> <a href="https://github.com/itchyny/vim-cursorword">vim-cursorword</a></br><a href="https://github.com/osyo-manga/vim-brightest">vim-brightest</a></td></tr>
+</tbody></table>
+</div>
 <h2 id="git"><a class="header" href="#git">git</a></h2>
 <pre><code class="language-toml">[plugin.git]
+enable = true
+</code></pre>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: left">Features</th><th style="text-align: left">Alternatives</th></tr></thead><tbody>
+<tr><td style="text-align: left">Show blame info at the end of line</td><td style="text-align: left"><a href="https://github.com/tveskag/nvim-blame-line">nvim-blame-line</a></td></tr>
+<tr><td style="text-align: left">Open the permalink of current line in browser</td><td style="text-align: left"><em>none</em></td></tr>
+</tbody></table>
+</div>
+<h2 id="linter"><a class="header" href="#linter">linter</a></h2>
+<pre><code class="language-toml">[plugin.linter]
 enable = true
 </code></pre>
 <ul>
 <li>
 <p>Features</p>
 <ul>
-<li>Show blame info at the end of line</li>
+<li>Lint files asynchronously</li>
 </ul>
 </li>
 <li>
 <p>Alternatives</p>
 <ul>
-<li><a href="https://github.com/tveskag/nvim-blame-line">nvim-blame-line</a></li>
+<li><a href="https://github.com/dense-analysis/ale">ale</a></li>
 </ul>
 </li>
 </ul>
-<h2 id="linter"><a class="header" href="#linter">linter</a></h2>
 <h2 id="markdown"><a class="header" href="#markdown">markdown</a></h2>
+<pre><code class="language-toml">[plugin.markdown]
+enable = true
+</code></pre>
 
                     </main>
 

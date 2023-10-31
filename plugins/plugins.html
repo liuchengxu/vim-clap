@@ -172,6 +172,15 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="available-plugins"><a class="header" href="#available-plugins">Available Plugins</a></h1>
+<!-- clap-markdown-toc -->
+<ul>
+<li><a href="#ctags">ctags</a></li>
+<li><a href="#cursorword">cursorword</a></li>
+<li><a href="#git">git</a></li>
+<li><a href="#linter">linter</a></li>
+<li><a href="#markdown">markdown</a></li>
+</ul>
+<!-- /clap-markdown-toc -->
 <h2 id="ctags"><a class="header" href="#ctags">ctags</a></h2>
 <ul>
 <li>Alternatives
@@ -184,43 +193,41 @@
 <pre><code class="language-toml">[plugin.cursorword]
 enable = true
 </code></pre>
-<ul>
-<li>
-<p>Features</p>
-<ul>
-<li>highlight the word under the cursor.</li>
-</ul>
-</li>
-<li>
-<p>Alternatives</p>
-<ul>
-<li><a href="https://github.com/dominikduda/vim_current_word">vim_current_word</a></li>
-<li><a href="https://github.com/RRethy/vim-illuminate">vim-illuminate</a></li>
-<li><a href="https://github.com/itchyny/vim-cursorword">vim-cursorword</a></li>
-<li><a href="https://github.com/osyo-manga/vim-brightest">vim-brightest</a></li>
-</ul>
-</li>
-</ul>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: left">Features</th><th style="text-align: left">Alternatives</th></tr></thead><tbody>
+<tr><td style="text-align: left">Highlight the word under the cursor</td><td style="text-align: left"><a href="https://github.com/tveskag/nvim-blame-line">nvim-blame-line</a></br><a href="https://github.com/RRethy/vim-illuminate">vim-illuminate</a></br> <a href="https://github.com/itchyny/vim-cursorword">vim-cursorword</a></br><a href="https://github.com/osyo-manga/vim-brightest">vim-brightest</a></td></tr>
+</tbody></table>
+</div>
 <h2 id="git"><a class="header" href="#git">git</a></h2>
 <pre><code class="language-toml">[plugin.git]
+enable = true
+</code></pre>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: left">Features</th><th style="text-align: left">Alternatives</th></tr></thead><tbody>
+<tr><td style="text-align: left">Show blame info at the end of line</td><td style="text-align: left"><a href="https://github.com/tveskag/nvim-blame-line">nvim-blame-line</a></td></tr>
+<tr><td style="text-align: left">Open the permalink of current line in browser</td><td style="text-align: left"><em>none</em></td></tr>
+</tbody></table>
+</div>
+<h2 id="linter"><a class="header" href="#linter">linter</a></h2>
+<pre><code class="language-toml">[plugin.linter]
 enable = true
 </code></pre>
 <ul>
 <li>
 <p>Features</p>
 <ul>
-<li>Show blame info at the end of line</li>
+<li>Lint files asynchronously</li>
 </ul>
 </li>
 <li>
 <p>Alternatives</p>
 <ul>
-<li><a href="https://github.com/tveskag/nvim-blame-line">nvim-blame-line</a></li>
+<li><a href="https://github.com/dense-analysis/ale">ale</a></li>
 </ul>
 </li>
 </ul>
-<h2 id="linter"><a class="header" href="#linter">linter</a></h2>
 <h2 id="markdown"><a class="header" href="#markdown">markdown</a></h2>
+<pre><code class="language-toml">[plugin.markdown]
+enable = true
+</code></pre>
 
                     </main>
 
