@@ -55,7 +55,7 @@ pub fn config_file() -> &'static PathBuf {
     CONFIG_FILE.get().expect("Config file uninitialized")
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct MatcherConfig {
     pub tiebreak: String,
@@ -78,7 +78,7 @@ impl MatcherConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct LogConfig {
     pub log_file: Option<String>,
@@ -94,7 +94,7 @@ impl Default for LogConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct CursorWordConfig {
     /// Whether to enable this plugin.
@@ -115,21 +115,21 @@ impl Default for CursorWordConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct MarkdownPluginConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct CtagsPluginConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct GitPluginConfig {
     /// Whether to enable this plugin.
@@ -150,14 +150,14 @@ impl Default for GitPluginConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct LinterPluginConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct PluginConfig {
     pub cursorword: CursorWordConfig,
@@ -167,7 +167,7 @@ pub struct PluginConfig {
     pub markdown: MarkdownPluginConfig,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct IgnoreConfig {
     /// Whether to ignore the comment line when it's possible.
@@ -180,7 +180,7 @@ pub struct IgnoreConfig {
     pub ignore_file_path_pattern: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct ProviderConfig {
     /// Delay in milliseconds before the user query will be handled actually.
@@ -217,7 +217,7 @@ pub struct ProviderConfig {
     pub share_input_history: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
     /// Log configuration.
@@ -299,7 +299,44 @@ mod tests {
 "#;
         let user_config: Config =
             toml::from_str(toml_content).expect("Failed to deserialize config");
-        println!("{:#?}", user_config);
-        println!("{}", toml::to_string(&user_config).unwrap());
+
+        assert_eq!(
+            user_config,
+            Config {
+                log: LogConfig {
+                    log_file: Some("/tmp/clap.log".to_string()),
+                    max_level: "trace".to_string()
+                },
+                matcher: MatcherConfig {
+                    tiebreak: "score,-begin,-end,-length".to_string()
+                },
+                plugin: PluginConfig {
+                    cursorword: CursorWordConfig {
+                        enable: true,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                provider: ProviderConfig {
+                    debounce: HashMap::from_iter([
+                        ("*".to_string(), 200),
+                        ("files".to_string(), 100)
+                    ]),
+                    ignore: HashMap::from([(
+                        "dumb_jump".to_string(),
+                        IgnoreConfig {
+                            ignore_comments: true,
+                            ..Default::default()
+                        }
+                    )]),
+                    ..Default::default()
+                },
+                global_ignore: IgnoreConfig {
+                    ignore_file_path_pattern: vec!["test".to_string(), "build".to_string()],
+                    ..Default::default()
+                },
+                ..Default::default()
+            }
+        );
     }
 }
