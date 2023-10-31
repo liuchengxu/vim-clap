@@ -480,7 +480,7 @@ impl<'a> CachedPreviewImpl<'a> {
                 // 1 (header line) + 1 (1-based line number)
                 let line_number_offset = context_lines.len() + 1 + 1;
                 let maybe_line_highlights = if let Some(theme) =
-                    &crate::config::config().picker.syntect_highlight_theme
+                    &crate::config::config().provider.syntect_highlight_theme
                 {
                     const THEME: &str = "Visual Studio Dark+";
                     let theme = if HIGHLIGHTER.theme_exists(theme) {

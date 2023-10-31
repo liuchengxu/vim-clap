@@ -1,5 +1,15 @@
 # Clap Providers
 
+<!-- clap-markdown-toc -->
+
+* [Builtin Providers](#builtin-providers)
+  * [Global Variables](#global-variables)
+* [How to Create Your Own Provider](#how-to-create-your-own-provider)
+* [Disable Auto-Completion Plugin in Clap Input Window](#disable-auto-completion-plugin-in-clap-input-window)
+
+<!-- /clap-markdown-toc -->
+
+
 ## Builtin Providers
 
 Additional requirement means the potential extra tool needed for the particular provider besides the Rust binary [`maple`](../guide/install_rust.md).
@@ -54,7 +64,7 @@ Additional requirement means the potential extra tool needed for the particular 
 
 [Send a pull request](https://github.com/liuchengxu/vim-clap/pulls) if certain provider is not listed here.
 
-### Global variables
+### Global Variables
 
 - `g:clap_layout`: Dict, `{ 'width': '67%', 'height': '33%', 'row': '33%', 'col': '17%' }` by default. This variable controls the size and position of vim-clap window. By default, the vim-clap window is placed relative to the currently active window. To make it relative to the whole editor modify this variable as shown below:
 
@@ -89,3 +99,36 @@ The option naming convention for provider is `g:clap_provider_{provider_id}_{opt
 - `g:clap_provider_grep_opts`: An empty string by default, allows you to enable flags such as `'--hidden -g "!.git/"'`.
 
 See `:help clap-options` for more information.
+
+## How to Create Your Own Provider
+
+```vim
+" `:Clap quick_open` to open some dotfiles quickly.
+" `description` is actually optional, but if you want to show this provider
+" when you call `:Clap`, the `description` is neccessary.
+let g:clap_provider_quick_open = {
+      \ 'source': ['~/.vimrc', '~/.spacevim', '~/.bashrc', '~/.tmux.conf'],
+      \ 'sink': 'e',
+      \ 'description': 'Quick open some dotfiles',
+      \ }
+```
+
+Find more examples at [wiki/Examples](https://github.com/liuchengxu/vim-clap/wiki/Examples).
+
+For complete guide about writing a clap provider please see [PROVIDER.md](PROVIDER.md).
+
+## Disable Auto-Completion Plugin in Clap Input Window
+
+Some of the auto-completion engines need to turn off to prevent bizarre behaviors(#580)
+
+For nvim-completion, add autocmd to your init.vim:
+
+```vim
+autocmd FileType clap_input let g:completion_enable_auto_pop = 0
+```
+
+For nvim-compe:
+
+```vim
+autocmd FileType clap_input call compe#setup({ 'enabled': v:false }, 0)
+```

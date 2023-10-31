@@ -78,17 +78,6 @@ impl MatcherConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
-#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
-pub struct PickerConfig {
-    /// Specifies how many items will be displayed in the results window.
-    pub max_display_size: Option<usize>,
-    /// Render the preview highlight with specified theme using syntect backend.
-    ///
-    /// If the theme is not found, the default theme (`Visual Studio Dark+`) will be used.
-    pub syntect_highlight_theme: Option<String>,
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct LogConfig {
@@ -172,10 +161,10 @@ pub struct LinterPluginConfig {
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct PluginConfig {
     pub cursorword: CursorWordConfig,
-    pub markdown: MarkdownPluginConfig,
     pub ctags: CtagsPluginConfig,
     pub git: GitPluginConfig,
     pub linter: LinterPluginConfig,
+    pub markdown: MarkdownPluginConfig,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -215,13 +204,17 @@ pub struct ProviderConfig {
     /// Priorities of the ignore config:
     ///   provider_ignores > provider_ignores > global_ignore
     pub ignore: HashMap<String, IgnoreConfig>,
-}
 
-#[derive(Serialize, Deserialize, Debug, Default)]
-#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
-pub struct InputHistoryConfig {
+    /// Specifies how many items will be displayed in the results window.
+    pub max_display_size: Option<usize>,
+
+    /// Render the preview highlight with specified theme using syntect backend.
+    ///
+    /// If the theme is not found, the default theme (`Visual Studio Dark+`) will be used.
+    pub syntect_highlight_theme: Option<String>,
+
     /// Whether to share the input history of each provider.
-    pub share_all_inputs: bool,
+    pub share_input_history: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -232,9 +225,6 @@ pub struct Config {
 
     /// Matcher configuration.
     pub matcher: MatcherConfig,
-
-    /// Picker configuration.
-    pub picker: PickerConfig,
 
     /// Plugin configuration.
     pub plugin: PluginConfig,
@@ -249,9 +239,6 @@ pub struct Config {
     ///
     /// The project path must be specified as absolute path or a path relative to the home directory.
     pub project_ignore: HashMap<AbsPathBuf, IgnoreConfig>,
-
-    /// Input history configuration
-    pub input_history: InputHistoryConfig,
 }
 
 impl Config {
@@ -294,7 +281,7 @@ mod tests {
           [matcher]
           tiebreak = "score,-begin,-end,-length"
 
-          [plugin.cursor-word-highlighter]
+          [plugin.cursorword]
           enable = true
 
           [provider.debounce]

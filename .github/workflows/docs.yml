@@ -1,4 +1,4 @@
-name: CI
+name: Docs
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Build, Test and Deploy
+    name: Build, Test and Deploy Docs
     runs-on: ubuntu-latest
     permissions:
       contents: write  # To push a branch
@@ -19,8 +19,8 @@ jobs:
         with:
           toolchain: stable
       - run: (test -x $HOME/.cargo/bin/mdbook || cargo install --vers "^0.4" mdbook)
-      - run: mdbook build docs && mdbook test docs # In case of custom book path: mdbook build path/to/mybook && mdbook test path/to/mybook
+      - run: mdbook build docs && mdbook test docs
       - uses: JamesIves/github-pages-deploy-action@4.1.7
         with:
-          branch: gh-pages # The branch the action should deploy to.
-          folder: docs/book # The folder the action should deploy.
+          branch: gh-pages
+          folder: docs/book

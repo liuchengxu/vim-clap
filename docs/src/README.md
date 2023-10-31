@@ -30,3 +30,9 @@ Vim-clap was initially written in pure VimScript, but later incorporated a Rust 
 - While Vim-clap is intended to be compatible with Windows, comprehensive testing on this platform has not been conducted to the same extent as macOS and Linux (specifically Ubuntu), as the plugin author primarily utilizes these operating systems. Consequently, there may be Windows-specific issues yet to be identified. If you encounter any problems on Windows, please [create an issue](https://github.com/liuchengxu/vim-clap/issues/new?assignees=&labels=&template=bug_report.md&title=), and any assistance in addressing these issues would be highly appreciated.
 
 - While Vim-Clap strives to offer equal support for both Vim and NeoVim, certain nuances arise from the differing implementation details between the two. For example, the focusability of Vim's `popup` differs from NeoVim's `floating_win`.
+
+## Credit
+
+- Vim-clap is initially enlightened by [snails](https://github.com/manateelazycat/snails).
+- Some providers' idea and code are borrowed from [fzf.vim](https://github.com/junegunn/fzf.vim).
+- The built-in fzy python implementation is based on [sweep.py](https://github.com/aslpavel/sweep.py).
