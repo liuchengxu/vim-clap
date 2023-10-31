@@ -134,7 +134,6 @@ function! clap#state#render_preview(preview) abort
     endif
 
     if has_key(a:preview, 'scrollbar')
-      let g:scrollbar = copy(a:preview.scrollbar)
       let [top_position, length] = a:preview.scrollbar
       call clap#floating_win#show_preview_scrollbar(top_position, length)
     endif
