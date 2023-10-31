@@ -4,3 +4,12 @@ language = "en"
 multilingual = false
 src = "src"
 title = "Vim-Clap Documentation"
+
+[rust]
+edition = "2021"
+
+[output.html]
+mathjax-support = true
+additional-css = ["custom.css"]
+edit-url-template = "https://github.com/liuchengxu/vim-clap/edit/master/docs/{path}"
+git-repository-url = "https://github.com/liuchengxu/vim-clap/tree/master/docs"
