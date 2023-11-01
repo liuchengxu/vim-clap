@@ -1,5 +1,7 @@
 # Available Plugins
 
+TODO: elaborate on plugins' usage.
+
 <!-- clap-markdown-toc -->
 
 * [ctags](#ctags)
@@ -12,8 +14,8 @@
 
 ## ctags
 
-- Alternatives
-    - vista.vim
+<!-- - Alternatives -->
+    <!-- - vista.vim -->
 
 ## cursorword
 
@@ -57,3 +59,6 @@ enable = true
 [plugin.markdown]
 enable = true
 ```
+
+- Features
+    - Generate/Update/Delete toc

@@ -9,7 +9,6 @@
 
 <!-- /clap-markdown-toc -->
 
-
 ## Builtin Providers
 
 Additional requirement means the potential extra tool needed for the particular provider besides the Rust binary [`maple`](../guide/install_rust.md).
@@ -54,8 +53,8 @@ Additional requirement means the potential extra tool needed for the particular 
 [git]: https://github.com/git/git
 [universal-ctags]: https://github.com/universal-ctags/ctags
 
-- The command with a superscript `!` means that it is not yet implemented or not tested.
 - The command with a superscript `+` means that it supports multi-selection via <kbd>Tab</kbd>.
+- `Clap live_grep` is deprecated now, `Clap grep` is recommended as the successor.
 - `:Clap grep`
   - Use `:Clap grep --query=<cword>` to grep the word under cursor.
   - Use `:Clap grep --query=@visual` to grep the visual selection.
