@@ -88,6 +88,17 @@ jobs:
     - name: Build maple
       run: cargo build --release
 
+  docs:
+    name: Docs Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - run: (test -x $HOME/.cargo/bin/mdbook || cargo install --vers "^0.4" mdbook)
+      - run: mdbook test docs
+
   python_dynamic_module:
     name: Python Dynamic Module
     runs-on: ubuntu-latest

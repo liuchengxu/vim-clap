@@ -14,9 +14,6 @@ TODO: elaborate on plugins' usage.
 
 ## ctags
 
-<!-- - Alternatives -->
-    <!-- - vista.vim -->
-
 ## cursorword
 
 ```toml
