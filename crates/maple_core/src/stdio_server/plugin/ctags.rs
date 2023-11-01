@@ -43,6 +43,7 @@ impl CtagsPlugin {
         }
     }
 
+    /// Updates the buffer variable `clap_current_symbol`.
     async fn on_cursor_moved(&mut self, bufnr: usize) -> Result<()> {
         if let Some(buffer_tags) = self.buf_tags.get(&bufnr) {
             let curlnum = self.vim.line(".").await?;
@@ -101,11 +102,7 @@ impl ClapPlugin for CtagsPlugin {
 
         let (event_type, params) = autocmd;
 
-        let params: Vec<usize> = params.parse()?;
-        let bufnr = params
-            .into_iter()
-            .next()
-            .ok_or_else(|| anyhow::anyhow!("bufnr not found in params"))?;
+        let bufnr = params.parse_bufnr()?;
 
         match event_type {
             BufEnter | BufWritePost => {

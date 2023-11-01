@@ -1,5 +1,5 @@
 use crate::stdio_server::input::{AutocmdEvent, PluginAction};
-use crate::stdio_server::plugin::ClapPlugin;
+use crate::stdio_server::plugin::{ClapPlugin, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
@@ -201,17 +201,37 @@ fn find_toc_range(input_file: impl AsRef<Path>) -> std::io::Result<Option<(usize
 #[clap_plugin(id = "markdown", actions = ["generate-toc", "update-toc", "delete-toc"])]
 pub struct MarkdownPlugin {
     vim: Vim,
+    toggle: Toggle,
 }
 
 impl MarkdownPlugin {
     pub fn new(vim: Vim) -> Self {
-        Self { vim }
+        Self {
+            vim,
+            toggle: Toggle::Off,
+        }
+    }
+
+    async fn update_toc(&self, bufnr: usize) -> Result<()> {
+        let file = self.vim.bufabspath(bufnr).await?;
+        if let Some((start, end)) = find_toc_range(&file)? {
+            let shiftwidth = self.vim.getbufvar("", "&shiftwidth").await?;
+            // TODO: skip update if the new doc is the same as the old one.
+            let new_toc = generate_toc(file, start + 1, shiftwidth)?;
+            self.vim.deletebufline(bufnr, start + 1, end + 1).await?;
+            self.vim.exec("append_and_write", json!([start, new_toc]))?;
+        }
+        Ok(())
     }
 }
 
 #[async_trait::async_trait]
 impl ClapPlugin for MarkdownPlugin {
     async fn handle_autocmd(&mut self, _autocmd: AutocmdEvent) -> Result<()> {
+        if self.toggle.is_off() {
+            return Ok(());
+        }
+
         Ok(())
     }
 
@@ -219,8 +239,8 @@ impl ClapPlugin for MarkdownPlugin {
         let PluginAction { method, params: _ } = action;
         match method.as_str() {
             Self::GENERATE_TOC => {
-                let curlnum = self.vim.line(".").await?;
                 let file = self.vim.current_buffer_path().await?;
+                let curlnum = self.vim.line(".").await?;
                 let shiftwidth = self.vim.getbufvar("", "&shiftwidth").await?;
                 let mut toc = generate_toc(file, curlnum, shiftwidth)?;
                 let prev_line = self.vim.curbufline(curlnum - 1).await?;
@@ -231,15 +251,8 @@ impl ClapPlugin for MarkdownPlugin {
                     .exec("append_and_write", json!([curlnum - 1, toc]))?;
             }
             Self::UPDATE_TOC => {
-                let file = self.vim.current_buffer_path().await?;
                 let bufnr = self.vim.bufnr("").await?;
-                if let Some((start, end)) = find_toc_range(&file)? {
-                    let shiftwidth = self.vim.getbufvar("", "&shiftwidth").await?;
-                    // TODO: skip update if the new doc is the same as the old one.
-                    let new_toc = generate_toc(file, start + 1, shiftwidth)?;
-                    self.vim.deletebufline(bufnr, start + 1, end + 1).await?;
-                    self.vim.exec("append_and_write", json!([start, new_toc]))?;
-                }
+                self.update_toc(bufnr).await?;
             }
             Self::DELETE_TOC => {
                 let file = self.vim.current_buffer_path().await?;

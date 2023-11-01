@@ -9,8 +9,8 @@ mod vim;
 pub use self::input::InputHistory;
 use self::input::{ActionEvent, Event, ProviderEvent};
 use self::plugin::{
-    ActionType, ClapPlugin, CtagsPlugin, CursorWordHighlighter, GitPlugin, LinterPlugin,
-    MarkdownPlugin, PluginId, SyntaxHighlighterPlugin, SystemPlugin,
+    ActionType, ClapPlugin, CtagsPlugin, CursorWordPlugin, GitPlugin, LinterPlugin, MarkdownPlugin,
+    PluginId, SyntaxHighlighterPlugin, SystemPlugin,
 };
 use self::provider::{create_provider, Context};
 use self::service::ServiceManager;
@@ -117,8 +117,8 @@ pub async fn start(config_err: Option<toml::de::Error>) {
         register_plugin(Box::new(MarkdownPlugin::new(vim.clone())), None);
     }
 
-    if plugin_config.cursor_word_highlighter.enable {
-        register_plugin(Box::new(CursorWordHighlighter::new(vim.clone())), None);
+    if plugin_config.cursorword.enable {
+        register_plugin(Box::new(CursorWordPlugin::new(vim.clone())), None);
     }
 
     tokio::spawn({

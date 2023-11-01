@@ -55,7 +55,7 @@ pub fn config_file() -> &'static PathBuf {
     CONFIG_FILE.get().expect("Config file uninitialized")
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct MatcherConfig {
     pub tiebreak: String,
@@ -78,18 +78,7 @@ impl MatcherConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
-#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
-pub struct PickerConfig {
-    /// Specifies how many items will be displayed in the results window.
-    pub max_display_size: Option<usize>,
-    /// Render the preview highlight with specified theme using syntect backend.
-    ///
-    /// If the theme is not found, the default theme (`Visual Studio Dark+`) will be used.
-    pub syntect_highlight_theme: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct LogConfig {
     pub log_file: Option<String>,
@@ -105,9 +94,9 @@ impl Default for LogConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
-pub struct CursorWordHighlighterConfig {
+pub struct CursorWordConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
     /// Whether to ignore the comment line
@@ -116,7 +105,7 @@ pub struct CursorWordHighlighterConfig {
     pub ignore_files: String,
 }
 
-impl Default for CursorWordHighlighterConfig {
+impl Default for CursorWordConfig {
     fn default() -> Self {
         Self {
             enable: false,
@@ -126,21 +115,21 @@ impl Default for CursorWordHighlighterConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct MarkdownPluginConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct CtagsPluginConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct GitPluginConfig {
     /// Whether to enable this plugin.
@@ -161,24 +150,24 @@ impl Default for GitPluginConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct LinterPluginConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct PluginConfig {
-    pub cursor_word_highlighter: CursorWordHighlighterConfig,
-    pub markdown: MarkdownPluginConfig,
+    pub cursorword: CursorWordConfig,
     pub ctags: CtagsPluginConfig,
     pub git: GitPluginConfig,
     pub linter: LinterPluginConfig,
+    pub markdown: MarkdownPluginConfig,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct IgnoreConfig {
     /// Whether to ignore the comment line when it's possible.
@@ -191,7 +180,7 @@ pub struct IgnoreConfig {
     pub ignore_file_path_pattern: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct ProviderConfig {
     /// Delay in milliseconds before the user query will be handled actually.
@@ -215,16 +204,20 @@ pub struct ProviderConfig {
     /// Priorities of the ignore config:
     ///   provider_ignores > provider_ignores > global_ignore
     pub ignore: HashMap<String, IgnoreConfig>,
-}
 
-#[derive(Serialize, Deserialize, Debug, Default)]
-#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
-pub struct InputHistoryConfig {
+    /// Specifies how many items will be displayed in the results window.
+    pub max_display_size: Option<usize>,
+
+    /// Render the preview highlight with specified theme using syntect backend.
+    ///
+    /// If the theme is not found, the default theme (`Visual Studio Dark+`) will be used.
+    pub syntect_highlight_theme: Option<String>,
+
     /// Whether to share the input history of each provider.
-    pub share_all_inputs: bool,
+    pub share_input_history: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
     /// Log configuration.
@@ -232,9 +225,6 @@ pub struct Config {
 
     /// Matcher configuration.
     pub matcher: MatcherConfig,
-
-    /// Picker configuration.
-    pub picker: PickerConfig,
 
     /// Plugin configuration.
     pub plugin: PluginConfig,
@@ -249,9 +239,6 @@ pub struct Config {
     ///
     /// The project path must be specified as absolute path or a path relative to the home directory.
     pub project_ignore: HashMap<AbsPathBuf, IgnoreConfig>,
-
-    /// Input history configuration
-    pub input_history: InputHistoryConfig,
 }
 
 impl Config {
@@ -294,7 +281,7 @@ mod tests {
           [matcher]
           tiebreak = "score,-begin,-end,-length"
 
-          [plugin.cursor-word-highlighter]
+          [plugin.cursorword]
           enable = true
 
           [provider.debounce]
@@ -312,7 +299,44 @@ mod tests {
 "#;
         let user_config: Config =
             toml::from_str(toml_content).expect("Failed to deserialize config");
-        println!("{:#?}", user_config);
-        println!("{}", toml::to_string(&user_config).unwrap());
+
+        assert_eq!(
+            user_config,
+            Config {
+                log: LogConfig {
+                    log_file: Some("/tmp/clap.log".to_string()),
+                    max_level: "trace".to_string()
+                },
+                matcher: MatcherConfig {
+                    tiebreak: "score,-begin,-end,-length".to_string()
+                },
+                plugin: PluginConfig {
+                    cursorword: CursorWordConfig {
+                        enable: true,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                provider: ProviderConfig {
+                    debounce: HashMap::from_iter([
+                        ("*".to_string(), 200),
+                        ("files".to_string(), 100)
+                    ]),
+                    ignore: HashMap::from([(
+                        "dumb_jump".to_string(),
+                        IgnoreConfig {
+                            ignore_comments: true,
+                            ..Default::default()
+                        }
+                    )]),
+                    ..Default::default()
+                },
+                global_ignore: IgnoreConfig {
+                    ignore_file_path_pattern: vec!["test".to_string(), "build".to_string()],
+                    ..Default::default()
+                },
+                ..Default::default()
+            }
+        );
     }
 }

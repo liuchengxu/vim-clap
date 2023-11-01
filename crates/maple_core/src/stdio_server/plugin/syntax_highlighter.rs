@@ -117,13 +117,13 @@ pub fn highlight_lines(
 #[async_trait::async_trait]
 impl ClapPlugin for SyntaxHighlighterPlugin {
     async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
-        let (autocmd_event_type, params) = autocmd;
         use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
 
         if self.toggle.is_off() {
             return Ok(());
         }
 
+        let (autocmd_event_type, params) = autocmd;
         let bufnr = params.parse_bufnr()?;
 
         match autocmd_event_type {

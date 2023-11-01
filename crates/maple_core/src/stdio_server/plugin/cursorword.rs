@@ -11,9 +11,9 @@ use utils::read_lines_from;
 #[derive(Debug, serde::Serialize)]
 struct WordHighlights {
     // (line_number, highlight_col_start)
-    other_words_highlight: Vec<(usize, usize)>,
+    twins_words_highlight: Vec<(usize, usize)>,
     cword_highlight: (usize, usize),
-    // highlight length.
+    // highlight length, in bytes.
     cword_len: usize,
 }
 
@@ -40,11 +40,13 @@ fn find_word_highlights(
 ) -> std::io::Result<Option<WordHighlights>> {
     let cword_len = cword.len();
     let word_matcher = WordMatcher::new(vec![cword.into()]);
+
     // line_start and line_end is 1-based.
     let line_start = line_start - 1;
     let line_end = line_end - 1;
+
     let mut cursor_word_highlight = None;
-    let other_words_highlight = read_lines_from(source_file, line_start, line_end - line_start)?
+    let twins_words_highlight = read_lines_from(source_file, line_start, line_end - line_start)?
         .enumerate()
         .flat_map(|(idx, line)| {
             let matches_range = word_matcher.find_all_matches_range(&line);
@@ -74,9 +76,10 @@ fn find_word_highlights(
             })
         })
         .collect();
+
     if let Some(cword_highlight) = cursor_word_highlight {
         Ok(Some(WordHighlights {
-            other_words_highlight,
+            twins_words_highlight,
             cword_highlight,
             cword_len,
         }))
@@ -86,27 +89,27 @@ fn find_word_highlights(
 }
 
 #[derive(Debug)]
-struct WinHighlights {
+struct CursorHighlights {
     winid: usize,
     // Use `i32` as matchaddpos() returns -1 on error.
     match_ids: Vec<i32>,
 }
 
 #[derive(Debug, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "cursor-word-highlighter")]
-pub struct CursorWordHighlighter {
+#[clap_plugin(id = "cursorword")]
+pub struct CursorWordPlugin {
     vim: Vim,
     bufs: HashMap<usize, PathBuf>,
-    cursor_highlights: Option<WinHighlights>,
+    cursor_highlights: Option<CursorHighlights>,
     ignore_extensions: Vec<&'static str>,
     ignore_file_names: Vec<&'static str>,
 }
 
-impl CursorWordHighlighter {
+impl CursorWordPlugin {
     pub fn new(vim: Vim) -> Self {
         let (ignore_extensions, ignore_file_names): (Vec<_>, Vec<_>) = crate::config::config()
             .plugin
-            .cursor_word_highlighter
+            .cursorword
             .ignore_files
             .split(',')
             .partition(|s| s.starts_with("*."));
@@ -120,7 +123,7 @@ impl CursorWordHighlighter {
         }
     }
 
-    async fn create_new_highlights(&mut self, bufnr: usize) -> Result<Option<WinHighlights>> {
+    async fn create_new_highlights(&mut self, bufnr: usize) -> Result<Option<CursorHighlights>> {
         let cword = self.vim.expand("<cword>").await?;
 
         if cword.is_empty() {
@@ -138,7 +141,7 @@ impl CursorWordHighlighter {
 
         if crate::config::config()
             .plugin
-            .cursor_word_highlighter
+            .cursorword
             .ignore_comment_line
         {
             if let Some(ext) = source_file.extension().and_then(|s| s.to_str()) {
@@ -169,12 +172,9 @@ impl CursorWordHighlighter {
         {
             let match_ids: Vec<i32> = self
                 .vim
-                .call(
-                    "clap#plugin#highlight_cursor_word#add_highlights",
-                    word_highlights,
-                )
+                .call("clap#plugin#cursorword#add_highlights", word_highlights)
                 .await?;
-            return Ok(Some(WinHighlights { match_ids, winid }));
+            return Ok(Some(CursorHighlights { match_ids, winid }));
         }
 
         Ok(None)
@@ -189,7 +189,7 @@ impl CursorWordHighlighter {
         };
 
         // Clear the old highlights after the new added ones so that no flicker occurs.
-        if let Some(WinHighlights { winid, match_ids }) = old_highlights {
+        if let Some(CursorHighlights { winid, match_ids }) = old_highlights {
             self.vim.matchdelete_batch(match_ids, winid).await?;
         }
 
@@ -232,7 +232,7 @@ impl CursorWordHighlighter {
 }
 
 #[async_trait::async_trait]
-impl ClapPlugin for CursorWordHighlighter {
+impl ClapPlugin for CursorWordPlugin {
     async fn handle_action(&mut self, _action: PluginAction) -> Result<()> {
         Ok(())
     }
@@ -254,7 +254,7 @@ impl ClapPlugin for CursorWordHighlighter {
                 self.highlight_symbol_under_cursor(bufnr).await?
             }
             InsertEnter if self.bufs.contains_key(&bufnr) => {
-                if let Some(WinHighlights { winid, match_ids }) = self.cursor_highlights.take() {
+                if let Some(CursorHighlights { winid, match_ids }) = self.cursor_highlights.take() {
                     self.vim.matchdelete_batch(match_ids, winid).await?;
                 }
             }

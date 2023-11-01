@@ -1,5 +1,5 @@
 mod ctags;
-mod cursor_word_highlighter;
+mod cursorword;
 mod git;
 mod linter;
 mod markdown;
@@ -11,7 +11,7 @@ use anyhow::Result;
 use std::fmt::Debug;
 
 pub use self::ctags::CtagsPlugin;
-pub use self::cursor_word_highlighter::CursorWordHighlighter;
+pub use self::cursorword::CursorWordPlugin;
 pub use self::git::GitPlugin;
 pub use self::linter::LinterPlugin;
 pub use self::markdown::MarkdownPlugin;

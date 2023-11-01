@@ -471,7 +471,7 @@ function! clap#floating_win#preview.show(lines) abort
 
   let max_size = s:max_preview_size()
   if max_size <= 0
-    call g:clap#floating_win#preview.close()
+    call self.close()
     return
   endif
   let lines = a:lines[:max_size]
@@ -482,8 +482,7 @@ function! clap#floating_win#preview.show(lines) abort
     if clap#preview#direction() !=# 'LR'
       let opts = nvim_win_get_config(s:preview_winid)
       if opts.height != height
-        let opts.height = height
-        call nvim_win_set_config(s:preview_winid, opts)
+        call nvim_win_set_height(s:preview_winid, height)
       endif
     endif
   endif
@@ -499,7 +498,7 @@ endfunction
 
 function! clap#floating_win#preview.hide() abort
   if !clap#preview#is_always_open()
-    call g:clap#floating_win#preview.close()
+    call self.close()
   endif
 endfunction
 

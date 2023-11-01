@@ -325,7 +325,7 @@ impl Context {
         };
 
         let input_history = crate::datastore::INPUT_HISTORY_IN_MEMORY.lock();
-        let inputs = if crate::config::config().input_history.share_all_inputs {
+        let inputs = if crate::config::config().provider.share_input_history {
             input_history.all_inputs()
         } else {
             input_history.inputs(&env.provider_id)
