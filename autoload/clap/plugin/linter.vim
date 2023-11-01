@@ -90,7 +90,7 @@ function! s:render_on_top_right(lines, line_highlights) abort
   " Make sure the diagnostic win won't interfere with the existing code
   " display.
   let max_available_on_top = s:max_available_length_on_top()
-  if width > max_available_on_top
+  if max_available_on_top > 0 && width > max_available_on_top
     let width = max_available_on_top
     let height += 1
   endif

@@ -128,6 +128,7 @@ pub fn find_workspace(filetype: impl AsRef<str>, source_file: &Path) -> Option<&
             ("rust", RootMarkers(&["Cargo.toml"])),
             ("sh", ParentOfSourceFile),
             ("vim", ParentOfSourceFile),
+            ("markdown", ParentOfSourceFile),
         ])
     });
 

@@ -88,7 +88,7 @@ Additional requirement means the potential extra tool needed for the particular 
 
 - `g:clap_no_matches_msg`: String, `'NO MATCHES FOUND'`, message to show when there is no matches found.
 
-- `g:clap_popup_input_delay`: Number, `200ms` by default, delay for actually responsing to the input, vim only.
+- `g:clap_popup_input_delay`: Number, `200ms` by default, delay for actually responding to the input, vim only.
 
 - `g:clap_disable_run_rooter`: Bool, `v:false`, vim-clap by default will try to run from the project root by changing `cwd` temporarily. Set it to `v:true` to run from the origin `cwd`. The project root here means the git base directory. Create an issue if you want to see more support about the project root.
 
@@ -105,7 +105,7 @@ See `:help clap-options` for more information.
 ```vim
 " `:Clap quick_open` to open some dotfiles quickly.
 " `description` is actually optional, but if you want to show this provider
-" when you call `:Clap`, the `description` is neccessary.
+" when you call `:Clap`, the `description` is necessary.
 let g:clap_provider_quick_open = {
       \ 'source': ['~/.vimrc', '~/.spacevim', '~/.bashrc', '~/.tmux.conf'],
       \ 'sink': 'e',
