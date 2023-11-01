@@ -182,7 +182,17 @@
                     <main>
                         <h1 id="search-syntax"><a class="header" href="#search-syntax">Search Syntax</a></h1>
 <h2 id="fzf-search-syntax"><a class="header" href="#fzf-search-syntax">Fzf search syntax</a></h2>
-<p>vim-clap adopts the almost all fzf search syntax, please refer to <a href="https://github.com/junegunn/fzf#search-syntax">the search syntax section of fzf's README</a> for more details. Note that the OR operator defined by a single bar character is not yet implemented, but you can achieve that by using multiple exact matches.</p>
+<p>vim-clap adopts most of <a href="https://github.com/junegunn/fzf#search-syntax">fzf search syntax</a>. Note that the OR operator defined by a single bar character is unsupported, but you can achieve that by using multiple exact matches.</p>
+<div class="table-wrapper"><table><thead><tr><th>Token</th><th>Match type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>sbtrkt</code></td><td>fuzzy-match</td><td>Items that match sbtrkt</td></tr>
+<tr><td><code>'wild</code></td><td>exact-match (quoted)</td><td>Items that include wild</td></tr>
+<tr><td><code>^music</code></td><td>prefix-exact-match</td><td>Items that start with music</td></tr>
+<tr><td><code>.mp3$</code></td><td>suffix-exact-match</td><td>Items that end with .mp3</td></tr>
+<tr><td><code>!fire</code></td><td>inverse-exact-match</td><td>Items that do not include fire</td></tr>
+<tr><td><code>!^music</code></td><td>inverse-prefix-exact-match</td><td>Items that do not start with music</td></tr>
+<tr><td><code>!.mp3$</code></td><td>inverse-suffix-exact-match</td><td>Items that do not end with .mp3</td></tr>
+</tbody></table>
+</div>
 <h3 id="extended-search-syntax"><a class="header" href="#extended-search-syntax">Extended search syntax</a></h3>
 <p>Apart from the basic fzf search syntax, more search syntax are supported:</p>
 <div class="table-wrapper"><table><thead><tr><th>Token</th><th>Match type</th><th>Description</th></tr></thead><tbody>

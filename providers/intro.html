@@ -231,8 +231,8 @@
 </tbody></table>
 </div>
 <ul>
-<li>The command with a superscript <code>!</code> means that it is not yet implemented or not tested.</li>
 <li>The command with a superscript <code>+</code> means that it supports multi-selection via <kbd>Tab</kbd>.</li>
+<li><code>Clap live_grep</code> is deprecated now, <code>Clap grep</code> is recommended as the successor.</li>
 <li><code>:Clap grep</code>
 <ul>
 <li>Use <code>:Clap grep --query=&lt;cword&gt;</code> to grep the word under cursor.</li>
@@ -273,7 +273,7 @@ let g:clap_provider_alias = {'hist:': 'command_history'}
 <p><code>g:clap_no_matches_msg</code>: String, <code>'NO MATCHES FOUND'</code>, message to show when there is no matches found.</p>
 </li>
 <li>
-<p><code>g:clap_popup_input_delay</code>: Number, <code>200ms</code> by default, delay for actually responsing to the input, vim only.</p>
+<p><code>g:clap_popup_input_delay</code>: Number, <code>200ms</code> by default, delay for actually responding to the input, vim only.</p>
 </li>
 <li>
 <p><code>g:clap_disable_run_rooter</code>: Bool, <code>v:false</code>, vim-clap by default will try to run from the project root by changing <code>cwd</code> temporarily. Set it to <code>v:true</code> to run from the origin <code>cwd</code>. The project root here means the git base directory. Create an issue if you want to see more support about the project root.</p>
@@ -292,7 +292,7 @@ let g:clap_provider_alias = {'hist:': 'command_history'}
 <h2 id="how-to-create-your-own-provider"><a class="header" href="#how-to-create-your-own-provider">How to Create Your Own Provider</a></h2>
 <pre><code class="language-vim">&quot; `:Clap quick_open` to open some dotfiles quickly.
 &quot; `description` is actually optional, but if you want to show this provider
-&quot; when you call `:Clap`, the `description` is neccessary.
+&quot; when you call `:Clap`, the `description` is necessary.
 let g:clap_provider_quick_open = {
       \ 'source': ['~/.vimrc', '~/.spacevim', '~/.bashrc', '~/.tmux.conf'],
       \ 'sink': 'e',
