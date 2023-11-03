@@ -1,3 +1,4 @@
+mod colorizer;
 mod ctags;
 mod cursorword;
 mod git;
@@ -10,6 +11,7 @@ use crate::stdio_server::input::{AutocmdEvent, PluginAction};
 use anyhow::Result;
 use std::fmt::Debug;
 
+pub use self::colorizer::ColorizerPlugin;
 pub use self::ctags::CtagsPlugin;
 pub use self::cursorword::CursorWordPlugin;
 pub use self::git::GitPlugin;
