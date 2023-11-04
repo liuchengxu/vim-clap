@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::{ClapPlugin, PluginAction, Toggle};
+use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use highlighter::{SyntaxReference, TokenHighlight};
@@ -141,8 +141,8 @@ impl ClapPlugin for SyntaxHighlighterPlugin {
         Ok(())
     }
 
-    async fn handle_action(&mut self, action: PluginAction) -> Result<()> {
-        let PluginAction { method, params: _ } = action;
+    async fn handle_action(&mut self, action: ActionRequest) -> Result<()> {
+        let ActionRequest { method, params: _ } = action;
         match method.as_str() {
             Self::ON => {
                 let bufnr = self.vim.bufnr("").await?;

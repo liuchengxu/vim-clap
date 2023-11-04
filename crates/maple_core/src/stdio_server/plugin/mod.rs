@@ -7,7 +7,7 @@ mod markdown;
 pub mod syntax_highlighter;
 mod system;
 
-use crate::stdio_server::input::{AutocmdEvent, PluginAction};
+use crate::stdio_server::input::{ActionRequest, AutocmdEvent};
 use anyhow::Result;
 use std::fmt::Debug;
 
@@ -51,7 +51,7 @@ impl Toggle {
 /// A trait each Clap plugin must implement.
 #[async_trait::async_trait]
 pub trait ClapPlugin: ClapAction + Debug + Send + Sync + 'static {
-    async fn handle_action(&mut self, action: PluginAction) -> Result<()>;
+    async fn handle_action(&mut self, action: ActionRequest) -> Result<()>;
     async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()>;
 }
 

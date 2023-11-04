@@ -1,4 +1,4 @@
-use crate::stdio_server::input::{AutocmdEvent, PluginAction};
+use crate::stdio_server::input::{ActionRequest, AutocmdEvent};
 use crate::stdio_server::plugin::ClapPlugin;
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
@@ -21,8 +21,8 @@ impl ClapPlugin for System {
         Ok(())
     }
 
-    async fn handle_action(&mut self, action: PluginAction) -> Result<()> {
-        let PluginAction { method, params } = action;
+    async fn handle_action(&mut self, action: ActionRequest) -> Result<()> {
+        let ActionRequest { method, params } = action;
         match method.as_str() {
             Self::__NOTE_RECENT_FILES => {
                 let bufnr: Vec<usize> = params.parse()?;

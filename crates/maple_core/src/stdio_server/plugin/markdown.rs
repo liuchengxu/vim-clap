@@ -1,4 +1,4 @@
-use crate::stdio_server::input::{AutocmdEvent, PluginAction};
+use crate::stdio_server::input::{ActionRequest, AutocmdEvent};
 use crate::stdio_server::plugin::{ClapPlugin, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
@@ -235,8 +235,8 @@ impl ClapPlugin for MarkdownPlugin {
         Ok(())
     }
 
-    async fn handle_action(&mut self, action: PluginAction) -> Result<()> {
-        let PluginAction { method, params: _ } = action;
+    async fn handle_action(&mut self, action: ActionRequest) -> Result<()> {
+        let ActionRequest { method, params: _ } = action;
         match method.as_str() {
             Self::GENERATE_TOC => {
                 let file = self.vim.current_buffer_path().await?;

@@ -11,7 +11,7 @@ pub type AutocmdEvent = (AutocmdEventType, Params);
 #[derive(Debug, Clone)]
 pub enum PluginEvent {
     Autocmd(AutocmdEvent),
-    Action(PluginAction),
+    Action(ActionRequest),
 }
 
 impl PluginEvent {
@@ -83,15 +83,15 @@ pub enum AutocmdEventType {
     TextChangedI,
 }
 
-pub type ActionEvent = (PluginId, PluginAction);
+pub type ActionEvent = (PluginId, ActionRequest);
 
 #[derive(Debug, Clone)]
-pub struct PluginAction {
+pub struct ActionRequest {
     pub method: String,
     pub params: Params,
 }
 
-impl From<RpcNotification> for PluginAction {
+impl From<RpcNotification> for ActionRequest {
     fn from(notification: RpcNotification) -> Self {
         Self {
             method: notification.method,
