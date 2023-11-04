@@ -152,6 +152,13 @@ impl Default for GitPluginConfig {
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct ColorizerPluginConfig {
+    /// Whether to enable this plugin.
+    pub enable: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct LinterPluginConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
@@ -160,6 +167,7 @@ pub struct LinterPluginConfig {
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct PluginConfig {
+    pub colorizer: ColorizerPluginConfig,
     pub cursorword: CursorWordConfig,
     pub ctags: CtagsPluginConfig,
     pub git: GitPluginConfig,

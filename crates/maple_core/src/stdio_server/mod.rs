@@ -8,10 +8,7 @@ mod vim;
 
 pub use self::input::InputHistory;
 use self::input::{ActionEvent, Event, ProviderEvent};
-use self::plugin::{
-    ActionType, ClapPlugin, CtagsPlugin, CursorWordPlugin, GitPlugin, LinterPlugin, MarkdownPlugin,
-    PluginId, SyntaxHighlighterPlugin, SystemPlugin,
-};
+use self::plugin::PluginId;
 use self::provider::{create_provider, Context};
 use self::service::ServiceManager;
 use self::vim::initialize_filetype_map;
@@ -27,8 +24,8 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::Instant;
 
-// Do the initialization on startup.
-async fn initialize(
+// Do the initialization on the Vim end on startup.
+async fn initialize_client(
     vim: Vim,
     actions: Vec<&str>,
     config_err: Option<toml::de::Error>,
@@ -66,26 +63,26 @@ async fn initialize(
     Ok(())
 }
 
-/// Starts and keep running the server on top of stdio.
-pub async fn start(config_err: Option<toml::de::Error>) {
-    // TODO: setup test framework using vim_message_sender.
-    let (vim_message_sender, vim_message_receiver) = tokio::sync::mpsc::unbounded_channel();
+struct InitializedService {
+    callable_actions: Vec<&'static str>,
+    plugin_actions: HashMap<PluginId, Vec<String>>,
+    service_manager: ServiceManager,
+}
 
-    let rpc_client = Arc::new(RpcClient::new(
-        BufReader::new(std::io::stdin()),
-        BufWriter::new(std::io::stdout()),
-        vim_message_sender.clone(),
-    ));
+/// Create a new service, with plugins registered from the config file.
+fn initialize_service(vim: Vim) -> InitializedService {
+    use self::plugin::{
+        ActionType, ClapPlugin, ColorizerPlugin, CtagsPlugin, CursorWordPlugin, GitPlugin,
+        LinterPlugin, MarkdownPlugin, SyntaxHighlighterPlugin, SystemPlugin,
+    };
 
-    let vim = Vim::new(rpc_client);
-
-    let mut callable_action_methods = Vec::new();
-    let mut all_actions = HashMap::new();
+    let mut callable_actions = Vec::new();
+    let mut plugin_actions = HashMap::new();
 
     let mut service_manager = ServiceManager::default();
 
     let mut register_plugin = |plugin: Box<dyn ClapPlugin>, debounce: Option<Duration>| {
-        callable_action_methods.extend(
+        callable_actions.extend(
             plugin
                 .actions(ActionType::Callable)
                 .iter()
@@ -93,7 +90,7 @@ pub async fn start(config_err: Option<toml::de::Error>) {
         );
 
         let (plugin_id, actions) = service_manager.register_plugin(plugin, debounce);
-        all_actions.insert(plugin_id, actions);
+        plugin_actions.insert(plugin_id, actions);
     };
 
     register_plugin(Box::new(SystemPlugin::new(vim.clone())), None);
@@ -101,6 +98,13 @@ pub async fn start(config_err: Option<toml::de::Error>) {
     register_plugin(Box::new(SyntaxHighlighterPlugin::new(vim.clone())), None);
 
     let plugin_config = &crate::config::config().plugin;
+
+    if plugin_config.colorizer.enable {
+        register_plugin(
+            Box::new(ColorizerPlugin::new(vim.clone())),
+            Some(Duration::from_millis(100)),
+        );
+    }
 
     if plugin_config.linter.enable {
         register_plugin(
@@ -118,37 +122,59 @@ pub async fn start(config_err: Option<toml::de::Error>) {
     }
 
     if plugin_config.cursorword.enable {
-        register_plugin(Box::new(CursorWordPlugin::new(vim.clone())), None);
+        register_plugin(Box::new(CursorWordPlugin::new(vim)), None);
     }
 
-    tokio::spawn({
-        let vim = vim.clone();
-        async move {
-            if let Err(e) = initialize(vim, callable_action_methods, config_err).await {
-                tracing::error!(error = ?e, "Failed to initialize Client")
-            }
-        }
-    });
+    InitializedService {
+        callable_actions,
+        plugin_actions,
+        service_manager,
+    }
+}
 
-    Client::new(vim, service_manager, all_actions)
+/// Starts and keep running the server on top of stdio.
+pub async fn start(config_err: Option<toml::de::Error>) {
+    // TODO: setup test framework using vim_message_sender.
+    let (vim_message_sender, vim_message_receiver) = tokio::sync::mpsc::unbounded_channel();
+
+    let rpc_client = Arc::new(RpcClient::new(
+        BufReader::new(std::io::stdin()),
+        BufWriter::new(std::io::stdout()),
+        vim_message_sender.clone(),
+    ));
+
+    let vim = Vim::new(rpc_client);
+
+    Backend::new(vim, config_err)
         .run(vim_message_receiver)
         .await;
 }
 
 #[derive(Clone)]
-struct Client {
+struct Backend {
     vim: Vim,
     plugin_actions: Arc<Mutex<HashMap<PluginId, Vec<String>>>>,
     service_manager: Arc<Mutex<ServiceManager>>,
 }
 
-impl Client {
-    /// Creates a new instnace of [`Client`].
-    fn new(
-        vim: Vim,
-        service_manager: ServiceManager,
-        plugin_actions: HashMap<PluginId, Vec<String>>,
-    ) -> Self {
+impl Backend {
+    /// Creates a new instance of [`Backend`].
+    fn new(vim: Vim, config_err: Option<toml::de::Error>) -> Self {
+        let InitializedService {
+            callable_actions,
+            plugin_actions,
+            service_manager,
+        } = initialize_service(vim.clone());
+
+        tokio::spawn({
+            let vim = vim.clone();
+            async move {
+                if let Err(e) = initialize_client(vim, callable_actions, config_err).await {
+                    tracing::error!(error = ?e, "Failed to initialize Client")
+                }
+            }
+        });
+
         Self {
             vim,
             plugin_actions: Arc::new(Mutex::new(plugin_actions)),

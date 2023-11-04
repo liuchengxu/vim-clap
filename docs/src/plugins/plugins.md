@@ -1,9 +1,12 @@
 # Available Plugins
 
+The following plugins may only implement a subset of features of their alternatives.
+
 TODO: elaborate on plugins' usage.
 
 <!-- clap-markdown-toc -->
 
+* [colorizer](#colorizer)
 * [ctags](#ctags)
 * [cursorword](#cursorword)
 * [git](#git)
@@ -11,6 +14,17 @@ TODO: elaborate on plugins' usage.
 * [markdown](#markdown)
 
 <!-- /clap-markdown-toc -->
+
+## colorizer
+
+```toml
+[plugin.colorizer]
+enable = true
+```
+
+| Features                               | Alternatives                                                                                                |
+| :------------------------------------- | :-----------------------------------------------------                                                      |
+| Highlight color name                   | [colorizer](https://github.com/chrisbra/colorizer)</br>[vim-css-color](https://github.com/ap/vim-css-color) |
 
 ## ctags
 
