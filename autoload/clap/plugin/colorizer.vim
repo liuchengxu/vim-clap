@@ -19,9 +19,9 @@ function! s:create_new_group(bufnr, highlight_group) abort
         \ a:highlight_group.ctermbg,
         \ )
 
-  if !has('nvim')
+  if !has('nvim') && index(s:types, a:highlight_group.name) == -1
     call add(s:types, a:highlight_group.name)
-    call prop_type_add(a:highlight_group.name, {'highlight': a:highlight_group.name, 'bufnr': a:bufnr})
+    call prop_type_add(a:highlight_group.name, {'highlight': a:highlight_group.name})
   endif
 endfunction
 
