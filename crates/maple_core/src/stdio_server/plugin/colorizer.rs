@@ -30,7 +30,7 @@ static HSL_ALPHA: Lazy<Regex> = Lazy::new(|| {
 });
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "colorizer", actions = ["toggle"])]
+#[clap_plugin(id = "colorizer", actions = ["off", "toggle"])]
 pub struct ColorizerPlugin {
     vim: Vim,
     toggle: Toggle,
@@ -215,6 +215,11 @@ impl ClapPlugin for ColorizerPlugin {
                 }
 
                 self.toggle.switch();
+            }
+            Self::OFF => {
+                let bufnr = self.vim.bufnr("").await?;
+                self.vim
+                    .exec("clap#plugin#colorizer#clear_highlights", bufnr)?;
             }
             _ => {}
         }
