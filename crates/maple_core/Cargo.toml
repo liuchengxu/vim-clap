@@ -16,6 +16,7 @@ bytecount = { workspace = true }
 chrono = { workspace = true }
 chrono-humanize = { workspace = true }
 clap = { workspace = true }
+colors-transform = { workspace = true }
 futures = { workspace = true }
 # ripgrep for global search
 grep-searcher = { workspace = true }
@@ -50,7 +51,6 @@ printer = { workspace = true }
 rpc = { workspace = true }
 types = { workspace = true }
 utils = { workspace = true }
-colors-transform = "0.2.11"
 
 [dev-dependencies]
 git = { package = "git2", version = "0.15" }

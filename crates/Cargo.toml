@@ -32,6 +32,7 @@ chrono = { version = "0.4", features = ["serde"] }
 chrono-humanize = "0.2.3"
 clap = { version = "4.2", features = ["derive"] }
 colorsys = "0.6.7"
+colors-transform = "0.2.11"
 directories = "4.0"
 futures = "0.3"
 fuzzy-matcher = "0.3"
