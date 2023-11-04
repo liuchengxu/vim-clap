@@ -13,9 +13,10 @@ endif
 
 function! s:create_new_group(bufnr, highlight_group) abort
   execute printf(
-        \ 'hi %s guibg=%s',
+        \ 'hi %s guibg=%s ctermbg=%d',
         \ a:highlight_group.name,
         \ a:highlight_group.guibg,
+        \ a:highlight_group.ctermbg,
         \ )
 
   if !has('nvim')
