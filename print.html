@@ -568,9 +568,11 @@ max-level = &quot;debug&quot;
 tiebreak = &quot;score,-begin,-end,-length&quot;
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="available-plugins"><a class="header" href="#available-plugins">Available Plugins</a></h1>
+<p>The following plugins may only implement a subset of features of their alternatives.</p>
 <p>TODO: elaborate on plugins' usage.</p>
 <!-- clap-markdown-toc -->
 <ul>
+<li><a href="plugins/plugins.html#colorizer">colorizer</a></li>
 <li><a href="plugins/plugins.html#ctags">ctags</a></li>
 <li><a href="plugins/plugins.html#cursorword">cursorword</a></li>
 <li><a href="plugins/plugins.html#git">git</a></li>
@@ -578,6 +580,14 @@ tiebreak = &quot;score,-begin,-end,-length&quot;
 <li><a href="plugins/plugins.html#markdown">markdown</a></li>
 </ul>
 <!-- /clap-markdown-toc -->
+<h2 id="colorizer"><a class="header" href="#colorizer">colorizer</a></h2>
+<pre><code class="language-toml">[plugin.colorizer]
+enable = true
+</code></pre>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: left">Features</th><th style="text-align: left">Alternatives</th></tr></thead><tbody>
+<tr><td style="text-align: left">Highlight color name</td><td style="text-align: left"><a href="https://github.com/chrisbra/colorizer">colorizer</a></br><a href="https://github.com/ap/vim-css-color">vim-css-color</a></td></tr>
+</tbody></table>
+</div>
 <h2 id="ctags"><a class="header" href="#ctags">ctags</a></h2>
 <h2 id="cursorword"><a class="header" href="#cursorword">cursorword</a></h2>
 <pre><code class="language-toml">[plugin.cursorword]
