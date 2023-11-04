@@ -1,4 +1,4 @@
-use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType, PluginAction};
+use crate::stdio_server::input::{AutocmdEvent, PluginAction};
 use crate::stdio_server::plugin::{ClapPlugin, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
@@ -8,6 +8,8 @@ use regex::Regex;
 use rgb2ansi256::rgb_to_ansi256;
 use std::collections::BTreeMap;
 use std::path::Path;
+
+static HEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"#([a-fA-F0-9]{3}|[a-fA-F0-9]{6})\b").unwrap());
 
 static RGB: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"rgb\s*\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)").unwrap());
@@ -26,8 +28,6 @@ static HSL_ALPHA: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"hsla\s*\(\s*(\d{1,3}\.?\d*)\s*,\s*(\d{1,3}\.?\d*)%\s*,\s*(\d{1,3}\.?\d*)%,\s*([01]\.?\d*)\)")
         .unwrap()
 });
-
-static HEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"#([a-fA-F0-9]{3}|[a-fA-F0-9]{6})\b").unwrap());
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
 #[clap_plugin(id = "colorizer", actions = ["toggle"])]
@@ -59,17 +59,34 @@ struct ColorInfo {
     highlight_group: HighlightGroup,
 }
 
+enum HexOrRgb {
+    Hex(String),
+    Rgb(Rgb),
+}
+
 fn find_colors(input_file: impl AsRef<Path>) -> std::io::Result<BTreeMap<usize, Vec<ColorInfo>>> {
     let mut p: BTreeMap<usize, Vec<_>> = BTreeMap::new();
 
-    let mut insert_color_info = |line_number, m: regex::Match, hex_code: String| {
-        let group_name: String = format!("ClapColorizer_{}", &hex_code[1..]);
-        let Ok(ctermbg) = Rgb::from_hex_str(&hex_code).map(|rgb| {
-            let (r, g, b) = rgb.as_tuple();
-            rgb_to_ansi256(r as u8, g as u8, b as u8)
-        }) else {
-            return;
+    let mut insert_color_info = |line_number, m: regex::Match, color: HexOrRgb| {
+        let (ctermbg, hex_code) = match color {
+            HexOrRgb::Hex(hex_code) => {
+                let Ok(ctermbg) = Rgb::from_hex_str(&hex_code).map(|rgb| {
+                    let (r, g, b) = rgb.as_tuple();
+                    rgb_to_ansi256(r as u8, g as u8, b as u8)
+                }) else {
+                    return;
+                };
+
+                (ctermbg, hex_code)
+            }
+            HexOrRgb::Rgb(rgb) => {
+                let (r, g, b) = rgb.as_tuple();
+                let ctermbg = rgb_to_ansi256(r as u8, g as u8, b as u8);
+                (ctermbg, rgb.to_css_hex_string())
+            }
         };
+
+        let group_name: String = format!("ClapColorizer_{}", &hex_code[1..]);
 
         let color_info = ColorInfo {
             col: m.range().start,
@@ -88,17 +105,15 @@ fn find_colors(input_file: impl AsRef<Path>) -> std::io::Result<BTreeMap<usize, 
         }
     };
 
-    for (index, line) in utils::read_lines(input_file)?
+    // 0-based line_number
+    for (line_number, line) in utils::read_lines(input_file)?
         .map_while(Result::ok)
         .enumerate()
     {
-        // 0-based
-        let line_number = index;
-
         for caps in HEX.captures_iter(&line) {
             if let Some(m) = caps.get(0) {
                 let hex_code = m.as_str().to_lowercase();
-                insert_color_info(line_number, m, hex_code);
+                insert_color_info(line_number, m, HexOrRgb::Hex(hex_code));
             }
         }
 
@@ -110,8 +125,7 @@ fn find_colors(input_file: impl AsRef<Path>) -> std::io::Result<BTreeMap<usize, 
                     continue;
                 };
 
-                let hex_code = Rgb::from(r, g, b).to_css_hex_string();
-                insert_color_info(line_number, m, hex_code);
+                insert_color_info(line_number, m, HexOrRgb::Rgb(Rgb::from(r, g, b)));
             }
         }
 
@@ -126,16 +140,14 @@ fn find_colors(input_file: impl AsRef<Path>) -> std::io::Result<BTreeMap<usize, 
                     continue;
                 };
 
-                let hex_code = Rgb::from(r, g, b).set_alpha(a).to_css_hex_string();
-                insert_color_info(line_number, m, hex_code);
+                let rgb = Rgb::from(r, g, b).set_alpha(a);
+                insert_color_info(line_number, m, HexOrRgb::Rgb(rgb));
             }
         }
 
         for caps in HSL.captures_iter(&line) {
             if let Some(m) = caps.get(0) {
-                let (Some(h), Some(s), Some(l)) =
-                    (parse(&caps, 1), parse(&caps, 2), parse(&caps, 3))
-                else {
+                let Some(h) = parse(&caps, 1) else {
                     continue;
                 };
 
@@ -143,19 +155,18 @@ fn find_colors(input_file: impl AsRef<Path>) -> std::io::Result<BTreeMap<usize, 
                     continue;
                 }
 
-                let hex_code = Hsl::from(h, s, l).to_rgb().to_css_hex_string();
-                insert_color_info(line_number, m, hex_code);
+                let (Some(s), Some(l)) = (parse(&caps, 2), parse(&caps, 3)) else {
+                    continue;
+                };
+
+                let rgb = Hsl::from(h, s, l).to_rgb();
+                insert_color_info(line_number, m, HexOrRgb::Rgb(rgb));
             }
         }
 
         for caps in HSL_ALPHA.captures_iter(&line) {
             if let Some(m) = caps.get(0) {
-                let (Some(h), Some(s), Some(l), Some(a)) = (
-                    parse(&caps, 1),
-                    parse(&caps, 2),
-                    parse(&caps, 3),
-                    parse(&caps, 4),
-                ) else {
+                let Some(h) = parse(&caps, 1) else {
                     continue;
                 };
 
@@ -163,8 +174,14 @@ fn find_colors(input_file: impl AsRef<Path>) -> std::io::Result<BTreeMap<usize, 
                     continue;
                 }
 
-                let hex_code = Hsl::from(h, s, l).set_alpha(a).to_rgb().to_css_hex_string();
-                insert_color_info(line_number, m, hex_code);
+                let (Some(s), Some(l), Some(a)) =
+                    (parse(&caps, 2), parse(&caps, 3), parse(&caps, 4))
+                else {
+                    continue;
+                };
+
+                let rgb = Hsl::from(h, s, l).set_alpha(a).to_rgb();
+                insert_color_info(line_number, m, HexOrRgb::Rgb(rgb));
             }
         }
     }

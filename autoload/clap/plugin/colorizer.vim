@@ -57,7 +57,7 @@ function! clap#plugin#colorizer#clear_highlights(bufnr) abort
   if has('nvim')
     call nvim_buf_clear_namespace(a:bufnr, s:colorizer_ns_id, 0, -1)
   else
-    call prop_remove({ 'types': s:types, 'bufnr': a:bufnr, 'all': v:true } )
+    call prop_remove({ 'types': s:types, 'all': v:true, 'bufnr': a:bufnr } )
   endif
 endfunction
 
