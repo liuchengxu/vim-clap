@@ -4,7 +4,7 @@ mod cursorword;
 mod git;
 mod linter;
 mod markdown;
-pub mod syntax_highlighter;
+pub mod syntax;
 mod system;
 
 use crate::stdio_server::input::{ActionRequest, AutocmdEvent};
@@ -17,7 +17,7 @@ pub use self::cursorword::CursorWordPlugin;
 pub use self::git::Git as GitPlugin;
 pub use self::linter::Linter as LinterPlugin;
 pub use self::markdown::Markdown as MarkdownPlugin;
-pub use self::syntax_highlighter::Syntax as SyntaxHighlighterPlugin;
+pub use self::syntax::Syntax as SyntaxHighlighterPlugin;
 pub use self::system::System as SystemPlugin;
 pub use types::{Action, ActionType, ClapAction};
 
