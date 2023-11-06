@@ -14,10 +14,10 @@ use std::fmt::Debug;
 pub use self::colorizer::ColorizerPlugin;
 pub use self::ctags::CtagsPlugin;
 pub use self::cursorword::CursorWordPlugin;
-pub use self::git::GitPlugin;
-pub use self::linter::LinterPlugin;
-pub use self::markdown::MarkdownPlugin;
-pub use self::syntax_highlighter::SyntaxHighlighterPlugin;
+pub use self::git::Git as GitPlugin;
+pub use self::linter::Linter as LinterPlugin;
+pub use self::markdown::Markdown as MarkdownPlugin;
+pub use self::syntax_highlighter::Syntax as SyntaxHighlighterPlugin;
 pub use self::system::System as SystemPlugin;
 pub use types::{Action, ActionType, ClapAction};
 

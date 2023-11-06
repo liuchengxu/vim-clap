@@ -1,7 +1,7 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, Toggle};
 use crate::stdio_server::vim::Vim;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use linter::Diagnostic;
 use parking_lot::{Mutex, RwLock};
 use serde::Serialize;
@@ -131,13 +131,13 @@ impl BufferLinterInfo {
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
 #[clap_plugin(id = "linter", actions = ["lint", "debug", "toggle"])]
-pub struct LinterPlugin {
+pub struct Linter {
     vim: Vim,
     bufs: HashMap<usize, BufferLinterInfo>,
     toggle: Toggle,
 }
 
-impl LinterPlugin {
+impl Linter {
     pub fn new(vim: Vim) -> Self {
         Self {
             vim,
@@ -190,7 +190,7 @@ impl LinterPlugin {
 }
 
 #[async_trait::async_trait]
-impl ClapPlugin for LinterPlugin {
+impl ClapPlugin for Linter {
     async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
         use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
 
@@ -224,9 +224,6 @@ impl ClapPlugin for LinterPlugin {
                         .filter(|d| d.spans.iter().any(|span| span.line_start == lnum))
                         .collect::<Vec<_>>();
 
-                    tracing::debug!(
-                        "========= CursorMoved current_diagnostics: {current_diagnostics:?}"
-                    );
                     if current_diagnostics.is_empty() {
                         self.vim.bare_exec("clap#plugin#linter#clear_top_right")?;
                     } else {
@@ -263,8 +260,8 @@ impl ClapPlugin for LinterPlugin {
 
     async fn handle_action(&mut self, action: ActionRequest) -> Result<()> {
         let ActionRequest { method, params: _ } = action;
-        match method.as_str() {
-            Self::LINT => {
+        match self.parse_action(method)? {
+            LinterAction::Lint => {
                 let bufnr = self.vim.bufnr("").await?;
 
                 if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
@@ -275,7 +272,6 @@ impl ClapPlugin for LinterPlugin {
                         .filter(|d| d.spans.iter().any(|span| span.line_start == lnum))
                         .collect::<Vec<_>>();
 
-                    tracing::debug!("========= current_diagnostics: {current_diagnostics:?}");
                     for diagnostic in current_diagnostics {
                         self.vim.echo_info(diagnostic.human_message())?;
                     }
@@ -285,11 +281,11 @@ impl ClapPlugin for LinterPlugin {
 
                 self.on_buf_enter(bufnr).await?;
             }
-            Self::DEBUG => {
+            LinterAction::Debug => {
                 let bufnr = self.vim.bufnr("").await?;
                 self.on_buf_enter(bufnr).await?;
             }
-            Self::TOGGLE => {
+            LinterAction::Toggle => {
                 match self.toggle {
                     Toggle::On => {
                         for bufnr in self.bufs.keys() {
@@ -303,7 +299,6 @@ impl ClapPlugin for LinterPlugin {
                 }
                 self.toggle.switch();
             }
-            unknown_action => return Err(anyhow!("Unknown action: {unknown_action:?}")),
         }
 
         Ok(())

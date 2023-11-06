@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::sync::Mutex;
 
 use darling::FromMeta;
+use inflections::case::to_pascal_case;
 use once_cell::sync::Lazy;
 use proc_macro::{self, TokenStream};
 use proc_macro2::Span;
@@ -79,6 +80,8 @@ fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
         return output.into();
     }
 
+    let mut raw_actions = Vec::new();
+
     let mut actions_list = Vec::new();
     let mut callable_actions_list = Vec::new();
     let mut internal_actions_list = Vec::new();
@@ -127,6 +130,8 @@ fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
             return err.to_compile_error();
         }
 
+        raw_actions.push(action_name);
+
         let action_name = action_name.replace('-', "_");
 
         let uppercase_action = action_name.to_uppercase();
@@ -158,9 +163,46 @@ fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
                 const #action_var: types::Action = types::Action::internal(Self::#action_lit);
             }
         }
-    });
+    }).collect::<Vec<_>>();
+
+    let plugin_action = Ident::new(
+        &format!("{}Action", to_pascal_case(&plugin_id)),
+        ident.span(),
+    );
+    let mut plugin_action_variants = Vec::new();
+    let action_variants = raw_actions
+        .iter()
+        .map(|arg| {
+            let pascal_name = if let Some(name) = arg.strip_prefix("__") {
+                format!("__{}", to_pascal_case(name))
+            } else {
+                to_pascal_case(arg)
+            };
+
+            let var = Ident::new(&pascal_name, ident.span());
+            plugin_action_variants.push(Ident::new(&pascal_name, ident.span()));
+
+            quote! {
+                #arg => Ok(#plugin_action::#var),
+            }
+        })
+        .collect::<Vec<_>>();
 
     let output = quote! {
+
+        enum #plugin_action {
+          #(#plugin_action_variants),*
+        }
+
+        impl #ident {
+            fn parse_action(&self, method: impl AsRef<str>) -> anyhow::Result<#plugin_action> {
+                match method.as_ref() {
+                  #(#action_variants)*
+                  unknown => Err(anyhow::anyhow!("[{}] unknown action: {unknown}", #plugin_id)),
+                }
+            }
+        }
+
         impl #ident {
             #(#constants)*
 
