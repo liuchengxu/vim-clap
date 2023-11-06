@@ -1,5 +1,5 @@
 use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::{ClapAction, ClapPlugin};
+use crate::stdio_server::plugin::ClapPlugin;
 use crate::stdio_server::vim::Vim;
 use crate::tools::ctags::{BufferTag, Scope};
 use anyhow::Result;
@@ -123,8 +123,7 @@ impl ClapPlugin for CtagsPlugin {
             CursorMoved => self.on_cursor_moved(bufnr).await?,
             event => {
                 return Err(anyhow::anyhow!(
-                    "[{}] Unhandled {event:?}, incomplete subscriptions?",
-                    self.id()
+                    "Unhandled {event:?}, incomplete subscriptions?",
                 ))
             }
         }

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::{ActionRequest, ClapAction, ClapPlugin, Toggle};
+use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
 use highlighter::{SyntaxReference, TokenHighlight};
@@ -141,8 +141,7 @@ impl ClapPlugin for Syntax {
             }
             event => {
                 return Err(anyhow::anyhow!(
-                    "[{}] Unhandled {event:?}, incomplete subscriptions?",
-                    self.id()
+                    "Unhandled {event:?}, incomplete subscriptions?",
                 ))
             }
         }

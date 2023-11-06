@@ -1,5 +1,5 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::{ActionRequest, ClapAction, ClapPlugin, Toggle};
+use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
 use linter::Diagnostic;
@@ -188,6 +188,49 @@ impl Linter {
 
         Ok(())
     }
+
+    async fn on_cursor_moved(&self, bufnr: usize) -> Result<()> {
+        if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
+            let lnum = self.vim.line(".").await?;
+            let col = self.vim.col(".").await?;
+
+            let diagnostics = buf_linter_info.diagnostics.inner.read();
+
+            let current_diagnostics = diagnostics
+                .iter()
+                .filter(|d| d.spans.iter().any(|span| span.line_start == lnum))
+                .collect::<Vec<_>>();
+
+            if current_diagnostics.is_empty() {
+                self.vim.bare_exec("clap#plugin#linter#clear_top_right")?;
+            } else {
+                let diagnostic_at_cursor = current_diagnostics
+                    .iter()
+                    .filter(|d| {
+                        d.spans
+                            .iter()
+                            .any(|span| col >= span.column_start && col < span.column_end)
+                    })
+                    .collect::<Vec<_>>();
+
+                // Display the specific diagnostic if the cursor is on it, otherwise display all
+                // the diagnostics in this line.
+                if diagnostic_at_cursor.is_empty() {
+                    self.vim.exec(
+                        "clap#plugin#linter#display_top_right",
+                        [current_diagnostics],
+                    )?;
+                } else {
+                    self.vim.exec(
+                        "clap#plugin#linter#display_top_right",
+                        [diagnostic_at_cursor],
+                    )?;
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[async_trait::async_trait]
@@ -216,49 +259,11 @@ impl ClapPlugin for Linter {
                 self.bufs.remove(&bufnr);
             }
             CursorMoved => {
-                if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
-                    let lnum = self.vim.line(".").await?;
-                    let col = self.vim.col(".").await?;
-
-                    let diagnostics = buf_linter_info.diagnostics.inner.read();
-
-                    let current_diagnostics = diagnostics
-                        .iter()
-                        .filter(|d| d.spans.iter().any(|span| span.line_start == lnum))
-                        .collect::<Vec<_>>();
-
-                    if current_diagnostics.is_empty() {
-                        self.vim.bare_exec("clap#plugin#linter#clear_top_right")?;
-                    } else {
-                        let diagnostic_at_cursor = current_diagnostics
-                            .iter()
-                            .filter(|d| {
-                                d.spans
-                                    .iter()
-                                    .any(|span| col >= span.column_start && col < span.column_end)
-                            })
-                            .collect::<Vec<_>>();
-
-                        // Display the specific diagnostic if the cursor is on it, otherwise display all
-                        // the diagnostics in this line.
-                        if diagnostic_at_cursor.is_empty() {
-                            self.vim.exec(
-                                "clap#plugin#linter#display_top_right",
-                                [current_diagnostics],
-                            )?;
-                        } else {
-                            self.vim.exec(
-                                "clap#plugin#linter#display_top_right",
-                                [diagnostic_at_cursor],
-                            )?;
-                        }
-                    }
-                }
+                self.on_cursor_moved(bufnr).await?;
             }
             event => {
                 return Err(anyhow::anyhow!(
-                    "[{}] Unhandled {event:?}, incomplete subscriptions?",
-                    self.id()
+                    "Unhandled {event:?}, incomplete subscriptions?",
                 ))
             }
         }

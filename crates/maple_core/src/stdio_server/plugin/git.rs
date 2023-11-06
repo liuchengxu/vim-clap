@@ -1,5 +1,5 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::{ActionRequest, ClapAction, ClapPlugin, Toggle};
+use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use chrono::{TimeZone, Utc};
@@ -397,8 +397,7 @@ impl ClapPlugin for Git {
             CursorMoved => self.on_cursor_moved(bufnr).await?,
             event => {
                 return Err(anyhow::anyhow!(
-                    "[{}] Unhandled {event:?}, incomplete subscriptions?",
-                    self.id()
+                    "Unhandled {event:?}, incomplete subscriptions?",
                 ))
             }
         }
