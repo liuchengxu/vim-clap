@@ -1,8 +1,8 @@
 //! Each invocation of Clap provider is a session. When you exit the provider, the session ends.
 
 use crate::stdio_server::input::{
-    ActionRequest, AutocmdEvent, InternalProviderEvent, PluginEvent, ProviderEvent,
-    ProviderEventSender,
+    ActionRequest, AutocmdEvent, AutocmdEventType, InternalProviderEvent, PluginEvent,
+    ProviderEvent, ProviderEventSender,
 };
 use crate::stdio_server::plugin::{ActionType, ClapPlugin, PluginId};
 use crate::stdio_server::provider::{ClapProvider, Context, ProviderId};
@@ -357,7 +357,7 @@ impl PluginSession {
 #[derive(Debug, Default)]
 pub struct ServiceManager {
     pub providers: HashMap<ProviderSessionId, ProviderEventSender>,
-    pub plugins: HashMap<PluginId, UnboundedSender<PluginEvent>>,
+    pub plugins: HashMap<PluginId, (Vec<AutocmdEventType>, UnboundedSender<PluginEvent>)>,
 }
 
 impl ServiceManager {
@@ -411,8 +411,11 @@ impl ServiceManager {
 
         let debounce = Some(maybe_debounce.unwrap_or(Duration::from_millis(50)));
 
+        let subscriptions = plugin.subscriptions().to_vec();
+        let plugin_event_sender = PluginSession::create(plugin, debounce);
+
         self.plugins
-            .insert(plugin_id, PluginSession::create(plugin, debounce));
+            .insert(plugin_id, (subscriptions, plugin_event_sender));
 
         (plugin_id, all_actions)
     }
@@ -423,22 +426,28 @@ impl ServiceManager {
         plugin_id: PluginId,
         plugin: Box<dyn ClapPlugin>,
     ) {
+        let subscriptions = plugin.subscriptions().to_vec();
+        let plugin_event_sender = PluginSession::create(plugin, None);
         self.plugins
-            .insert(plugin_id, PluginSession::create(plugin, None));
+            .insert(plugin_id, (subscriptions, plugin_event_sender));
     }
 
     /// Sends event message to all plugins.
     pub fn notify_plugins(&mut self, autocmd: AutocmdEvent) {
-        self.plugins.retain(|_plugin_id, plugin_sender| {
-            plugin_sender
-                .send(PluginEvent::Autocmd(autocmd.clone()))
-                .is_ok()
-        });
+        self.plugins
+            .retain(|_plugin_id, (subscriptions, plugin_sender)| {
+                if subscriptions.contains(&autocmd.0) {
+                    return plugin_sender
+                        .send(PluginEvent::Autocmd(autocmd.clone()))
+                        .is_ok();
+                }
+                true
+            });
     }
 
     pub fn notify_plugin_action(&mut self, plugin_id: PluginId, action_request: ActionRequest) {
         if let Entry::Occupied(v) = self.plugins.entry(plugin_id) {
-            if v.get().send(PluginEvent::Action(action_request)).is_err() {
+            if v.get().1.send(PluginEvent::Action(action_request)).is_err() {
                 v.remove_entry();
             }
         }

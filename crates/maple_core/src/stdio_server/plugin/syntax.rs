@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, Toggle};
+use crate::stdio_server::plugin::{ActionRequest, ClapAction, ClapPlugin, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
 use highlighter::{SyntaxReference, TokenHighlight};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
+
+use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
 
 pub static HIGHLIGHTER: Lazy<highlighter::SyntaxHighlighter> =
     Lazy::new(highlighter::SyntaxHighlighter::new);
@@ -116,9 +118,11 @@ pub fn highlight_lines(
 
 #[async_trait::async_trait]
 impl ClapPlugin for Syntax {
-    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
-        use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
+    fn subscriptions(&self) -> &[AutocmdEventType] {
+        &[BufDelete, BufEnter, BufWritePost, CursorMoved]
+    }
 
+    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
         if self.toggle.is_off() {
             return Ok(());
         }
@@ -135,7 +139,12 @@ impl ClapPlugin for Syntax {
             CursorMoved => {
                 self.highlight_visual_lines(bufnr).await?;
             }
-            _ => {}
+            event => {
+                return Err(anyhow::anyhow!(
+                    "[{}] Unhandled {event:?}, incomplete subscriptions?",
+                    self.id()
+                ))
+            }
         }
 
         Ok(())

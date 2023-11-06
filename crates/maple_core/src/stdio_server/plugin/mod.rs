@@ -21,6 +21,8 @@ pub use self::syntax::Syntax as SyntaxHighlighterPlugin;
 pub use self::system::System as SystemPlugin;
 pub use types::{Action, ActionType, ClapAction};
 
+use super::input::AutocmdEventType;
+
 pub type PluginId = &'static str;
 
 #[derive(Debug, Clone)]
@@ -52,7 +54,15 @@ impl Toggle {
 #[async_trait::async_trait]
 pub trait ClapPlugin: ClapAction + Debug + Send + Sync + 'static {
     async fn handle_action(&mut self, action: ActionRequest) -> Result<()>;
-    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()>;
+
+    /// Returns the list of subscribed Autocmd events.
+    fn subscriptions(&self) -> &[AutocmdEventType] {
+        &[]
+    }
+
+    async fn handle_autocmd(&mut self, _autocmd: AutocmdEvent) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[cfg(test)]

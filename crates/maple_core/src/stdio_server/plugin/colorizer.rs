@@ -1,4 +1,4 @@
-use crate::stdio_server::input::{ActionRequest, AutocmdEvent};
+use crate::stdio_server::input::ActionRequest;
 use crate::stdio_server::plugin::{ClapPlugin, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
@@ -221,10 +221,6 @@ impl ClapPlugin for ColorizerPlugin {
             }
         }
 
-        Ok(())
-    }
-
-    async fn handle_autocmd(&mut self, _autocmd: AutocmdEvent) -> Result<()> {
         Ok(())
     }
 }

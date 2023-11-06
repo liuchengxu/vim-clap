@@ -1,5 +1,5 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, Toggle};
+use crate::stdio_server::plugin::{ActionRequest, ClapAction, ClapPlugin, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use chrono::{TimeZone, Utc};
@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use AutocmdEventType::{BufDelete, BufEnter, BufLeave, CursorMoved, InsertEnter};
 
 #[derive(Debug, Clone)]
 struct GitRepo {
@@ -370,9 +371,11 @@ impl Git {
 
 #[async_trait::async_trait]
 impl ClapPlugin for Git {
-    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
-        use AutocmdEventType::{BufDelete, BufEnter, BufLeave, CursorMoved, InsertEnter};
+    fn subscriptions(&self) -> &[AutocmdEventType] {
+        &[BufDelete, BufEnter, BufLeave, CursorMoved, InsertEnter]
+    }
 
+    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
         if self.toggle.is_off() {
             return Ok(());
         }
@@ -392,7 +395,12 @@ impl ClapPlugin for Git {
                 self.vim.exec("clap#plugin#git#clear_blame_info", [bufnr])?;
             }
             CursorMoved => self.on_cursor_moved(bufnr).await?,
-            _ => {}
+            event => {
+                return Err(anyhow::anyhow!(
+                    "[{}] Unhandled {event:?}, incomplete subscriptions?",
+                    self.id()
+                ))
+            }
         }
 
         Ok(())

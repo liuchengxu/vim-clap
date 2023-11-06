@@ -1,4 +1,4 @@
-use crate::stdio_server::input::{ActionRequest, AutocmdEvent};
+use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ClapPlugin, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
@@ -227,6 +227,10 @@ impl Markdown {
 
 #[async_trait::async_trait]
 impl ClapPlugin for Markdown {
+    fn subscriptions(&self) -> &[AutocmdEventType] {
+        &[]
+    }
+
     async fn handle_autocmd(&mut self, _autocmd: AutocmdEvent) -> Result<()> {
         if self.toggle.is_off() {
             return Ok(());

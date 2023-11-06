@@ -1,5 +1,5 @@
 use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::ClapPlugin;
+use crate::stdio_server::plugin::{ClapAction, ClapPlugin};
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
 use colors_transform::Color;
@@ -9,6 +9,9 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use utils::read_lines_from;
+use AutocmdEventType::{
+    BufDelete, BufEnter, BufLeave, BufWinEnter, BufWinLeave, CursorMoved, InsertEnter,
+};
 
 #[derive(Debug, serde::Serialize)]
 struct WordHighlights {
@@ -286,11 +289,19 @@ impl ClapPlugin for Cursorword {
         Ok(())
     }
 
-    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
-        use AutocmdEventType::{
-            BufDelete, BufEnter, BufLeave, BufWinEnter, BufWinLeave, CursorMoved, InsertEnter,
-        };
+    fn subscriptions(&self) -> &[AutocmdEventType] {
+        &[
+            BufDelete,
+            BufEnter,
+            BufLeave,
+            BufWinEnter,
+            BufWinLeave,
+            CursorMoved,
+            InsertEnter,
+        ]
+    }
 
+    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
         let (event_type, params) = autocmd;
         let bufnr = params.parse_bufnr()?;
 
@@ -307,7 +318,12 @@ impl ClapPlugin for Cursorword {
                     self.vim.matchdelete_batch(match_ids, winid).await?;
                 }
             }
-            _ => {}
+            event => {
+                return Err(anyhow::anyhow!(
+                    "[{}] Unhandled {event:?}, incomplete subscriptions?",
+                    self.id()
+                ))
+            }
         }
 
         Ok(())

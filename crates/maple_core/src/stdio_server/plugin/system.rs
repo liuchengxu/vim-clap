@@ -1,4 +1,4 @@
-use crate::stdio_server::input::{ActionRequest, AutocmdEvent};
+use crate::stdio_server::input::ActionRequest;
 use crate::stdio_server::plugin::ClapPlugin;
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
@@ -17,10 +17,6 @@ impl System {
 
 #[async_trait::async_trait]
 impl ClapPlugin for System {
-    async fn handle_autocmd(&mut self, _autocmd: AutocmdEvent) -> Result<()> {
-        Ok(())
-    }
-
     async fn handle_action(&mut self, action: ActionRequest) -> Result<()> {
         let ActionRequest { method, params } = action;
 

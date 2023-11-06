@@ -1,5 +1,5 @@
 use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::ClapPlugin;
+use crate::stdio_server::plugin::{ClapAction, ClapPlugin};
 use crate::stdio_server::vim::Vim;
 use crate::tools::ctags::{BufferTag, Scope};
 use anyhow::Result;
@@ -7,6 +7,7 @@ use icon::IconType;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
+use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
 
 #[derive(Serialize, Debug)]
 struct ScopeRef<'a> {
@@ -97,9 +98,11 @@ impl ClapPlugin for CtagsPlugin {
         Ok(())
     }
 
-    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
-        use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
+    fn subscriptions(&self) -> &[AutocmdEventType] {
+        &[BufEnter, BufWritePost, BufDelete, CursorMoved]
+    }
 
+    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
         let (event_type, params) = autocmd;
 
         let bufnr = params.parse_bufnr()?;
@@ -118,7 +121,12 @@ impl ClapPlugin for CtagsPlugin {
                 self.buf_tags.remove(&bufnr);
             }
             CursorMoved => self.on_cursor_moved(bufnr).await?,
-            _ => {}
+            event => {
+                return Err(anyhow::anyhow!(
+                    "[{}] Unhandled {event:?}, incomplete subscriptions?",
+                    self.id()
+                ))
+            }
         }
 
         Ok(())
