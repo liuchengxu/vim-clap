@@ -9,6 +9,12 @@ hi ClapUnderline gui=underline cterm=underline
 hi default link ClapCursorWord      IncSearch
 hi default link ClapCursorWordTwins ClapUnderline
 
+augroup VimClapCursorword
+  autocmd!
+
+  autocmd ColorScheme * call clap#client#notify('cursorword/__define-highlights', [+expand('<abuf>')])
+augroup END
+
 function! clap#plugin#cursorword#add_highlights(word_highlights) abort
   let cword_len = a:word_highlights.cword_len
   let match_ids = []
@@ -24,6 +30,14 @@ function! clap#plugin#cursorword#add_highlights(word_highlights) abort
     endif
   endfor
   return match_ids
+endfunction
+
+function! clap#plugin#cursorword#define_highlights(highlights, twins_highlights) abort
+  let [ctermbg, guibg] = a:highlights
+  let [twins_ctermbg, twins_guibg] = a:twins_highlights
+
+  execute printf('highlight ClapCursorWord       ctermbg=%d guibg=%s', ctermbg, guibg)
+  execute printf('highlight ClapCursorWordTwins  ctermbg=%d guibg=%s', twins_ctermbg, twins_guibg)
 endfunction
 
 let &cpoptions = s:save_cpo

@@ -173,6 +173,12 @@ fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
     let action_variants = raw_actions
         .iter()
         .map(|arg| {
+            // "__note-recent-files", "cursorword/__define-highlights"
+            let method = if plugin_id == "system" {
+                arg.to_string()
+            } else {
+                format!("{plugin_id}/{arg}")
+            };
             let pascal_name = if let Some(name) = arg.strip_prefix("__") {
                 format!("__{}", to_pascal_case(name))
             } else {
@@ -183,7 +189,7 @@ fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
             plugin_action_variants.push(Ident::new(&pascal_name, ident.span()));
 
             quote! {
-                #arg => Ok(#plugin_action::#var),
+                #method => Ok(#plugin_action::#var),
             }
         })
         .collect::<Vec<_>>();

@@ -142,6 +142,13 @@ function! s:api.echomsg(msg) abort
   echomsg a:msg
 endfunction
 
+function! s:api.verbose(cmd) abort
+  redir => l:output
+  silent execute ':verbose' a:cmd
+  redir END
+  return l:output
+endfunction
+
 function! s:api.set_initial_query(query) abort
   if a:query ==# '@visual'
     let query = clap#util#get_visual_selection()

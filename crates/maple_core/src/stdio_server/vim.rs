@@ -465,6 +465,10 @@ impl Vim {
             .map(|m| m == 1u32)
     }
 
+    pub async fn verbose(&self, cmd: impl AsRef<str>) -> Result<String> {
+        self.call::<String>("verbose", [cmd.as_ref()]).await
+    }
+
     pub async fn bufabspath(&self, bufnr: impl Display) -> Result<String> {
         self.expand(format!("#{bufnr}:p")).await
     }
