@@ -89,11 +89,14 @@ pub enum ActionType {
 
 #[derive(Debug, Clone)]
 pub struct Action {
+    /// Type of this action.
     pub ty: ActionType,
+    /// method used in JSONRPC request for this action.
     pub method: &'static str,
 }
 
 impl Action {
+    /// Constructs a callable action with specified method.
     pub const fn callable(method: &'static str) -> Self {
         Self {
             ty: ActionType::Callable,
@@ -101,6 +104,7 @@ impl Action {
         }
     }
 
+    /// Constructs an internal action with specified method.
     pub const fn internal(method: &'static str) -> Self {
         Self {
             ty: ActionType::Internal,
@@ -109,27 +113,25 @@ impl Action {
     }
 }
 
-/// Small macro for defining Enum with `variants()` method.
+/// Small macro for defining an Enum with `variants()` method.
 macro_rules! event_enum_with_variants {
-  (
-    $enum_name:ident {
-      $( $variant:ident, )*
-    }
-  ) => {
-      /// Represents a key event.
-      #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
-      pub enum $enum_name {
-        $( $variant, )*
-
+    (
+      $enum_name:ident {
+        $( $variant:ident, )*
       }
+    ) => {
+          /// Represents a key event.
+          #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
+          pub enum $enum_name {
+              $( $variant, )*
+          }
 
-      impl $enum_name {
-        pub fn variants() -> &'static [&'static str] {
-          &[
-            $( stringify!($variant), )*
-          ]
-        }
-      }
+          impl $enum_name {
+              /// Returns the list of all variants in string literal.
+              pub fn variants() -> &'static [&'static str] {
+                  &[ $( stringify!($variant), )* ]
+              }
+          }
     };
 }
 
