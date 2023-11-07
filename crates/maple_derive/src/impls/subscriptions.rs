@@ -1,8 +1,11 @@
+#![allow(clippy::single_match)]
+
 use proc_macro::{self, TokenStream};
 use quote::quote;
 use std::collections::HashSet;
 use syn::{
-    parse_macro_input, Expr, ExprMatch, Ident, Item, ItemFn, Local, Pat, Stmt, UsePath, UseTree,
+    parse_macro_input, Expr, ExprCall, ExprMatch, Ident, Item, ItemFn, Local, Pat, Stmt, UsePath,
+    UseTree,
 };
 
 fn extract_variants(expr_match: &ExprMatch) -> Vec<Ident> {
@@ -102,11 +105,51 @@ fn parse_local_stmt(local: &Local) -> Option<Vec<Ident>> {
     None
 }
 
+fn parse_async_fn_expr_call(expr_call: &ExprCall) -> Option<Vec<Ident>> {
+    let mut maybe_variants = None;
+
+    // Box::pin
+    match expr_call.func.as_ref() {
+        Expr::Path(expr_path) => {
+            let paths = expr_path
+                .path
+                .segments
+                .iter()
+                .map(|s| s.ident.clone())
+                .collect::<Vec<_>>();
+            assert_eq!(
+                paths,
+                vec!["Box", "pin"],
+                "statement of async fn must be Box::pin(...)"
+            );
+        }
+        _ => {
+            unreachable!("statement must be Box::pin(...) which is Expr::Path(..)")
+        }
+    }
+
+    for arg in &expr_call.args {
+        match arg {
+            // async move {..}
+            Expr::Async(expr_async) => {
+                for stmt in &expr_async.block.stmts {
+                    if let Stmt::Local(local) = stmt {
+                        if let Some(variants) = parse_local_stmt(local) {
+                            maybe_variants.replace(variants);
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    maybe_variants
+}
+
 pub fn subscriptions_impl(item: TokenStream) -> TokenStream {
     // Parse the input tokens into a syntax tree
     let input_fn = parse_macro_input!(item as ItemFn);
-
-    let mut maybe_variants = None;
 
     // TODO: improve the robustness
     if input_fn.sig.ident != "handle_autocmd" {
@@ -139,51 +182,10 @@ pub fn subscriptions_impl(item: TokenStream) -> TokenStream {
         otherwise async_trait is changed",
     );
 
-    for stmt in &input_fn.block.stmts {
-        match stmt {
-            Stmt::Expr(expr, _) => match expr {
-                Expr::Call(expr_call) => {
-                    // Box::pin
-                    match expr_call.func.as_ref() {
-                        Expr::Path(expr_path) => {
-                            let paths = expr_path
-                                .path
-                                .segments
-                                .iter()
-                                .map(|s| s.ident.clone())
-                                .collect::<Vec<_>>();
-                            assert_eq!(
-                                paths,
-                                vec!["Box", "pin"],
-                                "statement of async fn must be Box::pin(...)"
-                            );
-                        }
-                        _ => {
-                            unreachable!("statement must be Box::pin(...) which is Expr::Path(..)")
-                        }
-                    }
-
-                    for arg in &expr_call.args {
-                        match arg {
-                            // async move {..}
-                            Expr::Async(expr_async) => {
-                                for stmt in &expr_async.block.stmts {
-                                    if let Stmt::Local(local) = stmt {
-                                        if let Some(variants) = parse_local_stmt(local) {
-                                            maybe_variants.replace(variants);
-                                        }
-                                    }
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-                _ => {}
-            },
-            _ => {}
-        }
-    }
+    let maybe_variants = match &input_fn.block.stmts[0] {
+        Stmt::Expr(Expr::Call(expr_call), _) => parse_async_fn_expr_call(expr_call),
+        _ => unreachable!("statement must be a Expr::Call `Box::pin(...)`"),
+    };
 
     let gen = if let Some(variants) = maybe_variants {
         // Generate the subscriptions function

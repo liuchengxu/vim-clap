@@ -1,3 +1,5 @@
+#![allow(clippy::enum_variant_names)]
+
 use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ClapPlugin, Toggle};
 use crate::stdio_server::vim::Vim;
