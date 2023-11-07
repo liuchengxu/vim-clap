@@ -108,11 +108,61 @@ pub fn subscriptions_impl(item: TokenStream) -> TokenStream {
 
     let mut maybe_variants = None;
 
+    // TODO: improve the robustness
+    if input_fn.sig.ident != "handle_autocmd" {
+        panic!(
+            "#[maple_derive::subscriptions] only works for `async fn handle_autocmd(&self, ...)`"
+        );
+    }
+
+    // ```
+    // #[async_trait::async_trait]
+    // impl ClapPlugin for MyPlugin {
+    //     async fn handle_autocmd(&self, ...) -> Result<()> {
+    //         ...
+    //     }
+    // }
+    // ```
+    //
+    // The above example will be expanded to
+    //
+    // ```
+    // fn handle_autocmd<...>(...) -> ::core::pin::Pin<..> where ... {
+    //     Box::pin(async move {
+    //         ...
+    //     })
+    // }
+    // ```
+    assert!(
+        input_fn.block.stmts.len() == 1,
+        "The block of expanded async fn has only one statement `Box::pin(async move {{ ... }})` \
+        otherwise async_trait is changed",
+    );
+
     for stmt in &input_fn.block.stmts {
         match stmt {
             Stmt::Expr(expr, _) => match expr {
-                // Box::pin
                 Expr::Call(expr_call) => {
+                    // Box::pin
+                    match expr_call.func.as_ref() {
+                        Expr::Path(expr_path) => {
+                            let paths = expr_path
+                                .path
+                                .segments
+                                .iter()
+                                .map(|s| s.ident.clone())
+                                .collect::<Vec<_>>();
+                            assert_eq!(
+                                paths,
+                                vec!["Box", "pin"],
+                                "statement of async fn must be Box::pin(...)"
+                            );
+                        }
+                        _ => {
+                            unreachable!("statement must be Box::pin(...) which is Expr::Path(..)")
+                        }
+                    }
+
                     for arg in &expr_call.args {
                         match arg {
                             // async move {..}
