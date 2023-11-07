@@ -10,7 +10,6 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::task::JoinHandle;
-use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
 
 #[derive(Debug, Clone)]
 struct ShareableDiagnostics {
@@ -235,11 +234,10 @@ impl Linter {
 
 #[async_trait::async_trait]
 impl ClapPlugin for Linter {
-    fn subscriptions(&self) -> &[AutocmdEventType] {
-        &[BufDelete, BufEnter, BufWritePost, CursorMoved]
-    }
-
+    #[maple_derive::subscriptions]
     async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
+        use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
+
         if self.toggle.is_off() {
             return Ok(());
         }

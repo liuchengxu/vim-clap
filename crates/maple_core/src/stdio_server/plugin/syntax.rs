@@ -8,8 +8,6 @@ use highlighter::{SyntaxReference, TokenHighlight};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 
-use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
-
 pub static HIGHLIGHTER: Lazy<highlighter::SyntaxHighlighter> =
     Lazy::new(highlighter::SyntaxHighlighter::new);
 
@@ -118,11 +116,10 @@ pub fn highlight_lines(
 
 #[async_trait::async_trait]
 impl ClapPlugin for Syntax {
-    fn subscriptions(&self) -> &[AutocmdEventType] {
-        &[BufDelete, BufEnter, BufWritePost, CursorMoved]
-    }
-
+    #[maple_derive::subscriptions]
     async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
+        use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
+
         if self.toggle.is_off() {
             return Ok(());
         }

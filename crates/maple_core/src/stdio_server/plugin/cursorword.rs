@@ -289,18 +289,7 @@ impl ClapPlugin for Cursorword {
         Ok(())
     }
 
-    fn subscriptions(&self) -> &[AutocmdEventType] {
-        &[
-            BufDelete,
-            BufEnter,
-            BufLeave,
-            BufWinEnter,
-            BufWinLeave,
-            CursorMoved,
-            InsertEnter,
-        ]
-    }
-
+    #[maple_derive::subscriptions]
     async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
         let (event_type, params) = autocmd;
         let bufnr = params.parse_bufnr()?;
@@ -310,18 +299,12 @@ impl ClapPlugin for Cursorword {
             BufDelete | BufLeave | BufWinLeave => {
                 self.bufs.remove(&bufnr);
             }
-            CursorMoved => {
-                if self.bufs.contains_key(&bufnr) {
-                    self.highlight_symbol_under_cursor(bufnr).await?
-                }
+            CursorMoved if self.bufs.contains_key(&bufnr) => {
+                self.highlight_symbol_under_cursor(bufnr).await?
             }
-            InsertEnter => {
-                if self.bufs.contains_key(&bufnr) {
-                    if let Some(CursorHighlights { winid, match_ids }) =
-                        self.cursor_highlights.take()
-                    {
-                        self.vim.matchdelete_batch(match_ids, winid).await?;
-                    }
+            InsertEnter if self.bufs.contains_key(&bufnr) => {
+                if let Some(CursorHighlights { winid, match_ids }) = self.cursor_highlights.take() {
+                    self.vim.matchdelete_batch(match_ids, winid).await?;
                 }
             }
             event => {

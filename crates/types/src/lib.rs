@@ -108,3 +108,40 @@ impl Action {
         }
     }
 }
+
+/// Small macro for defining Enum with `variants()` method.
+macro_rules! event_enum_with_variants {
+  (
+    $enum_name:ident {
+      $( $variant:ident, )*
+    }
+  ) => {
+      /// Represents a key event.
+      #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
+      pub enum $enum_name {
+        $( $variant, )*
+
+      }
+
+      impl $enum_name {
+        pub fn variants() -> &'static [&'static str] {
+          &[
+            $( stringify!($variant), )*
+          ]
+        }
+      }
+    };
+}
+
+event_enum_with_variants!(AutocmdEventType {
+    CursorMoved,
+    InsertEnter,
+    BufEnter,
+    BufLeave,
+    BufDelete,
+    BufWritePost,
+    BufWinEnter,
+    BufWinLeave,
+    TextChanged,
+    TextChangedI,
+});

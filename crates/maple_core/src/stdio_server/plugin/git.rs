@@ -9,7 +9,6 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
-use AutocmdEventType::{BufDelete, BufEnter, BufLeave, CursorMoved, InsertEnter};
 
 #[derive(Debug, Clone)]
 struct GitRepo {
@@ -371,11 +370,10 @@ impl Git {
 
 #[async_trait::async_trait]
 impl ClapPlugin for Git {
-    fn subscriptions(&self) -> &[AutocmdEventType] {
-        &[BufDelete, BufEnter, BufLeave, CursorMoved, InsertEnter]
-    }
-
+    #[maple_derive::subscriptions]
     async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
+        use AutocmdEventType::{BufDelete, BufEnter, BufLeave, CursorMoved, InsertEnter};
+
         if self.toggle.is_off() {
             return Ok(());
         }

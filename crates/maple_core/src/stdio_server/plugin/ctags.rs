@@ -7,7 +7,6 @@ use icon::IconType;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
-use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
 
 #[derive(Serialize, Debug)]
 struct ScopeRef<'a> {
@@ -98,11 +97,10 @@ impl ClapPlugin for CtagsPlugin {
         Ok(())
     }
 
-    fn subscriptions(&self) -> &[AutocmdEventType] {
-        &[BufEnter, BufWritePost, BufDelete, CursorMoved]
-    }
-
+    #[maple_derive::subscriptions]
     async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
+        use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
+
         let (event_type, params) = autocmd;
 
         let bufnr = params.parse_bufnr()?;
