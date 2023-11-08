@@ -8,6 +8,7 @@ use syn::{
     UseTree,
 };
 
+/// Extract the variants in [`types::AutocmdEventType`] from the Match expression.
 fn extract_variants(expr_match: &ExprMatch) -> Vec<Ident> {
     let autocmd_variants = types::AutocmdEventType::variants();
 
@@ -19,14 +20,18 @@ fn extract_variants(expr_match: &ExprMatch) -> Vec<Ident> {
             Pat::Or(pat_or) => {
                 for case in &pat_or.cases {
                     if let Pat::Ident(pat_ident) = case {
-                        if autocmd_variants.contains(&pat_ident.ident.to_string().as_str()) {
+                        if !handled_autocmds.contains(&pat_ident.ident)
+                            && autocmd_variants.contains(&pat_ident.ident.to_string().as_str())
+                        {
                             handled_autocmds.push(pat_ident.ident.clone());
                         }
                     }
                 }
             }
             Pat::Ident(pat_ident) => {
-                if autocmd_variants.contains(&pat_ident.ident.to_string().as_str()) {
+                if !handled_autocmds.contains(&pat_ident.ident)
+                    && autocmd_variants.contains(&pat_ident.ident.to_string().as_str())
+                {
                     handled_autocmds.push(pat_ident.ident.clone());
                 }
             }
@@ -42,6 +47,7 @@ fn extract_variants(expr_match: &ExprMatch) -> Vec<Ident> {
     handled_autocmds
 }
 
+/// Parse `use AutocmdEventType::{...}`.
 fn parse_use_path(use_path: &UsePath) -> Vec<Ident> {
     match use_path.tree.as_ref() {
         UseTree::Group(use_group) => use_group
@@ -62,39 +68,37 @@ fn parse_use_path(use_path: &UsePath) -> Vec<Ident> {
 }
 
 // let __ret: Result<()> = {..}
-fn parse_local_stmt(local: &Local) -> Option<Vec<Ident>> {
+fn parse_expanded_async_block(local: &Local) -> Option<Vec<Ident>> {
     let mut maybe_imports = None::<Vec<Ident>>;
 
     if let Some(init) = &local.init {
         match init.expr.as_ref() {
             Expr::Block(expr_block) => {
                 for stmt in &expr_block.block.stmts {
-                    if let Stmt::Expr(expr, _) = stmt {
-                        if let Expr::Match(expr_match) = expr {
+                    match stmt {
+                        Stmt::Item(Item::Use(item_use)) => match &item_use.tree {
+                            UseTree::Path(use_path) => {
+                                if use_path.ident == "AutocmdEventType" {
+                                    maybe_imports.replace(parse_use_path(use_path));
+                                }
+                            }
+                            _ => {}
+                        },
+                        Stmt::Expr(Expr::Match(expr_match), _) => {
                             let variants = extract_variants(expr_match);
 
                             if let Some(imports) = maybe_imports {
                                 let imports: HashSet<_> = imports.into_iter().collect();
-                                assert!(
-                                    imports == HashSet::<Ident, _>::from_iter(variants.clone()),
-                                    r#"variants in `use AutocmdEventType::{{...}}` must match the handled ones"#
+                                assert_eq!(
+                                    imports,
+                                    HashSet::from_iter(variants.clone()),
+                                    "variants in `use AutocmdEventType::{{...}}` must match the handled ones"
                                 );
                             }
 
                             return Some(variants);
                         }
-                    } else {
-                        match stmt {
-                            Stmt::Item(Item::Use(item_use)) => match &item_use.tree {
-                                UseTree::Path(use_path) => {
-                                    if use_path.ident == "AutocmdEventType" {
-                                        maybe_imports.replace(parse_use_path(use_path));
-                                    }
-                                }
-                                _ => {}
-                            },
-                            _ => {}
-                        }
+                        _ => {}
                     }
                 }
             }
@@ -134,7 +138,7 @@ fn parse_async_fn_expr_call(expr_call: &ExprCall) -> Option<Vec<Ident>> {
             Expr::Async(expr_async) => {
                 for stmt in &expr_async.block.stmts {
                     if let Stmt::Local(local) = stmt {
-                        if let Some(variants) = parse_local_stmt(local) {
+                        if let Some(variants) = parse_expanded_async_block(local) {
                             maybe_variants.replace(variants);
                         }
                     }
