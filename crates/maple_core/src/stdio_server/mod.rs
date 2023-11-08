@@ -72,7 +72,7 @@ struct InitializedService {
 /// Create a new service, with plugins registered from the config file.
 fn initialize_service(vim: Vim) -> InitializedService {
     use self::plugin::{
-        ActionType, ClapPlugin, ColorizerPlugin, CtagsPlugin, CursorWordPlugin, GitPlugin,
+        ActionType, ClapPlugin, ColorizerPlugin, CtagsPlugin, CursorwordPlugin, GitPlugin,
         LinterPlugin, MarkdownPlugin, SyntaxHighlighterPlugin, SystemPlugin,
     };
 
@@ -122,7 +122,7 @@ fn initialize_service(vim: Vim) -> InitializedService {
     }
 
     if plugin_config.cursorword.enable {
-        register_plugin(Box::new(CursorWordPlugin::new(vim)), None);
+        register_plugin(Box::new(CursorwordPlugin::new(vim)), None);
     }
 
     InitializedService {

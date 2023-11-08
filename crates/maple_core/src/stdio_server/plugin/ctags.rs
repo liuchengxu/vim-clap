@@ -1,4 +1,4 @@
-use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType, PluginAction};
+use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::ClapPlugin;
 use crate::stdio_server::vim::Vim;
 use crate::tools::ctags::{BufferTag, Scope};
@@ -93,10 +93,11 @@ impl CtagsPlugin {
 
 #[async_trait::async_trait]
 impl ClapPlugin for CtagsPlugin {
-    async fn handle_action(&mut self, _action: PluginAction) -> Result<()> {
+    async fn handle_action(&mut self, _action: ActionRequest) -> Result<()> {
         Ok(())
     }
 
+    #[maple_derive::subscriptions]
     async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
         use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
 
@@ -118,7 +119,11 @@ impl ClapPlugin for CtagsPlugin {
                 self.buf_tags.remove(&bufnr);
             }
             CursorMoved => self.on_cursor_moved(bufnr).await?,
-            _ => {}
+            event => {
+                return Err(anyhow::anyhow!(
+                    "Unhandled {event:?}, incomplete subscriptions?",
+                ))
+            }
         }
 
         Ok(())

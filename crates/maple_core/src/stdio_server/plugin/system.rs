@@ -1,4 +1,4 @@
-use crate::stdio_server::input::{AutocmdEvent, PluginAction};
+use crate::stdio_server::input::ActionRequest;
 use crate::stdio_server::plugin::ClapPlugin;
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
@@ -17,14 +17,11 @@ impl System {
 
 #[async_trait::async_trait]
 impl ClapPlugin for System {
-    async fn handle_autocmd(&mut self, _autocmd: AutocmdEvent) -> Result<()> {
-        Ok(())
-    }
+    async fn handle_action(&mut self, action: ActionRequest) -> Result<()> {
+        let ActionRequest { method, params } = action;
 
-    async fn handle_action(&mut self, action: PluginAction) -> Result<()> {
-        let PluginAction { method, params } = action;
-        match method.as_str() {
-            Self::__NOTE_RECENT_FILES => {
+        match self.parse_action(method)? {
+            SystemAction::__NoteRecentFiles => {
                 let bufnr: Vec<usize> = params.parse()?;
                 let bufnr = bufnr
                     .first()
@@ -32,16 +29,15 @@ impl ClapPlugin for System {
                 let file_path: String = self.vim.expand(format!("#{bufnr}:p")).await?;
                 crate::stdio_server::handler::messages::note_recent_file(file_path)
             }
-            Self::OPEN_CONFIG => {
+            SystemAction::OpenConfig => {
                 let config_file = crate::config::config_file();
                 self.vim
                     .exec("execute", format!("edit {}", config_file.display()))
             }
-            Self::LIST_PLUGINS => {
+            SystemAction::ListPlugins => {
                 // Handled upper level.
                 Ok(())
             }
-            _ => Ok(()),
         }
     }
 }

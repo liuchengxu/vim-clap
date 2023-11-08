@@ -1,12 +1,17 @@
-use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType, PluginAction};
+use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::ClapPlugin;
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
+use colors_transform::Color;
 use matcher::WordMatcher;
+use rgb2ansi256::rgb_to_ansi256;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use utils::read_lines_from;
+use AutocmdEventType::{
+    BufDelete, BufEnter, BufLeave, BufWinEnter, BufWinLeave, CursorMoved, InsertEnter,
+};
 
 #[derive(Debug, serde::Serialize)]
 struct WordHighlights {
@@ -95,9 +100,40 @@ struct CursorHighlights {
     match_ids: Vec<i32>,
 }
 
+async fn define_highlights(vim: &Vim) -> Result<()> {
+    let output = vim.call::<String>("execute", ["hi Normal"]).await?;
+    let maybe_guibg = output.split('\n').find_map(|line| {
+        line.split_whitespace()
+            .find_map(|i| i.strip_prefix("guibg="))
+    });
+    if let Some(guibg) = maybe_guibg {
+        let Ok(color) = colors_transform::Rgb::from_hex_str(guibg) else {
+            return Ok(());
+        };
+
+        let light_color = color.lighten(10.0);
+        let guibg = light_color.to_css_hex_string();
+        let (r, g, b) = light_color.as_tuple();
+        let ctermbg = rgb_to_ansi256(r as u8, g as u8, b as u8);
+
+        let dark_color = color
+            .lighten(-10.0)
+            .adjust_color(colors_transform::RgbUnit::Red, 10.0);
+        let twins_guibg = dark_color.to_css_hex_string();
+        let (r, g, b) = dark_color.as_tuple();
+        let twins_ctermbg = rgb_to_ansi256(r as u8, g as u8, b as u8);
+
+        vim.exec(
+            "clap#plugin#cursorword#define_highlights",
+            [(ctermbg, guibg), (twins_ctermbg, twins_guibg)],
+        )?;
+    }
+    Ok(())
+}
+
 #[derive(Debug, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "cursorword")]
-pub struct CursorWordPlugin {
+#[clap_plugin(id = "cursorword", actions = ["__define-highlights"])]
+pub struct Cursorword {
     vim: Vim,
     bufs: HashMap<usize, PathBuf>,
     cursor_highlights: Option<CursorHighlights>,
@@ -105,7 +141,7 @@ pub struct CursorWordPlugin {
     ignore_file_names: Vec<&'static str>,
 }
 
-impl CursorWordPlugin {
+impl Cursorword {
     pub fn new(vim: Vim) -> Self {
         let (ignore_extensions, ignore_file_names): (Vec<_>, Vec<_>) = crate::config::config()
             .plugin
@@ -113,6 +149,16 @@ impl CursorWordPlugin {
             .ignore_files
             .split(',')
             .partition(|s| s.starts_with("*."));
+
+        tokio::spawn({
+            let vim = vim.clone();
+
+            async move {
+                if let Err(err) = define_highlights(&vim).await {
+                    tracing::error!(?err, "[cursorword] Failed to define highlights");
+                }
+            }
+        });
 
         Self {
             vim,
@@ -232,16 +278,19 @@ impl CursorWordPlugin {
 }
 
 #[async_trait::async_trait]
-impl ClapPlugin for CursorWordPlugin {
-    async fn handle_action(&mut self, _action: PluginAction) -> Result<()> {
+impl ClapPlugin for Cursorword {
+    async fn handle_action(&mut self, action: ActionRequest) -> Result<()> {
+        match self.parse_action(&action.method)? {
+            CursorwordAction::__DefineHighlights => {
+                define_highlights(&self.vim).await?;
+            }
+        }
+
         Ok(())
     }
 
+    #[maple_derive::subscriptions]
     async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
-        use AutocmdEventType::{
-            BufDelete, BufEnter, BufLeave, BufWinEnter, BufWinLeave, CursorMoved, InsertEnter,
-        };
-
         let (event_type, params) = autocmd;
         let bufnr = params.parse_bufnr()?;
 
@@ -258,7 +307,11 @@ impl ClapPlugin for CursorWordPlugin {
                     self.vim.matchdelete_batch(match_ids, winid).await?;
                 }
             }
-            _ => {}
+            event => {
+                return Err(anyhow::anyhow!(
+                    "Unhandled {event:?}, incomplete subscriptions?",
+                ))
+            }
         }
 
         Ok(())

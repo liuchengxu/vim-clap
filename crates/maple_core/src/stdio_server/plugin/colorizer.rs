@@ -1,4 +1,4 @@
-use crate::stdio_server::input::{AutocmdEvent, PluginAction};
+use crate::stdio_server::input::ActionRequest;
 use crate::stdio_server::plugin::{ClapPlugin, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
@@ -195,11 +195,9 @@ fn parse<T: std::str::FromStr>(caps: &regex::Captures, i: usize) -> Option<T> {
 
 #[async_trait::async_trait]
 impl ClapPlugin for ColorizerPlugin {
-    async fn handle_action(&mut self, action: PluginAction) -> Result<()> {
-        let PluginAction { method, params: _ } = action;
-
-        match method.as_str() {
-            Self::TOGGLE => {
+    async fn handle_action(&mut self, action: ActionRequest) -> Result<()> {
+        match self.parse_action(&action.method)? {
+            ColorizerAction::Toggle => {
                 let bufnr = self.vim.bufnr("").await?;
 
                 if self.toggle.is_off() {
@@ -216,18 +214,13 @@ impl ClapPlugin for ColorizerPlugin {
 
                 self.toggle.switch();
             }
-            Self::OFF => {
+            ColorizerAction::Off => {
                 let bufnr = self.vim.bufnr("").await?;
                 self.vim
                     .exec("clap#plugin#colorizer#clear_highlights", bufnr)?;
             }
-            _ => {}
         }
 
-        Ok(())
-    }
-
-    async fn handle_autocmd(&mut self, _autocmd: AutocmdEvent) -> Result<()> {
         Ok(())
     }
 }

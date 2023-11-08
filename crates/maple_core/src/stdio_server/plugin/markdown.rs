@@ -1,7 +1,9 @@
-use crate::stdio_server::input::{AutocmdEvent, PluginAction};
+#![allow(clippy::enum_variant_names)]
+
+use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ClapPlugin, Toggle};
 use crate::stdio_server::vim::Vim;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use once_cell::sync::Lazy;
 use percent_encoding::{percent_encode, CONTROLS};
 use regex::Regex;
@@ -199,12 +201,12 @@ fn find_toc_range(input_file: impl AsRef<Path>) -> std::io::Result<Option<(usize
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
 #[clap_plugin(id = "markdown", actions = ["generate-toc", "update-toc", "delete-toc"])]
-pub struct MarkdownPlugin {
+pub struct Markdown {
     vim: Vim,
     toggle: Toggle,
 }
 
-impl MarkdownPlugin {
+impl Markdown {
     pub fn new(vim: Vim) -> Self {
         Self {
             vim,
@@ -226,7 +228,11 @@ impl MarkdownPlugin {
 }
 
 #[async_trait::async_trait]
-impl ClapPlugin for MarkdownPlugin {
+impl ClapPlugin for Markdown {
+    fn subscriptions(&self) -> &[AutocmdEventType] {
+        &[]
+    }
+
     async fn handle_autocmd(&mut self, _autocmd: AutocmdEvent) -> Result<()> {
         if self.toggle.is_off() {
             return Ok(());
@@ -235,10 +241,10 @@ impl ClapPlugin for MarkdownPlugin {
         Ok(())
     }
 
-    async fn handle_action(&mut self, action: PluginAction) -> Result<()> {
-        let PluginAction { method, params: _ } = action;
-        match method.as_str() {
-            Self::GENERATE_TOC => {
+    async fn handle_action(&mut self, action: ActionRequest) -> Result<()> {
+        let ActionRequest { method, params: _ } = action;
+        match self.parse_action(method)? {
+            MarkdownAction::GenerateToc => {
                 let file = self.vim.current_buffer_path().await?;
                 let curlnum = self.vim.line(".").await?;
                 let shiftwidth = self.vim.getbufvar("", "&shiftwidth").await?;
@@ -250,18 +256,17 @@ impl ClapPlugin for MarkdownPlugin {
                 self.vim
                     .exec("append_and_write", json!([curlnum - 1, toc]))?;
             }
-            Self::UPDATE_TOC => {
+            MarkdownAction::UpdateToc => {
                 let bufnr = self.vim.bufnr("").await?;
                 self.update_toc(bufnr).await?;
             }
-            Self::DELETE_TOC => {
+            MarkdownAction::DeleteToc => {
                 let file = self.vim.current_buffer_path().await?;
                 let bufnr = self.vim.bufnr("").await?;
                 if let Some((start, end)) = find_toc_range(file)? {
                     self.vim.deletebufline(bufnr, start + 1, end + 1).await?;
                 }
             }
-            unknown_action => return Err(anyhow!("Unknown action: {unknown_action:?}")),
         }
 
         Ok(())

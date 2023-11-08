@@ -399,12 +399,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9226dbc05df4fb986f48d730b001532580883c4c06c5d1c213f4b34c1c157178"
 
 [[package]]
-name = "colorsys"
-version = "0.6.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54261aba646433cb567ec89844be4c4825ca92a4f8afba52fc4dd88436e31bbd"
-
-[[package]]
 name = "combine"
 version = "4.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -894,7 +888,7 @@ name = "highlighter"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "colorsys",
+ "colors-transform",
  "once_cell",
  "rgb2ansi256",
  "serde",
@@ -1086,6 +1080,12 @@ dependencies = [
  "number_prefix",
  "regex",
 ]
+
+[[package]]
+name = "inflections"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a257582fdcde896fd96463bf2d40eefea0580021c0712a0e2b028b60b47a837a"
 
 [[package]]
 name = "ipnet"
@@ -1303,7 +1303,9 @@ dependencies = [
 name = "maple_derive"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "darling",
+ "inflections",
  "once_cell",
  "proc-macro2",
  "quote",

@@ -2,7 +2,7 @@ use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
 use crate::previewer::{get_file_preview, FilePreview};
 use crate::stdio_server::job;
-use crate::stdio_server::plugin::syntax_highlighter::{highlight_lines, HIGHLIGHTER};
+use crate::stdio_server::plugin::syntax::{highlight_lines, HIGHLIGHTER};
 use crate::stdio_server::provider::{read_dir_entries, Context, ProviderSource};
 use crate::stdio_server::vim::preview_syntax;
 use crate::tools::ctags::{current_context_tag_async, BufferTag};

@@ -7,9 +7,14 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
+anyhow = "1.0"
 darling = "0.20.3"
+inflections = "1.1.1"
 once_cell = { workspace = true }
 proc-macro2 = "1.0"
 quote = "1.0"
 syn = { version = "2", features = ["full", "parsing"] }
 types = { workspace = true }
+
+[dev-dependencies]
+async-trait = { workspace = true }

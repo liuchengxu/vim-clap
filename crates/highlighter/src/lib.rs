@@ -1,5 +1,5 @@
 use anyhow::Result;
-use colorsys::Rgb;
+use colors_transform::{AlphaColor, Color as ColorT, Rgb};
 use rgb2ansi256::rgb_to_ansi256;
 use std::ops::Range;
 use syntect::highlighting::{
@@ -44,22 +44,22 @@ impl HighlightArgs {
             FontStyle::ITALIC => AttrList::Italic,
             _ => AttrList::None,
         };
-        let guifg = Rgb::from(&(
+        let guifg = Rgb::from_tuple(&(
             style.foreground.r as f32,
             style.foreground.g as f32,
             style.foreground.b as f32,
-            style.foreground.a as f32,
-        ));
+        ))
+        .set_alpha(style.foreground.a as f32);
 
         let ctermfg = rgb_to_ansi256(style.foreground.r, style.foreground.g, style.foreground.b);
 
         let gui = cterm.clone();
-        let guibg = Rgb::from(&(
+        let guibg = Rgb::from_tuple(&(
             style.background.r as f32,
             style.background.g as f32,
             style.background.b as f32,
-            style.background.a as f32,
-        ));
+        ))
+        .set_alpha(style.background.a as f32);
         let ctermbg = rgb_to_ansi256(style.background.r, style.background.g, style.background.b);
 
         Self {
@@ -137,8 +137,8 @@ impl<'a> HighlightEngine<'a> {
                         let char_indices = Vec::from_iter(offset - chars_count..offset);
                         let byte_indices = utils::char_indices_to_byte_indices(line, &char_indices);
                         let highlight_args = HighlightArgs::from_style(style);
-                        let hex_guifg = highlight_args.guifg.to_hex_string();
-                        let hex_guibg = highlight_args.guibg.to_hex_string();
+                        let hex_guifg = highlight_args.guifg.to_css_hex_string();
+                        let hex_guibg = highlight_args.guibg.to_css_hex_string();
                         let group_name: String =
                             format!("ClapHighlighter_{}_{}", &hex_guifg[1..], &hex_guifg[1..]);
                         Some(TokenHighlight {
@@ -204,16 +204,16 @@ impl SyntaxHighlighter {
             .get(theme)
             .and_then(|theme| theme.settings.foreground)
         {
-            let guifg = Rgb::from(&(
+            let guifg = Rgb::from_tuple(&(
                 normal_fg_color.r as f32,
                 normal_fg_color.g as f32,
                 normal_fg_color.b as f32,
-                normal_fg_color.a as f32,
-            ));
+            ))
+            .set_alpha(normal_fg_color.a as f32);
 
             let ctermfg = rgb_to_ansi256(normal_fg_color.r, normal_fg_color.g, normal_fg_color.b);
 
-            Some((guifg.to_hex_string(), ctermfg))
+            Some((guifg.to_css_hex_string(), ctermfg))
         } else {
             None
         }

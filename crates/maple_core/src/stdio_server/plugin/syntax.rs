@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::{ClapPlugin, PluginAction, Toggle};
+use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, Toggle};
 use crate::stdio_server::vim::Vim;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use highlighter::{SyntaxReference, TokenHighlight};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
@@ -13,13 +13,13 @@ pub static HIGHLIGHTER: Lazy<highlighter::SyntaxHighlighter> =
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
 #[clap_plugin(id = "syntax", actions = ["on", "list-themes", "toggle"])]
-pub struct SyntaxHighlighterPlugin {
+pub struct Syntax {
     vim: Vim,
     bufs: HashMap<usize, String>,
     toggle: Toggle,
 }
 
-impl SyntaxHighlighterPlugin {
+impl Syntax {
     pub fn new(vim: Vim) -> Self {
         Self {
             vim,
@@ -115,7 +115,8 @@ pub fn highlight_lines(
 }
 
 #[async_trait::async_trait]
-impl ClapPlugin for SyntaxHighlighterPlugin {
+impl ClapPlugin for Syntax {
+    #[maple_derive::subscriptions]
     async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
         use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
 
@@ -135,33 +136,36 @@ impl ClapPlugin for SyntaxHighlighterPlugin {
             CursorMoved => {
                 self.highlight_visual_lines(bufnr).await?;
             }
-            _ => {}
+            event => {
+                return Err(anyhow::anyhow!(
+                    "Unhandled {event:?}, incomplete subscriptions?",
+                ))
+            }
         }
 
         Ok(())
     }
 
-    async fn handle_action(&mut self, action: PluginAction) -> Result<()> {
-        let PluginAction { method, params: _ } = action;
-        match method.as_str() {
-            Self::ON => {
+    async fn handle_action(&mut self, action: ActionRequest) -> Result<()> {
+        let ActionRequest { method, params: _ } = action;
+        match self.parse_action(method)? {
+            SyntaxAction::On => {
                 let bufnr = self.vim.bufnr("").await?;
                 self.on_buf_enter(bufnr).await?;
                 self.highlight_visual_lines(bufnr).await?;
             }
-            Self::LIST_THEMES => {
+            SyntaxAction::ListThemes => {
                 let highlighter = &HIGHLIGHTER;
                 let theme_list = highlighter.get_theme_list();
                 self.vim.echo_info(theme_list.into_iter().join(","))?;
             }
-            Self::TOGGLE => {
+            SyntaxAction::Toggle => {
                 match self.toggle {
                     Toggle::On => {}
                     Toggle::Off => {}
                 }
                 self.toggle.switch();
             }
-            unknown_action => return Err(anyhow!("Unknown action: {unknown_action:?}")),
         }
 
         Ok(())

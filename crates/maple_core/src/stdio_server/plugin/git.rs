@@ -1,5 +1,5 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::{ClapPlugin, PluginAction, Toggle};
+use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use chrono::{TimeZone, Utc};
@@ -11,12 +11,12 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
 #[derive(Debug, Clone)]
-struct Git {
+struct GitRepo {
     repo: PathBuf,
     user_name: String,
 }
 
-impl Git {
+impl GitRepo {
     fn init(git_root: PathBuf) -> Result<Self> {
         let output = std::process::Command::new("git")
             .current_dir(&git_root)
@@ -238,13 +238,13 @@ fn in_git_repo(filepath: &Path) -> Option<&Path> {
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
 #[clap_plugin(id = "git", actions = ["blame", "open-current-line-in-browser", "toggle"])]
-pub struct GitPlugin {
+pub struct Git {
     vim: Vim,
-    bufs: HashMap<usize, (PathBuf, Git)>,
+    bufs: HashMap<usize, (PathBuf, GitRepo)>,
     toggle: Toggle,
 }
 
-impl GitPlugin {
+impl Git {
     pub fn new(vim: Vim) -> Self {
         Self {
             vim,
@@ -263,7 +263,7 @@ impl GitPlugin {
         let filepath = PathBuf::from(buf_path);
 
         if let Some(git_root) = in_git_repo(&filepath) {
-            let git = Git::init(git_root.to_path_buf())?;
+            let git = GitRepo::init(git_root.to_path_buf())?;
             if git.is_tracked(&filepath)? {
                 self.bufs.insert(bufnr, (filepath, git));
                 return Ok(());
@@ -286,7 +286,11 @@ impl GitPlugin {
         Ok(())
     }
 
-    async fn cursor_line_blame_info(&self, git: &Git, filepath: &Path) -> Result<Option<String>> {
+    async fn cursor_line_blame_info(
+        &self,
+        git: &GitRepo,
+        filepath: &Path,
+    ) -> Result<Option<String>> {
         let relative_path = filepath.strip_prefix(&git.repo)?;
 
         let lnum = self.vim.line(".").await?;
@@ -314,7 +318,7 @@ impl GitPlugin {
         };
 
         if let Ok(Some(blame_info)) = self
-            .cursor_line_blame_info(&Git::init(git_root.to_path_buf())?, &filepath)
+            .cursor_line_blame_info(&GitRepo::init(git_root.to_path_buf())?, &filepath)
             .await
         {
             self.vim.echo_info(blame_info)?;
@@ -322,10 +326,51 @@ impl GitPlugin {
 
         Ok(())
     }
+
+    async fn open_current_line_in_browser(&self) -> Result<()> {
+        let buf_path = self.vim.current_buffer_path().await?;
+        let filepath = PathBuf::from(buf_path);
+
+        let Some(git_root) = in_git_repo(&filepath) else {
+            return Ok(());
+        };
+
+        let git = GitRepo::init(git_root.to_path_buf())?;
+
+        let relative_path = filepath.strip_prefix(&git.repo)?;
+
+        let stdout = git.fetch_origin_url()?;
+        let remote_url = stdout.trim();
+
+        // https://github.com/liuchengxu/vim-clap{.git}
+        let remote_url = remote_url.strip_suffix(".git").unwrap_or(remote_url);
+
+        let Ok(stdout) = git.fetch_rev_parse("HEAD") else {
+            return Ok(());
+        };
+
+        let Some(rev) = stdout.split('\n').next() else {
+            return Ok(());
+        };
+
+        let lnum = self.vim.line(".").await?;
+        let commit_url = format!(
+            "{remote_url}/blob/{rev}/{}#L{lnum}",
+            relative_path.display()
+        );
+
+        if let Err(e) = webbrowser::open(&commit_url) {
+            self.vim
+                .echo_warn(format!("Failed to open {commit_url}: {e:?}"))?;
+        }
+
+        Ok(())
+    }
 }
 
 #[async_trait::async_trait]
-impl ClapPlugin for GitPlugin {
+impl ClapPlugin for Git {
+    #[maple_derive::subscriptions]
     async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
         use AutocmdEventType::{BufDelete, BufEnter, BufLeave, CursorMoved, InsertEnter};
 
@@ -348,16 +393,21 @@ impl ClapPlugin for GitPlugin {
                 self.vim.exec("clap#plugin#git#clear_blame_info", [bufnr])?;
             }
             CursorMoved => self.on_cursor_moved(bufnr).await?,
-            _ => {}
+            event => {
+                return Err(anyhow::anyhow!(
+                    "Unhandled {event:?}, incomplete subscriptions?",
+                ))
+            }
         }
 
         Ok(())
     }
 
-    async fn handle_action(&mut self, action: PluginAction) -> Result<()> {
-        let PluginAction { method, params: _ } = action;
-        match method.as_str() {
-            Self::TOGGLE => {
+    async fn handle_action(&mut self, action: ActionRequest) -> Result<()> {
+        let ActionRequest { method, params: _ } = action;
+
+        match self.parse_action(method)? {
+            GitAction::Toggle => {
                 match self.toggle {
                     Toggle::On => {
                         for bufnr in self.bufs.keys() {
@@ -372,45 +422,10 @@ impl ClapPlugin for GitPlugin {
                 }
                 self.toggle.switch();
             }
-            Self::OPEN_CURRENT_LINE_IN_BROWSER => {
-                let buf_path = self.vim.current_buffer_path().await?;
-                let filepath = PathBuf::from(buf_path);
-
-                let Some(git_root) = in_git_repo(&filepath) else {
-                    return Ok(());
-                };
-
-                let git = Git::init(git_root.to_path_buf())?;
-
-                let relative_path = filepath.strip_prefix(&git.repo)?;
-
-                let stdout = git.fetch_origin_url()?;
-                let remote_url = stdout.trim();
-
-                // https://github.com/liuchengxu/vim-clap{.git}
-                let remote_url = remote_url.strip_suffix(".git").unwrap_or(remote_url);
-
-                let Ok(stdout) = git.fetch_rev_parse("HEAD") else {
-                    return Ok(());
-                };
-
-                let Some(rev) = stdout.split('\n').next() else {
-                    return Ok(());
-                };
-
-                let lnum = self.vim.line(".").await?;
-                let commit_url = format!(
-                    "{remote_url}/blob/{rev}/{}#L{lnum}",
-                    relative_path.display()
-                );
-
-                if let Err(e) = webbrowser::open(&commit_url) {
-                    self.vim
-                        .echo_warn(format!("Failed to open {commit_url}: {e:?}"))?;
-                }
+            GitAction::OpenCurrentLineInBrowser => {
+                self.open_current_line_in_browser().await?;
             }
-            Self::BLAME => self.show_blame_info().await?,
-            unknown_action => return Err(anyhow!("Unknown action: {unknown_action:?}")),
+            GitAction::Blame => self.show_blame_info().await?,
         }
 
         Ok(())

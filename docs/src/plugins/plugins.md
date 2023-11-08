@@ -39,6 +39,8 @@ enable = true
 | :------------------------------------- | :-----------------------------------------------------                                                                                                                                                                                                         |
 | Highlight the word under the cursor    | [nvim-blame-line](https://github.com/tveskag/nvim-blame-line)</br>[vim-illuminate](https://github.com/RRethy/vim-illuminate)</br> [vim-cursorword](https://github.com/itchyny/vim-cursorword)</br>[vim-brightest](https://github.com/osyo-manga/vim-brightest) |
 
+By default this plugin utilizes `Normal` guibg as the primary color. It then lighten this base color for `ClapCursorWord` and darkens it for `ClapCursorWordTwins`. You can manually adjust them in case the default highlights does not meet your expectations.
+
 ## git
 
 ```toml

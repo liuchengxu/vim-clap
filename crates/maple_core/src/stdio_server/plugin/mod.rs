@@ -4,22 +4,24 @@ mod cursorword;
 mod git;
 mod linter;
 mod markdown;
-pub mod syntax_highlighter;
+pub mod syntax;
 mod system;
 
-use crate::stdio_server::input::{AutocmdEvent, PluginAction};
+use crate::stdio_server::input::{ActionRequest, AutocmdEvent};
 use anyhow::Result;
 use std::fmt::Debug;
 
 pub use self::colorizer::ColorizerPlugin;
 pub use self::ctags::CtagsPlugin;
-pub use self::cursorword::CursorWordPlugin;
-pub use self::git::GitPlugin;
-pub use self::linter::LinterPlugin;
-pub use self::markdown::MarkdownPlugin;
-pub use self::syntax_highlighter::SyntaxHighlighterPlugin;
+pub use self::cursorword::Cursorword as CursorwordPlugin;
+pub use self::git::Git as GitPlugin;
+pub use self::linter::Linter as LinterPlugin;
+pub use self::markdown::Markdown as MarkdownPlugin;
+pub use self::syntax::Syntax as SyntaxHighlighterPlugin;
 pub use self::system::System as SystemPlugin;
 pub use types::{Action, ActionType, ClapAction};
+
+use super::input::AutocmdEventType;
 
 pub type PluginId = &'static str;
 
@@ -51,8 +53,16 @@ impl Toggle {
 /// A trait each Clap plugin must implement.
 #[async_trait::async_trait]
 pub trait ClapPlugin: ClapAction + Debug + Send + Sync + 'static {
-    async fn handle_action(&mut self, action: PluginAction) -> Result<()>;
-    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()>;
+    async fn handle_action(&mut self, action: ActionRequest) -> Result<()>;
+
+    /// Returns the list of subscribed Autocmd events.
+    fn subscriptions(&self) -> &[AutocmdEventType] {
+        &[]
+    }
+
+    async fn handle_autocmd(&mut self, _autocmd: AutocmdEvent) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[cfg(test)]
