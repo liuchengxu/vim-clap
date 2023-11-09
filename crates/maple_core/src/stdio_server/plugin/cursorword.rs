@@ -7,6 +7,7 @@ use matcher::WordMatcher;
 use rgb2ansi256::rgb_to_ansi256;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::ops::Range;
 use std::path::{Path, PathBuf};
 use utils::read_lines_from;
 use AutocmdEventType::{
@@ -35,6 +36,28 @@ fn char_at(byte_idx: usize, line: &str) -> Option<char> {
     )
 }
 
+/// Represents the lines on the screen.
+#[derive(Debug)]
+pub enum ScreenLines<'a> {
+    /// Buffer is unchanged, read lines from the file directly.
+    SourceFile {
+        file_path: &'a Path,
+        line_range: Range<usize>,
+    },
+    /// Buffer is changed, read lines using Vim's API.
+    Modified { line_range: Range<usize> },
+}
+
+impl<'a> ScreenLines<'a> {
+    pub fn from_source_file(file_path: &'a Path, line_range: Range<usize>) -> Self {
+        Self::SourceFile {
+            file_path,
+            line_range,
+        }
+    }
+}
+
+/// [line_start, line_end]
 fn find_word_highlights(
     source_file: &Path,
     line_start: usize,
@@ -51,36 +74,37 @@ fn find_word_highlights(
     let line_end = line_end - 1;
 
     let mut cursor_word_highlight = None;
-    let twins_words_highlight = read_lines_from(source_file, line_start, line_end - line_start)?
-        .enumerate()
-        .flat_map(|(idx, line)| {
-            let matches_range = word_matcher.find_all_matches_range(&line);
+    let twins_words_highlight =
+        read_lines_from(source_file, line_start, line_end - line_start + 1)?
+            .enumerate()
+            .flat_map(|(idx, line)| {
+                let matches_range = word_matcher.find_all_matches_range(&line);
 
-            let line_number = idx + line_start + 1;
+                let line_number = idx + line_start + 1;
 
-            if line_number == curlnum {
-                let cursor_word_start = matches_range.iter().find_map(|word_range| {
-                    if word_range.contains(&(col - 1)) {
-                        Some(word_range.start)
-                    } else {
-                        None
+                if line_number == curlnum {
+                    let cursor_word_start = matches_range.iter().find_map(|word_range| {
+                        if word_range.contains(&(col - 1)) {
+                            Some(word_range.start)
+                        } else {
+                            None
+                        }
+                    });
+                    if let Some(start) = cursor_word_start {
+                        cursor_word_highlight.replace((line_number, start));
                     }
-                });
-                if let Some(start) = cursor_word_start {
-                    cursor_word_highlight.replace((line_number, start));
                 }
-            }
 
-            matches_range.into_iter().filter_map(move |word_range| {
-                // Skip the cursor word highlight.
-                if line_number == curlnum && word_range.contains(&(col - 1)) {
-                    None
-                } else {
-                    Some((line_number, word_range.start))
-                }
+                matches_range.into_iter().filter_map(move |word_range| {
+                    // Skip the cursor word highlight.
+                    if line_number == curlnum && word_range.contains(&(col - 1)) {
+                        None
+                    } else {
+                        Some((line_number, word_range.start))
+                    }
+                })
             })
-        })
-        .collect();
+            .collect();
 
     if let Some(cword_highlight) = cursor_word_highlight {
         Ok(Some(WordHighlights {
