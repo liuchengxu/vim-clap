@@ -7,8 +7,7 @@ use matcher::WordMatcher;
 use rgb2ansi256::rgb_to_ansi256;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::ops::Range;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use utils::read_lines_from;
 use AutocmdEventType::{
     BufDelete, BufEnter, BufLeave, BufWinEnter, BufWinLeave, CursorMoved, InsertEnter,
@@ -36,32 +35,10 @@ fn char_at(byte_idx: usize, line: &str) -> Option<char> {
     )
 }
 
-/// Represents the lines on the screen.
-#[derive(Debug)]
-pub enum ScreenLines<'a> {
-    /// Buffer is unchanged, read lines from the file directly.
-    SourceFile {
-        file_path: &'a Path,
-        line_range: Range<usize>,
-    },
-    /// Buffer is changed, read lines using Vim's API.
-    Modified { line_range: Range<usize> },
-}
-
-impl<'a> ScreenLines<'a> {
-    pub fn from_source_file(file_path: &'a Path, line_range: Range<usize>) -> Self {
-        Self::SourceFile {
-            file_path,
-            line_range,
-        }
-    }
-}
-
-/// [line_start, line_end]
+/// `line_start` and `curlnum` is 1-based line number.
 fn find_word_highlights(
-    source_file: &Path,
+    lines: impl Iterator<Item = String>,
     line_start: usize,
-    line_end: usize,
     curlnum: usize,
     col: usize,
     cword: String,
@@ -69,42 +46,37 @@ fn find_word_highlights(
     let cword_len = cword.len();
     let word_matcher = WordMatcher::new(vec![cword.into()]);
 
-    // line_start and line_end is 1-based.
-    let line_start = line_start - 1;
-    let line_end = line_end - 1;
-
     let mut cursor_word_highlight = None;
-    let twins_words_highlight =
-        read_lines_from(source_file, line_start, line_end - line_start + 1)?
-            .enumerate()
-            .flat_map(|(idx, line)| {
-                let matches_range = word_matcher.find_all_matches_range(&line);
+    let twins_words_highlight = lines
+        .enumerate()
+        .flat_map(|(index, line)| {
+            let matches_range = word_matcher.find_all_matches_range(&line);
 
-                let line_number = idx + line_start + 1;
+            let line_number = index + line_start;
 
-                if line_number == curlnum {
-                    let cursor_word_start = matches_range.iter().find_map(|word_range| {
-                        if word_range.contains(&(col - 1)) {
-                            Some(word_range.start)
-                        } else {
-                            None
-                        }
-                    });
-                    if let Some(start) = cursor_word_start {
-                        cursor_word_highlight.replace((line_number, start));
-                    }
-                }
-
-                matches_range.into_iter().filter_map(move |word_range| {
-                    // Skip the cursor word highlight.
-                    if line_number == curlnum && word_range.contains(&(col - 1)) {
-                        None
+            if line_number == curlnum {
+                let cursor_word_start = matches_range.iter().find_map(|word_range| {
+                    if word_range.contains(&(col - 1)) {
+                        Some(word_range.start)
                     } else {
-                        Some((line_number, word_range.start))
+                        None
                     }
-                })
+                });
+                if let Some(start) = cursor_word_start {
+                    cursor_word_highlight.replace((line_number, start));
+                }
+            }
+
+            matches_range.into_iter().filter_map(move |word_range| {
+                // Skip the cursor word highlight.
+                if line_number == curlnum && word_range.contains(&(col - 1)) {
+                    None
+                } else {
+                    Some((line_number, word_range.start))
+                }
             })
-            .collect();
+        })
+        .collect();
 
     if let Some(cword_highlight) = cursor_word_highlight {
         Ok(Some(WordHighlights {
@@ -231,15 +203,18 @@ impl Cursorword {
             return Ok(None);
         }
 
-        let winid = self.vim.current_winid().await?;
-
         // Lines in view.
-        let line_start = self.vim.line("w0").await?;
-        let line_end = self.vim.line("w$").await?;
+        let (winid, line_start, line_end) = self.vim.get_screenlinesrange().await?;
 
-        if let Ok(Some(word_highlights)) =
-            find_word_highlights(source_file, line_start, line_end, curlnum, col, cword)
-        {
+        let maybe_new_highlights = if self.vim.bufmodified(bufnr).await? {
+            let lines = self.vim.getbufline(bufnr, line_start, line_end).await?;
+            find_word_highlights(lines.into_iter(), line_start, curlnum, col, cword)
+        } else {
+            let lines = read_lines_from(source_file, line_start, line_end - line_start + 1)?;
+            find_word_highlights(lines, line_start, curlnum, col, cword)
+        };
+
+        if let Ok(Some(word_highlights)) = maybe_new_highlights {
             let match_ids: Vec<i32> = self
                 .vim
                 .call("clap#plugin#cursorword#add_highlights", word_highlights)
@@ -323,12 +298,18 @@ impl ClapPlugin for Cursorword {
             BufDelete | BufLeave | BufWinLeave => {
                 self.bufs.remove(&bufnr);
             }
-            CursorMoved if self.bufs.contains_key(&bufnr) => {
-                self.highlight_symbol_under_cursor(bufnr).await?
+            CursorMoved => {
+                if self.bufs.contains_key(&bufnr) {
+                    self.highlight_symbol_under_cursor(bufnr).await?
+                }
             }
-            InsertEnter if self.bufs.contains_key(&bufnr) => {
-                if let Some(CursorHighlights { winid, match_ids }) = self.cursor_highlights.take() {
-                    self.vim.matchdelete_batch(match_ids, winid).await?;
+            InsertEnter => {
+                if self.bufs.contains_key(&bufnr) {
+                    if let Some(CursorHighlights { winid, match_ids }) =
+                        self.cursor_highlights.take()
+                    {
+                        self.vim.matchdelete_batch(match_ids, winid).await?;
+                    }
                 }
             }
             event => {
