@@ -210,7 +210,7 @@ impl Cursorword {
             let lines = self.vim.getbufline(bufnr, line_start, line_end).await?;
             find_word_highlights(lines.into_iter(), line_start, curlnum, col, cword)
         } else {
-            let lines = read_lines_from(source_file, line_start, line_end - line_start + 1)?;
+            let lines = read_lines_from(source_file, line_start - 1, line_end - line_start + 1)?;
             find_word_highlights(lines, line_start, curlnum, col, cword)
         };
 

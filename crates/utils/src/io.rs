@@ -81,7 +81,7 @@ pub fn read_first_lines<P: AsRef<Path>>(
     read_lines_from(path, 0usize, number)
 }
 
-/// Returns a `number` of lines starting from the line number `from`.
+/// Returns a `number` of lines starting from the line number `from` (0-based).
 pub fn read_lines_from<P: AsRef<Path>>(
     path: P,
     from: usize,
