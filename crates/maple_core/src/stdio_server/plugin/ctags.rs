@@ -45,48 +45,51 @@ impl CtagsPlugin {
 
     /// Updates the buffer variable `clap_current_symbol`.
     async fn on_cursor_moved(&mut self, bufnr: usize) -> Result<()> {
-        if let Some(buffer_tags) = self.buf_tags.get(&bufnr) {
-            let curlnum = self.vim.line(".").await?;
-            let idx = match buffer_tags.binary_search_by_key(&curlnum, |tag| tag.line_number) {
-                Ok(idx) => idx,
-                Err(idx) => match idx.checked_sub(1) {
-                    Some(idx) => idx,
-                    None => {
-                        // Before the first tag.
-                        self.vim.setbufvar(bufnr, "clap_current_symbol", {})?;
-                        self.last_cursor_tag.take();
-                        return Ok(());
-                    }
-                },
-            };
-            if let Some(tag) = buffer_tags.get(idx) {
-                if let Some(last_cursor_tag) = &self.last_cursor_tag {
-                    if last_cursor_tag == tag {
-                        return Ok(());
-                    }
+        let Some(buffer_tags) = self.buf_tags.get(&bufnr) else {
+            return Ok(());
+        };
+
+        let curlnum = self.vim.line(".").await?;
+        let idx = match buffer_tags.binary_search_by_key(&curlnum, |tag| tag.line_number) {
+            Ok(idx) => idx,
+            Err(idx) => match idx.checked_sub(1) {
+                Some(idx) => idx,
+                None => {
+                    // Before the first tag.
+                    self.vim.setbufvar(bufnr, "clap_current_symbol", {})?;
+                    self.last_cursor_tag.take();
+                    return Ok(());
                 }
-
-                self.vim.setbufvar(
-                    bufnr,
-                    "clap_current_symbol",
-                    serde_json::json!({
-                        "name": tag.name,
-                        "line_number": tag.line_number,
-                        "kind": tag.kind,
-                        "kind_icon": icon::tags_kind_icon(&tag.kind),
-                        "scope": tag.scope.as_ref().map(ScopeRef::from_scope),
-                    }),
-                )?;
-
-                // Redraw the statusline to reflect the latest tag.
-                self.vim.exec("execute", ["redrawstatus"])?;
-
-                self.last_cursor_tag.replace(tag.clone());
-            } else {
-                self.vim.setbufvar(bufnr, "clap_current_symbol", {})?;
-                self.last_cursor_tag.take();
+            },
+        };
+        if let Some(tag) = buffer_tags.get(idx) {
+            if let Some(last_cursor_tag) = &self.last_cursor_tag {
+                if last_cursor_tag == tag {
+                    return Ok(());
+                }
             }
+
+            self.vim.setbufvar(
+                bufnr,
+                "clap_current_symbol",
+                serde_json::json!({
+                    "name": tag.name,
+                    "line_number": tag.line_number,
+                    "kind": tag.kind,
+                    "kind_icon": icon::tags_kind_icon(&tag.kind),
+                    "scope": tag.scope.as_ref().map(ScopeRef::from_scope),
+                }),
+            )?;
+
+            // Redraw the statusline to reflect the latest tag.
+            self.vim.exec("execute", ["redrawstatus"])?;
+
+            self.last_cursor_tag.replace(tag.clone());
+        } else {
+            self.vim.setbufvar(bufnr, "clap_current_symbol", {})?;
+            self.last_cursor_tag.take();
         }
+
         Ok(())
     }
 }

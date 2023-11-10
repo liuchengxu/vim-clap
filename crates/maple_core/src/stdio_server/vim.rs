@@ -459,6 +459,10 @@ impl Vim {
         self.exec("clap#helper#echo_warn", [msg.as_ref()])
     }
 
+    pub async fn get_screenlinesrange(&self) -> Result<(usize, usize, usize)> {
+        self.bare_call("get_screenlinesrange").await
+    }
+
     pub async fn bufmodified(&self, bufnr: impl Serialize) -> Result<bool> {
         self.getbufvar::<u32>(bufnr, "&modified")
             .await

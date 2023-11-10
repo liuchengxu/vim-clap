@@ -43,7 +43,7 @@ function! s:indicator.format() abort
   endif
 endfunction
 
-" Caveat: This function can have a peformance bottle neck if update frequently.
+" Caveat: This function can have a performance bottle neck if update frequently.
 "
 " If you feel the responsive is slow, try to disable the indicator.
 " especially for the outside async jobs which could be cpu-intensive.

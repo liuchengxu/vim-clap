@@ -17,7 +17,7 @@ if has('nvim')
     return matchaddpos(a:hl_group, [[a:lnum+1, a:col+1, 1]])
   endfunction
 
-  " The highlight added by nvim_buf_add_highlight() can be overrided
+  " The highlight added by nvim_buf_add_highlight() can be overridden
   " by the sign's highlight, therefore matchaddpos() is used for neovim.
   "
   " TODO: Once the default highlight priority of nvim_buf_add_highlight() is
@@ -107,7 +107,7 @@ endfunction
 
 function! s:create_token_highlight_group(token_highlight) abort
   execute printf(
-        \ 'hi %s ctermfg=%s guifg=%s cterm=%s gui=%s',
+        \ 'highlight %s ctermfg=%s guifg=%s cterm=%s gui=%s',
         \ a:token_highlight.group_name,
         \ a:token_highlight.ctermfg,
         \ a:token_highlight.guifg,

@@ -65,6 +65,10 @@ else
   endfunction
 endif
 
+function! s:api.get_screenlinesrange() abort
+  return [win_getid(), line('w0'), line('w$')]
+endfunction
+
 " The leading icon is stripped.
 function! s:api.display_getcurline() abort
   return [g:clap.display.getcurline(), get(g:, '__clap_icon_added_by_maple', v:false)]
