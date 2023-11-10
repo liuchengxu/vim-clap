@@ -344,30 +344,28 @@ impl<'a> CachedPreviewImpl<'a> {
         let total = utils::count_lines(std::fs::File::open(path)?)?;
         let end = lines.len();
 
-        let scrollbar = if self.ctx.env.is_nvim
-            && self.ctx.env.preview_direction.to_uppercase() == "LR"
-            && end > 0
-        {
-            let preview_winheight = self.ctx.env.display_winheight;
+        let scrollbar =
+            if self.ctx.env.is_nvim && self.ctx.env.preview_direction.is_left_right() && end > 0 {
+                let preview_winheight = self.ctx.env.display_winheight;
 
-            let length = ((end * preview_winheight) as f32 / total as f32) as usize;
+                let length = ((end * preview_winheight) as f32 / total as f32) as usize;
 
-            if length == 0 {
-                None
-            } else {
-                let mut length = preview_winheight.min(length);
-                let top_position = if self.ctx.env.preview_border_enabled {
-                    length -= if length == preview_winheight { 1 } else { 0 };
-
-                    1usize
+                if length == 0 {
+                    None
                 } else {
-                    0usize
-                };
-                Some((top_position, length))
-            }
-        } else {
-            None
-        };
+                    let mut length = preview_winheight.min(length);
+                    let top_position = if self.ctx.env.preview_border_enabled {
+                        length -= if length == preview_winheight { 1 } else { 0 };
+
+                        1usize
+                    } else {
+                        0usize
+                    };
+                    Some((top_position, length))
+                }
+            } else {
+                None
+            };
 
         if std::fs::metadata(path)?.len() == 0 {
             let mut lines = lines;
@@ -505,7 +503,7 @@ impl<'a> CachedPreviewImpl<'a> {
                     .collect::<Vec<_>>();
 
                 let scrollbar = if self.ctx.env.is_nvim
-                    && self.ctx.env.preview_direction.to_uppercase() == "LR"
+                    && self.ctx.env.preview_direction.is_left_right()
                     && total > 0
                 {
                     let start = if context_lines_is_empty {
@@ -623,7 +621,7 @@ impl<'a> CachedPreviewImpl<'a> {
         }
     }
 
-    /// Truncates the lines that are awfully long as vim might have some performence issue with
+    /// Truncates the lines that are awfully long as vim might have some performance issue with
     /// them.
     ///
     /// Ref https://github.com/liuchengxu/vim-clap/issues/543

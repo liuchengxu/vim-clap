@@ -89,6 +89,22 @@ pub struct BufnrWinid {
     pub winid: usize,
 }
 
+#[derive(Debug, Clone)]
+pub enum PreviewDirection {
+    /// LR
+    LeftRight,
+    /// UD
+    UpDown,
+    /// Auto
+    Auto,
+}
+
+impl PreviewDirection {
+    pub fn is_left_right(&self) -> bool {
+        matches!(self, Self::LeftRight)
+    }
+}
+
 /// Provider environment initialized at invoking the provider.
 ///
 /// Immutable once initialized.
@@ -106,7 +122,7 @@ pub struct ProviderEnvironment {
     pub source_is_list: bool,
     pub preview_enabled: bool,
     pub preview_border_enabled: bool,
-    pub preview_direction: String,
+    pub preview_direction: PreviewDirection,
     pub display_winwidth: usize,
     pub display_winheight: usize,
     /// Actual width for displaying the line content due to the sign column is included in
@@ -294,7 +310,14 @@ impl Context {
         let is_nvim: usize = vim.call("has", ["nvim"]).await?;
         let has_nvim_09: usize = vim.call("has", ["nvim-0.9"]).await?;
         let preview_enabled: usize = vim.bare_call("clap#preview#is_enabled").await?;
-        let preview_direction: String = vim.bare_call("clap#preview#direction").await?;
+        let preview_direction = {
+            let preview_direction: String = vim.bare_call("clap#preview#direction").await?;
+            match preview_direction.to_uppercase().as_str() {
+                "LR" => PreviewDirection::LeftRight,
+                "UD" => PreviewDirection::UpDown,
+                _ => PreviewDirection::Auto,
+            }
+        };
         let popup_border: String = vim.eval("g:clap_popup_border").await?;
 
         // Sign column occupies 2 spaces.

@@ -241,6 +241,13 @@ impl Cursorword {
         Ok(())
     }
 
+    async fn clear_highlights(&mut self) -> Result<()> {
+        if let Some(CursorHighlights { winid, match_ids }) = self.cursor_highlights.take() {
+            self.vim.matchdelete_batch(match_ids, winid).await?;
+        }
+        Ok(())
+    }
+
     async fn try_track_buffer(&mut self, bufnr: usize) -> Result<()> {
         if self.bufs.contains_key(&bufnr) {
             return Ok(());
@@ -297,6 +304,7 @@ impl ClapPlugin for Cursorword {
             BufEnter | BufWinEnter => self.try_track_buffer(bufnr).await?,
             BufDelete | BufLeave | BufWinLeave => {
                 self.bufs.remove(&bufnr);
+                self.clear_highlights().await?;
             }
             CursorMoved => {
                 if self.bufs.contains_key(&bufnr) {
@@ -305,11 +313,7 @@ impl ClapPlugin for Cursorword {
             }
             InsertEnter => {
                 if self.bufs.contains_key(&bufnr) {
-                    if let Some(CursorHighlights { winid, match_ids }) =
-                        self.cursor_highlights.take()
-                    {
-                        self.vim.matchdelete_batch(match_ids, winid).await?;
-                    }
+                    self.clear_highlights().await?;
                 }
             }
             event => {
