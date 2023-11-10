@@ -77,7 +77,7 @@ impl Syntax {
         }
 
         let now = std::time::Instant::now();
-        let line_highlights = highlight_lines(syntax, &lines, line_start, THEME);
+        let line_highlights = highlight_lines(syntax, lines.iter(), line_start, THEME);
 
         // TODO: Clear the outdated highlights first and then render the new highlights.
         self.vim.exec(
@@ -91,22 +91,21 @@ impl Syntax {
     }
 }
 
-pub fn highlight_lines(
+pub fn highlight_lines<T: AsRef<str>>(
     syntax: &SyntaxReference,
-    lines: &[String],
+    lines: impl Iterator<Item = T>,
     line_start_number: usize,
     theme: &str,
 ) -> Vec<(usize, Vec<TokenHighlight>)> {
     let highlighter = &HIGHLIGHTER;
 
     lines
-        .iter()
         .enumerate()
         .filter_map(|(index, line)| {
-            match highlighter.get_token_highlights_in_line(syntax, line, theme) {
+            match highlighter.get_token_highlights_in_line(syntax, line.as_ref(), theme) {
                 Ok(token_highlights) => Some((line_start_number + index, token_highlights)),
                 Err(err) => {
-                    tracing::error!(?line, ?err, "Error at fetching line highlight");
+                    tracing::error!(line = ?line.as_ref(), ?err, "Error at fetching line highlight");
                     None
                 }
             }

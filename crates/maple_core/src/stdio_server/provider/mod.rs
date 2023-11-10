@@ -695,8 +695,11 @@ pub enum ProviderSource {
     #[default]
     Uninitialized,
 
-    /// The initializaion is in progress,
+    /// The initialization is in progress,
     Initializing,
+
+    /// Failed to initialize the source.
+    InitializationFailed(String),
 
     /// Small scale, in which case we do not have to use the dynamic filtering.
     ///

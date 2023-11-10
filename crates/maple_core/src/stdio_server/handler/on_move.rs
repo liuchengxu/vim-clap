@@ -491,7 +491,17 @@ impl<'a> CachedPreviewImpl<'a> {
                         .and_then(|extension| {
                             HIGHLIGHTER.syntax_set.find_syntax_by_extension(extension)
                         })
-                        .map(|syntax| highlight_lines(syntax, &lines, line_number_offset, theme))
+                        .map(|syntax| {
+                            //  Same reason as [`Self::truncate_preview_lines()`], if a line is too
+                            //  long and the query is short, the highlights can be enomerous and
+                            //  cause the Vim frozen due to the too many highlight works.
+                            let max_len = self.max_line_width();
+                            let lines = lines.iter().map(|s| {
+                                let len = s.len().min(max_len);
+                                &s[..len]
+                            });
+                            highlight_lines(syntax, lines, line_number_offset, theme)
+                        })
                 } else {
                     None
                 };

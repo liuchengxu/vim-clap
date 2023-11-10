@@ -66,7 +66,7 @@ fn start_filter_parallel(
                 VimProgressor::new(vim, stop_signal.clone()),
                 stop_signal,
             ) {
-                tracing::error!(error = ?e, "Error occured when filtering the cache source");
+                tracing::error!(error = ?e, "Error occurred when filtering the cache source");
             }
         })
     };
@@ -249,6 +249,10 @@ impl ClapProvider for GenericProvider {
             ProviderSource::Uninitialized => {
                 ctx.vim
                     .echo_warn("Can not process query: source uninitialized")?;
+                return Ok(());
+            }
+            ProviderSource::InitializationFailed(ref msg) => {
+                ctx.vim.echo_warn(format!("InitializationFailed: {msg}"))?;
                 return Ok(());
             }
             ProviderSource::CachedFile { ref path, .. } | ProviderSource::File { ref path, .. } => {
