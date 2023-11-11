@@ -2,6 +2,7 @@ use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, Toggle};
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
+use itertools::Itertools;
 use linter::Diagnostic;
 use parking_lot::{Mutex, RwLock};
 use serde::Serialize;
@@ -14,6 +15,7 @@ use tokio::task::JoinHandle;
 #[derive(Debug, Clone)]
 struct ShareableDiagnostics {
     refreshed: Arc<AtomicBool>,
+    /// List of diagnostics, in sorted manner.
     inner: Arc<RwLock<Vec<Diagnostic>>>,
 }
 
@@ -32,10 +34,22 @@ impl Serialize for ShareableDiagnostics {
     }
 }
 
+enum Direction {
+    Next,
+    Prev,
+}
+
+enum DiagnosticKind {
+    Error,
+    Warn,
+}
+
 impl ShareableDiagnostics {
     fn append(&self, new: Vec<Diagnostic>) -> Count {
         let mut diagnostics = self.inner.write();
         diagnostics.extend(new);
+
+        diagnostics.sort_by(|a, b| a.spans[0].line_start.cmp(&b.spans[0].line_start));
 
         let mut count = Count::default();
         for d in diagnostics.iter() {
@@ -52,6 +66,40 @@ impl ShareableDiagnostics {
         self.refreshed.store(false, Ordering::SeqCst);
         let mut diagnostics = self.inner.write();
         diagnostics.clear();
+    }
+
+    fn find_sibling(
+        &self,
+        from_line_number: usize,
+        kind: DiagnosticKind,
+        direction: Direction,
+    ) -> Option<(usize, usize)> {
+        let diagnostics = self.inner.read();
+        let errors = || {
+            diagnostics
+                .iter()
+                .filter_map(|d| if d.is_error() { Some(&d.spans) } else { None })
+                .flatten()
+        };
+        let warnings = || {
+            diagnostics
+                .iter()
+                .filter_map(|d| if d.is_warn() { Some(&d.spans) } else { None })
+                .flatten()
+        };
+
+        match (kind, direction) {
+            (DiagnosticKind::Error, Direction::Next) => errors().find_map(|span| {
+                if span.line_start >= from_line_number {
+                    Some((span.line_start, span.column_start))
+                } else {
+                    None
+                }
+            }),
+            (DiagnosticKind::Error, Direction::Prev) => None,
+            (DiagnosticKind::Warn, Direction::Next) => None,
+            (DiagnosticKind::Warn, Direction::Prev) => None,
+        }
     }
 }
 
@@ -117,7 +165,7 @@ impl linter::HandleLinterResult for LinterResultHandler {
 
         let _ = self
             .vim
-            .setbufvar(self.bufnr, "clap_linter_count", new_count);
+            .setbufvar(self.bufnr, "clap_diagnostics", new_count);
 
         Ok(())
     }
@@ -150,7 +198,7 @@ impl BufferLinterInfo {
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "linter", actions = ["lint", "debug", "toggle"])]
+#[clap_plugin(id = "linter", actions = ["lint", "next-error", "prev-error", "next-warn", "prev-warn", "debug", "toggle"])]
 pub struct Linter {
     vim: Vim,
     bufs: HashMap<usize, BufferLinterInfo>,
@@ -330,6 +378,25 @@ impl ClapPlugin for Linter {
                 }
                 self.toggle.switch();
             }
+            LinterAction::NextError => {
+                let bufnr = self.vim.bufnr("").await?;
+
+                if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
+                    let lnum = self.vim.line(".").await?;
+                    if let Some((lnum, col)) = buf_linter_info.diagnostics.find_sibling(
+                        lnum,
+                        DiagnosticKind::Error,
+                        Direction::Next,
+                    ) {
+                        self.vim.exec("cursor", [lnum, col])?;
+                    }
+
+                    return Ok(());
+                }
+            }
+            LinterAction::PrevError => {}
+            LinterAction::NextWarn => {}
+            LinterAction::PrevWarn => {}
         }
 
         Ok(())
