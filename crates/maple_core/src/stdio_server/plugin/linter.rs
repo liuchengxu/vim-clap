@@ -17,6 +17,12 @@ struct ShareableDiagnostics {
     inner: Arc<RwLock<Vec<Diagnostic>>>,
 }
 
+#[derive(Debug, Default, Clone, Serialize)]
+struct Count {
+    error: usize,
+    warn: usize,
+}
+
 impl Serialize for ShareableDiagnostics {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
@@ -27,9 +33,19 @@ impl Serialize for ShareableDiagnostics {
 }
 
 impl ShareableDiagnostics {
-    fn extend(&self, new: Vec<Diagnostic>) {
+    fn append(&self, new: Vec<Diagnostic>) -> Count {
         let mut diagnostics = self.inner.write();
         diagnostics.extend(new);
+
+        let mut count = Count::default();
+        for d in diagnostics.iter() {
+            if d.is_error() {
+                count.error += 1;
+            } else if d.is_warn() {
+                count.warn += 1;
+            }
+        }
+        count
     }
 
     fn reset(&self) {
@@ -68,13 +84,13 @@ impl linter::HandleLinterResult for LinterResultHandler {
             .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
             .is_ok();
 
-        if first_lint_result_arrives {
+        let new_count = if first_lint_result_arrives {
             let _ = self.vim.exec(
                 "clap#plugin#linter#refresh_highlights",
                 (self.bufnr, &new_diagnostics),
             );
 
-            self.shareable_diagnostics.extend(new_diagnostics);
+            self.shareable_diagnostics.append(new_diagnostics)
         } else {
             // Remove the potential duplicated results from multiple linters.
             let existing = self.shareable_diagnostics.inner.read();
@@ -96,8 +112,12 @@ impl linter::HandleLinterResult for LinterResultHandler {
                 );
             }
 
-            self.shareable_diagnostics.extend(followup_diagnostics);
-        }
+            self.shareable_diagnostics.append(followup_diagnostics)
+        };
+
+        let _ = self
+            .vim
+            .setbufvar(self.bufnr, "clap_linter_count", new_count);
 
         Ok(())
     }
