@@ -1,4 +1,3 @@
-use anyhow::Result;
 use colors_transform::{AlphaColor, Color as ColorT, Rgb};
 use rgb2ansi256::rgb_to_ansi256;
 use std::ops::Range;
@@ -11,6 +10,12 @@ pub use syntect::parsing::SyntaxReference;
 
 pub const DEFAULT_SYNTAXSET: &[u8] = include_bytes!("../../../assets/syntaxes.bin");
 pub const DEFAULT_THEMESET: &[u8] = include_bytes!("../../../assets/themes.bin");
+
+#[derive(Debug)]
+pub enum Error {
+    DefaultThemeNotFound(&'static str),
+    Syntect(syntect::Error),
+}
 
 /// `:h attr-list`
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
@@ -224,22 +229,18 @@ impl SyntaxHighlighter {
         syntax: &SyntaxReference,
         line: &str,
         theme: &str,
-    ) -> Result<Vec<TokenHighlight>> {
+    ) -> Result<Vec<TokenHighlight>, Error> {
         let theme = match self.theme_set.themes.get(theme) {
             Some(v) => v,
             None => self
                 .theme_set
                 .themes
                 .get(Self::DEFAULT_THEME)
-                .ok_or_else(|| {
-                    anyhow::anyhow!("Default theme {} not found", Self::DEFAULT_THEME)
-                })?,
+                .ok_or(Error::DefaultThemeNotFound(Self::DEFAULT_THEME))?,
         };
-        Ok(HighlightEngine::new(syntax, theme).highlight_line(
-            line,
-            &self.syntax_set,
-            theme.settings.foreground,
-        )?)
+        Ok(HighlightEngine::new(syntax, theme)
+            .highlight_line(line, &self.syntax_set, theme.settings.foreground)
+            .map_err(|e| Error::Syntect(e))?)
     }
 
     pub fn highlight_line(&self, extension: &str, line: &str) -> Vec<TokenHighlighterForTerminal> {

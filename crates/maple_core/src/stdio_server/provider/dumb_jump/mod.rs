@@ -4,10 +4,11 @@ use self::searcher::{SearchEngine, SearchWorker};
 use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, UsageMatcher, Usages};
 use crate::stdio_server::handler::CachedPreviewImpl;
 use crate::stdio_server::job;
+use crate::stdio_server::provider::ProviderResult;
 use crate::stdio_server::provider::{BaseArgs, ClapProvider, Context};
+use crate::stdio_server::vim::VimResult;
 use crate::tools::ctags::{get_language, TagsGenerator, CTAGS_EXISTS};
 use crate::tools::gtags::GTAGS_EXISTS;
-use anyhow::Result;
 use filter::Query;
 use futures::Future;
 use itertools::Itertools;
@@ -18,6 +19,8 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tracing::Instrument;
+
+use super::ProviderError;
 
 /// Internal reprentation of user input.
 #[derive(Debug, Clone, Default)]
@@ -154,7 +157,7 @@ async fn init_gtags(cwd: PathBuf, gtags_regenerated: Arc<AtomicBool>) {
 }
 
 impl DumbJumpProvider {
-    pub async fn new(ctx: &Context) -> Result<Self> {
+    pub async fn new(ctx: &Context) -> VimResult<Self> {
         let args = ctx.parse_provider_args().await?;
         Ok(Self {
             args,
@@ -165,7 +168,7 @@ impl DumbJumpProvider {
         })
     }
 
-    async fn initialize_tags(&self, extension: String, cwd: AbsPathBuf) -> Result<()> {
+    async fn initialize_tags(&self, extension: String, cwd: AbsPathBuf) -> VimResult<()> {
         let job_id = utils::calculate_hash(&(&cwd, "dumb_jump"));
 
         if job::reserve(job_id) {
@@ -234,7 +237,7 @@ impl DumbJumpProvider {
         search_worker: SearchWorker,
         query: &str,
         query_info: QueryInfo,
-    ) -> Result<SearchResults> {
+    ) -> VimResult<SearchResults> {
         if query.is_empty() {
             return Ok(Default::default());
         }
@@ -257,7 +260,7 @@ impl DumbJumpProvider {
         &mut self,
         search_results: SearchResults,
         ctx: &Context,
-    ) -> Result<()> {
+    ) -> VimResult<()> {
         let matched = search_results.usages.len();
 
         // Only show the top 200 items.
@@ -282,7 +285,7 @@ impl DumbJumpProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for DumbJumpProvider {
-    async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
+    async fn on_initialize(&mut self, ctx: &mut Context) -> ProviderResult<()> {
         let cwd = ctx.vim.working_dir().await?;
         let source_file_extension = ctx.start_buffer_extension()?.to_string();
 
@@ -314,7 +317,7 @@ impl ClapProvider for DumbJumpProvider {
         Ok(())
     }
 
-    async fn on_move(&mut self, ctx: &mut Context) -> Result<()> {
+    async fn on_move(&mut self, ctx: &mut Context) -> ProviderResult<()> {
         let current_lines = self
             .current_usages
             .as_ref()
@@ -328,9 +331,9 @@ impl ClapProvider for DumbJumpProvider {
         let lnum = ctx.vim.display_getcurlnum().await?;
 
         // lnum is 1-indexed
-        let curline = current_lines
-            .get_line(lnum - 1)
-            .ok_or_else(|| anyhow::anyhow!("Can not find curline on Rust end for lnum: {lnum}"))?;
+        let curline = current_lines.get_line(lnum - 1).ok_or_else(|| {
+            ProviderError::Other(format!("Can not find curline on Rust end for lnum: {lnum}"))
+        })?;
 
         let preview_height = ctx.preview_height().await?;
         let (preview_target, preview) =
@@ -350,7 +353,7 @@ impl ClapProvider for DumbJumpProvider {
         Ok(())
     }
 
-    async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
+    async fn on_typed(&mut self, ctx: &mut Context) -> ProviderResult<()> {
         let query = ctx.vim.input_get().await?;
         let query_info = parse_query_info(&query);
 

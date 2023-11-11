@@ -25,6 +25,16 @@ pub use self::sequential_worker::dyn_run;
 pub use matcher;
 pub use types::{CaseMatching, MatchedItem, Query, SourceItem};
 
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error(transparent)]
+    Popen(#[from] subprocess::PopenError),
+    #[error(transparent)]
+    IO(#[from] std::io::Error),
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
+
 #[derive(Debug)]
 pub struct MatchedItems(Vec<MatchedItem>);
 

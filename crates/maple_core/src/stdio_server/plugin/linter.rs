@@ -1,8 +1,6 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, Toggle};
-use crate::stdio_server::vim::Vim;
-use anyhow::Result;
-use itertools::Itertools;
+use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
+use crate::stdio_server::vim::{Vim, VimResult};
 use linter::Diagnostic;
 use parking_lot::{Mutex, RwLock};
 use serde::Serialize;
@@ -214,7 +212,7 @@ impl Linter {
         }
     }
 
-    async fn on_buf_enter(&mut self, bufnr: usize) -> Result<()> {
+    async fn on_buf_enter(&mut self, bufnr: usize) -> VimResult<()> {
         let source_file = self.vim.bufabspath(bufnr).await?;
         let source_file = PathBuf::from(source_file);
 
@@ -225,13 +223,13 @@ impl Linter {
         };
 
         let buf_linter_info = BufferLinterInfo::new(filetype, workspace.to_path_buf(), source_file);
-        self.lint_buffer(bufnr, &buf_linter_info)?;
+        self.lint_buffer(bufnr, &buf_linter_info);
         self.bufs.insert(bufnr, buf_linter_info);
 
         Ok(())
     }
 
-    fn lint_buffer(&self, bufnr: usize, buf_linter_info: &BufferLinterInfo) -> Result<()> {
+    fn lint_buffer(&self, bufnr: usize, buf_linter_info: &BufferLinterInfo) {
         buf_linter_info.diagnostics.reset();
 
         let mut current_jobs = buf_linter_info.current_jobs.lock();
@@ -252,11 +250,9 @@ impl Linter {
         if !new_jobs.is_empty() {
             *current_jobs = new_jobs;
         }
-
-        Ok(())
     }
 
-    async fn on_cursor_moved(&self, bufnr: usize) -> Result<()> {
+    async fn on_cursor_moved(&self, bufnr: usize) -> VimResult<()> {
         if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
             let lnum = self.vim.line(".").await?;
             let col = self.vim.col(".").await?;
@@ -303,7 +299,7 @@ impl Linter {
 #[async_trait::async_trait]
 impl ClapPlugin for Linter {
     #[maple_derive::subscriptions]
-    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
+    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<(), PluginError> {
         use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
 
         if self.toggle.is_off() {
@@ -318,7 +314,7 @@ impl ClapPlugin for Linter {
             BufEnter => self.on_buf_enter(bufnr).await?,
             BufWritePost => {
                 if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
-                    self.lint_buffer(bufnr, buf_linter_info)?;
+                    self.lint_buffer(bufnr, buf_linter_info);
                 }
             }
             BufDelete => {
@@ -327,17 +323,13 @@ impl ClapPlugin for Linter {
             CursorMoved => {
                 self.on_cursor_moved(bufnr).await?;
             }
-            event => {
-                return Err(anyhow::anyhow!(
-                    "Unhandled {event:?}, incomplete subscriptions?",
-                ))
-            }
+            event => return Err(PluginError::UnhandledEvent(event)),
         }
 
         Ok(())
     }
 
-    async fn handle_action(&mut self, action: ActionRequest) -> Result<()> {
+    async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
         let ActionRequest { method, params: _ } = action;
         match self.parse_action(method)? {
             LinterAction::Lint => {

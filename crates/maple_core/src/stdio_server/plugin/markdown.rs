@@ -1,9 +1,8 @@
 #![allow(clippy::enum_variant_names)]
 
 use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::{ClapPlugin, Toggle};
+use crate::stdio_server::plugin::{ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::vim::Vim;
-use anyhow::Result;
 use once_cell::sync::Lazy;
 use percent_encoding::{percent_encode, CONTROLS};
 use regex::Regex;
@@ -214,7 +213,7 @@ impl Markdown {
         }
     }
 
-    async fn update_toc(&self, bufnr: usize) -> Result<()> {
+    async fn update_toc(&self, bufnr: usize) -> Result<(), PluginError> {
         let file = self.vim.bufabspath(bufnr).await?;
         if let Some((start, end)) = find_toc_range(&file)? {
             let shiftwidth = self.vim.getbufvar("", "&shiftwidth").await?;
@@ -233,7 +232,7 @@ impl ClapPlugin for Markdown {
         &[]
     }
 
-    async fn handle_autocmd(&mut self, _autocmd: AutocmdEvent) -> Result<()> {
+    async fn handle_autocmd(&mut self, _autocmd: AutocmdEvent) -> Result<(), PluginError> {
         if self.toggle.is_off() {
             return Ok(());
         }
@@ -241,7 +240,7 @@ impl ClapPlugin for Markdown {
         Ok(())
     }
 
-    async fn handle_action(&mut self, action: ActionRequest) -> Result<()> {
+    async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
         let ActionRequest { method, params: _ } = action;
         match self.parse_action(method)? {
             MarkdownAction::GenerateToc => {

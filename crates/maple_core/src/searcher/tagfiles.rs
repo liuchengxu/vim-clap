@@ -80,7 +80,7 @@ impl TagItem {
         )
     }
 
-    pub fn parse(base: &Path, input: &str) -> anyhow::Result<Self> {
+    pub fn parse(base: &Path, input: &str) -> std::io::Result<Self> {
         let mut field = 0;
         let mut index_last = 0;
 
@@ -146,7 +146,10 @@ impl TagItem {
                 }
                 /* Nothing else is accepted */
                 else {
-                    return Err(anyhow::anyhow!("Invalid tag line: invalid address"));
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "Invalid tag line: invalid address",
+                    ));
                 }
 
                 /* Cleanup end-of-tagaddress chars: `;` and `"` usually */
@@ -201,7 +204,10 @@ impl TagItem {
 
         /* Not enough fields for us */
         if field <= 1 {
-            Err(anyhow::anyhow!("Invalid tag line: not enough fields"))
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Invalid tag line: not enough fields",
+            ))
         } else {
             Ok(TagItem {
                 name,

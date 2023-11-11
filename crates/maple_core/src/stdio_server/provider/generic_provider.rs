@@ -1,7 +1,8 @@
 use crate::stdio_server::handler::{initialize_provider, CachedPreviewImpl, PreviewTarget};
-use crate::stdio_server::provider::{BaseArgs, ClapProvider, Context, ProviderSource};
+use crate::stdio_server::provider::{
+    BaseArgs, ClapProvider, Context, ProviderResult as Result, ProviderSource,
+};
 use crate::stdio_server::vim::VimProgressor;
-use anyhow::Result;
 use filter::{FilterContext, ParallelSource};
 use parking_lot::Mutex;
 use printer::{DisplayLines, Printer};
@@ -12,6 +13,8 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 use subprocess::Exec;
 use types::MatchedItem;
+
+use super::ProviderError;
 
 #[derive(Debug)]
 enum DataSource {
@@ -125,9 +128,9 @@ impl GenericProvider {
                 };
                 let items = curline.split('\t').collect::<Vec<_>>();
                 if items.len() < 2 {
-                    return Err(anyhow::anyhow!(
+                    return Err(ProviderError::Other(format!(
                         "Couldn't extract subject and doc_filename from {curline}"
-                    ));
+                    )));
                 }
                 Some(PreviewTarget::HelpTags {
                     subject: items[0].trim().to_string(),

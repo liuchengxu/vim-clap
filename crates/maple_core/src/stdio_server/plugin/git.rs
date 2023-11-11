@@ -1,7 +1,6 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, Toggle};
+use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::vim::Vim;
-use anyhow::{anyhow, Result};
 use chrono::{TimeZone, Utc};
 use itertools::Itertools;
 use std::borrow::Cow;
@@ -10,6 +9,14 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
+#[derive(Debug, thiserror::Error)]
+pub enum GitError {
+    #[error(transparent)]
+    IO(#[from] std::io::Error),
+    #[error(transparent)]
+    FromUtf8(#[from] std::string::FromUtf8Error),
+}
+
 #[derive(Debug, Clone)]
 struct GitRepo {
     repo: PathBuf,
@@ -17,7 +24,7 @@ struct GitRepo {
 }
 
 impl GitRepo {
-    fn init(git_root: PathBuf) -> Result<Self> {
+    fn init(git_root: PathBuf) -> Result<Self, GitError> {
         let output = std::process::Command::new("git")
             .current_dir(&git_root)
             .arg("config")
@@ -33,7 +40,7 @@ impl GitRepo {
         })
     }
 
-    fn is_tracked(&self, file: &Path) -> Result<bool> {
+    fn is_tracked(&self, file: &Path) -> std::io::Result<bool> {
         let output = std::process::Command::new("git")
             .current_dir(&self.repo)
             .arg("ls-files")
@@ -43,7 +50,7 @@ impl GitRepo {
         Ok(output.status.code().map(|c| c != 1).unwrap_or(false))
     }
 
-    fn fetch_rev_parse(&self, arg: &str) -> Result<String> {
+    fn fetch_rev_parse(&self, arg: &str) -> Result<String, GitError> {
         let output = std::process::Command::new("git")
             .current_dir(&self.repo)
             .arg("rev-parse")
@@ -55,7 +62,7 @@ impl GitRepo {
     }
 
     #[allow(unused)]
-    fn fetch_user_name(&self) -> Result<String> {
+    fn fetch_user_name(&self) -> Result<String, GitError> {
         let output = std::process::Command::new("git")
             .current_dir(&self.repo)
             .arg("config")
@@ -66,7 +73,7 @@ impl GitRepo {
         Ok(String::from_utf8(output.stdout)?)
     }
 
-    fn fetch_origin_url(&self) -> Result<String> {
+    fn fetch_origin_url(&self) -> Result<String, GitError> {
         let output = std::process::Command::new("git")
             .current_dir(&self.repo)
             .arg("config")
@@ -78,7 +85,7 @@ impl GitRepo {
         Ok(String::from_utf8(output.stdout)?)
     }
 
-    fn fetch_blame_output(&self, relative_path: &Path, lnum: usize) -> Result<Vec<u8>> {
+    fn fetch_blame_output(&self, relative_path: &Path, lnum: usize) -> std::io::Result<Vec<u8>> {
         let output = std::process::Command::new("git")
             .current_dir(&self.repo)
             .arg("blame")
@@ -94,12 +101,15 @@ impl GitRepo {
         if output.status.success() {
             Ok(output.stdout)
         } else {
-            Err(anyhow!(
-                "child process errors out: {}, {}, \
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!(
+                    "child process errors out: {}, {}, \
                 command: `git blame --porcelain --incremental -L{lnum},{lnum} -- {}`",
-                String::from_utf8_lossy(&output.stderr),
-                output.status,
-                relative_path.display()
+                    String::from_utf8_lossy(&output.stderr),
+                    output.status,
+                    relative_path.display()
+                ),
             ))
         }
     }
@@ -110,7 +120,7 @@ impl GitRepo {
         relative_path: &Path,
         lnum: usize,
         lines: Vec<String>,
-    ) -> Result<Vec<u8>> {
+    ) -> std::io::Result<Vec<u8>> {
         let mut p = std::process::Command::new("git")
             .current_dir(&self.repo)
             .arg("blame")
@@ -128,7 +138,7 @@ impl GitRepo {
         let stdin = p
             .stdin
             .as_mut()
-            .ok_or_else(|| anyhow!("stdin unavailable"))?;
+            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "stdin unavailable"))?;
 
         let lines = lines.into_iter().join("\n");
         stdin.write_all(lines.as_bytes())?;
@@ -138,12 +148,15 @@ impl GitRepo {
         if output.status.success() {
             Ok(output.stdout)
         } else {
-            Err(anyhow!(
-                "child process errors out: {}, {}, \
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!(
+                    "child process errors out: {}, {}, \
                 command: `git blame --contents - -L {lnum},+1 --line-porcelain {}`",
-                String::from_utf8_lossy(&output.stderr),
-                output.status,
-                relative_path.display()
+                    String::from_utf8_lossy(&output.stderr),
+                    output.status,
+                    relative_path.display()
+                ),
             ))
         }
     }
@@ -156,19 +169,16 @@ struct BlameInfo {
 }
 
 impl BlameInfo {
-    fn display(&self, user_name: &str) -> Result<Cow<'_, str>> {
+    fn display(&self, user_name: &str) -> Option<Cow<'_, str>> {
         let author = &self.author;
 
         if author == "Not Committed Yet" {
-            return Ok(author.into());
+            return Some(author.into());
         }
 
         match (&self.author_time, &self.summary) {
             (Some(author_time), Some(summary)) => {
-                let time = Utc
-                    .timestamp_opt(*author_time, 0)
-                    .single()
-                    .ok_or_else(|| anyhow!("Failed to parse timestamp {author_time}"))?;
+                let time = Utc.timestamp_opt(*author_time, 0).single()?;
                 let time = chrono_humanize::HumanTime::from(time);
                 let author = if user_name.eq(author) { "You" } else { author };
 
@@ -184,17 +194,17 @@ impl BlameInfo {
                     replace_template_string("time", time.to_string().as_str());
                     replace_template_string("summary", summary);
 
-                    Ok(display_string.into())
+                    Some(display_string.into())
                 } else {
-                    Ok(format!("({author} {time}) {summary}").into())
+                    Some(format!("({author} {time}) {summary}").into())
                 }
             }
-            _ => Ok(format!("({author})").into()),
+            _ => Some(format!("({author})").into()),
         }
     }
 }
 
-fn parse_blame_info(stdout: Vec<u8>) -> Result<Option<BlameInfo>> {
+fn parse_blame_info(stdout: Vec<u8>) -> Option<BlameInfo> {
     let stdout = String::from_utf8_lossy(&stdout);
 
     let mut author = None;
@@ -218,15 +228,15 @@ fn parse_blame_info(stdout: Vec<u8>) -> Result<Option<BlameInfo>> {
         }
 
         if let (Some(author), Some(author_time), Some(summary)) = (author, author_time, summary) {
-            return Ok(Some(BlameInfo {
+            return Some(BlameInfo {
                 author: author.to_owned(),
-                author_time: Some(author_time.parse::<i64>()?),
+                author_time: Some(author_time.parse::<i64>().expect("invalid author_time")),
                 summary: Some(summary.to_owned()),
-            }));
+            });
         }
     }
 
-    Ok(None)
+    None
 }
 
 fn in_git_repo(filepath: &Path) -> Option<&Path> {
@@ -253,7 +263,7 @@ impl Git {
         }
     }
 
-    async fn try_track_buffer(&mut self, bufnr: usize) -> Result<()> {
+    async fn try_track_buffer(&mut self, bufnr: usize) -> Result<(), PluginError> {
         if self.bufs.contains_key(&bufnr) {
             return Ok(());
         }
@@ -273,7 +283,7 @@ impl Git {
         Ok(())
     }
 
-    async fn on_cursor_moved(&self, bufnr: usize) -> Result<()> {
+    async fn on_cursor_moved(&self, bufnr: usize) -> Result<(), PluginError> {
         if let Some((filepath, git)) = self.bufs.get(&bufnr) {
             let maybe_blame_info = self.cursor_line_blame_info(git, filepath).await?;
             if let Some(blame_info) = maybe_blame_info {
@@ -290,7 +300,7 @@ impl Git {
         &self,
         git: &GitRepo,
         filepath: &Path,
-    ) -> Result<Option<String>> {
+    ) -> Result<Option<String>, PluginError> {
         let relative_path = filepath.strip_prefix(&git.repo)?;
 
         let lnum = self.vim.line(".").await?;
@@ -302,14 +312,21 @@ impl Git {
             git.fetch_blame_output(relative_path, lnum)?
         };
 
-        if let Ok(Some(blame_info)) = parse_blame_info(stdout) {
-            return Ok(Some(blame_info.display(&git.user_name)?.to_string()));
+        if let Some(blame_info) = parse_blame_info(stdout) {
+            return Ok(Some(
+                blame_info
+                    .display(&git.user_name)
+                    .ok_or_else(|| {
+                        PluginError::Other("failed to fetch line blame info".to_string())
+                    })?
+                    .to_string(),
+            ));
         }
 
         Ok(None)
     }
 
-    async fn show_blame_info(&self) -> Result<()> {
+    async fn show_blame_info(&self) -> Result<(), PluginError> {
         let buf_path = self.vim.current_buffer_path().await?;
         let filepath = PathBuf::from(buf_path);
 
@@ -327,7 +344,7 @@ impl Git {
         Ok(())
     }
 
-    async fn open_current_line_in_browser(&self) -> Result<()> {
+    async fn open_current_line_in_browser(&self) -> Result<(), PluginError> {
         let buf_path = self.vim.current_buffer_path().await?;
         let filepath = PathBuf::from(buf_path);
 
@@ -371,7 +388,7 @@ impl Git {
 #[async_trait::async_trait]
 impl ClapPlugin for Git {
     #[maple_derive::subscriptions]
-    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
+    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<(), PluginError> {
         use AutocmdEventType::{BufDelete, BufEnter, BufLeave, CursorMoved, InsertEnter};
 
         if self.toggle.is_off() {
@@ -393,17 +410,13 @@ impl ClapPlugin for Git {
                 self.vim.exec("clap#plugin#git#clear_blame_info", [bufnr])?;
             }
             CursorMoved => self.on_cursor_moved(bufnr).await?,
-            event => {
-                return Err(anyhow::anyhow!(
-                    "Unhandled {event:?}, incomplete subscriptions?",
-                ))
-            }
+            event => return Err(PluginError::UnhandledEvent(event)),
         }
 
         Ok(())
     }
 
-    async fn handle_action(&mut self, action: ActionRequest) -> Result<()> {
+    async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
         let ActionRequest { method, params: _ } = action;
 
         match self.parse_action(method)? {

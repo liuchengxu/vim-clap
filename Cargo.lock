@@ -620,7 +620,6 @@ dependencies = [
 name = "filter"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "icon",
  "matcher",
  "parking_lot",
@@ -630,6 +629,7 @@ dependencies = [
  "serde",
  "serde_json",
  "subprocess",
+ "thiserror",
  "tracing",
  "types",
  "utils",
@@ -887,7 +887,6 @@ checksum = "d77f7ec81a6d05a3abb01ab6eb7590f6083d08449fe5a1c8b1e620283546ccb7"
 name = "highlighter"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "colors-transform",
  "once_cell",
  "rgb2ansi256",
@@ -1257,7 +1256,6 @@ dependencies = [
 name = "maple_core"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "async-trait",
  "base64 0.13.1",
  "bytecount",
@@ -1291,6 +1289,7 @@ dependencies = [
  "serde",
  "serde_json",
  "subprocess",
+ "thiserror",
  "tokio",
  "toml 0.5.11",
  "tracing",
@@ -1303,7 +1302,6 @@ dependencies = [
 name = "maple_derive"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "darling",
  "inflections",
  "once_cell",

@@ -1,7 +1,6 @@
 //! Convert the source item stream to a parallel iterator and run the filtering in parallel.
 
 use crate::{to_clap_item, FilterContext};
-use anyhow::Result;
 use parking_lot::Mutex;
 use printer::{println_json_with_length, DisplayLines, Printer};
 use rayon::iter::{Empty, IntoParallelIterator, ParallelBridge, ParallelIterator};
@@ -30,7 +29,7 @@ pub fn par_dyn_run(
     query: &str,
     filter_context: FilterContext,
     par_source: ParallelSource,
-) -> Result<()> {
+) -> crate::Result<()> {
     let query: Query = query.into();
 
     match par_source {
@@ -247,7 +246,7 @@ fn par_dyn_run_inner<I, R>(
     query: Query,
     filter_context: FilterContext,
     parallel_source: ParSourceInner<I, R>,
-) -> Result<()>
+) -> std::io::Result<()>
 where
     I: IntoParallelIterator<Item = Arc<dyn ClapItem>>,
     R: Read + Send,
@@ -333,7 +332,7 @@ pub fn par_dyn_run_inprocess<P>(
     par_source: ParallelSource,
     progressor: P,
     stop_signal: Arc<AtomicBool>,
-) -> Result<()>
+) -> std::io::Result<()>
 where
     P: ProgressUpdate<DisplayLines> + Send,
 {
@@ -375,7 +374,11 @@ where
 
     let read: Box<dyn std::io::Read + Send> = match par_source {
         ParallelSource::File(file) => Box::new(std::fs::File::open(file)?),
-        ParallelSource::Exec(exec) => Box::new(exec.detached().stream_stdout()?), // TODO: kill the exec command ASAP/ Run the exec command in another blocking task.
+        ParallelSource::Exec(exec) => Box::new(
+            exec.detached()
+                .stream_stdout()
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?,
+        ), // TODO: kill the exec command ASAP/ Run the exec command in another blocking task.
     };
 
     // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })

@@ -1,6 +1,7 @@
 use crate::stdio_server::handler::initialize_provider;
-use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
-use anyhow::Result;
+use crate::stdio_server::provider::{
+    ClapProvider, Context, ProviderResult as Result, SearcherControl,
+};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use types::Query;

@@ -1,5 +1,4 @@
 use crate::MatchedItems;
-use anyhow::Result;
 use matcher::Matcher;
 use std::io::BufRead;
 use std::path::PathBuf;
@@ -32,7 +31,7 @@ impl<I: Iterator<Item = Arc<dyn ClapItem>>> From<Exec> for SequentialSource<I> {
 pub fn filter_sequential<I: Iterator<Item = Arc<dyn ClapItem>>>(
     source: SequentialSource<I>,
     matcher: Matcher,
-) -> Result<Vec<MatchedItem>> {
+) -> crate::Result<Vec<MatchedItem>> {
     let clap_item_stream: Box<dyn Iterator<Item = Arc<dyn ClapItem>>> = match source {
         SequentialSource::List(list) => Box::new(list),
         SequentialSource::Stdin => Box::new(

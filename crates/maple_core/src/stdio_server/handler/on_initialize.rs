@@ -1,7 +1,6 @@
 use crate::process::ShellCommand;
-use crate::stdio_server::provider::{Context, ProviderSource};
+use crate::stdio_server::provider::{Context, ProviderResult as Result, ProviderSource};
 use crate::tools::ctags::ProjectCtagsCommand;
-use anyhow::Result;
 use filter::SourceItem;
 use printer::{DisplayLines, Printer};
 use serde_json::{json, Value};
@@ -39,7 +38,7 @@ fn to_small_provider_source(lines: Vec<String>) -> ProviderSource {
 }
 
 #[allow(unused)]
-async fn init_proj_tags(ctx: &Context) -> Result<ProviderSource> {
+async fn init_proj_tags(ctx: &Context) -> std::io::Result<ProviderSource> {
     let ctags_cmd = ProjectCtagsCommand::with_cwd(ctx.cwd.to_path_buf());
     let provider_source = if true {
         let lines = ctags_cmd.execute_and_write_cache().await?;

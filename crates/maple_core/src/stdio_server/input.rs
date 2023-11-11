@@ -1,6 +1,7 @@
 use crate::stdio_server::plugin::PluginId;
 use crate::stdio_server::provider::ProviderId;
 use crate::stdio_server::service::ProviderSessionId;
+use crate::stdio_server::Error;
 use rpc::{Params, RpcNotification};
 use std::collections::{HashMap, HashSet, VecDeque};
 use tokio::sync::mpsc::UnboundedSender;
@@ -103,8 +104,8 @@ impl Event {
     /// Converts the notification to an [`Event`].
     pub fn parse_notification(
         notification: RpcNotification,
-        action_parser: impl Fn(RpcNotification) -> anyhow::Result<ActionEvent>,
-    ) -> anyhow::Result<Self> {
+        action_parser: impl Fn(RpcNotification) -> Result<ActionEvent, Error>,
+    ) -> Result<Self, Error> {
         use AutocmdEventType::*;
         use KeyEventType::*;
 

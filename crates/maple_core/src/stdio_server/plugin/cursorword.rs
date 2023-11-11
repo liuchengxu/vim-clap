@@ -1,7 +1,6 @@
 use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::ClapPlugin;
-use crate::stdio_server::vim::Vim;
-use anyhow::Result;
+use crate::stdio_server::plugin::{ClapPlugin, PluginError};
+use crate::stdio_server::vim::{Vim, VimError};
 use colors_transform::Color;
 use matcher::WordMatcher;
 use rgb2ansi256::rgb_to_ansi256;
@@ -96,7 +95,7 @@ struct CursorHighlights {
     match_ids: Vec<i32>,
 }
 
-async fn define_highlights(vim: &Vim) -> Result<()> {
+async fn define_highlights(vim: &Vim) -> Result<(), PluginError> {
     let output = vim.call::<String>("execute", ["hi Normal"]).await?;
     let maybe_guibg = output.split('\n').find_map(|line| {
         line.split_whitespace()
@@ -165,7 +164,10 @@ impl Cursorword {
         }
     }
 
-    async fn create_new_highlights(&mut self, bufnr: usize) -> Result<Option<CursorHighlights>> {
+    async fn create_new_highlights(
+        &mut self,
+        bufnr: usize,
+    ) -> Result<Option<CursorHighlights>, PluginError> {
         let cword = self.vim.expand("<cword>").await?;
 
         if cword.is_empty() {
@@ -175,7 +177,7 @@ impl Cursorword {
         let source_file = self
             .bufs
             .get(&bufnr)
-            .ok_or_else(|| anyhow::anyhow!("bufnr doesn't exist"))?;
+            .ok_or_else(|| VimError::InvalidBuffer)?;
 
         // TODO: filter the false positive results, using a blocklist of filetypes?
         let [_bufnum, curlnum, col, _off] = self.vim.getpos(".").await?;
@@ -226,7 +228,7 @@ impl Cursorword {
     }
 
     /// Highlight the cursor word and all the occurrences.
-    async fn highlight_symbol_under_cursor(&mut self, bufnr: usize) -> Result<()> {
+    async fn highlight_symbol_under_cursor(&mut self, bufnr: usize) -> Result<(), PluginError> {
         let maybe_new_highlights = self.create_new_highlights(bufnr).await?;
         let old_highlights = match maybe_new_highlights {
             Some(new_highlights) => self.cursor_highlights.replace(new_highlights),
@@ -241,14 +243,14 @@ impl Cursorword {
         Ok(())
     }
 
-    async fn clear_highlights(&mut self) -> Result<()> {
+    async fn clear_highlights(&mut self) -> Result<(), PluginError> {
         if let Some(CursorHighlights { winid, match_ids }) = self.cursor_highlights.take() {
             self.vim.matchdelete_batch(match_ids, winid).await?;
         }
         Ok(())
     }
 
-    async fn try_track_buffer(&mut self, bufnr: usize) -> Result<()> {
+    async fn try_track_buffer(&mut self, bufnr: usize) -> Result<(), PluginError> {
         if self.bufs.contains_key(&bufnr) {
             return Ok(());
         }
@@ -285,7 +287,7 @@ impl Cursorword {
 
 #[async_trait::async_trait]
 impl ClapPlugin for Cursorword {
-    async fn handle_action(&mut self, action: ActionRequest) -> Result<()> {
+    async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
         match self.parse_action(&action.method)? {
             CursorwordAction::__DefineHighlights => {
                 define_highlights(&self.vim).await?;
@@ -296,7 +298,7 @@ impl ClapPlugin for Cursorword {
     }
 
     #[maple_derive::subscriptions]
-    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
+    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<(), PluginError> {
         let (event_type, params) = autocmd;
         let bufnr = params.parse_bufnr()?;
 
@@ -316,11 +318,7 @@ impl ClapPlugin for Cursorword {
                     self.clear_highlights().await?;
                 }
             }
-            event => {
-                return Err(anyhow::anyhow!(
-                    "Unhandled {event:?}, incomplete subscriptions?",
-                ))
-            }
+            event => return Err(PluginError::UnhandledEvent(event)),
         }
 
         Ok(())

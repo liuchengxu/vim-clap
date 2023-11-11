@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, Toggle};
-use crate::stdio_server::vim::Vim;
-use anyhow::Result;
+use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
+use crate::stdio_server::vim::{Vim, VimResult};
 use highlighter::{SyntaxReference, TokenHighlight};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
@@ -28,7 +27,7 @@ impl Syntax {
         }
     }
 
-    async fn on_buf_enter(&mut self, bufnr: usize) -> Result<()> {
+    async fn on_buf_enter(&mut self, bufnr: usize) -> VimResult<()> {
         let fpath = self.vim.bufabspath(bufnr).await?;
         if let Some(extension) = std::path::Path::new(&fpath)
             .extension()
@@ -41,7 +40,7 @@ impl Syntax {
     }
 
     // TODO: this may be inaccurate, e.g., the lines are part of a bigger block of comments.
-    async fn highlight_visual_lines(&mut self, bufnr: usize) -> anyhow::Result<()> {
+    async fn highlight_visual_lines(&mut self, bufnr: usize) -> Result<(), PluginError> {
         let Some(extension) = self.bufs.get(&bufnr) else {
             return Ok(());
         };
@@ -116,7 +115,7 @@ pub fn highlight_lines<T: AsRef<str>>(
 #[async_trait::async_trait]
 impl ClapPlugin for Syntax {
     #[maple_derive::subscriptions]
-    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
+    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<(), PluginError> {
         use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
 
         if self.toggle.is_off() {
@@ -135,17 +134,13 @@ impl ClapPlugin for Syntax {
             CursorMoved => {
                 self.highlight_visual_lines(bufnr).await?;
             }
-            event => {
-                return Err(anyhow::anyhow!(
-                    "Unhandled {event:?}, incomplete subscriptions?",
-                ))
-            }
+            event => return Err(PluginError::UnhandledEvent(event)),
         }
 
         Ok(())
     }
 
-    async fn handle_action(&mut self, action: ActionRequest) -> Result<()> {
+    async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
         let ActionRequest { method, params: _ } = action;
         match self.parse_action(method)? {
             SyntaxAction::On => {

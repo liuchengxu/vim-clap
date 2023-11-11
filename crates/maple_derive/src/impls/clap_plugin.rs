@@ -193,10 +193,10 @@ pub fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
         }
 
         impl #ident {
-            fn parse_action(&self, method: impl AsRef<str>) -> anyhow::Result<#plugin_action> {
+            fn parse_action(&self, method: impl AsRef<str>) -> std::io::Result<#plugin_action> {
                 match method.as_ref() {
                   #(#action_variants)*
-                  unknown => Err(anyhow::anyhow!("[{}] unknown action: {unknown}", #plugin_id)),
+                  unknown => Err(std::io::Error::new(std::io::ErrorKind::Other, format!("[{}] unknown action: {unknown}", #plugin_id))),
                 }
             }
         }

@@ -1,7 +1,6 @@
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::handler::CachedPreviewImpl;
-use crate::stdio_server::provider::{ClapProvider, Context};
-use anyhow::Result;
+use crate::stdio_server::provider::{ClapProvider, Context, ProviderResult as Result};
 use parking_lot::Mutex;
 use paths::AbsPathBuf;
 use printer::Printer;

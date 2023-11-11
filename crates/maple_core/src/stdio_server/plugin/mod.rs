@@ -7,8 +7,8 @@ mod markdown;
 pub mod syntax;
 mod system;
 
-use crate::stdio_server::input::{ActionRequest, AutocmdEvent};
-use anyhow::Result;
+use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
+use crate::stdio_server::vim::VimError;
 use std::fmt::Debug;
 
 pub use self::colorizer::ColorizerPlugin;
@@ -20,8 +20,6 @@ pub use self::markdown::Markdown as MarkdownPlugin;
 pub use self::syntax::Syntax as SyntaxHighlighterPlugin;
 pub use self::system::System as SystemPlugin;
 pub use types::{Action, ActionType, ClapAction};
-
-use super::input::AutocmdEventType;
 
 pub type PluginId = &'static str;
 
@@ -50,17 +48,39 @@ impl Toggle {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum PluginError {
+    #[error(transparent)]
+    Vim(#[from] VimError),
+    #[error(transparent)]
+    IO(#[from] std::io::Error),
+    #[error(transparent)]
+    JsonRpc(#[from] rpc::Error),
+    #[error(transparent)]
+    FromUtf8(#[from] std::string::FromUtf8Error),
+    #[error(transparent)]
+    GitPlugin(#[from] self::git::GitError),
+    #[error(transparent)]
+    Path(#[from] std::path::StripPrefixError),
+    #[error("unhandled {0:?}, possibly caused by incomplete subscriptions.")]
+    UnhandledEvent(AutocmdEventType),
+    #[error("bufnr not found in request `{0}`")]
+    MissingBufferNumberInParams(&'static str),
+    #[error("{0}")]
+    Other(String),
+}
+
 /// A trait each Clap plugin must implement.
 #[async_trait::async_trait]
 pub trait ClapPlugin: ClapAction + Debug + Send + Sync + 'static {
-    async fn handle_action(&mut self, action: ActionRequest) -> Result<()>;
+    async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError>;
 
     /// Returns the list of subscribed Autocmd events.
     fn subscriptions(&self) -> &[AutocmdEventType] {
         &[]
     }
 
-    async fn handle_autocmd(&mut self, _autocmd: AutocmdEvent) -> Result<()> {
+    async fn handle_autocmd(&mut self, _autocmd: AutocmdEvent) -> Result<(), PluginError> {
         Ok(())
     }
 }

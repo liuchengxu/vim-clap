@@ -15,8 +15,7 @@ use crate::stdio_server::handler::{
     initialize_provider, CachedPreviewImpl, Preview, PreviewTarget,
 };
 use crate::stdio_server::input::{InputRecorder, KeyEvent, KeyEventType};
-use crate::stdio_server::vim::Vim;
-use anyhow::{anyhow, Result};
+use crate::stdio_server::vim::{Vim, VimError, VimResult};
 use filter::Query;
 use icon::{Icon, IconKind};
 use matcher::{Bonus, MatchScope, Matcher, MatcherBuilder};
@@ -38,6 +37,32 @@ use types::{ClapItem, MatchedItem};
 
 use super::input::{InternalProviderEvent, ProviderEvent};
 
+#[derive(Debug, thiserror::Error)]
+pub enum ProviderError {
+    #[error("current preview target does not exist")]
+    CurrentPreviewTargetNotFound,
+    #[error("preview scroll unsupported")]
+    PreviewScrollUnsupported,
+    #[error(transparent)]
+    SendProviderEvent(#[from] tokio::sync::mpsc::error::SendError<ProviderEvent>),
+    #[error("invalid line number")]
+    EndOfFile,
+    #[error("failed to convert {0} to absolute path")]
+    ConvertToAbsolutePath(String),
+    #[error("{0}")]
+    Other(String),
+    #[error(transparent)]
+    IO(#[from] std::io::Error),
+    #[error(transparent)]
+    Vim(#[from] VimError),
+    #[error(transparent)]
+    ParseInt(#[from] std::num::ParseIntError),
+    #[error(transparent)]
+    Join(#[from] tokio::task::JoinError),
+}
+
+pub type ProviderResult<T> = std::result::Result<T, ProviderError>;
+
 /// [`BaseArgs`] represents the arguments common to all the providers.
 #[derive(Debug, Clone, clap::Parser, PartialEq, Eq, Default)]
 pub struct BaseArgs {
@@ -54,7 +79,7 @@ pub struct BaseArgs {
     no_cwd: bool,
 }
 
-pub async fn create_provider(ctx: &Context) -> Result<Box<dyn ClapProvider>> {
+pub async fn create_provider(ctx: &Context) -> ProviderResult<Box<dyn ClapProvider>> {
     let provider: Box<dyn ClapProvider> = match ctx.env.provider_id.as_str() {
         "blines" => Box::new(blines::BlinesProvider::new(ctx).await?),
         "dumb_jump" => Box::new(dumb_jump::DumbJumpProvider::new(ctx).await?),
@@ -144,7 +169,7 @@ struct ScrollFile {
 }
 
 impl ScrollFile {
-    fn new(line_start: usize, path: &Path) -> Result<Self> {
+    fn new(line_start: usize, path: &Path) -> std::io::Result<Self> {
         Ok(Self {
             line_start,
             total_lines: utils::count_lines(std::fs::File::open(path)?)?,
@@ -193,7 +218,7 @@ impl PreviewManager {
         &mut self,
         line_start: usize,
         path: PathBuf,
-    ) -> Result<(ScrollFile, PathBuf)> {
+    ) -> std::io::Result<(ScrollFile, PathBuf)> {
         let scroll_file = match self.scroll_file {
             Some(scroll_file) => scroll_file,
             None => {
@@ -209,7 +234,7 @@ impl PreviewManager {
         self.current_preview_target.replace(preview_target);
     }
 
-    fn scroll_preview(&mut self, direction: Direction) -> Result<PreviewTarget> {
+    fn scroll_preview(&mut self, direction: Direction) -> ProviderResult<PreviewTarget> {
         let new_scroll_offset = match direction {
             Direction::Up => self.scroll_offset - 1,
             Direction::Down => self.scroll_offset + 1,
@@ -218,13 +243,13 @@ impl PreviewManager {
         let (scroll_file, path) = match self
             .current_preview_target
             .as_ref()
-            .ok_or_else(|| anyhow!("Current preview target does not exist"))?
+            .ok_or(ProviderError::CurrentPreviewTargetNotFound)?
         {
             PreviewTarget::LineInFile { path, line_number } => {
                 self.prepare_scroll_file_info(*line_number, path.clone())?
             }
             PreviewTarget::File(path) => self.prepare_scroll_file_info(0, path.clone())?,
-            _ => return Err(anyhow!("Preview scroll unsupported")),
+            _ => return Err(ProviderError::PreviewScrollUnsupported),
         };
 
         let ScrollFile {
@@ -238,7 +263,7 @@ impl PreviewManager {
             // Reaching the start of file.
             0
         } else if new_line_number as usize > total_lines {
-            return Err(anyhow!("Reaching the end of file"));
+            return Err(ProviderError::EndOfFile);
         } else {
             self.scroll_offset = new_scroll_offset;
             new_line_number
@@ -268,7 +293,7 @@ pub struct Context {
 }
 
 impl Context {
-    pub async fn new(params: Params, vim: Vim) -> Result<Self> {
+    pub async fn new(params: Params, vim: Vim) -> VimResult<Self> {
         #[derive(Deserialize)]
         struct InitializeParams {
             provider_id: ProviderId,
@@ -417,7 +442,7 @@ impl Context {
             .expect("Failed to initialize provider_event_sender in Context")
     }
 
-    pub fn send_provider_event(&self, event: ProviderEvent) -> Result<()> {
+    pub fn send_provider_event(&self, event: ProviderEvent) -> ProviderResult<()> {
         self.provider_event_sender
             .get()
             .expect("Forget to initialize provider_event_sender!")
@@ -447,7 +472,7 @@ impl Context {
             })
     }
 
-    pub async fn parse_provider_args<T: clap::Parser + Default + Debug>(&self) -> Result<T> {
+    pub async fn parse_provider_args<T: clap::Parser + Default + Debug>(&self) -> VimResult<T> {
         let args = self.vim.provider_args().await?;
 
         let provider_args = if args.is_empty() {
@@ -475,7 +500,7 @@ impl Context {
         Ok(provider_args)
     }
 
-    pub async fn handle_base_args(&self, base: &BaseArgs) -> Result<()> {
+    pub async fn handle_base_args(&self, base: &BaseArgs) -> ProviderResult<()> {
         let BaseArgs { query, .. } = base;
 
         if let Some(query) = query {
@@ -487,7 +512,7 @@ impl Context {
         Ok(())
     }
 
-    pub async fn expanded_paths(&self, paths: &[PathBuf]) -> Result<Vec<PathBuf>> {
+    pub async fn expanded_paths(&self, paths: &[PathBuf]) -> VimResult<Vec<PathBuf>> {
         let mut expanded_paths = Vec::with_capacity(paths.len());
         for p in paths {
             if let Ok(path) = self.vim.expand(p.to_string_lossy()).await {
@@ -524,14 +549,14 @@ impl Context {
         input_history.update_inputs(provider_id, self.input_recorder.clone().into_inputs());
     }
 
-    pub async fn record_input(&mut self) -> Result<()> {
+    pub async fn record_input(&mut self) -> VimResult<()> {
         let input = self.vim.input_get().await?;
         self.input_recorder.try_record(input);
         Ok(())
     }
 
     /// Sets input to the next query.
-    pub async fn next_input(&mut self) -> Result<()> {
+    pub async fn next_input(&mut self) -> ProviderResult<()> {
         if let Some(next) = self.input_recorder.move_to_next() {
             if self.env.is_nvim {
                 self.vim.exec("clap#state#set_input", [next])?;
@@ -544,7 +569,7 @@ impl Context {
     }
 
     /// Sets input to the previous query.
-    pub async fn prev_input(&mut self) -> Result<()> {
+    pub async fn prev_input(&mut self) -> ProviderResult<()> {
         if let Some(previous) = self.input_recorder.move_to_prev() {
             if self.env.is_nvim {
                 self.vim.exec("clap#state#set_input", [previous])?;
@@ -556,7 +581,7 @@ impl Context {
         Ok(())
     }
 
-    pub async fn preview_size(&mut self) -> Result<usize> {
+    pub async fn preview_size(&mut self) -> VimResult<usize> {
         match self.maybe_preview_size {
             Some(size) => Ok(size),
             None => {
@@ -571,21 +596,24 @@ impl Context {
         }
     }
 
-    pub async fn preview_winwidth(&self) -> Result<usize> {
+    pub async fn preview_winwidth(&self) -> VimResult<usize> {
         let preview_winid = self.vim.eval("g:clap.preview.winid").await?;
         let winwidth = self.vim.winwidth(preview_winid).await?;
         Ok(winwidth)
     }
 
-    pub async fn preview_height(&mut self) -> Result<usize> {
+    pub async fn preview_height(&mut self) -> VimResult<usize> {
         self.preview_size().await.map(|x| 2 * x)
     }
 
-    pub fn render_preview(&self, preview: Preview) -> Result<()> {
+    pub fn render_preview(&self, preview: Preview) -> VimResult<()> {
         self.vim.exec("clap#state#render_preview", preview)
     }
 
-    async fn update_preview(&mut self, maybe_preview_target: Option<PreviewTarget>) -> Result<()> {
+    async fn update_preview(
+        &mut self,
+        maybe_preview_target: Option<PreviewTarget>,
+    ) -> ProviderResult<()> {
         let lnum = self.vim.display_getcurlnum().await?;
 
         let curline = self.vim.display_getcurline().await?;
@@ -619,14 +647,14 @@ impl Context {
         Ok(())
     }
 
-    async fn scroll_preview(&mut self, direction: Direction) -> Result<()> {
+    async fn scroll_preview(&mut self, direction: Direction) -> ProviderResult<()> {
         if let Ok(new_preview_target) = self.preview_manager.scroll_preview(direction) {
             self.update_preview(Some(new_preview_target)).await?;
         }
         Ok(())
     }
 
-    pub async fn update_on_empty_query(&self) -> Result<()> {
+    pub async fn update_on_empty_query(&self) -> VimResult<()> {
         if let Some(items) = self
             .provider_source
             .read()
@@ -781,12 +809,16 @@ impl ProviderSource {
 /// A trait each Clap provider must implement.
 #[async_trait::async_trait]
 pub trait ClapProvider: Debug + Send + Sync + 'static {
-    async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
+    async fn on_initialize(&mut self, ctx: &mut Context) -> ProviderResult<()> {
         initialize_provider(ctx, true).await
     }
 
-    async fn on_initial_query(&mut self, ctx: &mut Context, initial_query: String) -> Result<()> {
-        // Mimic the user behavior by setting the user input and sending the singal
+    async fn on_initial_query(
+        &mut self,
+        ctx: &mut Context,
+        initial_query: String,
+    ) -> ProviderResult<()> {
+        // Mimic the user behavior by setting the user input and sending the signal
         let _ = ctx
             .vim
             .call::<String>("set_initial_query", json!([initial_query]))
@@ -794,7 +826,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
         ctx.send_provider_event(ProviderEvent::OnTyped(Params::None))
     }
 
-    async fn on_move(&mut self, ctx: &mut Context) -> Result<()> {
+    async fn on_move(&mut self, ctx: &mut Context) -> ProviderResult<()> {
         if !ctx.env.preview_enabled {
             return Ok(());
         }
@@ -802,7 +834,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
         ctx.update_preview(None).await
     }
 
-    async fn on_typed(&mut self, ctx: &mut Context) -> Result<()>;
+    async fn on_typed(&mut self, ctx: &mut Context) -> ProviderResult<()>;
 
     /// On receiving the Terminate event.
     ///
@@ -811,7 +843,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
         ctx.signify_terminated(session_id);
     }
 
-    async fn on_key_event(&mut self, ctx: &mut Context, key_event: KeyEvent) -> Result<()> {
+    async fn on_key_event(&mut self, ctx: &mut Context, key_event: KeyEvent) -> ProviderResult<()> {
         let (key_event_type, _params) = key_event;
         match key_event_type {
             KeyEventType::ShiftUp => ctx.scroll_preview(Direction::Up).await?,

@@ -1,6 +1,8 @@
 use crate::stdio_server::handler::initialize_provider;
-use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
-use anyhow::Result;
+use crate::stdio_server::provider::{
+    ClapProvider, Context, ProviderResult as Result, SearcherControl,
+};
+use crate::stdio_server::vim::VimResult;
 use matcher::{Bonus, MatchScope};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -15,7 +17,7 @@ pub struct BlinesProvider {
 }
 
 impl BlinesProvider {
-    pub async fn new(ctx: &Context) -> Result<Self> {
+    pub async fn new(ctx: &Context) -> VimResult<Self> {
         let args = ctx.parse_provider_args().await?;
         Ok(Self {
             args,
