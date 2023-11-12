@@ -12,7 +12,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
-use types::{ClapItem, ProgressUpdate};
+use types::{ClapItem, SearchProgressUpdate};
 
 #[allow(dead_code)]
 #[derive(Debug)]

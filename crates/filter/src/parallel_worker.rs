@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use subprocess::Exec;
-use types::ProgressUpdate;
+use types::SearchProgressUpdate;
 use types::{ClapItem, MatchedItem, Query};
 
 /// Parallelable source.
@@ -64,7 +64,7 @@ pub fn par_dyn_run_list<'a, 'b: 'a>(
 }
 
 #[derive(Debug)]
-pub struct BestItems<P: ProgressUpdate<DisplayLines>> {
+pub struct BestItems<P: SearchProgressUpdate<DisplayLines>> {
     /// Time of last notification.
     pub past: Instant,
     /// Top N items.
@@ -77,7 +77,7 @@ pub struct BestItems<P: ProgressUpdate<DisplayLines>> {
     pub printer: Printer,
 }
 
-impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
+impl<P: SearchProgressUpdate<DisplayLines>> BestItems<P> {
     pub fn new(
         printer: Printer,
         max_capacity: usize,
@@ -155,7 +155,7 @@ impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
                         self.last_lines = display_lines.lines;
                         self.last_visible_highlights = visible_highlights;
                     } else {
-                        self.progressor.update_brief(total_matched, total_processed)
+                        self.progressor.quick_update(total_matched, total_processed)
                     }
 
                     self.past = now;
@@ -168,8 +168,8 @@ impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
 #[derive(Debug)]
 pub struct StdioProgressor;
 
-impl ProgressUpdate<DisplayLines> for StdioProgressor {
-    fn update_brief(&self, matched: usize, processed: usize) {
+impl SearchProgressUpdate<DisplayLines> for StdioProgressor {
+    fn quick_update(&self, matched: usize, processed: usize) {
         #[allow(non_upper_case_globals)]
         const deprecated_method: &str = "clap#state#process_filter_message";
 
@@ -334,7 +334,7 @@ pub fn par_dyn_run_inprocess<P>(
     stop_signal: Arc<AtomicBool>,
 ) -> std::io::Result<()>
 where
-    P: ProgressUpdate<DisplayLines> + Send,
+    P: SearchProgressUpdate<DisplayLines> + Send,
 {
     let query: Query = query.into();
 

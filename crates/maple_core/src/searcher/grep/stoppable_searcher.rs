@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
-use types::{ProgressUpdate, Rank};
+use types::{Rank, SearchProgressUpdate};
 
 pub(super) const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
 
@@ -322,7 +322,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
                                 best_results.last_lines = display_lines.lines;
                                 best_results.last_visible_highlights = visible_highlights;
                             } else {
-                                progressor.update_brief(total_matched, total_processed)
+                                progressor.quick_update(total_matched, total_processed)
                             }
 
                             best_results.past = now;

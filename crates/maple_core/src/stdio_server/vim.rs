@@ -12,7 +12,7 @@ use std::ops::Deref;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use types::ProgressUpdate;
+use types::SearchProgressUpdate;
 
 static FILENAME_SYNTAX_MAP: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     HashMap::from([
@@ -177,8 +177,8 @@ impl VimProgressor {
     }
 }
 
-impl ProgressUpdate<DisplayLines> for VimProgressor {
-    fn update_brief(&self, total_matched: usize, total_processed: usize) {
+impl SearchProgressUpdate<DisplayLines> for VimProgressor {
+    fn quick_update(&self, total_matched: usize, total_processed: usize) {
         if self.stopped.load(Ordering::Relaxed) {
             return;
         }
@@ -236,6 +236,8 @@ pub enum VimError {
     InvalidBuffer,
     #[error("winid {0} does not exist")]
     InvalidWinid(usize),
+    #[error("setvar requires an explicit scope in `var_name`")]
+    InvalidVariableScope,
     #[error("`{0}` failure")]
     VimApiFailure(String),
     #[error("{0}")]
@@ -494,12 +496,12 @@ impl Vim {
             .map(|m| m == 1u32)
     }
 
-    pub async fn verbose(&self, cmd: impl AsRef<str>) -> VimResult<String> {
-        self.call::<String>("verbose", [cmd.as_ref()]).await
-    }
-
     pub async fn bufabspath(&self, bufnr: impl Display) -> VimResult<String> {
         self.expand(format!("#{bufnr}:p")).await
+    }
+
+    pub async fn verbose(&self, cmd: impl AsRef<str>) -> VimResult<String> {
+        self.call::<String>("verbose", [cmd.as_ref()]).await
     }
 
     pub async fn current_winid(&self) -> VimResult<usize> {
@@ -533,7 +535,14 @@ impl Vim {
     }
 
     pub fn set_var(&self, var_name: &str, value: impl Serialize) -> VimResult<()> {
-        self.exec("set_var", (var_name, value))
+        if ["b:", "w:", "t:", "g:", "l:", "s:"]
+            .iter()
+            .any(|variable_scrope| var_name.starts_with(variable_scrope))
+        {
+            self.exec("set_var", (var_name, value))
+        } else {
+            Err(VimError::InvalidVariableScope)
+        }
     }
 
     pub async fn win_is_valid(&self, winid: usize) -> VimResult<bool> {

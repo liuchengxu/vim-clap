@@ -50,9 +50,11 @@ impl CaseMatching {
 }
 
 /// Show the filtering progress.
-pub trait ProgressUpdate<DisplayLines> {
-    fn update_brief(&self, total_matched: usize, total_processed: usize);
+pub trait SearchProgressUpdate<DisplayLines> {
+    /// Updates the number of searches only.
+    fn quick_update(&self, total_matched: usize, total_processed: usize);
 
+    /// Refresh the latest lines and number.
     fn update_all(
         &self,
         display_lines: &DisplayLines,
@@ -60,6 +62,7 @@ pub trait ProgressUpdate<DisplayLines> {
         total_processed: usize,
     );
 
+    /// Invoked when the search job is complete.
     fn on_finished(
         &self,
         display_lines: DisplayLines,
