@@ -64,7 +64,18 @@ endfunction
 
 function! clap#client#notify(method, ...) abort
   if clap#job#daemon#is_running()
+    if exists('s:enqueued_messages')
+      for [method, params] in items(s:enqueued_messages)
+        call clap#rpc#notify(method, params)
+      endfor
+      unlet s:enqueued_messages
+    endif
     call clap#rpc#notify(a:method, get(a:000, 0, []))
+  else
+    " It's possible that user sends the request before the server is started,
+    " e.g., invoke this function in .vimrc.
+    let s:enqueued_messages = get(s:, 'enqueued_messages', [])
+    call add(s:enqueued_messages, [a:method, get(a:000, 0, [])])
   endif
 endfunction
 

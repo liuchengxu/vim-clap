@@ -72,6 +72,8 @@ pub enum PluginError {
     Clipboard(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
+pub type PluginResult<T> = std::result::Result<T, PluginError>;
+
 /// A trait each Clap plugin must implement.
 #[async_trait::async_trait]
 pub trait ClapPlugin: ClapAction + Debug + Send + Sync + 'static {

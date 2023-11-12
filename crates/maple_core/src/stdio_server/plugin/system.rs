@@ -1,10 +1,11 @@
 use crate::stdio_server::input::ActionRequest;
-use crate::stdio_server::plugin::{ClapPlugin, PluginError};
+use crate::stdio_server::plugin::{ClapPlugin, PluginError, PluginResult};
 use crate::stdio_server::vim::Vim;
 use copypasta::{ClipboardContext, ClipboardProvider};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "system", actions = ["__note_recent_files", "__copy-to-clipboard", "open-config", "list-plugins"])]
+#[clap_plugin(id = "system", actions = ["__note_recent_files", "__copy-to-clipboard", "__configure-vim-which-key", "open-config", "list-plugins"])]
 pub struct System {
     vim: Vim,
 }
@@ -13,6 +14,53 @@ impl System {
     pub fn new(vim: Vim) -> Self {
         Self { vim }
     }
+
+    async fn configure_vim_which_key_map(
+        &self,
+        variable_name: &str,
+        config_files: &[String],
+    ) -> PluginResult<()> {
+        let mut final_map = HashMap::new();
+
+        for config_file in config_files {
+            final_map.extend(parse_vim_which_key_map(config_file));
+        }
+
+        self.vim.set_var(variable_name, final_map)?;
+
+        Ok(())
+    }
+}
+
+fn parse_vim_which_key_map(config_file: &str) -> HashMap<char, HashMap<char, String>> {
+    use once_cell::sync::Lazy;
+    use regex::Regex;
+
+    static COMMENT_DOC: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r#"^\s*\"\"\" (.*?): (.*)"#).unwrap());
+
+    let mut map = HashMap::new();
+
+    if let Ok(lines) = utils::read_lines(config_file) {
+        lines.for_each(|line| {
+            if let Ok(line) = line {
+                if let Some(caps) = COMMENT_DOC.captures(&line) {
+                    let keys = caps.get(1).map(|x| x.as_str()).unwrap();
+                    let desc = caps.get(2).map(|x| x.as_str()).unwrap();
+
+                    let mut chars = keys.chars();
+                    let k1 = chars.next().unwrap();
+                    let k2 = chars.next().unwrap();
+
+                    map.entry(k1)
+                        .or_insert_with(HashMap::new)
+                        .insert(k2, desc.to_string());
+                }
+            }
+        });
+    }
+
+    map
 }
 
 #[async_trait::async_trait]
@@ -43,6 +91,11 @@ impl ClapPlugin for System {
                     }
                 }
             }
+            SystemAction::__ConfigureVimWhichKey => {
+                let args: Vec<String> = params.parse()?;
+                self.configure_vim_which_key_map(&args[0], &args[1..])
+                    .await?;
+            }
             SystemAction::OpenConfig => {
                 let config_file = crate::config::config_file();
                 self.vim
@@ -54,5 +107,15 @@ impl ClapPlugin for System {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_vim_which_key_map() {
+        parse_vim_which_key_map("/home/xlc/.vimrc");
     }
 }
