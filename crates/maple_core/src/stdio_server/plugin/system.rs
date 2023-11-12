@@ -1,9 +1,10 @@
 use crate::stdio_server::input::ActionRequest;
 use crate::stdio_server::plugin::{ClapPlugin, PluginError};
 use crate::stdio_server::vim::Vim;
+use clipboard::{ClipboardContext, ClipboardProvider};
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "system", actions = ["__note_recent_files", "open-config", "list-plugins"])]
+#[clap_plugin(id = "system", actions = ["__note_recent_files", "__copy-to-clipboard", "open-config", "list-plugins"])]
 pub struct System {
     vim: Vim,
 }
@@ -24,11 +25,25 @@ impl ClapPlugin for System {
                 let bufnr: Vec<usize> = params.parse()?;
                 let bufnr = bufnr
                     .first()
-                    .ok_or(PluginError::MissingBufferNumberInParams(
-                        "note_recent_files",
-                    ))?;
+                    .ok_or(PluginError::MissingBufferNumber("note_recent_files"))?;
                 let file_path: String = self.vim.expand(format!("#{bufnr}:p")).await?;
                 crate::stdio_server::handler::messages::note_recent_file(file_path);
+            }
+            SystemAction::__CopyToClipboard => {
+                let content: Vec<String> = params.parse()?;
+
+                let mut ctx: ClipboardContext =
+                    ClipboardProvider::new().map_err(|e| PluginError::Clipboard(e))?;
+                match ctx.set_contents(content.into_iter().next().unwrap()) {
+                    Ok(()) => {
+                        self.vim
+                            .echo_info(format!("copied to clipboard successfully"))?;
+                    }
+                    Err(e) => {
+                        self.vim
+                            .echo_warn(format!("failed to copy to clipboard: {e:?}"))?;
+                    }
+                }
             }
             SystemAction::OpenConfig => {
                 let config_file = crate::config::config_file();
@@ -36,7 +51,7 @@ impl ClapPlugin for System {
                     .exec("execute", format!("edit {}", config_file.display()))?;
             }
             SystemAction::ListPlugins => {
-                // Handled upper level.
+                unreachable!("action list-plugins has been handled upper level")
             }
         }
 

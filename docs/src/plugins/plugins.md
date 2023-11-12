@@ -60,6 +60,12 @@ enable = true
 enable = true
 ```
 
+Although ALE has been an incredible and feature-rich linter plugin that served me well for an extended
+period, I began to notice a persistent lagging issue over time. There were noticeable delays in refreshing
+the latest diagnostics whenever I made changes to the source file (especially the Rust file). This prompted
+me to develop this linter plugin in Rust and the results have been remarkable. The diagnostics update is now
+considerably faster from what I see on Rust project.
+
 - Features
   - Lint files asynchronously
 

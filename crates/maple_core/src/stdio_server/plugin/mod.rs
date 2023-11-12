@@ -52,8 +52,8 @@ impl Toggle {
 pub enum PluginError {
     #[error("unhandled {0:?}, possibly a bug caused by incomplete subscriptions.")]
     UnhandledEvent(AutocmdEventType),
-    #[error("bufnr not found in request `{0}`")]
-    MissingBufferNumberInParams(&'static str),
+    #[error("bufnr not found in params of request `{0}`")]
+    MissingBufferNumber(&'static str),
     #[error("{0}")]
     Other(String),
     #[error(transparent)]
@@ -68,6 +68,8 @@ pub enum PluginError {
     Path(#[from] std::path::StripPrefixError),
     #[error(transparent)]
     FromUtf8(#[from] std::string::FromUtf8Error),
+    #[error(transparent)]
+    Clipboard(#[from] Box<dyn std::error::Error>),
 }
 
 /// A trait each Clap plugin must implement.

@@ -51,6 +51,7 @@ printer = { workspace = true }
 rpc = { workspace = true }
 types = { workspace = true }
 utils = { workspace = true }
+clipboard = "0.5.0"
 
 [dev-dependencies]
 git = { package = "git2", version = "0.15" }

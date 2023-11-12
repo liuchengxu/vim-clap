@@ -76,27 +76,35 @@ impl ShareableDiagnostics {
         let errors = || {
             diagnostics
                 .iter()
-                .filter_map(|d| if d.is_error() { Some(&d.spans) } else { None })
-                .flatten()
+                .filter_map(|d| if d.is_error() { d.spans.get(0) } else { None })
         };
         let warnings = || {
             diagnostics
                 .iter()
-                .filter_map(|d| if d.is_warn() { Some(&d.spans) } else { None })
-                .flatten()
+                .filter_map(|d| if d.is_warn() { d.spans.get(0) } else { None })
+        };
+
+        let check_span = |span: &linter::DiagnosticSpan, ordering: std::cmp::Ordering| {
+            if span.line_start.cmp(&from_line_number) == ordering {
+                Some((span.line_start, span.column_start))
+            } else {
+                None
+            }
         };
 
         match (kind, direction) {
-            (DiagnosticKind::Error, Direction::Next) => errors().find_map(|span| {
-                if span.line_start >= from_line_number {
-                    Some((span.line_start, span.column_start))
-                } else {
-                    None
-                }
-            }),
-            (DiagnosticKind::Error, Direction::Prev) => None,
-            (DiagnosticKind::Warn, Direction::Next) => None,
-            (DiagnosticKind::Warn, Direction::Prev) => None,
+            (DiagnosticKind::Error, Direction::Next) => {
+                errors().find_map(|span| check_span(span, std::cmp::Ordering::Greater))
+            }
+            (DiagnosticKind::Error, Direction::Prev) => errors()
+                .rev()
+                .find_map(|span| check_span(span, std::cmp::Ordering::Less)),
+            (DiagnosticKind::Warn, Direction::Next) => {
+                warnings().find_map(|span| check_span(span, std::cmp::Ordering::Greater))
+            }
+            (DiagnosticKind::Warn, Direction::Prev) => warnings()
+                .rev()
+                .find_map(|span| check_span(span, std::cmp::Ordering::Less)),
         }
     }
 }
@@ -252,6 +260,24 @@ impl Linter {
         }
     }
 
+    async fn navigate_diagnostics(
+        &self,
+        bufnr: usize,
+        kind: DiagnosticKind,
+        direction: Direction,
+    ) -> VimResult<()> {
+        if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
+            let lnum = self.vim.line(".").await?;
+            if let Some((lnum, col)) = buf_linter_info
+                .diagnostics
+                .find_sibling(lnum, kind, direction)
+            {
+                self.vim.exec("cursor", [lnum, col])?;
+            }
+        }
+        Ok(())
+    }
+
     async fn on_cursor_moved(&self, bufnr: usize) -> VimResult<()> {
         if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
             let lnum = self.vim.line(".").await?;
@@ -372,23 +398,24 @@ impl ClapPlugin for Linter {
             }
             LinterAction::NextError => {
                 let bufnr = self.vim.bufnr("").await?;
-
-                if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
-                    let lnum = self.vim.line(".").await?;
-                    if let Some((lnum, col)) = buf_linter_info.diagnostics.find_sibling(
-                        lnum,
-                        DiagnosticKind::Error,
-                        Direction::Next,
-                    ) {
-                        self.vim.exec("cursor", [lnum, col])?;
-                    }
-
-                    return Ok(());
-                }
+                self.navigate_diagnostics(bufnr, DiagnosticKind::Error, Direction::Next)
+                    .await?;
             }
-            LinterAction::PrevError => {}
-            LinterAction::NextWarn => {}
-            LinterAction::PrevWarn => {}
+            LinterAction::PrevError => {
+                let bufnr = self.vim.bufnr("").await?;
+                self.navigate_diagnostics(bufnr, DiagnosticKind::Error, Direction::Prev)
+                    .await?;
+            }
+            LinterAction::NextWarn => {
+                let bufnr = self.vim.bufnr("").await?;
+                self.navigate_diagnostics(bufnr, DiagnosticKind::Warn, Direction::Next)
+                    .await?;
+            }
+            LinterAction::PrevWarn => {
+                let bufnr = self.vim.bufnr("").await?;
+                self.navigate_diagnostics(bufnr, DiagnosticKind::Warn, Direction::Prev)
+                    .await?;
+            }
         }
 
         Ok(())
