@@ -1,20 +1,7 @@
-use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::Error;
 use rpc::RpcRequest;
 use serde::Deserialize;
 use serde_json::{json, Value};
-
-pub fn note_recent_file(file_path: String) {
-    tracing::debug!(?file_path, "Received a recent file notification");
-
-    let path = std::path::Path::new(&file_path);
-    if !path.exists() || !path.is_file() {
-        return;
-    }
-
-    let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
-    recent_files.upsert(file_path);
-}
 
 pub async fn preview_file(msg: RpcRequest) -> Result<Value, Error> {
     let msg_id = msg.id;

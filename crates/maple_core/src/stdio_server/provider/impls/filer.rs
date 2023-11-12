@@ -1,5 +1,5 @@
-use crate::stdio_server::handler::{CachedPreviewImpl, Preview, PreviewTarget};
 use crate::stdio_server::input::{KeyEvent, KeyEventType};
+use crate::stdio_server::provider::hooks::{CachedPreviewImpl, Preview, PreviewTarget};
 use crate::stdio_server::provider::{
     ClapProvider, Context, Direction, ProviderError, ProviderResult as Result,
 };

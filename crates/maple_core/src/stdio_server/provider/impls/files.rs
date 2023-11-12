@@ -1,5 +1,5 @@
 use crate::stdio_server::provider::{
-    ClapProvider, Context, ProviderResult as Result, SearcherControl,
+    BaseArgs, ClapProvider, Context, ProviderError, ProviderResult as Result, SearcherControl,
 };
 use clap::Parser;
 use matcher::{Bonus, MatchScope};
@@ -9,8 +9,6 @@ use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use types::Query;
-
-use super::{BaseArgs, ProviderError};
 
 #[derive(Debug, Parser, PartialEq, Eq, Default)]
 #[command(name = ":Clap files")]

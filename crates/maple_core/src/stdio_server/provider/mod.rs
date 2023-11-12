@@ -1,19 +1,9 @@
-mod blines;
-mod dumb_jump;
-mod filer;
-mod files;
-mod generic_provider;
-mod grep;
-mod igrep;
-mod recent_files;
-mod tagfiles;
+mod hooks;
+mod impls;
 
-pub use self::filer::read_dir_entries;
+use self::hooks::{initialize_provider, CachedPreviewImpl, Preview, PreviewTarget};
 use crate::searcher::blines::BlinesItem;
 use crate::searcher::SearchContext;
-use crate::stdio_server::handler::{
-    initialize_provider, CachedPreviewImpl, Preview, PreviewTarget,
-};
 use crate::stdio_server::input::{
     InputRecorder, InternalProviderEvent, KeyEvent, KeyEventType, ProviderEvent,
 };
@@ -36,6 +26,9 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use types::{ClapItem, MatchedItem};
+
+pub use self::impls::create_provider;
+pub use self::impls::filer::read_dir_entries;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProviderError {
@@ -77,21 +70,6 @@ pub struct BaseArgs {
     /// Skip the default working directory in searching.
     #[clap(long)]
     no_cwd: bool,
-}
-
-pub async fn create_provider(ctx: &Context) -> ProviderResult<Box<dyn ClapProvider>> {
-    let provider: Box<dyn ClapProvider> = match ctx.env.provider_id.as_str() {
-        "blines" => Box::new(blines::BlinesProvider::new(ctx).await?),
-        "dumb_jump" => Box::new(dumb_jump::DumbJumpProvider::new(ctx).await?),
-        "filer" => Box::new(filer::FilerProvider::new(ctx).await?),
-        "files" => Box::new(files::FilesProvider::new(ctx).await?),
-        "grep" => Box::new(grep::GrepProvider::new(ctx).await?),
-        "igrep" => Box::new(igrep::IgrepProvider::new(ctx).await?),
-        "recent_files" => Box::new(recent_files::RecentFilesProvider::new(ctx).await?),
-        "tagfiles" => Box::new(tagfiles::TagfilesProvider::new(ctx).await?),
-        _ => Box::new(generic_provider::GenericProvider::new(ctx).await?),
-    };
-    Ok(provider)
 }
 
 #[derive(Debug)]

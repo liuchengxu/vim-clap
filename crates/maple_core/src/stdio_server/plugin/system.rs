@@ -1,3 +1,4 @@
+use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::input::ActionRequest;
 use crate::stdio_server::plugin::{ClapPlugin, PluginError, PluginResult};
 use crate::stdio_server::vim::Vim;
@@ -63,6 +64,18 @@ fn parse_vim_which_key_map(config_file: &str) -> HashMap<char, HashMap<char, Str
     map
 }
 
+fn note_recent_file(file_path: String) {
+    tracing::debug!(?file_path, "Received a recent file notification");
+
+    let path = std::path::Path::new(&file_path);
+    if !path.exists() || !path.is_file() {
+        return;
+    }
+
+    let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
+    recent_files.upsert(file_path);
+}
+
 #[async_trait::async_trait]
 impl ClapPlugin for System {
     async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
@@ -75,7 +88,7 @@ impl ClapPlugin for System {
                     .first()
                     .ok_or(PluginError::MissingBufferNumber("note_recent_files"))?;
                 let file_path: String = self.vim.expand(format!("#{bufnr}:p")).await?;
-                crate::stdio_server::handler::messages::note_recent_file(file_path);
+                note_recent_file(file_path);
             }
             SystemAction::__CopyToClipboard => {
                 let content: Vec<String> = params.parse()?;

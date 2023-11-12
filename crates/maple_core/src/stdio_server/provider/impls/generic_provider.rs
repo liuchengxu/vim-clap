@@ -1,6 +1,6 @@
-use crate::stdio_server::handler::{initialize_provider, CachedPreviewImpl, PreviewTarget};
+use crate::stdio_server::provider::hooks::{initialize_provider, CachedPreviewImpl, PreviewTarget};
 use crate::stdio_server::provider::{
-    BaseArgs, ClapProvider, Context, ProviderResult as Result, ProviderSource,
+    BaseArgs, ClapProvider, Context, ProviderError, ProviderResult as Result, ProviderSource,
 };
 use crate::stdio_server::vim::VimProgressor;
 use filter::{FilterContext, ParallelSource};
@@ -13,8 +13,6 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 use subprocess::Exec;
 use types::MatchedItem;
-
-use super::ProviderError;
 
 #[derive(Debug)]
 enum DataSource {

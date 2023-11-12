@@ -2,10 +2,11 @@ mod searcher;
 
 use self::searcher::{SearchEngine, SearchWorker};
 use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, UsageMatcher, Usages};
-use crate::stdio_server::handler::CachedPreviewImpl;
 use crate::stdio_server::job;
-use crate::stdio_server::provider::ProviderResult;
-use crate::stdio_server::provider::{BaseArgs, ClapProvider, Context};
+use crate::stdio_server::provider::hooks::CachedPreviewImpl;
+use crate::stdio_server::provider::{
+    BaseArgs, ClapProvider, Context, ProviderError, ProviderResult,
+};
 use crate::stdio_server::vim::VimResult;
 use crate::tools::ctags::{get_language, TagsGenerator, CTAGS_EXISTS};
 use crate::tools::gtags::GTAGS_EXISTS;
@@ -19,8 +20,6 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tracing::Instrument;
-
-use super::ProviderError;
 
 /// Internal reprentation of user input.
 #[derive(Debug, Clone, Default)]

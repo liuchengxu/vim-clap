@@ -1,8 +1,8 @@
-mod handler;
 mod input;
 mod job;
 mod plugin;
 mod provider;
+mod request_handler;
 mod service;
 mod vim;
 
@@ -374,8 +374,8 @@ impl Backend {
         let msg = rpc_request;
 
         let value = match msg.method.as_str() {
-            "preview/file" => Some(handler::messages::preview_file(msg).await?),
-            "quickfix" => Some(handler::messages::preview_quickfix(msg).await?),
+            "preview/file" => Some(request_handler::preview_file(msg).await?),
+            "quickfix" => Some(request_handler::preview_quickfix(msg).await?),
             _ => Some(json!({
                 "error": format!("Unknown request: {}", msg.method)
             })),

@@ -1,22 +1,22 @@
-use crate::stdio_server::handler::initialize_provider;
+use crate::stdio_server::provider::hooks::initialize_provider;
 use crate::stdio_server::provider::{
-    ClapProvider, Context, ProviderResult as Result, SearcherControl,
+    BaseArgs, ClapProvider, Context, ProviderResult as Result, SearcherControl,
 };
+use crate::stdio_server::vim::VimResult;
+use matcher::{Bonus, MatchScope};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use types::Query;
 
-use super::BaseArgs;
-
 #[derive(Debug)]
-pub struct TagfilesProvider {
+pub struct BlinesProvider {
     args: BaseArgs,
     searcher_control: Option<SearcherControl>,
 }
 
-impl TagfilesProvider {
-    pub async fn new(ctx: &Context) -> Result<Self> {
-        let args: BaseArgs = ctx.parse_provider_args().await?;
+impl BlinesProvider {
+    pub async fn new(ctx: &Context) -> VimResult<Self> {
+        let args = ctx.parse_provider_args().await?;
         Ok(Self {
             args,
             searcher_control: None,
@@ -30,17 +30,27 @@ impl TagfilesProvider {
             });
         }
 
-        let matcher = ctx.matcher_builder().build(Query::from(&query));
+        let source_file = ctx.env.start_buffer_path.clone();
+
+        let matcher_builder = ctx.matcher_builder().match_scope(MatchScope::Full);
+
+        let matcher = if let Some(extension) = source_file.extension().and_then(|s| s.to_str()) {
+            matcher_builder
+                .bonuses(vec![Bonus::Language(extension.into())])
+                .build(Query::from(&query))
+        } else {
+            matcher_builder.build(Query::from(&query))
+        };
 
         let new_control = {
             let stop_signal = Arc::new(AtomicBool::new(false));
 
             let join_handle = {
                 let search_context = ctx.search_context(stop_signal.clone());
-                let cwd = ctx.cwd.to_path_buf();
 
                 tokio::spawn(async move {
-                    crate::searcher::tagfiles::search(query, cwd, matcher, search_context).await;
+                    crate::searcher::blines::search(query, source_file, matcher, search_context)
+                        .await;
                 })
             };
 
@@ -55,29 +65,29 @@ impl TagfilesProvider {
 }
 
 #[async_trait::async_trait]
-impl ClapProvider for TagfilesProvider {
+impl ClapProvider for BlinesProvider {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         if self.args.query.is_none() {
-            initialize_provider(ctx, false).await?;
+            initialize_provider(ctx, true).await?;
+        } else {
+            ctx.handle_base_args(&self.args).await?;
         }
-
-        ctx.handle_base_args(&self.args).await?;
-
         Ok(())
     }
 
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.input_get().await?;
+        // TODO:
+        // if &modified {
+        //      get buf content
+        // } else {
+        //      read from file
+        // }
         if query.is_empty() {
             ctx.update_on_empty_query().await?;
         } else {
             self.process_query(query, ctx);
         }
-        Ok(())
-    }
-
-    async fn on_move(&mut self, _ctx: &mut Context) -> Result<()> {
-        // TODO: Possible to include the line number in tagfiles?
         Ok(())
     }
 

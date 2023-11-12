@@ -1,9 +1,8 @@
 use super::filer::{read_dir_entries, FilerItem, FilerItemWithoutIcon};
-use super::Direction;
-use crate::stdio_server::handler::{CachedPreviewImpl, Preview, PreviewTarget};
 use crate::stdio_server::input::{KeyEvent, KeyEventType};
+use crate::stdio_server::provider::hooks::{CachedPreviewImpl, Preview, PreviewTarget};
 use crate::stdio_server::provider::{
-    ClapProvider, Context, ProviderError, ProviderResult as Result, SearcherControl,
+    ClapProvider, Context, Direction, ProviderError, ProviderResult as Result, SearcherControl,
 };
 use crate::stdio_server::vim::preview_syntax;
 use matcher::MatchScope;
