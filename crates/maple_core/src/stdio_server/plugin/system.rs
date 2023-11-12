@@ -3,6 +3,8 @@ use crate::stdio_server::input::ActionRequest;
 use crate::stdio_server::plugin::{ClapPlugin, PluginError, PluginResult};
 use crate::stdio_server::vim::Vim;
 use copypasta::{ClipboardContext, ClipboardProvider};
+use once_cell::sync::Lazy;
+use regex::Regex;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
@@ -34,9 +36,6 @@ impl System {
 }
 
 fn parse_vim_which_key_map(config_file: &str) -> HashMap<char, HashMap<char, String>> {
-    use once_cell::sync::Lazy;
-    use regex::Regex;
-
     static COMMENT_DOC: Lazy<Regex> =
         Lazy::new(|| Regex::new(r#"^\s*\"\"\" (.*?): (.*)"#).unwrap());
 
@@ -88,13 +87,17 @@ impl ClapPlugin for System {
                     .first()
                     .ok_or(PluginError::MissingBufferNumber("note_recent_files"))?;
                 let file_path: String = self.vim.expand(format!("#{bufnr}:p")).await?;
+
                 note_recent_file(file_path);
             }
             SystemAction::__CopyToClipboard => {
                 let content: Vec<String> = params.parse()?;
+                let content = content.into_iter().next().ok_or_else(|| {
+                    PluginError::Other("missing content in __copy-to-clipboard".to_string())
+                })?;
 
                 let mut ctx = ClipboardContext::new().map_err(PluginError::Clipboard)?;
-                match ctx.set_contents(content.into_iter().next().unwrap()) {
+                match ctx.set_contents(content) {
                     Ok(()) => {
                         self.vim.echo_info("copied to clipboard successfully")?;
                     }

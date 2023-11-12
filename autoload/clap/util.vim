@@ -174,5 +174,14 @@ function! clap#util#get_visual_selection() abort
   endtry
 endfunction
 
+function! clap#util#reload_current_file() abort
+  let save_cursor = getpos('.')
+
+  " Reload the file
+  edit!
+
+  noautocmd call setpos('.', save_cursor)
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo

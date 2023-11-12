@@ -423,7 +423,7 @@ impl ClapPlugin for Linter {
                 let vim = self.vim.clone();
                 tokio::spawn(async move {
                     if ide::formatting::run_cargo_fmt(&workspace).await.is_ok() {
-                        let _ = vim.exec("execute", ":edit");
+                        let _ = vim.bare_exec("clap#util#reload_current_file");
                     }
                 });
             }
