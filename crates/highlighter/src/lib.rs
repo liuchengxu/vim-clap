@@ -238,9 +238,9 @@ impl SyntaxHighlighter {
                 .get(Self::DEFAULT_THEME)
                 .ok_or(Error::DefaultThemeNotFound(Self::DEFAULT_THEME))?,
         };
-        Ok(HighlightEngine::new(syntax, theme)
+        HighlightEngine::new(syntax, theme)
             .highlight_line(line, &self.syntax_set, theme.settings.foreground)
-            .map_err(|e| Error::Syntect(e))?)
+            .map_err(Error::Syntect)
     }
 
     pub fn highlight_line(&self, extension: &str, line: &str) -> Vec<TokenHighlighterForTerminal> {

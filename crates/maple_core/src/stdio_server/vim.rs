@@ -436,9 +436,11 @@ impl Vim {
                     Ok(curline)
                 }
             }
-            _ => Err(VimError::GetDisplayCurLine(format!(
-                "Invalid return value of `s:api.display_getcurline()`, [String, Bool] expected"
-            ))),
+            _ => Err(VimError::GetDisplayCurLine(
+                "Invalid return value of `s:api.display_getcurline()`, \
+                [String, Bool] expected"
+                    .to_string(),
+            )),
         }
     }
 

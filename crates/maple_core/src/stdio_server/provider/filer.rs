@@ -198,7 +198,7 @@ impl FilerProvider {
         let current_items = self
             .dir_entries
             .get(&self.current_dir)
-            .ok_or_else(|| ProviderError::Other(format!("Directory entries not found")))?;
+            .ok_or_else(|| ProviderError::Other("Directory entries not found".to_string()))?;
 
         let processed = current_items.len();
 

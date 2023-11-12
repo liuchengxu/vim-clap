@@ -33,11 +33,10 @@ impl ClapPlugin for System {
                 let content: Vec<String> = params.parse()?;
 
                 let mut ctx: ClipboardContext =
-                    ClipboardProvider::new().map_err(|e| PluginError::Clipboard(e))?;
+                    ClipboardProvider::new().map_err(PluginError::Clipboard)?;
                 match ctx.set_contents(content.into_iter().next().unwrap()) {
                     Ok(()) => {
-                        self.vim
-                            .echo_info(format!("copied to clipboard successfully"))?;
+                        self.vim.echo_info("copied to clipboard successfully")?;
                     }
                     Err(e) => {
                         self.vim
