@@ -10,26 +10,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::task::JoinHandle;
 
-#[derive(Debug, Clone)]
-struct ShareableDiagnostics {
-    refreshed: Arc<AtomicBool>,
-    /// List of diagnostics, in sorted manner.
-    inner: Arc<RwLock<Vec<Diagnostic>>>,
-}
-
 #[derive(Debug, Default, Clone, Serialize)]
 struct Count {
     error: usize,
     warn: usize,
-}
-
-impl Serialize for ShareableDiagnostics {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        self.inner.read().serialize(serializer)
-    }
 }
 
 enum Direction {
@@ -42,10 +26,28 @@ enum DiagnosticKind {
     Warn,
 }
 
-impl ShareableDiagnostics {
-    fn append(&self, new: Vec<Diagnostic>) -> Count {
+#[derive(Debug, Clone)]
+struct BufferDiagnostics {
+    /// Whether the diagnostics have been refreshed.
+    refreshed: Arc<AtomicBool>,
+    /// List of diagnostics, in sorted manner.
+    inner: Arc<RwLock<Vec<Diagnostic>>>,
+}
+
+impl Serialize for BufferDiagnostics {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.inner.read().serialize(serializer)
+    }
+}
+
+impl BufferDiagnostics {
+    /// Append new diagnostics and returns the count of latest diagnostics.
+    fn append(&self, new_diagnostics: Vec<Diagnostic>) -> Count {
         let mut diagnostics = self.inner.write();
-        diagnostics.extend(new);
+        diagnostics.extend(new_diagnostics);
 
         diagnostics.sort_by(|a, b| a.spans[0].line_start.cmp(&b.spans[0].line_start));
 
@@ -57,15 +59,18 @@ impl ShareableDiagnostics {
                 count.warn += 1;
             }
         }
+
         count
     }
 
+    /// Clear the diagnostics list.
     fn reset(&self) {
         self.refreshed.store(false, Ordering::SeqCst);
         let mut diagnostics = self.inner.write();
         diagnostics.clear();
     }
 
+    /// Returns a tuple of (line_number, column_start) of the sibling diagnostic.
     fn find_sibling(
         &self,
         from_line_number: usize,
@@ -73,11 +78,13 @@ impl ShareableDiagnostics {
         direction: Direction,
     ) -> Option<(usize, usize)> {
         let diagnostics = self.inner.read();
+
         let errors = || {
             diagnostics
                 .iter()
                 .filter_map(|d| if d.is_error() { d.spans.get(0) } else { None })
         };
+
         let warnings = || {
             diagnostics
                 .iter()
@@ -92,6 +99,7 @@ impl ShareableDiagnostics {
             }
         };
 
+        // TODO: binary search since the diagnostics are already sorted.
         match (kind, direction) {
             (DiagnosticKind::Error, Direction::Next) => {
                 errors().find_map(|span| check_span(span, std::cmp::Ordering::Greater))
@@ -113,15 +121,15 @@ impl ShareableDiagnostics {
 struct LinterResultHandler {
     bufnr: usize,
     vim: Vim,
-    shareable_diagnostics: ShareableDiagnostics,
+    buffer_diagnostics: BufferDiagnostics,
 }
 
 impl LinterResultHandler {
-    fn new(bufnr: usize, vim: Vim, shareable_diagnostics: ShareableDiagnostics) -> Self {
+    fn new(bufnr: usize, vim: Vim, buffer_diagnostics: BufferDiagnostics) -> Self {
         Self {
             bufnr,
             vim,
-            shareable_diagnostics,
+            buffer_diagnostics,
         }
     }
 }
@@ -133,7 +141,7 @@ impl linter::HandleLinterResult for LinterResultHandler {
         new_diagnostics.dedup();
 
         let first_lint_result_arrives = self
-            .shareable_diagnostics
+            .buffer_diagnostics
             .refreshed
             .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
             .is_ok();
@@ -144,10 +152,10 @@ impl linter::HandleLinterResult for LinterResultHandler {
                 (self.bufnr, &new_diagnostics),
             );
 
-            self.shareable_diagnostics.append(new_diagnostics)
+            self.buffer_diagnostics.append(new_diagnostics)
         } else {
             // Remove the potential duplicated results from multiple linters.
-            let existing = self.shareable_diagnostics.inner.read();
+            let existing = self.buffer_diagnostics.inner.read();
             let mut followup_diagnostics = new_diagnostics
                 .into_iter()
                 .filter(|d| !existing.contains(d))
@@ -166,7 +174,7 @@ impl linter::HandleLinterResult for LinterResultHandler {
                 );
             }
 
-            self.shareable_diagnostics.append(followup_diagnostics)
+            self.buffer_diagnostics.append(followup_diagnostics)
         };
 
         let _ = self
@@ -184,7 +192,7 @@ struct BufferLinterInfo {
     filetype: String,
     workspace: PathBuf,
     source_file: PathBuf,
-    diagnostics: ShareableDiagnostics,
+    diagnostics: BufferDiagnostics,
     current_jobs: Arc<Mutex<Vec<LinterJob>>>,
 }
 
@@ -194,7 +202,7 @@ impl BufferLinterInfo {
             filetype,
             workspace,
             source_file,
-            diagnostics: ShareableDiagnostics {
+            diagnostics: BufferDiagnostics {
                 refreshed: Arc::new(AtomicBool::new(false)),
                 inner: Arc::new(RwLock::new(Vec::new())),
             },
