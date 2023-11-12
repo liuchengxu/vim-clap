@@ -15,8 +15,8 @@ bytecount = { workspace = true }
 chrono = { workspace = true }
 chrono-humanize = { workspace = true }
 clap = { workspace = true }
-clipboard = "0.5.0"
 colors-transform = { workspace = true }
+copypasta = { version = "0.10.0", default-features = false, features = [ "x11" ] }
 futures = { workspace = true }
 # ripgrep for global search
 grep-searcher = { workspace = true }

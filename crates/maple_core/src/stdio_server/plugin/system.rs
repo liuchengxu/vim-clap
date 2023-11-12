@@ -1,7 +1,7 @@
 use crate::stdio_server::input::ActionRequest;
 use crate::stdio_server::plugin::{ClapPlugin, PluginError};
 use crate::stdio_server::vim::Vim;
-use clipboard::{ClipboardContext, ClipboardProvider};
+use copypasta::{ClipboardContext, ClipboardProvider};
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
 #[clap_plugin(id = "system", actions = ["__note_recent_files", "__copy-to-clipboard", "open-config", "list-plugins"])]
@@ -32,8 +32,7 @@ impl ClapPlugin for System {
             SystemAction::__CopyToClipboard => {
                 let content: Vec<String> = params.parse()?;
 
-                let mut ctx: ClipboardContext =
-                    ClipboardProvider::new().map_err(PluginError::Clipboard)?;
+                let mut ctx = ClipboardContext::new().map_err(PluginError::Clipboard)?;
                 match ctx.set_contents(content.into_iter().next().unwrap()) {
                     Ok(()) => {
                         self.vim.echo_info("copied to clipboard successfully")?;

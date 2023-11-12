@@ -69,7 +69,7 @@ pub enum PluginError {
     #[error(transparent)]
     FromUtf8(#[from] std::string::FromUtf8Error),
     #[error(transparent)]
-    Clipboard(#[from] Box<dyn std::error::Error>),
+    Clipboard(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
 /// A trait each Clap plugin must implement.
