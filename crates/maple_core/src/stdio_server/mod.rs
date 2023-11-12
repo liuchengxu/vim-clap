@@ -25,22 +25,24 @@ use tokio::time::Instant;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("failed to parse `{0:?}`")]
-    ParseNotification(RpcNotification),
-    #[error("`session_id` not found in Params")]
-    SessionIdNotFound,
+    #[error("`session_id` not found in params")]
+    MissingSessionId,
+    #[error("failed to parse: {0}")]
+    Parse(String),
+    #[error("failed to parse action from `{0:?}`")]
+    ParseAction(RpcNotification),
+    #[error("{0}")]
+    Other(String),
     #[error(transparent)]
     Vim(#[from] VimError),
     #[error(transparent)]
+    Provider(#[from] ProviderError),
+    #[error(transparent)]
+    Rpc(#[from] rpc::Error),
+    #[error(transparent)]
     IO(#[from] std::io::Error),
     #[error(transparent)]
-    JsonRpc(#[from] rpc::Error),
-    #[error(transparent)]
     ParseInt(#[from] std::num::ParseIntError),
-    #[error(transparent)]
-    Provider(#[from] ProviderError),
-    #[error("{0}")]
-    Other(String),
 }
 
 // Do the initialization on the Vim end on startup.
@@ -292,12 +294,12 @@ impl Backend {
                     return Ok((*plugin_id, notification.into()));
                 }
             }
-            Err(Error::ParseNotification(notification))
+            Err(Error::ParseAction(notification))
         };
 
         match Event::parse_notification(notification, action_parser)? {
             Event::NewProvider(params) => {
-                let session_id = maybe_session_id.ok_or(Error::SessionIdNotFound)?;
+                let session_id = maybe_session_id.ok_or(Error::MissingSessionId)?;
                 let ctx = Context::new(params, self.vim.clone()).await?;
                 let provider = create_provider(&ctx).await?;
                 self.service_manager
@@ -306,18 +308,18 @@ impl Backend {
             }
             Event::ProviderWorker(provider_event) => match provider_event {
                 ProviderEvent::Exit => {
-                    let session_id = maybe_session_id.ok_or(Error::SessionIdNotFound)?;
+                    let session_id = maybe_session_id.ok_or(Error::MissingSessionId)?;
                     self.service_manager.lock().notify_provider_exit(session_id);
                 }
                 to_send => {
-                    let session_id = maybe_session_id.ok_or(Error::SessionIdNotFound)?;
+                    let session_id = maybe_session_id.ok_or(Error::MissingSessionId)?;
                     self.service_manager
                         .lock()
                         .notify_provider(session_id, to_send);
                 }
             },
             Event::Key(key_event) => {
-                let session_id = maybe_session_id.ok_or(Error::SessionIdNotFound)?;
+                let session_id = maybe_session_id.ok_or(Error::MissingSessionId)?;
                 self.service_manager
                     .lock()
                     .notify_provider(session_id, ProviderEvent::Key(key_event));

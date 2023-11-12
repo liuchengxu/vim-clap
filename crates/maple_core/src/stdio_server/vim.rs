@@ -230,20 +230,8 @@ fn from_vim_bool(value: Value) -> bool {
     }
 }
 
-/// Shareable Vim instance.
-#[derive(Debug, Clone)]
-pub struct Vim {
-    rpc_client: Arc<RpcClient>,
-}
-
 #[derive(Debug, thiserror::Error)]
 pub enum VimError {
-    #[error(transparent)]
-    IO(#[from] std::io::Error),
-    #[error(transparent)]
-    Rpc(#[from] rpc::RpcError),
-    #[error(transparent)]
-    JsonRpc(#[from] rpc::Error),
     #[error("buffer does not exist")]
     InvalidBuffer,
     #[error("winid {0} does not exist")]
@@ -252,9 +240,21 @@ pub enum VimError {
     VimApiFailure(String),
     #[error("{0}")]
     GetDisplayCurLine(String),
+    #[error(transparent)]
+    IO(#[from] std::io::Error),
+    #[error(transparent)]
+    Rpc(#[from] rpc::RpcError),
+    #[error(transparent)]
+    JsonRpc(#[from] rpc::Error),
 }
 
 pub type VimResult<T> = std::result::Result<T, VimError>;
+
+/// Shareable Vim instance.
+#[derive(Debug, Clone)]
+pub struct Vim {
+    rpc_client: Arc<RpcClient>,
+}
 
 impl Vim {
     /// Constructs a [`Vim`].

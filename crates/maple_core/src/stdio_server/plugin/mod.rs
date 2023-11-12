@@ -50,24 +50,24 @@ impl Toggle {
 
 #[derive(Debug, thiserror::Error)]
 pub enum PluginError {
-    #[error(transparent)]
-    Vim(#[from] VimError),
-    #[error(transparent)]
-    IO(#[from] std::io::Error),
-    #[error(transparent)]
-    JsonRpc(#[from] rpc::Error),
-    #[error(transparent)]
-    FromUtf8(#[from] std::string::FromUtf8Error),
-    #[error(transparent)]
-    GitPlugin(#[from] self::git::GitError),
-    #[error(transparent)]
-    Path(#[from] std::path::StripPrefixError),
-    #[error("unhandled {0:?}, possibly caused by incomplete subscriptions.")]
+    #[error("unhandled {0:?}, possibly a bug caused by incomplete subscriptions.")]
     UnhandledEvent(AutocmdEventType),
     #[error("bufnr not found in request `{0}`")]
     MissingBufferNumberInParams(&'static str),
     #[error("{0}")]
     Other(String),
+    #[error(transparent)]
+    GitPlugin(#[from] self::git::GitError),
+    #[error(transparent)]
+    Vim(#[from] VimError),
+    #[error(transparent)]
+    Rpc(#[from] rpc::Error),
+    #[error(transparent)]
+    IO(#[from] std::io::Error),
+    #[error(transparent)]
+    Path(#[from] std::path::StripPrefixError),
+    #[error(transparent)]
+    FromUtf8(#[from] std::string::FromUtf8Error),
 }
 
 /// A trait each Clap plugin must implement.

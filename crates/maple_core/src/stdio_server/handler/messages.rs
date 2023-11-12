@@ -94,19 +94,19 @@ pub async fn preview_quickfix(msg: RpcRequest) -> Result<Value, Error> {
 }
 
 fn parse_quickfix_entry(line: &str) -> Result<(&str, usize), Error> {
-    let mut splitted = line.split('|');
-    let fpath = splitted
+    let mut parts = line.split('|');
+    let fpath = parts
         .next()
-        .ok_or_else(|| Error::Other(format!("Can not find fpath in {}", line)))?;
+        .ok_or_else(|| Error::Parse(format!("missing fpath in quickfix entry {line}")))?;
 
-    let mut it = splitted
+    let mut it = parts
         .next()
-        .ok_or_else(|| Error::Other(format!("Can not find lnum and column info in {}", line)))?
+        .ok_or_else(|| Error::Parse(format!("missing lnum and column in quickfix entry {line}")))?
         .split("col");
 
     let lnum = it
         .next()
-        .ok_or_else(|| Error::Other(format!("Can not find lnum in {}", line)))?
+        .ok_or_else(|| Error::Parse(format!("missing lnum in quickfix entry {line}")))?
         .trim()
         .parse::<usize>()?;
 

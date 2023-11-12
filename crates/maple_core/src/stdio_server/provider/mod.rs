@@ -14,7 +14,9 @@ use crate::searcher::SearchContext;
 use crate::stdio_server::handler::{
     initialize_provider, CachedPreviewImpl, Preview, PreviewTarget,
 };
-use crate::stdio_server::input::{InputRecorder, KeyEvent, KeyEventType};
+use crate::stdio_server::input::{
+    InputRecorder, InternalProviderEvent, KeyEvent, KeyEventType, ProviderEvent,
+};
 use crate::stdio_server::vim::{Vim, VimError, VimResult};
 use filter::Query;
 use icon::{Icon, IconKind};
@@ -35,30 +37,28 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use types::{ClapItem, MatchedItem};
 
-use super::input::{InternalProviderEvent, ProviderEvent};
-
 #[derive(Debug, thiserror::Error)]
 pub enum ProviderError {
-    #[error("current preview target does not exist")]
-    CurrentPreviewTargetNotFound,
-    #[error("preview scroll unsupported")]
-    PreviewScrollUnsupported,
-    #[error(transparent)]
-    SendProviderEvent(#[from] tokio::sync::mpsc::error::SendError<ProviderEvent>),
-    #[error("invalid line number")]
-    EndOfFile,
+    #[error("can not scroll the preview as preview target does not exist")]
+    PreviewTargetNotFound,
+    #[error("preview scroll is only available for the file preview target")]
+    OnlyFilePreviewScrollSupported,
+    #[error("line number is larger than total lines")]
+    ExceedingMaxLines(usize, usize),
     #[error("failed to convert {0} to absolute path")]
     ConvertToAbsolutePath(String),
     #[error("{0}")]
     Other(String),
     #[error(transparent)]
-    IO(#[from] std::io::Error),
-    #[error(transparent)]
     Vim(#[from] VimError),
     #[error(transparent)]
-    ParseInt(#[from] std::num::ParseIntError),
-    #[error(transparent)]
     Join(#[from] tokio::task::JoinError),
+    #[error(transparent)]
+    SendProviderEvent(#[from] tokio::sync::mpsc::error::SendError<ProviderEvent>),
+    #[error(transparent)]
+    IO(#[from] std::io::Error),
+    #[error(transparent)]
+    ParseInt(#[from] std::num::ParseIntError),
 }
 
 pub type ProviderResult<T> = std::result::Result<T, ProviderError>;
@@ -243,13 +243,13 @@ impl PreviewManager {
         let (scroll_file, path) = match self
             .current_preview_target
             .as_ref()
-            .ok_or(ProviderError::CurrentPreviewTargetNotFound)?
+            .ok_or(ProviderError::PreviewTargetNotFound)?
         {
             PreviewTarget::LineInFile { path, line_number } => {
                 self.prepare_scroll_file_info(*line_number, path.clone())?
             }
             PreviewTarget::File(path) => self.prepare_scroll_file_info(0, path.clone())?,
-            _ => return Err(ProviderError::PreviewScrollUnsupported),
+            _ => return Err(ProviderError::OnlyFilePreviewScrollSupported),
         };
 
         let ScrollFile {
@@ -263,7 +263,10 @@ impl PreviewManager {
             // Reaching the start of file.
             0
         } else if new_line_number as usize > total_lines {
-            return Err(ProviderError::EndOfFile);
+            return Err(ProviderError::ExceedingMaxLines(
+                new_line_number as usize,
+                total_lines,
+            ));
         } else {
             self.scroll_offset = new_scroll_offset;
             new_line_number
