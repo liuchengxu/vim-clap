@@ -1,4 +1,4 @@
-use crate::{Code, Diagnostic, DiagnosticSpan, LinterResult, Severity};
+use crate::linting::{Code, Diagnostic, DiagnosticSpan, LintEngine, LinterResult, Severity};
 use std::borrow::Cow;
 use std::path::Path;
 
@@ -127,7 +127,7 @@ pub async fn run_typos(source_file: &Path, workspace_root: &Path) -> std::io::Re
         .collect();
 
     Ok(LinterResult {
-        engine: crate::LintEngine::Typos,
+        engine: LintEngine::Typos,
         diagnostics,
     })
 }

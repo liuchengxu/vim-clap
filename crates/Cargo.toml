@@ -8,7 +8,7 @@ members = [
     "highlighter",
     "icon",
     "cli",
-    "linter",
+    "ide",
     "maple_core",
     "maple_derive",
     "matcher",
@@ -70,7 +70,7 @@ dumb_analyzer = { path = "./dumb_analyzer" }
 filter = { path = "./filter" }
 highlighter = { path = "./highlighter" }
 icon = { path = "./icon" }
-linter = { path = "./linter" }
+ide = { path = "./ide" }
 maple_core = { path = "./maple_core" }
 maple_derive = { path = "./maple_derive" }
 matcher = { path = "./matcher" }

@@ -1038,6 +1038,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ide"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "cargo_metadata",
+ "once_cell",
+ "parking_lot",
+ "paths",
+ "regex",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "ident_case"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1227,22 +1243,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
 
 [[package]]
-name = "linter"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "cargo_metadata",
- "once_cell",
- "parking_lot",
- "paths",
- "regex",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "lock_api"
 version = "0.4.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1300,9 +1300,9 @@ dependencies = [
  "grep-searcher",
  "highlighter",
  "icon",
+ "ide",
  "ignore",
  "itertools",
- "linter",
  "maple_derive",
  "matcher",
  "once_cell",

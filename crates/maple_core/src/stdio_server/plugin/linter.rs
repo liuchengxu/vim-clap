@@ -1,7 +1,7 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::vim::{Vim, VimResult};
-use linter::Diagnostic;
+use ide::linting::{Diagnostic, DiagnosticSpan};
 use parking_lot::{Mutex, RwLock};
 use serde::Serialize;
 use std::collections::HashMap;
@@ -91,7 +91,7 @@ impl BufferDiagnostics {
                 .filter_map(|d| if d.is_warn() { d.spans.get(0) } else { None })
         };
 
-        let check_span = |span: &linter::DiagnosticSpan, ordering: std::cmp::Ordering| {
+        let check_span = |span: &DiagnosticSpan, ordering: std::cmp::Ordering| {
             if span.line_start.cmp(&from_line_number) == ordering {
                 Some((span.line_start, span.column_start))
             } else {
@@ -134,8 +134,11 @@ impl LinterResultHandler {
     }
 }
 
-impl linter::HandleLinterResult for LinterResultHandler {
-    fn handle_linter_result(&self, linter_result: linter::LinterResult) -> std::io::Result<()> {
+impl ide::linting::HandleLinterResult for LinterResultHandler {
+    fn handle_linter_result(
+        &self,
+        linter_result: ide::linting::LinterResult,
+    ) -> std::io::Result<()> {
         let mut new_diagnostics = linter_result.diagnostics;
         new_diagnostics.sort_by(|a, b| a.spans[0].line_start.cmp(&b.spans[0].line_start));
         new_diagnostics.dedup();
@@ -234,7 +237,7 @@ impl Linter {
 
         let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
 
-        let Some(workspace) = linter::find_workspace(&filetype, &source_file) else {
+        let Some(workspace) = ide::linting::find_workspace(&filetype, &source_file) else {
             return Ok(());
         };
 
@@ -256,7 +259,7 @@ impl Linter {
             }
         }
 
-        let new_jobs = linter::lint_in_background(
+        let new_jobs = ide::linting::lint_in_background(
             &buf_linter_info.filetype,
             buf_linter_info.source_file.clone(),
             &buf_linter_info.workspace,

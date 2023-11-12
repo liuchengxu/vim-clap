@@ -106,6 +106,7 @@ pub struct LinterResult {
     pub diagnostics: Vec<Diagnostic>,
 }
 
+/// A hook invoked when a linter finishes its job.
 pub trait HandleLinterResult {
     fn handle_linter_result(&self, linter_result: LinterResult) -> std::io::Result<()>;
 }

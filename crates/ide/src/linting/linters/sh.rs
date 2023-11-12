@@ -1,4 +1,4 @@
-use crate::{Code, Diagnostic, DiagnosticSpan, LinterResult};
+use crate::linting::{Code, Diagnostic, DiagnosticSpan, LintEngine, LinterResult};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -28,10 +28,10 @@ pub struct ShellCheckMessage {
 impl ShellCheckMessage {
     fn into_diagnostic(self) -> Diagnostic {
         let severity = match &self.level {
-            Severity::Error => crate::Severity::Error,
-            Severity::Warning => crate::Severity::Warning,
-            Severity::Info => crate::Severity::Info,
-            Severity::Style => crate::Severity::Style,
+            Severity::Error => crate::linting::Severity::Error,
+            Severity::Warning => crate::linting::Severity::Warning,
+            Severity::Info => crate::linting::Severity::Info,
+            Severity::Style => crate::linting::Severity::Style,
         };
         Diagnostic {
             spans: vec![DiagnosticSpan {
@@ -61,13 +61,13 @@ pub async fn run_shellcheck(
     if let Ok(messages) = serde_json::from_slice::<Vec<ShellCheckMessage>>(&output.stdout) {
         let diagnostics = messages.into_iter().map(|m| m.into_diagnostic()).collect();
         return Ok(LinterResult {
-            engine: crate::LintEngine::ShellCheck,
+            engine: LintEngine::ShellCheck,
             diagnostics,
         });
     }
 
     Ok(LinterResult {
-        engine: crate::LintEngine::ShellCheck,
+        engine: LintEngine::ShellCheck,
         diagnostics: Vec::new(),
     })
 }

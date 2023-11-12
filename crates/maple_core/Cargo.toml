@@ -15,6 +15,7 @@ bytecount = { workspace = true }
 chrono = { workspace = true }
 chrono-humanize = { workspace = true }
 clap = { workspace = true }
+clipboard = "0.5.0"
 colors-transform = { workspace = true }
 futures = { workspace = true }
 # ripgrep for global search
@@ -43,7 +44,7 @@ maple_derive = { workspace = true }
 filter = { workspace = true }
 highlighter = { workspace = true }
 icon = { workspace = true }
-linter = { workspace = true }
+ide = { workspace = true }
 matcher = { workspace = true }
 paths = { workspace = true }
 pattern = { workspace = true }
@@ -51,7 +52,6 @@ printer = { workspace = true }
 rpc = { workspace = true }
 types = { workspace = true }
 utils = { workspace = true }
-clipboard = "0.5.0"
 
 [dev-dependencies]
 git = { package = "git2", version = "0.15" }
