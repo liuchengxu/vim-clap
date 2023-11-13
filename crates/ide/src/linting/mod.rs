@@ -75,6 +75,14 @@ impl Diagnostic {
     pub fn human_message(&self) -> String {
         format!("[{}] {}", self.code.code, self.message)
     }
+
+    pub fn is_error(&self) -> bool {
+        matches!(self.severity, Severity::Error)
+    }
+
+    pub fn is_warn(&self) -> bool {
+        matches!(self.severity, Severity::Warning)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -98,6 +106,7 @@ pub struct LinterResult {
     pub diagnostics: Vec<Diagnostic>,
 }
 
+/// A hook invoked when a linter finishes its job.
 pub trait HandleLinterResult {
     fn handle_linter_result(&self, linter_result: LinterResult) -> std::io::Result<()>;
 }

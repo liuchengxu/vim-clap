@@ -1,13 +1,12 @@
 use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::ClapPlugin;
-use crate::stdio_server::vim::Vim;
-use anyhow::Result;
+use crate::stdio_server::plugin::{ClapPlugin, PluginError};
+use crate::stdio_server::vim::{Vim, VimError};
 use colors_transform::Color;
 use matcher::WordMatcher;
 use rgb2ansi256::rgb_to_ansi256;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use utils::read_lines_from;
 use AutocmdEventType::{
     BufDelete, BufEnter, BufLeave, BufWinEnter, BufWinLeave, CursorMoved, InsertEnter,
@@ -35,10 +34,10 @@ fn char_at(byte_idx: usize, line: &str) -> Option<char> {
     )
 }
 
+/// `line_start` and `curlnum` is 1-based line number.
 fn find_word_highlights(
-    source_file: &Path,
+    lines: impl Iterator<Item = String>,
     line_start: usize,
-    line_end: usize,
     curlnum: usize,
     col: usize,
     cword: String,
@@ -46,17 +45,13 @@ fn find_word_highlights(
     let cword_len = cword.len();
     let word_matcher = WordMatcher::new(vec![cword.into()]);
 
-    // line_start and line_end is 1-based.
-    let line_start = line_start - 1;
-    let line_end = line_end - 1;
-
     let mut cursor_word_highlight = None;
-    let twins_words_highlight = read_lines_from(source_file, line_start, line_end - line_start)?
+    let twins_words_highlight = lines
         .enumerate()
-        .flat_map(|(idx, line)| {
+        .flat_map(|(index, line)| {
             let matches_range = word_matcher.find_all_matches_range(&line);
 
-            let line_number = idx + line_start + 1;
+            let line_number = index + line_start;
 
             if line_number == curlnum {
                 let cursor_word_start = matches_range.iter().find_map(|word_range| {
@@ -100,7 +95,7 @@ struct CursorHighlights {
     match_ids: Vec<i32>,
 }
 
-async fn define_highlights(vim: &Vim) -> Result<()> {
+async fn define_highlights(vim: &Vim) -> Result<(), PluginError> {
     let output = vim.call::<String>("execute", ["hi Normal"]).await?;
     let maybe_guibg = output.split('\n').find_map(|line| {
         line.split_whitespace()
@@ -169,7 +164,10 @@ impl Cursorword {
         }
     }
 
-    async fn create_new_highlights(&mut self, bufnr: usize) -> Result<Option<CursorHighlights>> {
+    async fn create_new_highlights(
+        &mut self,
+        bufnr: usize,
+    ) -> Result<Option<CursorHighlights>, PluginError> {
         let cword = self.vim.expand("<cword>").await?;
 
         if cword.is_empty() {
@@ -179,7 +177,7 @@ impl Cursorword {
         let source_file = self
             .bufs
             .get(&bufnr)
-            .ok_or_else(|| anyhow::anyhow!("bufnr doesn't exist"))?;
+            .ok_or_else(|| VimError::InvalidBuffer)?;
 
         // TODO: filter the false positive results, using a blocklist of filetypes?
         let [_bufnum, curlnum, col, _off] = self.vim.getpos(".").await?;
@@ -207,15 +205,18 @@ impl Cursorword {
             return Ok(None);
         }
 
-        let winid = self.vim.current_winid().await?;
-
         // Lines in view.
-        let line_start = self.vim.line("w0").await?;
-        let line_end = self.vim.line("w$").await?;
+        let (winid, line_start, line_end) = self.vim.get_screenlinesrange().await?;
 
-        if let Ok(Some(word_highlights)) =
-            find_word_highlights(source_file, line_start, line_end, curlnum, col, cword)
-        {
+        let maybe_new_highlights = if self.vim.bufmodified(bufnr).await? {
+            let lines = self.vim.getbufline(bufnr, line_start, line_end).await?;
+            find_word_highlights(lines.into_iter(), line_start, curlnum, col, cword)
+        } else {
+            let lines = read_lines_from(source_file, line_start - 1, line_end - line_start + 1)?;
+            find_word_highlights(lines, line_start, curlnum, col, cword)
+        };
+
+        if let Ok(Some(word_highlights)) = maybe_new_highlights {
             let match_ids: Vec<i32> = self
                 .vim
                 .call("clap#plugin#cursorword#add_highlights", word_highlights)
@@ -227,7 +228,7 @@ impl Cursorword {
     }
 
     /// Highlight the cursor word and all the occurrences.
-    async fn highlight_symbol_under_cursor(&mut self, bufnr: usize) -> Result<()> {
+    async fn highlight_symbol_under_cursor(&mut self, bufnr: usize) -> Result<(), PluginError> {
         let maybe_new_highlights = self.create_new_highlights(bufnr).await?;
         let old_highlights = match maybe_new_highlights {
             Some(new_highlights) => self.cursor_highlights.replace(new_highlights),
@@ -242,7 +243,14 @@ impl Cursorword {
         Ok(())
     }
 
-    async fn try_track_buffer(&mut self, bufnr: usize) -> Result<()> {
+    async fn clear_highlights(&mut self) -> Result<(), PluginError> {
+        if let Some(CursorHighlights { winid, match_ids }) = self.cursor_highlights.take() {
+            self.vim.matchdelete_batch(match_ids, winid).await?;
+        }
+        Ok(())
+    }
+
+    async fn try_track_buffer(&mut self, bufnr: usize) -> Result<(), PluginError> {
         if self.bufs.contains_key(&bufnr) {
             return Ok(());
         }
@@ -279,7 +287,7 @@ impl Cursorword {
 
 #[async_trait::async_trait]
 impl ClapPlugin for Cursorword {
-    async fn handle_action(&mut self, action: ActionRequest) -> Result<()> {
+    async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
         match self.parse_action(&action.method)? {
             CursorwordAction::__DefineHighlights => {
                 define_highlights(&self.vim).await?;
@@ -290,7 +298,7 @@ impl ClapPlugin for Cursorword {
     }
 
     #[maple_derive::subscriptions]
-    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
+    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<(), PluginError> {
         let (event_type, params) = autocmd;
         let bufnr = params.parse_bufnr()?;
 
@@ -298,20 +306,19 @@ impl ClapPlugin for Cursorword {
             BufEnter | BufWinEnter => self.try_track_buffer(bufnr).await?,
             BufDelete | BufLeave | BufWinLeave => {
                 self.bufs.remove(&bufnr);
+                self.clear_highlights().await?;
             }
-            CursorMoved if self.bufs.contains_key(&bufnr) => {
-                self.highlight_symbol_under_cursor(bufnr).await?
-            }
-            InsertEnter if self.bufs.contains_key(&bufnr) => {
-                if let Some(CursorHighlights { winid, match_ids }) = self.cursor_highlights.take() {
-                    self.vim.matchdelete_batch(match_ids, winid).await?;
+            CursorMoved => {
+                if self.bufs.contains_key(&bufnr) {
+                    self.highlight_symbol_under_cursor(bufnr).await?
                 }
             }
-            event => {
-                return Err(anyhow::anyhow!(
-                    "Unhandled {event:?}, incomplete subscriptions?",
-                ))
+            InsertEnter => {
+                if self.bufs.contains_key(&bufnr) {
+                    self.clear_highlights().await?;
+                }
             }
+            event => return Err(PluginError::UnhandledEvent(event)),
         }
 
         Ok(())

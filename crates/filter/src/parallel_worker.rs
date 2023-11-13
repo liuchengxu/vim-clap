@@ -1,7 +1,6 @@
 //! Convert the source item stream to a parallel iterator and run the filtering in parallel.
 
 use crate::{to_clap_item, FilterContext};
-use anyhow::Result;
 use parking_lot::Mutex;
 use printer::{println_json_with_length, DisplayLines, Printer};
 use rayon::iter::{Empty, IntoParallelIterator, ParallelBridge, ParallelIterator};
@@ -12,7 +11,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use subprocess::Exec;
-use types::ProgressUpdate;
+use types::SearchProgressUpdate;
 use types::{ClapItem, MatchedItem, Query};
 
 /// Parallelable source.
@@ -30,7 +29,7 @@ pub fn par_dyn_run(
     query: &str,
     filter_context: FilterContext,
     par_source: ParallelSource,
-) -> Result<()> {
+) -> crate::Result<()> {
     let query: Query = query.into();
 
     match par_source {
@@ -65,7 +64,7 @@ pub fn par_dyn_run_list<'a, 'b: 'a>(
 }
 
 #[derive(Debug)]
-pub struct BestItems<P: ProgressUpdate<DisplayLines>> {
+pub struct BestItems<P: SearchProgressUpdate<DisplayLines>> {
     /// Time of last notification.
     pub past: Instant,
     /// Top N items.
@@ -78,7 +77,7 @@ pub struct BestItems<P: ProgressUpdate<DisplayLines>> {
     pub printer: Printer,
 }
 
-impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
+impl<P: SearchProgressUpdate<DisplayLines>> BestItems<P> {
     pub fn new(
         printer: Printer,
         max_capacity: usize,
@@ -156,7 +155,7 @@ impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
                         self.last_lines = display_lines.lines;
                         self.last_visible_highlights = visible_highlights;
                     } else {
-                        self.progressor.update_brief(total_matched, total_processed)
+                        self.progressor.quick_update(total_matched, total_processed)
                     }
 
                     self.past = now;
@@ -169,8 +168,8 @@ impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
 #[derive(Debug)]
 pub struct StdioProgressor;
 
-impl ProgressUpdate<DisplayLines> for StdioProgressor {
-    fn update_brief(&self, matched: usize, processed: usize) {
+impl SearchProgressUpdate<DisplayLines> for StdioProgressor {
+    fn quick_update(&self, matched: usize, processed: usize) {
         #[allow(non_upper_case_globals)]
         const deprecated_method: &str = "clap#state#process_filter_message";
 
@@ -247,7 +246,7 @@ fn par_dyn_run_inner<I, R>(
     query: Query,
     filter_context: FilterContext,
     parallel_source: ParSourceInner<I, R>,
-) -> Result<()>
+) -> std::io::Result<()>
 where
     I: IntoParallelIterator<Item = Arc<dyn ClapItem>>,
     R: Read + Send,
@@ -333,9 +332,9 @@ pub fn par_dyn_run_inprocess<P>(
     par_source: ParallelSource,
     progressor: P,
     stop_signal: Arc<AtomicBool>,
-) -> Result<()>
+) -> std::io::Result<()>
 where
-    P: ProgressUpdate<DisplayLines> + Send,
+    P: SearchProgressUpdate<DisplayLines> + Send,
 {
     let query: Query = query.into();
 
@@ -375,7 +374,11 @@ where
 
     let read: Box<dyn std::io::Read + Send> = match par_source {
         ParallelSource::File(file) => Box::new(std::fs::File::open(file)?),
-        ParallelSource::Exec(exec) => Box::new(exec.detached().stream_stdout()?), // TODO: kill the exec command ASAP/ Run the exec command in another blocking task.
+        ParallelSource::Exec(exec) => Box::new(
+            exec.detached()
+                .stream_stdout()
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?,
+        ), // TODO: kill the exec command ASAP/ Run the exec command in another blocking task.
     };
 
     // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })

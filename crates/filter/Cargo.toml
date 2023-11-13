@@ -5,13 +5,13 @@ authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-anyhow = { workspace = true }
 parking_lot = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 subprocess = { workspace = true }
 tracing = { workspace = true }
+thiserror = { workspace = true }
 
 icon = { workspace = true }
 matcher = { workspace = true }

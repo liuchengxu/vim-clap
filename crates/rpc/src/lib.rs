@@ -5,6 +5,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::io::{BufRead, Write};
 use std::sync::atomic::{AtomicU64, Ordering};
+use thiserror::Error;
 use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::sync::oneshot;
@@ -14,58 +15,24 @@ pub use self::types::{
     Success, VimMessage,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum RpcError {
-    SendRawMessage(SendError<RpcMessage>),
-    SendCall(SendError<VimMessage>),
-    SendRequest(SendError<(u64, oneshot::Sender<RpcResponse>)>),
+    #[error("failed to send raw message: {0}")]
+    SendRawMessage(#[from] SendError<RpcMessage>),
+    #[error("failed to send call: {0}")]
+    SendCall(#[from] SendError<VimMessage>),
+    #[error("failed to send request: {0}")]
+    SendRequest(#[from] SendError<(u64, oneshot::Sender<RpcResponse>)>),
+    #[error("failed to send response: {0:?}")]
     SendResponse(RpcResponse),
-    OneshotRecv(tokio::sync::oneshot::error::RecvError),
-    SerdeJson(serde_json::Error),
-    IO(std::io::Error),
+    #[error("sender is dropped: {0}")]
+    OneshotRecv(#[from] tokio::sync::oneshot::error::RecvError),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+    #[error(transparent)]
+    IO(#[from] std::io::Error),
+    #[error("request failure: {0}")]
     Request(String),
-}
-
-impl From<SendError<RpcMessage>> for RpcError {
-    fn from(e: SendError<RpcMessage>) -> Self {
-        Self::SendRawMessage(e)
-    }
-}
-
-impl From<SendError<VimMessage>> for RpcError {
-    fn from(e: SendError<VimMessage>) -> Self {
-        Self::SendCall(e)
-    }
-}
-
-impl From<SendError<(u64, oneshot::Sender<RpcResponse>)>> for RpcError {
-    fn from(e: SendError<(u64, oneshot::Sender<RpcResponse>)>) -> Self {
-        Self::SendRequest(e)
-    }
-}
-
-impl From<RpcResponse> for RpcError {
-    fn from(e: RpcResponse) -> Self {
-        Self::SendResponse(e)
-    }
-}
-
-impl From<tokio::sync::oneshot::error::RecvError> for RpcError {
-    fn from(e: tokio::sync::oneshot::error::RecvError) -> Self {
-        Self::OneshotRecv(e)
-    }
-}
-
-impl From<serde_json::Error> for RpcError {
-    fn from(e: serde_json::Error) -> Self {
-        Self::SerdeJson(e)
-    }
-}
-
-impl From<std::io::Error> for RpcError {
-    fn from(e: std::io::Error) -> Self {
-        Self::IO(e)
-    }
 }
 
 #[derive(Serialize, Debug)]

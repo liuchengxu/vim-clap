@@ -1,23 +1,41 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, Toggle};
-use crate::stdio_server::vim::Vim;
-use anyhow::Result;
-use linter::Diagnostic;
+use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
+use crate::stdio_server::vim::{Vim, VimResult};
+use ide::linting::{Diagnostic, DiagnosticSpan};
 use parking_lot::{Mutex, RwLock};
 use serde::Serialize;
+use std::cmp::Ordering as CmpOrdering;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::task::JoinHandle;
 
+#[derive(Debug, Default, Clone, Serialize)]
+struct Count {
+    error: usize,
+    warn: usize,
+}
+
+enum Direction {
+    Next,
+    Prev,
+}
+
+enum DiagnosticKind {
+    Error,
+    Warn,
+}
+
 #[derive(Debug, Clone)]
-struct ShareableDiagnostics {
+struct BufferDiagnostics {
+    /// Whether the diagnostics have been refreshed.
     refreshed: Arc<AtomicBool>,
+    /// List of diagnostics, in sorted manner.
     inner: Arc<RwLock<Vec<Diagnostic>>>,
 }
 
-impl Serialize for ShareableDiagnostics {
+impl Serialize for BufferDiagnostics {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -26,16 +44,77 @@ impl Serialize for ShareableDiagnostics {
     }
 }
 
-impl ShareableDiagnostics {
-    fn extend(&self, new: Vec<Diagnostic>) {
+impl BufferDiagnostics {
+    /// Append new diagnostics and returns the count of latest diagnostics.
+    fn append(&self, new_diagnostics: Vec<Diagnostic>) -> Count {
         let mut diagnostics = self.inner.write();
-        diagnostics.extend(new);
+        diagnostics.extend(new_diagnostics);
+
+        diagnostics.sort_by(|a, b| a.spans[0].line_start.cmp(&b.spans[0].line_start));
+
+        let mut count = Count::default();
+        for d in diagnostics.iter() {
+            if d.is_error() {
+                count.error += 1;
+            } else if d.is_warn() {
+                count.warn += 1;
+            }
+        }
+
+        count
     }
 
+    /// Clear the diagnostics list.
     fn reset(&self) {
         self.refreshed.store(false, Ordering::SeqCst);
         let mut diagnostics = self.inner.write();
         diagnostics.clear();
+    }
+
+    /// Returns a tuple of (line_number, column_start) of the sibling diagnostic.
+    fn find_sibling(
+        &self,
+        from_line_number: usize,
+        kind: DiagnosticKind,
+        direction: Direction,
+    ) -> Option<(usize, usize)> {
+        let diagnostics = self.inner.read();
+
+        let errors = || {
+            diagnostics
+                .iter()
+                .filter_map(|d| if d.is_error() { d.spans.get(0) } else { None })
+        };
+
+        let warnings = || {
+            diagnostics
+                .iter()
+                .filter_map(|d| if d.is_warn() { d.spans.get(0) } else { None })
+        };
+
+        let check_span = |span: &DiagnosticSpan, ordering: CmpOrdering| {
+            if span.line_start.cmp(&from_line_number) == ordering {
+                Some((span.line_start, span.column_start))
+            } else {
+                None
+            }
+        };
+
+        // TODO: binary search since the diagnostics are already sorted?
+        match (kind, direction) {
+            (DiagnosticKind::Error, Direction::Next) => {
+                errors().find_map(|span| check_span(span, CmpOrdering::Greater))
+            }
+            (DiagnosticKind::Error, Direction::Prev) => errors()
+                .rev()
+                .find_map(|span| check_span(span, CmpOrdering::Less)),
+            (DiagnosticKind::Warn, Direction::Next) => {
+                warnings().find_map(|span| check_span(span, CmpOrdering::Greater))
+            }
+            (DiagnosticKind::Warn, Direction::Prev) => warnings()
+                .rev()
+                .find_map(|span| check_span(span, CmpOrdering::Less)),
+        }
     }
 }
 
@@ -43,41 +122,44 @@ impl ShareableDiagnostics {
 struct LinterResultHandler {
     bufnr: usize,
     vim: Vim,
-    shareable_diagnostics: ShareableDiagnostics,
+    buffer_diagnostics: BufferDiagnostics,
 }
 
 impl LinterResultHandler {
-    fn new(bufnr: usize, vim: Vim, shareable_diagnostics: ShareableDiagnostics) -> Self {
+    fn new(bufnr: usize, vim: Vim, buffer_diagnostics: BufferDiagnostics) -> Self {
         Self {
             bufnr,
             vim,
-            shareable_diagnostics,
+            buffer_diagnostics,
         }
     }
 }
 
-impl linter::HandleLinterResult for LinterResultHandler {
-    fn handle_linter_result(&self, linter_result: linter::LinterResult) -> std::io::Result<()> {
+impl ide::linting::HandleLinterResult for LinterResultHandler {
+    fn handle_linter_result(
+        &self,
+        linter_result: ide::linting::LinterResult,
+    ) -> std::io::Result<()> {
         let mut new_diagnostics = linter_result.diagnostics;
         new_diagnostics.sort_by(|a, b| a.spans[0].line_start.cmp(&b.spans[0].line_start));
         new_diagnostics.dedup();
 
         let first_lint_result_arrives = self
-            .shareable_diagnostics
+            .buffer_diagnostics
             .refreshed
             .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
             .is_ok();
 
-        if first_lint_result_arrives {
+        let new_count = if first_lint_result_arrives {
             let _ = self.vim.exec(
                 "clap#plugin#linter#refresh_highlights",
                 (self.bufnr, &new_diagnostics),
             );
 
-            self.shareable_diagnostics.extend(new_diagnostics);
+            self.buffer_diagnostics.append(new_diagnostics)
         } else {
             // Remove the potential duplicated results from multiple linters.
-            let existing = self.shareable_diagnostics.inner.read();
+            let existing = self.buffer_diagnostics.inner.read();
             let mut followup_diagnostics = new_diagnostics
                 .into_iter()
                 .filter(|d| !existing.contains(d))
@@ -96,8 +178,12 @@ impl linter::HandleLinterResult for LinterResultHandler {
                 );
             }
 
-            self.shareable_diagnostics.extend(followup_diagnostics);
-        }
+            self.buffer_diagnostics.append(followup_diagnostics)
+        };
+
+        let _ = self
+            .vim
+            .setbufvar(self.bufnr, "clap_diagnostics", new_count);
 
         Ok(())
     }
@@ -110,7 +196,7 @@ struct BufferLinterInfo {
     filetype: String,
     workspace: PathBuf,
     source_file: PathBuf,
-    diagnostics: ShareableDiagnostics,
+    diagnostics: BufferDiagnostics,
     current_jobs: Arc<Mutex<Vec<LinterJob>>>,
 }
 
@@ -120,7 +206,7 @@ impl BufferLinterInfo {
             filetype,
             workspace,
             source_file,
-            diagnostics: ShareableDiagnostics {
+            diagnostics: BufferDiagnostics {
                 refreshed: Arc::new(AtomicBool::new(false)),
                 inner: Arc::new(RwLock::new(Vec::new())),
             },
@@ -130,7 +216,7 @@ impl BufferLinterInfo {
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "linter", actions = ["lint", "debug", "toggle"])]
+#[clap_plugin(id = "linter", actions = ["lint", "format", "next-error", "prev-error", "next-warn", "prev-warn", "debug", "toggle"])]
 pub struct Linter {
     vim: Vim,
     bufs: HashMap<usize, BufferLinterInfo>,
@@ -146,24 +232,24 @@ impl Linter {
         }
     }
 
-    async fn on_buf_enter(&mut self, bufnr: usize) -> Result<()> {
+    async fn on_buf_enter(&mut self, bufnr: usize) -> VimResult<()> {
         let source_file = self.vim.bufabspath(bufnr).await?;
         let source_file = PathBuf::from(source_file);
 
         let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
 
-        let Some(workspace) = linter::find_workspace(&filetype, &source_file) else {
+        let Some(workspace) = ide::linting::find_workspace(&filetype, &source_file) else {
             return Ok(());
         };
 
         let buf_linter_info = BufferLinterInfo::new(filetype, workspace.to_path_buf(), source_file);
-        self.lint_buffer(bufnr, &buf_linter_info)?;
+        self.lint_buffer(bufnr, &buf_linter_info);
         self.bufs.insert(bufnr, buf_linter_info);
 
         Ok(())
     }
 
-    fn lint_buffer(&self, bufnr: usize, buf_linter_info: &BufferLinterInfo) -> Result<()> {
+    fn lint_buffer(&self, bufnr: usize, buf_linter_info: &BufferLinterInfo) {
         buf_linter_info.diagnostics.reset();
 
         let mut current_jobs = buf_linter_info.current_jobs.lock();
@@ -174,7 +260,7 @@ impl Linter {
             }
         }
 
-        let new_jobs = linter::lint_in_background(
+        let new_jobs = ide::linting::lint_in_background(
             &buf_linter_info.filetype,
             buf_linter_info.source_file.clone(),
             &buf_linter_info.workspace,
@@ -184,11 +270,27 @@ impl Linter {
         if !new_jobs.is_empty() {
             *current_jobs = new_jobs;
         }
+    }
 
+    async fn navigate_diagnostics(
+        &self,
+        kind: DiagnosticKind,
+        direction: Direction,
+    ) -> VimResult<()> {
+        let bufnr = self.vim.bufnr("").await?;
+        if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
+            let lnum = self.vim.line(".").await?;
+            if let Some((lnum, col)) = buf_linter_info
+                .diagnostics
+                .find_sibling(lnum, kind, direction)
+            {
+                self.vim.exec("cursor", [lnum, col])?;
+            }
+        }
         Ok(())
     }
 
-    async fn on_cursor_moved(&self, bufnr: usize) -> Result<()> {
+    async fn on_cursor_moved(&self, bufnr: usize) -> VimResult<()> {
         if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
             let lnum = self.vim.line(".").await?;
             let col = self.vim.col(".").await?;
@@ -235,7 +337,7 @@ impl Linter {
 #[async_trait::async_trait]
 impl ClapPlugin for Linter {
     #[maple_derive::subscriptions]
-    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<()> {
+    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<(), PluginError> {
         use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
 
         if self.toggle.is_off() {
@@ -250,7 +352,7 @@ impl ClapPlugin for Linter {
             BufEnter => self.on_buf_enter(bufnr).await?,
             BufWritePost => {
                 if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
-                    self.lint_buffer(bufnr, buf_linter_info)?;
+                    self.lint_buffer(bufnr, buf_linter_info);
                 }
             }
             BufDelete => {
@@ -259,19 +361,29 @@ impl ClapPlugin for Linter {
             CursorMoved => {
                 self.on_cursor_moved(bufnr).await?;
             }
-            event => {
-                return Err(anyhow::anyhow!(
-                    "Unhandled {event:?}, incomplete subscriptions?",
-                ))
-            }
+            event => return Err(PluginError::UnhandledEvent(event)),
         }
 
         Ok(())
     }
 
-    async fn handle_action(&mut self, action: ActionRequest) -> Result<()> {
+    async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
         let ActionRequest { method, params: _ } = action;
         match self.parse_action(method)? {
+            LinterAction::Toggle => {
+                match self.toggle {
+                    Toggle::On => {
+                        for bufnr in self.bufs.keys() {
+                            self.vim.exec("clap#plugin#linter#toggle_off", [bufnr])?;
+                        }
+                    }
+                    Toggle::Off => {
+                        let bufnr = self.vim.bufnr("").await?;
+                        self.on_buf_enter(bufnr).await?;
+                    }
+                }
+                self.toggle.switch();
+            }
             LinterAction::Lint => {
                 let bufnr = self.vim.bufnr("").await?;
 
@@ -296,19 +408,40 @@ impl ClapPlugin for Linter {
                 let bufnr = self.vim.bufnr("").await?;
                 self.on_buf_enter(bufnr).await?;
             }
-            LinterAction::Toggle => {
-                match self.toggle {
-                    Toggle::On => {
-                        for bufnr in self.bufs.keys() {
-                            self.vim.exec("clap#plugin#linter#toggle_off", [bufnr])?;
-                        }
+            LinterAction::Format => {
+                let bufnr = self.vim.bufnr("").await?;
+                let source_file = self.vim.bufabspath(bufnr).await?;
+                let source_file = PathBuf::from(source_file);
+
+                let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+
+                let Some(workspace) = ide::linting::find_workspace(&filetype, &source_file) else {
+                    return Ok(());
+                };
+
+                let workspace = workspace.to_path_buf();
+                let vim = self.vim.clone();
+                tokio::spawn(async move {
+                    if ide::formatting::run_cargo_fmt(&workspace).await.is_ok() {
+                        let _ = vim.bare_exec("clap#util#reload_current_file");
                     }
-                    Toggle::Off => {
-                        let bufnr = self.vim.bufnr("").await?;
-                        self.on_buf_enter(bufnr).await?;
-                    }
-                }
-                self.toggle.switch();
+                });
+            }
+            LinterAction::NextError => {
+                self.navigate_diagnostics(DiagnosticKind::Error, Direction::Next)
+                    .await?;
+            }
+            LinterAction::PrevError => {
+                self.navigate_diagnostics(DiagnosticKind::Error, Direction::Prev)
+                    .await?;
+            }
+            LinterAction::NextWarn => {
+                self.navigate_diagnostics(DiagnosticKind::Warn, Direction::Next)
+                    .await?;
+            }
+            LinterAction::PrevWarn => {
+                self.navigate_diagnostics(DiagnosticKind::Warn, Direction::Prev)
+                    .await?;
             }
         }
 

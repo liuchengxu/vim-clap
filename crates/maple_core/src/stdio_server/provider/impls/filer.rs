@@ -1,8 +1,9 @@
-use crate::stdio_server::handler::{CachedPreviewImpl, Preview, PreviewTarget};
 use crate::stdio_server::input::{KeyEvent, KeyEventType};
-use crate::stdio_server::provider::{ClapProvider, Context, Direction};
+use crate::stdio_server::provider::hooks::{CachedPreviewImpl, Preview, PreviewTarget};
+use crate::stdio_server::provider::{
+    ClapProvider, Context, Direction, ProviderError, ProviderResult as Result,
+};
 use crate::stdio_server::vim::preview_syntax;
-use anyhow::Result;
 use icon::{icon_or_default, FOLDER_ICON};
 use printer::Printer;
 use serde_json::json;
@@ -197,7 +198,7 @@ impl FilerProvider {
         let current_items = self
             .dir_entries
             .get(&self.current_dir)
-            .ok_or_else(|| anyhow::anyhow!("Directory entries not found"))?;
+            .ok_or_else(|| ProviderError::Other("Directory entries not found".to_string()))?;
 
         let processed = current_items.len();
 
@@ -300,7 +301,9 @@ impl FilerProvider {
 
                 Ok(())
             }
-            Err(err) => ctx.render_preview(Preview::new(vec![err.to_string()])),
+            Err(err) => ctx
+                .render_preview(Preview::new(vec![err.to_string()]))
+                .map_err(Into::into),
         }
     }
 

@@ -5,7 +5,7 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:req_id = get(s:, 'req_id', 0)
-let s:handlers = get(s:, 'handlers', {})
+let s:callbacks = get(s:, 'callbacks', {})
 let s:session_id = get(s:, 'session_id', 0)
 
 function! clap#client#handle(msg) abort
@@ -33,9 +33,10 @@ function! clap#client#handle(msg) abort
     return
   endif
 
-  if has_key(decoded, 'id') && has_key(s:handlers, decoded.id)
-    let Handler = remove(s:handlers, decoded.id)
-    call Handler(get(decoded, 'result', v:null), get(decoded, 'error', v:null))
+  " Handle the response from Rust backend.
+  if has_key(decoded, 'id') && has_key(s:callbacks, decoded.id)
+    let Callback = remove(s:callbacks, decoded.id)
+    call Callback(get(decoded, 'result', v:null), get(decoded, 'error', v:null))
     return
   endif
 endfunction
@@ -63,7 +64,18 @@ endfunction
 
 function! clap#client#notify(method, ...) abort
   if clap#job#daemon#is_running()
+    if exists('s:enqueued_messages')
+      for [method, params] in items(s:enqueued_messages)
+        call clap#rpc#notify(method, params)
+      endfor
+      unlet s:enqueued_messages
+    endif
     call clap#rpc#notify(a:method, get(a:000, 0, []))
+  else
+    " It's possible that user sends the request before the server is started,
+    " e.g., invoke this function in .vimrc.
+    let s:enqueued_messages = get(s:, 'enqueued_messages', [])
+    call add(s:enqueued_messages, [a:method, get(a:000, 0, [])])
   endif
 endfunction
 
@@ -71,7 +83,7 @@ endfunction
 function! clap#client#request_async(method, callback, ...) abort
   call s:request_async(a:method, get(a:000, 0, []))
   if a:callback isnot v:null
-    let s:handlers[s:req_id] = a:callback
+    let s:callbacks[s:req_id] = a:callback
   endif
 endfunction
 

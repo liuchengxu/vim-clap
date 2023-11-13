@@ -1,10 +1,10 @@
 use super::filer::{read_dir_entries, FilerItem, FilerItemWithoutIcon};
-use super::Direction;
-use crate::stdio_server::handler::{CachedPreviewImpl, Preview, PreviewTarget};
 use crate::stdio_server::input::{KeyEvent, KeyEventType};
-use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
+use crate::stdio_server::provider::hooks::{CachedPreviewImpl, Preview, PreviewTarget};
+use crate::stdio_server::provider::{
+    ClapProvider, Context, Direction, ProviderError, ProviderResult as Result, SearcherControl,
+};
 use crate::stdio_server::vim::preview_syntax;
-use anyhow::{anyhow, Result};
 use matcher::MatchScope;
 use pattern::extract_grep_position;
 use printer::Printer;
@@ -194,7 +194,12 @@ impl Explorer {
         let current_items = self
             .dir_entries_cache
             .get(&self.current_dir)
-            .ok_or_else(|| anyhow!("Entries for {} not loaded", self.current_dir.display()))?;
+            .ok_or_else(|| {
+                ProviderError::Other(format!(
+                    "Entries for {} not loaded",
+                    self.current_dir.display()
+                ))
+            })?;
 
         let processed = current_items.len();
 
@@ -409,7 +414,10 @@ impl IgrepProvider {
                     .to_str()
                     .and_then(pattern::extract_grep_position)
                     .ok_or_else(|| {
-                        anyhow!("Can not extract grep position: {}", grep_line.display())
+                        ProviderError::Other(format!(
+                            "Can not extract grep position: {}",
+                            grep_line.display()
+                        ))
                     })?;
                 if !std::path::Path::new(fpath).is_file() {
                     ctx.vim.echo_info(format!("{fpath} is not a file"))?;

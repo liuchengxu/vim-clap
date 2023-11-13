@@ -1,5 +1,6 @@
-use crate::stdio_server::provider::{BaseArgs, ClapProvider, Context, SearcherControl};
-use anyhow::Result;
+use crate::stdio_server::provider::{
+    BaseArgs, ClapProvider, Context, ProviderResult as Result, SearcherControl,
+};
 use clap::Parser;
 use matcher::MatchScope;
 use std::path::PathBuf;

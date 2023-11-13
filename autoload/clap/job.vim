@@ -45,7 +45,7 @@ else
     return ch_info(job_getchannel(a:job))['id']
   endfunction
 
-  " wrap_cmd is only neccessary when cmd is a String, otherwise vim panics.
+  " wrap_cmd is only necessary when cmd is a String, otherwise vim panics.
   if has('win32')
     function! clap#job#wrap_cmd(cmd) abort
       return &shell . ' ' . &shellcmdflag . ' ' . a:cmd

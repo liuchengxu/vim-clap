@@ -1,5 +1,4 @@
 use crate::stdio_server::provider::ProviderId;
-use anyhow::{anyhow, Result};
 use once_cell::sync::{Lazy, OnceCell};
 use paths::AbsPathBuf;
 use printer::DisplayLines;
@@ -13,7 +12,7 @@ use std::ops::Deref;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use types::ProgressUpdate;
+use types::SearchProgressUpdate;
 
 static FILENAME_SYNTAX_MAP: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     HashMap::from([
@@ -178,8 +177,8 @@ impl VimProgressor {
     }
 }
 
-impl ProgressUpdate<DisplayLines> for VimProgressor {
-    fn update_brief(&self, total_matched: usize, total_processed: usize) {
+impl SearchProgressUpdate<DisplayLines> for VimProgressor {
+    fn quick_update(&self, total_matched: usize, total_processed: usize) {
         if self.stopped.load(Ordering::Relaxed) {
             return;
         }
@@ -231,6 +230,28 @@ fn from_vim_bool(value: Value) -> bool {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum VimError {
+    #[error("buffer does not exist")]
+    InvalidBuffer,
+    #[error("winid {0} does not exist")]
+    InvalidWinid(usize),
+    #[error("setvar requires an explicit scope in `var_name`")]
+    InvalidVariableScope,
+    #[error("`{0}` failure")]
+    VimApiFailure(String),
+    #[error("{0}")]
+    GetDisplayCurLine(String),
+    #[error(transparent)]
+    IO(#[from] std::io::Error),
+    #[error(transparent)]
+    Rpc(#[from] rpc::RpcError),
+    #[error(transparent)]
+    JsonRpc(#[from] rpc::Error),
+}
+
+pub type VimResult<T> = std::result::Result<T, VimError>;
+
 /// Shareable Vim instance.
 #[derive(Debug, Clone)]
 pub struct Vim {
@@ -250,35 +271,33 @@ impl Vim {
         &self,
         method: impl AsRef<str>,
         params: impl Serialize,
-    ) -> Result<R> {
+    ) -> VimResult<R> {
         self.rpc_client
             .request(method, params)
             .await
-            .map_err(|e| anyhow!("RpcError: {e:?}"))
+            .map_err(Into::into)
     }
 
     /// Calls the method with no arguments.
-    pub async fn bare_call<R: DeserializeOwned>(&self, method: impl AsRef<str>) -> Result<R> {
+    pub async fn bare_call<R: DeserializeOwned>(&self, method: impl AsRef<str>) -> VimResult<R> {
         self.rpc_client
             .request(method, json!([]))
             .await
-            .map_err(|e| anyhow!("RpcError: {e:?}"))
+            .map_err(Into::into)
     }
 
     /// Executes the method with given params in Vim, ignoring the call result.
     ///
     /// `method`: Same with `{func}` in `:h call()`.
-    pub fn exec(&self, method: impl AsRef<str>, params: impl Serialize) -> Result<()> {
-        self.rpc_client
-            .notify(method, params)
-            .map_err(|e| anyhow!("RpcError: {e:?}"))
+    pub fn exec(&self, method: impl AsRef<str>, params: impl Serialize) -> VimResult<()> {
+        self.rpc_client.notify(method, params).map_err(Into::into)
     }
 
     /// Executes the method with no arguments.
-    pub fn bare_exec(&self, method: impl AsRef<str>) -> Result<()> {
+    pub fn bare_exec(&self, method: impl AsRef<str>) -> VimResult<()> {
         self.rpc_client
             .notify(method, json!([]))
-            .map_err(|e| anyhow!("RpcError: {e:?}"))
+            .map_err(Into::into)
     }
 
     /// Send back the result with specified id.
@@ -286,29 +305,29 @@ impl Vim {
         &self,
         id: u64,
         output_result: Result<impl Serialize, rpc::RpcError>,
-    ) -> Result<()> {
+    ) -> VimResult<()> {
         self.rpc_client
             .send_response(id, output_result)
-            .map_err(|e| anyhow!("RpcError: {e:?}"))
+            .map_err(Into::into)
     }
 
     /////////////////////////////////////////////////////////////////
     //    builtin-function-list
     /////////////////////////////////////////////////////////////////
-    pub async fn bufname(&self, bufnr: usize) -> Result<String> {
+    pub async fn bufname(&self, bufnr: usize) -> VimResult<String> {
         self.call("bufname", [bufnr]).await
     }
 
-    pub async fn bufnr(&self, buf: impl Serialize) -> Result<usize> {
+    pub async fn bufnr(&self, buf: impl Serialize) -> VimResult<usize> {
         let bufnr: i32 = self.call("bufnr", [buf]).await?;
         if bufnr < 0 {
-            Err(anyhow!("buffer doesn't exist"))
+            Err(VimError::InvalidBuffer)
         } else {
             Ok(bufnr as usize)
         }
     }
 
-    pub async fn col(&self, expr: &str) -> Result<usize> {
+    pub async fn col(&self, expr: &str) -> VimResult<usize> {
         self.call("col", [expr]).await
     }
 
@@ -317,29 +336,31 @@ impl Vim {
         buf: impl Serialize + Debug,
         first: usize,
         last: usize,
-    ) -> Result<()> {
+    ) -> VimResult<()> {
         let ret: u32 = self
             .call("deletebufline", json!([buf, first, last]))
             .await?;
         if ret == 1 {
-            return Err(anyhow!("`deletebufline({buf:?}, {first}, {last})` failure"));
+            return Err(VimError::VimApiFailure(format!(
+                "`deletebufline({buf:?}, {first}, {last})`"
+            )));
         }
         Ok(())
     }
 
-    pub async fn expand(&self, string: impl AsRef<str>) -> Result<String> {
+    pub async fn expand(&self, string: impl AsRef<str>) -> VimResult<String> {
         self.call("expand", [string.as_ref()]).await
     }
 
-    pub async fn eval<R: DeserializeOwned>(&self, s: &str) -> Result<R> {
+    pub async fn eval<R: DeserializeOwned>(&self, s: &str) -> VimResult<R> {
         self.call("eval", [s]).await
     }
 
-    pub async fn fnamemodify(&self, fname: &str, mods: &str) -> Result<String> {
+    pub async fn fnamemodify(&self, fname: &str, mods: &str) -> VimResult<String> {
         self.call("fnamemodify", [fname, mods]).await
     }
 
-    pub async fn getbufoneline(&self, buf: impl Serialize, lnum: usize) -> Result<String> {
+    pub async fn getbufoneline(&self, buf: impl Serialize, lnum: usize) -> VimResult<String> {
         self.call("getbufoneline", (buf, lnum)).await
     }
 
@@ -347,7 +368,7 @@ impl Vim {
         &self,
         buf: impl Serialize,
         varname: &str,
-    ) -> Result<R> {
+    ) -> VimResult<R> {
         self.call("getbufvar", (buf, varname)).await
     }
 
@@ -356,39 +377,39 @@ impl Vim {
         buf: impl Serialize,
         start: impl Serialize,
         end: impl Serialize,
-    ) -> Result<Vec<String>> {
+    ) -> VimResult<Vec<String>> {
         self.call("getbufline", (buf, start, end)).await
     }
 
-    pub async fn getpos(&self, expr: &str) -> Result<[usize; 4]> {
+    pub async fn getpos(&self, expr: &str) -> VimResult<[usize; 4]> {
         self.call("getpos", [expr]).await
     }
 
-    pub async fn line(&self, expr: &str) -> Result<usize> {
+    pub async fn line(&self, expr: &str) -> VimResult<usize> {
         self.call("line", [expr]).await
     }
 
-    pub async fn matchdelete(&self, id: i32, win: usize) -> Result<i32> {
+    pub async fn matchdelete(&self, id: i32, win: usize) -> VimResult<i32> {
         self.call("matchdelete", (id, win)).await
     }
 
-    pub fn setbufvar(&self, bufnr: usize, varname: &str, val: impl Serialize) -> Result<()> {
+    pub fn setbufvar(&self, bufnr: usize, varname: &str, val: impl Serialize) -> VimResult<()> {
         self.exec("setbufvar", (bufnr, varname, val))
     }
 
-    pub async fn winwidth(&self, winid: usize) -> Result<usize> {
+    pub async fn winwidth(&self, winid: usize) -> VimResult<usize> {
         let width: i32 = self.call("winwidth", [winid]).await?;
         if width < 0 {
-            Err(anyhow!("window {winid} doesn't exist"))
+            Err(VimError::InvalidWinid(winid))
         } else {
             Ok(width as usize)
         }
     }
 
-    pub async fn winheight(&self, winid: usize) -> Result<usize> {
+    pub async fn winheight(&self, winid: usize) -> VimResult<usize> {
         let height: i32 = self.call("winheight", [winid]).await?;
         if height < 0 {
-            Err(anyhow!("window {winid} doesn't exist"))
+            Err(VimError::InvalidWinid(winid))
         } else {
             Ok(height as usize)
         }
@@ -398,14 +419,18 @@ impl Vim {
     //    Clap related APIs
     /////////////////////////////////////////////////////////////////
     /// Returns the cursor line in display window, with icon stripped.
-    pub async fn display_getcurline(&self) -> Result<String> {
+    pub async fn display_getcurline(&self) -> VimResult<String> {
         let value: Value = self.bare_call("display_getcurline").await?;
         match value {
             Value::Array(arr) => {
                 let icon_added_by_maple = arr[1].as_bool().unwrap_or(false);
                 let curline = match arr.into_iter().next() {
                     Some(Value::String(s)) => s,
-                    e => return Err(anyhow!("curline expects a String, but got {e:?}")),
+                    e => {
+                        return Err(VimError::GetDisplayCurLine(format!(
+                            "curline expects a String, but got {e:?}"
+                        )))
+                    }
                 };
                 if icon_added_by_maple {
                     Ok(curline.chars().skip(2).collect())
@@ -413,37 +438,39 @@ impl Vim {
                     Ok(curline)
                 }
             }
-            _ => Err(anyhow!(
-                "Invalid return value of `s:api.display_getcurline()`, [String, Bool] expected"
+            _ => Err(VimError::GetDisplayCurLine(
+                "Invalid return value of `s:api.display_getcurline()`, \
+                [String, Bool] expected"
+                    .to_string(),
             )),
         }
     }
 
-    pub async fn display_getcurlnum(&self) -> Result<usize> {
+    pub async fn display_getcurlnum(&self) -> VimResult<usize> {
         self.eval("g:clap.display.getcurlnum()").await
     }
 
-    pub async fn input_get(&self) -> Result<String> {
+    pub async fn input_get(&self) -> VimResult<String> {
         self.eval("g:clap.input.get()").await
     }
 
-    pub async fn provider_args(&self) -> Result<Vec<String>> {
+    pub async fn provider_args(&self) -> VimResult<Vec<String>> {
         self.bare_call("provider_args").await
     }
 
-    pub async fn working_dir(&self) -> Result<AbsPathBuf> {
+    pub async fn working_dir(&self) -> VimResult<AbsPathBuf> {
         self.bare_call("clap#rooter#working_dir").await
     }
 
-    pub async fn current_buffer_path(&self) -> Result<String> {
+    pub async fn current_buffer_path(&self) -> VimResult<String> {
         self.bare_call("current_buffer_path").await
     }
 
-    pub async fn curbufline(&self, lnum: usize) -> Result<Option<String>> {
+    pub async fn curbufline(&self, lnum: usize) -> VimResult<Option<String>> {
         self.call("curbufline", [lnum]).await
     }
 
-    pub fn set_preview_syntax(&self, syntax: &str) -> Result<()> {
+    pub fn set_preview_syntax(&self, syntax: &str) -> VimResult<()> {
         self.exec("eval", [format!("g:clap.preview.set_syntax('{syntax}')")])
     }
 
@@ -451,38 +478,42 @@ impl Vim {
     //    General helpers
     /////////////////////////////////////////////////////////////////
 
-    pub fn echo_info(&self, msg: impl AsRef<str>) -> Result<()> {
+    pub fn echo_info(&self, msg: impl AsRef<str>) -> VimResult<()> {
         self.exec("clap#helper#echo_info", [msg.as_ref()])
     }
 
-    pub fn echo_warn(&self, msg: impl AsRef<str>) -> Result<()> {
+    pub fn echo_warn(&self, msg: impl AsRef<str>) -> VimResult<()> {
         self.exec("clap#helper#echo_warn", [msg.as_ref()])
     }
 
-    pub async fn bufmodified(&self, bufnr: impl Serialize) -> Result<bool> {
+    pub async fn get_screenlinesrange(&self) -> VimResult<(usize, usize, usize)> {
+        self.bare_call("get_screenlinesrange").await
+    }
+
+    pub async fn bufmodified(&self, bufnr: impl Serialize) -> VimResult<bool> {
         self.getbufvar::<u32>(bufnr, "&modified")
             .await
             .map(|m| m == 1u32)
     }
 
-    pub async fn verbose(&self, cmd: impl AsRef<str>) -> Result<String> {
-        self.call::<String>("verbose", [cmd.as_ref()]).await
-    }
-
-    pub async fn bufabspath(&self, bufnr: impl Display) -> Result<String> {
+    pub async fn bufabspath(&self, bufnr: impl Display) -> VimResult<String> {
         self.expand(format!("#{bufnr}:p")).await
     }
 
-    pub async fn current_winid(&self) -> Result<usize> {
+    pub async fn verbose(&self, cmd: impl AsRef<str>) -> VimResult<String> {
+        self.call::<String>("verbose", [cmd.as_ref()]).await
+    }
+
+    pub async fn current_winid(&self) -> VimResult<usize> {
         self.bare_call("win_getid").await
     }
 
-    pub async fn get_var_bool(&self, var: &str) -> Result<bool> {
+    pub async fn get_var_bool(&self, var: &str) -> VimResult<bool> {
         let value: Value = self.call("get_var", [var]).await?;
         Ok(from_vim_bool(value))
     }
 
-    pub async fn matchdelete_batch(&self, ids: Vec<i32>, win: usize) -> Result<()> {
+    pub async fn matchdelete_batch(&self, ids: Vec<i32>, win: usize) -> VimResult<()> {
         if self.win_is_valid(win).await? {
             self.exec("matchdelete_batch", (ids, win))?;
         }
@@ -494,7 +525,7 @@ impl Vim {
         &self,
         provider_id: &ProviderId,
         preview_winid: usize,
-    ) -> Result<usize> {
+    ) -> VimResult<usize> {
         let preview_winheight: usize = self.call("winheight", [preview_winid]).await?;
         let preview_size: Value = self.call("get_var", ["clap_preview_size"]).await?;
         let preview_config: PreviewConfig = preview_size.into();
@@ -503,16 +534,23 @@ impl Vim {
             .max(preview_winheight / 2))
     }
 
-    pub fn set_var(&self, var_name: &str, value: impl Serialize) -> Result<()> {
-        self.exec("set_var", (var_name, value))
+    pub fn set_var(&self, var_name: &str, value: impl Serialize) -> VimResult<()> {
+        if ["b:", "w:", "t:", "g:", "l:", "s:"]
+            .iter()
+            .any(|variable_scrope| var_name.starts_with(variable_scrope))
+        {
+            self.exec("set_var", (var_name, value))
+        } else {
+            Err(VimError::InvalidVariableScope)
+        }
     }
 
-    pub async fn win_is_valid(&self, winid: usize) -> Result<bool> {
+    pub async fn win_is_valid(&self, winid: usize) -> VimResult<bool> {
         let value: Value = self.call("win_is_valid", [winid]).await?;
         Ok(from_vim_bool(value))
     }
 
-    pub async fn buf_is_valid(&self, buf: usize) -> Result<bool> {
+    pub async fn buf_is_valid(&self, buf: usize) -> VimResult<bool> {
         let value: Value = self.call("buf_is_valid", [buf]).await?;
         Ok(from_vim_bool(value))
     }

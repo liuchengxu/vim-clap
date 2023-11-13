@@ -6,7 +6,7 @@ scriptencoding utf-8
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-let g:clap#icon#default = ''
+let s:default_icon = ''
 
 let s:plugin_root_dir = fnamemodify(g:clap#autoload_dir, ':h')
 
@@ -38,21 +38,21 @@ let g:clap#icon#pattern_matches = {
 function! clap#icon#get(pattern) abort
   let ext = fnamemodify(a:pattern, ':e')
   if empty(ext)
-    return get(g:clap#icon#exact_matches, a:pattern, g:clap#icon#default)
+    return get(g:clap#icon#exact_matches, a:pattern, s:default_icon)
   else
-    return get(g:clap#icon#extensions, ext, g:clap#icon#default)
+    return get(g:clap#icon#extensions, ext, s:default_icon)
   endif
 endfunction
 
 function! s:icon_for(k) abort
-  return get(g:clap#icon#extensions, a:k, g:clap#icon#default)
+  return get(g:clap#icon#extensions, a:k, s:default_icon)
 endfunction
 
 function! clap#icon#for(bufname) abort
   let ext = fnamemodify(expand(a:bufname), ':e')
   if empty(ext)
     let ft = getbufvar(a:bufname, '&ft')
-    return empty(ft) ? g:clap#icon#default : s:icon_for(ft)
+    return empty(ft) ? s:default_icon : s:icon_for(ft)
   else
     return s:icon_for(ext)
   endif
@@ -65,7 +65,7 @@ function! clap#icon#get_all() abort
     let pattern_matches = values(g:clap#icon#pattern_matches)
     let s:icon_set = [' ']
     call extend(s:icon_set, extensions + exact_matches + pattern_matches)
-    call add(s:icon_set, g:clap#icon#default)
+    call add(s:icon_set, s:default_icon)
     let s:icon_set = uniq(s:icon_set)
   endif
   return s:icon_set
@@ -80,23 +80,24 @@ function! s:get_attrs(group) abort
   if empty(fg)
     let fg = s:normal_fg
   endif
-  " guibg=NONE ctermbg=NONE is neccessary otherwise the bg could be unexpected.
-  return printf('%sbg=%s %sfg=%s guibg=NONE ctermbg=NONE', s:gui_or_cterm, s:normal_bg, s:gui_or_cterm, fg)
+  let gui_or_cterm = s:use_gui ? 'gui' : 'cterm'
+  " guibg=NONE ctermbg=NONE is necessary otherwise the bg could be unexpected.
+  return printf('%sbg=%s %sfg=%s guibg=NONE ctermbg=NONE', gui_or_cterm, s:normal_bg, gui_or_cterm, fg)
 endfunction
 
-function! clap#icon#def_color_components() abort
+function! clap#icon#define_normal_color_components() abort
   " TODO: more robust gui_running detection for neovim, ref #378
+  " using gui colors or cterm colors?
   let s:use_gui = exists('g:neovide') || (has('termguicolors') && &termguicolors) || (!has('nvim') && has('gui_running'))
-  let s:gui_or_cterm = s:use_gui ? 'gui' : 'cterm'
 
   let s:normal_fg = s:get_color('Normal', 'fg')
   if empty(s:normal_fg)
-    let s:normal_fg = s:gui_or_cterm ==# 'gui' ? '#b2b2b2' : 249
+    let s:normal_fg = s:use_gui ? '#b2b2b2' : 249
   endif
 
   let s:normal_bg = s:get_color('Normal', 'bg')
   if empty(s:normal_bg)
-    let s:normal_bg = s:gui_or_cterm ==# 'gui' ? '#292b2e' : 235
+    let s:normal_bg = s:use_gui ? '#292b2e' : 235
   endif
 endfunction
 
@@ -126,7 +127,7 @@ let s:linked_groups = [
 
 let s:linked_groups_len = len(s:linked_groups)
 
-call clap#icon#def_color_components()
+call clap#icon#define_normal_color_components()
 
 function! s:generic_hi_icons(head_only) abort
   let pat_prefix = a:head_only ? '/^\s*' : '/'

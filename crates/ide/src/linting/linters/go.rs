@@ -1,4 +1,4 @@
-use crate::{Code, Diagnostic, DiagnosticSpan, LinterResult, Severity};
+use crate::linting::{Code, Diagnostic, DiagnosticSpan, LintEngine, LinterResult, Severity};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::path::Path;
@@ -54,7 +54,7 @@ pub async fn run_gopls(source_file: &Path, workspace_root: &Path) -> std::io::Re
     }
 
     Ok(LinterResult {
-        engine: crate::LintEngine::Gopls,
+        engine: LintEngine::Gopls,
         diagnostics,
     })
 }

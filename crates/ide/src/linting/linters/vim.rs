@@ -1,4 +1,4 @@
-use crate::{Code, Diagnostic, DiagnosticSpan, LinterResult, Severity};
+use crate::linting::{Code, Diagnostic, DiagnosticSpan, LintEngine, LinterResult, Severity};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -55,7 +55,7 @@ pub async fn run_vint(source_file: &Path, workspace_root: &Path) -> std::io::Res
         .collect();
 
     Ok(LinterResult {
-        engine: crate::LintEngine::Vint,
+        engine: LintEngine::Vint,
         diagnostics,
     })
 }

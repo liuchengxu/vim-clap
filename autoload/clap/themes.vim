@@ -201,7 +201,7 @@ function! s:init_theme() abort
   call s:hi_clap_float_title()
   call s:make_display_EndOfBuffer_invisible()
   call s:make_preview_EndOfBuffer_invisible()
-  call clap#icon#def_color_components()
+  call clap#icon#define_normal_color_components()
 endfunction
 
 function! clap#themes#init() abort

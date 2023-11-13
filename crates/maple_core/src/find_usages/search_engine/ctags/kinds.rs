@@ -15,11 +15,7 @@ fn rs_kind_alias() -> HashMap<&'static str, &'static str> {
 fn get_kind_alias<'a>(extension: &'a str, kind: &'a str) -> Option<&'a &'static str> {
     static KIND_MAP: OnceCell<HashMap<&str, HashMap<&str, &str>>> = OnceCell::new();
 
-    let map = KIND_MAP.get_or_init(|| {
-        vec![("rs", rs_kind_alias())]
-            .into_iter()
-            .collect::<HashMap<_, _>>()
-    });
+    let map = KIND_MAP.get_or_init(|| HashMap::from([("rs", rs_kind_alias())]));
 
     map.get(extension).and_then(|m| m.get(kind))
 }

@@ -1,7 +1,6 @@
 use crate::process::ShellCommand;
-use crate::stdio_server::provider::{Context, ProviderSource};
+use crate::stdio_server::provider::{Context, ProviderResult as Result, ProviderSource};
 use crate::tools::ctags::ProjectCtagsCommand;
-use anyhow::Result;
 use filter::SourceItem;
 use printer::{DisplayLines, Printer};
 use serde_json::{json, Value};
@@ -38,6 +37,28 @@ fn to_small_provider_source(lines: Vec<String>) -> ProviderSource {
     ProviderSource::Small { total, items }
 }
 
+#[allow(unused)]
+async fn init_proj_tags(ctx: &Context) -> std::io::Result<ProviderSource> {
+    let ctags_cmd = ProjectCtagsCommand::with_cwd(ctx.cwd.to_path_buf());
+    let provider_source = if true {
+        let lines = ctags_cmd.execute_and_write_cache().await?;
+        to_small_provider_source(lines)
+    } else {
+        match ctags_cmd.ctags_cache() {
+            Some((total, path)) => ProviderSource::CachedFile {
+                total,
+                path,
+                refreshed: false,
+            },
+            None => {
+                let lines = ctags_cmd.execute_and_write_cache().await?;
+                to_small_provider_source(lines)
+            }
+        }
+    };
+    Ok(provider_source)
+}
+
 /// Performs the initialization like collecting the source and total number of source items.
 async fn initialize_provider_source(ctx: &Context) -> Result<ProviderSource> {
     // Known providers.
@@ -51,26 +72,6 @@ async fn initialize_provider_source(ctx: &Context) -> Result<ProviderSource> {
             let items = crate::tools::ctags::buffer_tag_items(&ctx.env.start_buffer_path, false)?;
             let total = items.len();
             return Ok(ProviderSource::Small { total, items });
-        }
-        "proj_tags" => {
-            let ctags_cmd = ProjectCtagsCommand::with_cwd(ctx.cwd.to_path_buf());
-            let provider_source = if ctx.env.no_cache {
-                let lines = ctags_cmd.execute_and_write_cache().await?;
-                to_small_provider_source(lines)
-            } else {
-                match ctags_cmd.ctags_cache() {
-                    Some((total, path)) => ProviderSource::CachedFile {
-                        total,
-                        path,
-                        refreshed: false,
-                    },
-                    None => {
-                        let lines = ctags_cmd.execute_and_write_cache().await?;
-                        to_small_provider_source(lines)
-                    }
-                }
-            };
-            return Ok(provider_source);
         }
         "help_tags" => {
             let helplang: String = ctx.vim.eval("&helplang").await?;
@@ -200,6 +201,27 @@ pub async fn initialize_provider(ctx: &Context, init_display: bool) -> Result<()
     // Skip the initialization.
     match ctx.provider_id() {
         "grep" | "live_grep" => return Ok(()),
+        "proj_tags" => {
+            ctx.set_provider_source(ProviderSource::Initializing);
+            let ctx = ctx.clone();
+            std::thread::spawn(move || {
+                let mut ctags_cmd = ProjectCtagsCommand::with_cwd(ctx.cwd.to_path_buf());
+                match ctags_cmd.par_formatted_lines() {
+                    Ok(lines) => {
+                        let provider_source = to_small_provider_source(lines);
+                        ctx.set_provider_source(provider_source);
+                    }
+                    Err(e) => {
+                        ctx.set_provider_source(ProviderSource::InitializationFailed(
+                            e.to_string(),
+                        ));
+                    }
+                }
+
+                Ok::<_, std::io::Error>(())
+            });
+            return Ok(());
+        }
         _ => {}
     }
 

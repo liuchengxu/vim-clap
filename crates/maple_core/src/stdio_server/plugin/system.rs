@@ -1,10 +1,14 @@
+use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::input::ActionRequest;
-use crate::stdio_server::plugin::ClapPlugin;
+use crate::stdio_server::plugin::{ClapPlugin, PluginError, PluginResult};
 use crate::stdio_server::vim::Vim;
-use anyhow::{anyhow, Result};
+use copypasta::{ClipboardContext, ClipboardProvider};
+use once_cell::sync::Lazy;
+use regex::Regex;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "system", actions = ["__note_recent_files", "open-config", "list-plugins"])]
+#[clap_plugin(id = "system", actions = ["__note_recent_files", "__copy-to-clipboard", "__configure-vim-which-key", "open-config", "list-plugins"])]
 pub struct System {
     vim: Vim,
 }
@@ -13,11 +17,67 @@ impl System {
     pub fn new(vim: Vim) -> Self {
         Self { vim }
     }
+
+    async fn configure_vim_which_key_map(
+        &self,
+        variable_name: &str,
+        config_files: &[String],
+    ) -> PluginResult<()> {
+        let mut final_map = HashMap::new();
+
+        for config_file in config_files {
+            final_map.extend(parse_vim_which_key_map(config_file));
+        }
+
+        self.vim.set_var(variable_name, final_map)?;
+
+        Ok(())
+    }
+}
+
+fn parse_vim_which_key_map(config_file: &str) -> HashMap<char, HashMap<char, String>> {
+    static COMMENT_DOC: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r#"^\s*\"\"\" (.*?): (.*)"#).unwrap());
+
+    let mut map = HashMap::new();
+
+    if let Ok(lines) = utils::read_lines(config_file) {
+        lines.for_each(|line| {
+            if let Ok(line) = line {
+                if let Some(caps) = COMMENT_DOC.captures(&line) {
+                    let keys = caps.get(1).map(|x| x.as_str()).unwrap();
+                    let desc = caps.get(2).map(|x| x.as_str()).unwrap();
+
+                    let mut chars = keys.chars();
+                    let k1 = chars.next().unwrap();
+                    let k2 = chars.next().unwrap();
+
+                    map.entry(k1)
+                        .or_insert_with(HashMap::new)
+                        .insert(k2, desc.to_string());
+                }
+            }
+        });
+    }
+
+    map
+}
+
+fn note_recent_file(file_path: String) {
+    tracing::debug!(?file_path, "Received a recent file notification");
+
+    let path = std::path::Path::new(&file_path);
+    if !path.exists() || !path.is_file() {
+        return;
+    }
+
+    let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
+    recent_files.upsert(file_path);
 }
 
 #[async_trait::async_trait]
 impl ClapPlugin for System {
-    async fn handle_action(&mut self, action: ActionRequest) -> Result<()> {
+    async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
         let ActionRequest { method, params } = action;
 
         match self.parse_action(method)? {
@@ -25,19 +85,53 @@ impl ClapPlugin for System {
                 let bufnr: Vec<usize> = params.parse()?;
                 let bufnr = bufnr
                     .first()
-                    .ok_or(anyhow!("bufnr not found in `note_recent_files`"))?;
+                    .ok_or(PluginError::MissingBufferNumber("note_recent_files"))?;
                 let file_path: String = self.vim.expand(format!("#{bufnr}:p")).await?;
-                crate::stdio_server::handler::messages::note_recent_file(file_path)
+
+                note_recent_file(file_path);
+            }
+            SystemAction::__CopyToClipboard => {
+                let content: Vec<String> = params.parse()?;
+                let content = content.into_iter().next().ok_or_else(|| {
+                    PluginError::Other("missing content in __copy-to-clipboard".to_string())
+                })?;
+
+                let mut ctx = ClipboardContext::new().map_err(PluginError::Clipboard)?;
+                match ctx.set_contents(content) {
+                    Ok(()) => {
+                        self.vim.echo_info("copied to clipboard successfully")?;
+                    }
+                    Err(e) => {
+                        self.vim
+                            .echo_warn(format!("failed to copy to clipboard: {e:?}"))?;
+                    }
+                }
+            }
+            SystemAction::__ConfigureVimWhichKey => {
+                let args: Vec<String> = params.parse()?;
+                self.configure_vim_which_key_map(&args[0], &args[1..])
+                    .await?;
             }
             SystemAction::OpenConfig => {
                 let config_file = crate::config::config_file();
                 self.vim
-                    .exec("execute", format!("edit {}", config_file.display()))
+                    .exec("execute", format!("edit {}", config_file.display()))?;
             }
             SystemAction::ListPlugins => {
-                // Handled upper level.
-                Ok(())
+                unreachable!("action list-plugins has been handled upper level")
             }
         }
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_vim_which_key_map() {
+        parse_vim_which_key_map("/home/xlc/.vimrc");
     }
 }

@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
-use types::{ClapItem, ProgressUpdate};
+use types::{ClapItem, SearchProgressUpdate};
 
 #[derive(Debug)]
 pub struct BlinesItem {

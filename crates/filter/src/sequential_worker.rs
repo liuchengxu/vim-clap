@@ -1,7 +1,6 @@
 //! Convert the source item stream to an iterator and run the filtering sequentially.
 
 use crate::{to_clap_item, FilterContext, MatchedItems, SequentialSource};
-use anyhow::Result;
 use icon::Icon;
 use printer::{println_json, println_json_with_length, DisplayLines, Printer};
 use rayon::slice::ParallelSliceMut;
@@ -330,7 +329,7 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
     query: &str,
     filter_context: FilterContext,
     source: SequentialSource<I>,
-) -> Result<()> {
+) -> crate::Result<()> {
     let FilterContext {
         icon,
         number,

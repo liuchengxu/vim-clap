@@ -1,5 +1,6 @@
-use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
-use anyhow::{anyhow, Result};
+use crate::stdio_server::provider::{
+    BaseArgs, ClapProvider, Context, ProviderError, ProviderResult as Result, SearcherControl,
+};
 use clap::Parser;
 use matcher::{Bonus, MatchScope};
 use paths::AbsPathBuf;
@@ -8,8 +9,6 @@ use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use types::Query;
-
-use super::BaseArgs;
 
 #[derive(Debug, Parser, PartialEq, Eq, Default)]
 #[command(name = ":Clap files")]
@@ -114,8 +113,8 @@ impl ClapProvider for FilesProvider {
                 match AbsPathBuf::try_from(path.as_str()) {
                     Ok(abs_path) => ctx.cwd = abs_path,
                     Err(_) => {
-                        ctx.cwd = ctx.cwd.join(path).try_into().map_err(|err| {
-                            anyhow!("Failed to convert path to absolute path: {err:?}")
+                        ctx.cwd = ctx.cwd.join(&path).try_into().map_err(|_err| {
+                            ProviderError::ConvertToAbsolutePath(path.to_string())
                         })?;
                     }
                 }

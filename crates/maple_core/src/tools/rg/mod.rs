@@ -4,7 +4,6 @@ mod stats;
 
 use crate::cache::Digest;
 use crate::process::ShellCommand;
-use anyhow::Result;
 use once_cell::sync::Lazy;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -296,7 +295,7 @@ impl RgTokioCommand {
         self.shell_cmd.cache_digest()
     }
 
-    pub async fn create_cache(self) -> Result<Digest> {
+    pub async fn create_cache(self) -> std::io::Result<Digest> {
         let cache_file = self.shell_cmd.cache_file_path()?;
 
         let std_cmd = rg_command(&self.shell_cmd.dir);
@@ -317,7 +316,7 @@ pub fn rg_command<P: AsRef<Path>>(dir: P) -> Command {
     cmd
 }
 
-pub fn refresh_cache(dir: impl AsRef<Path>) -> Result<Digest> {
+pub fn refresh_cache(dir: impl AsRef<Path>) -> std::io::Result<Digest> {
     let shell_cmd = rg_shell_command(dir.as_ref());
     let cache_file_path = shell_cmd.cache_file_path()?;
 

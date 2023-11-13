@@ -1,7 +1,8 @@
-use crate::stdio_server::handler::{initialize_provider, CachedPreviewImpl, PreviewTarget};
-use crate::stdio_server::provider::{BaseArgs, ClapProvider, Context, ProviderSource};
+use crate::stdio_server::provider::hooks::{initialize_provider, CachedPreviewImpl, PreviewTarget};
+use crate::stdio_server::provider::{
+    BaseArgs, ClapProvider, Context, ProviderError, ProviderResult as Result, ProviderSource,
+};
 use crate::stdio_server::vim::VimProgressor;
-use anyhow::Result;
 use filter::{FilterContext, ParallelSource};
 use parking_lot::Mutex;
 use printer::{DisplayLines, Printer};
@@ -66,7 +67,7 @@ fn start_filter_parallel(
                 VimProgressor::new(vim, stop_signal.clone()),
                 stop_signal,
             ) {
-                tracing::error!(error = ?e, "Error occured when filtering the cache source");
+                tracing::error!(error = ?e, "Error occurred when filtering the cache source");
             }
         })
     };
@@ -125,9 +126,9 @@ impl GenericProvider {
                 };
                 let items = curline.split('\t').collect::<Vec<_>>();
                 if items.len() < 2 {
-                    return Err(anyhow::anyhow!(
+                    return Err(ProviderError::Other(format!(
                         "Couldn't extract subject and doc_filename from {curline}"
-                    ));
+                    )));
                 }
                 Some(PreviewTarget::HelpTags {
                     subject: items[0].trim().to_string(),
@@ -249,6 +250,10 @@ impl ClapProvider for GenericProvider {
             ProviderSource::Uninitialized => {
                 ctx.vim
                     .echo_warn("Can not process query: source uninitialized")?;
+                return Ok(());
+            }
+            ProviderSource::InitializationFailed(ref msg) => {
+                ctx.vim.echo_warn(format!("InitializationFailed: {msg}"))?;
                 return Ok(());
             }
             ProviderSource::CachedFile { ref path, .. } | ProviderSource::File { ref path, .. } => {

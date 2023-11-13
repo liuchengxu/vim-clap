@@ -4,7 +4,7 @@ use crate::previewer::{get_file_preview, FilePreview};
 use crate::stdio_server::job;
 use crate::stdio_server::plugin::syntax::{highlight_lines, HIGHLIGHTER};
 use crate::stdio_server::provider::{read_dir_entries, Context, ProviderSource};
-use crate::stdio_server::vim::preview_syntax;
+use crate::stdio_server::vim::{preview_syntax, VimResult};
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
 use highlighter::TokenHighlight;
 use paths::{expand_tilde, truncate_absolute_path};
@@ -205,7 +205,7 @@ impl<'a> CachedPreviewImpl<'a> {
         }
     }
 
-    pub async fn get_preview(&self) -> anyhow::Result<(PreviewTarget, Preview)> {
+    pub async fn get_preview(&self) -> VimResult<(PreviewTarget, Preview)> {
         if let Some(preview) = self
             .ctx
             .preview_manager
@@ -344,30 +344,28 @@ impl<'a> CachedPreviewImpl<'a> {
         let total = utils::count_lines(std::fs::File::open(path)?)?;
         let end = lines.len();
 
-        let scrollbar = if self.ctx.env.is_nvim
-            && self.ctx.env.preview_direction.to_uppercase() == "LR"
-            && end > 0
-        {
-            let preview_winheight = self.ctx.env.display_winheight;
+        let scrollbar =
+            if self.ctx.env.is_nvim && self.ctx.env.preview_direction.is_left_right() && end > 0 {
+                let preview_winheight = self.ctx.env.display_winheight;
 
-            let length = ((end * preview_winheight) as f32 / total as f32) as usize;
+                let length = ((end * preview_winheight) as f32 / total as f32) as usize;
 
-            if length == 0 {
-                None
-            } else {
-                let mut length = preview_winheight.min(length);
-                let top_position = if self.ctx.env.preview_border_enabled {
-                    length -= if length == preview_winheight { 1 } else { 0 };
-
-                    1usize
+                if length == 0 {
+                    None
                 } else {
-                    0usize
-                };
-                Some((top_position, length))
-            }
-        } else {
-            None
-        };
+                    let mut length = preview_winheight.min(length);
+                    let top_position = if self.ctx.env.preview_border_enabled {
+                        length -= if length == preview_winheight { 1 } else { 0 };
+
+                        1usize
+                    } else {
+                        0usize
+                    };
+                    Some((top_position, length))
+                }
+            } else {
+                None
+            };
 
         if std::fs::metadata(path)?.len() == 0 {
             let mut lines = lines;
@@ -493,7 +491,17 @@ impl<'a> CachedPreviewImpl<'a> {
                         .and_then(|extension| {
                             HIGHLIGHTER.syntax_set.find_syntax_by_extension(extension)
                         })
-                        .map(|syntax| highlight_lines(syntax, &lines, line_number_offset, theme))
+                        .map(|syntax| {
+                            //  Same reason as [`Self::truncate_preview_lines()`], if a line is too
+                            //  long and the query is short, the highlights can be enomerous and
+                            //  cause the Vim frozen due to the too many highlight works.
+                            let max_len = self.max_line_width();
+                            let lines = lines.iter().map(|s| {
+                                let len = s.len().min(max_len);
+                                &s[..len]
+                            });
+                            highlight_lines(syntax, lines, line_number_offset, theme)
+                        })
                 } else {
                     None
                 };
@@ -505,7 +513,7 @@ impl<'a> CachedPreviewImpl<'a> {
                     .collect::<Vec<_>>();
 
                 let scrollbar = if self.ctx.env.is_nvim
-                    && self.ctx.env.preview_direction.to_uppercase() == "LR"
+                    && self.ctx.env.preview_direction.is_left_right()
                     && total > 0
                 {
                     let start = if context_lines_is_empty {
@@ -623,7 +631,7 @@ impl<'a> CachedPreviewImpl<'a> {
         }
     }
 
-    /// Truncates the lines that are awfully long as vim might have some performence issue with
+    /// Truncates the lines that are awfully long as vim might have some performance issue with
     /// them.
     ///
     /// Ref https://github.com/liuchengxu/vim-clap/issues/543

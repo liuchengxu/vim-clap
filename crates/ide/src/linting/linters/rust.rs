@@ -1,4 +1,4 @@
-use crate::{
+use crate::linting::{
     Code, Diagnostic, DiagnosticSpan, HandleLinterResult, LintEngine, LinterResult, RustLintEngine,
     Severity,
 };

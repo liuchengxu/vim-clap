@@ -1,19 +1,18 @@
-mod handler;
 mod input;
 mod job;
 mod plugin;
 mod provider;
+mod request_handler;
 mod service;
 mod vim;
 
 pub use self::input::InputHistory;
 use self::input::{ActionEvent, Event, ProviderEvent};
 use self::plugin::PluginId;
-use self::provider::{create_provider, Context};
+use self::provider::{create_provider, Context, ProviderError};
 use self::service::ServiceManager;
-use self::vim::initialize_filetype_map;
+use self::vim::{initialize_filetype_map, VimError, VimResult};
 pub use self::vim::{Vim, VimProgressor};
-use anyhow::{anyhow, Result};
 use parking_lot::Mutex;
 use rpc::{RpcClient, RpcNotification, RpcRequest, VimMessage};
 use serde_json::{json, Value};
@@ -24,12 +23,34 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::Instant;
 
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("`session_id` not found in params")]
+    MissingSessionId,
+    #[error("failed to parse: {0}")]
+    Parse(String),
+    #[error("failed to parse action from `{0:?}`")]
+    ParseAction(RpcNotification),
+    #[error("{0}")]
+    Other(String),
+    #[error(transparent)]
+    Vim(#[from] VimError),
+    #[error(transparent)]
+    Provider(#[from] ProviderError),
+    #[error(transparent)]
+    Rpc(#[from] rpc::Error),
+    #[error(transparent)]
+    IO(#[from] std::io::Error),
+    #[error(transparent)]
+    ParseInt(#[from] std::num::ParseIntError),
+}
+
 // Do the initialization on the Vim end on startup.
 async fn initialize_client(
     vim: Vim,
     actions: Vec<&str>,
     config_err: Option<toml::de::Error>,
-) -> Result<()> {
+) -> VimResult<()> {
     if let Some(err) = config_err {
         vim.echo_warn(format!(
             "Using default Config due to the error in {}: {err}",
@@ -264,22 +285,21 @@ impl Backend {
     }
 
     /// Actually process a Vim notification message.
-    async fn do_process_notification(&self, notification: RpcNotification) -> Result<()> {
+    async fn do_process_notification(&self, notification: RpcNotification) -> Result<(), Error> {
         let maybe_session_id = notification.session_id();
 
-        let action_parser = |notification: RpcNotification| -> Result<ActionEvent> {
+        let action_parser = |notification: RpcNotification| -> Result<ActionEvent, Error> {
             for (plugin_id, actions) in self.plugin_actions.lock().iter() {
                 if actions.contains(&notification.method) {
                     return Ok((*plugin_id, notification.into()));
                 }
             }
-            Err(anyhow!("Failed to parse {notification:?}"))
+            Err(Error::ParseAction(notification))
         };
 
         match Event::parse_notification(notification, action_parser)? {
             Event::NewProvider(params) => {
-                let session_id =
-                    maybe_session_id.ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
+                let session_id = maybe_session_id.ok_or(Error::MissingSessionId)?;
                 let ctx = Context::new(params, self.vim.clone()).await?;
                 let provider = create_provider(&ctx).await?;
                 self.service_manager
@@ -288,21 +308,18 @@ impl Backend {
             }
             Event::ProviderWorker(provider_event) => match provider_event {
                 ProviderEvent::Exit => {
-                    let session_id = maybe_session_id
-                        .ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
+                    let session_id = maybe_session_id.ok_or(Error::MissingSessionId)?;
                     self.service_manager.lock().notify_provider_exit(session_id);
                 }
                 to_send => {
-                    let session_id = maybe_session_id
-                        .ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
+                    let session_id = maybe_session_id.ok_or(Error::MissingSessionId)?;
                     self.service_manager
                         .lock()
                         .notify_provider(session_id, to_send);
                 }
             },
             Event::Key(key_event) => {
-                let session_id =
-                    maybe_session_id.ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
+                let session_id = maybe_session_id.ok_or(Error::MissingSessionId)?;
                 self.service_manager
                     .lock()
                     .notify_provider(session_id, ProviderEvent::Key(key_event));
@@ -353,12 +370,12 @@ impl Backend {
         });
     }
 
-    async fn do_process_request(&self, rpc_request: RpcRequest) -> Result<Option<Value>> {
+    async fn do_process_request(&self, rpc_request: RpcRequest) -> Result<Option<Value>, Error> {
         let msg = rpc_request;
 
         let value = match msg.method.as_str() {
-            "preview/file" => Some(handler::messages::preview_file(msg).await?),
-            "quickfix" => Some(handler::messages::preview_quickfix(msg).await?),
+            "preview/file" => Some(request_handler::preview_file(msg).await?),
+            "quickfix" => Some(request_handler::preview_quickfix(msg).await?),
             _ => Some(json!({
                 "error": format!("Unknown request: {}", msg.method)
             })),

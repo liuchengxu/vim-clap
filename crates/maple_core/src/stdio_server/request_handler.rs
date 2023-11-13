@@ -1,24 +1,9 @@
-use crate::datastore::RECENT_FILES_IN_MEMORY;
-use anyhow::{anyhow, Result};
+use crate::stdio_server::Error;
 use rpc::RpcRequest;
 use serde::Deserialize;
 use serde_json::{json, Value};
 
-pub fn note_recent_file(file_path: String) -> Result<()> {
-    tracing::debug!(?file_path, "Received a recent file notification");
-
-    let path = std::path::Path::new(&file_path);
-    if !path.exists() || !path.is_file() {
-        return Ok(());
-    }
-
-    let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
-    recent_files.upsert(file_path);
-
-    Ok(())
-}
-
-pub async fn preview_file(msg: RpcRequest) -> Result<Value> {
+pub async fn preview_file(msg: RpcRequest) -> Result<Value, Error> {
     let msg_id = msg.id;
 
     #[derive(Deserialize)]
@@ -55,7 +40,7 @@ pub async fn preview_file(msg: RpcRequest) -> Result<Value> {
     Ok(value)
 }
 
-pub async fn preview_quickfix(msg: RpcRequest) -> Result<Value> {
+pub async fn preview_quickfix(msg: RpcRequest) -> Result<Value, Error> {
     use crate::previewer::{preview_file, preview_file_at};
     use std::path::PathBuf;
 
@@ -95,20 +80,20 @@ pub async fn preview_quickfix(msg: RpcRequest) -> Result<Value> {
     Ok(value)
 }
 
-fn parse_quickfix_entry(line: &str) -> Result<(&str, usize)> {
-    let mut splitted = line.split('|');
-    let fpath = splitted
+fn parse_quickfix_entry(line: &str) -> Result<(&str, usize), Error> {
+    let mut parts = line.split('|');
+    let fpath = parts
         .next()
-        .ok_or_else(|| anyhow!("Can not find fpath in {}", line))?;
+        .ok_or_else(|| Error::Parse(format!("missing fpath in quickfix entry {line}")))?;
 
-    let mut it = splitted
+    let mut it = parts
         .next()
-        .ok_or_else(|| anyhow!("Can not find lnum and column info in {}", line))?
+        .ok_or_else(|| Error::Parse(format!("missing lnum and column in quickfix entry {line}")))?
         .split("col");
 
     let lnum = it
         .next()
-        .ok_or_else(|| anyhow!("Can not find lnum in {}", line))?
+        .ok_or_else(|| Error::Parse(format!("missing lnum in quickfix entry {line}")))?
         .trim()
         .parse::<usize>()?;
 
