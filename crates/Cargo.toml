@@ -18,6 +18,7 @@ members = [
     "printer",
     "rpc",
     "types",
+    "tree_sitter",
     "utils",
     "upgrade",
 ]
@@ -79,5 +80,6 @@ pattern = { path = "./pattern" }
 printer = { path = "./printer" }
 rpc = { path = "./rpc" }
 types = { path = "./types" }
+tree_sitter = { path = "./tree_sitter" }
 upgrade = { path = "./upgrade" }
 utils = { path = "./utils" }

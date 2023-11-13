@@ -11,7 +11,7 @@ pub static HIGHLIGHTER: Lazy<highlighter::SyntaxHighlighter> =
     Lazy::new(highlighter::SyntaxHighlighter::new);
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "syntax", actions = ["on", "list-themes", "toggle"])]
+#[clap_plugin(id = "syntax", actions = ["on", "toggle-tree-sitter-highlight", "list-themes", "toggle"])]
 pub struct Syntax {
     vim: Vim,
     bufs: HashMap<usize, String>,
@@ -147,6 +147,84 @@ impl ClapPlugin for Syntax {
                 let bufnr = self.vim.bufnr("").await?;
                 self.on_buf_enter(bufnr).await?;
                 self.highlight_visual_lines(bufnr).await?;
+            }
+            SyntaxAction::ToggleTreeSitterHighlight => {
+                let bufnr = self.vim.bufnr("").await?;
+                let source_file = self.vim.bufabspath(bufnr).await?;
+                let source_file = std::path::PathBuf::from(source_file);
+
+                let source_code = std::fs::read_to_string(&source_file).unwrap();
+
+                enum HighlightGroup {
+                    LinkTo(&'static str),
+                    New(),
+                }
+
+                let highlight_names = [
+                    ("comment", "Comment"),
+                    ("constant", "Constant"),
+                    ("constant.builtin", "Constant"),
+                    ("function", "Function"),
+                    ("function.builtin", "Special"),
+                    ("function.macro", "Macro"),
+                    ("keyword", "Keyword"),
+                    ("operator", "Operator"),
+                    ("property", "Identifier"),
+                    ("punctuation.delimiter", "Delimiter"),
+                    ("string", "String"),
+                    ("string.special", "SpecialChar"),
+                    ("type", "Type"),
+                    ("type.definition", "Typedef"),
+                    ("type.builtin", "Type"),
+                    ("tag", "Tag"),
+                    ("attribute", "Conditional"),
+                    ("punctuation", "Delimiter"),
+                    ("punctuation.bracket", "Delimiter"),
+                    ("variable", "Identifier"),
+                    ("variable.builtin", "Identifier"),
+                    ("variable.parameter", "Identifier"),
+                ];
+
+                let highlight_info = tree_sitter::get_highlight_items(
+                    source_code.as_bytes(),
+                    &highlight_names.iter().map(|(h, _)| *h).collect::<Vec<_>>(),
+                )
+                .unwrap();
+
+                let mut vim_highlights = Vec::new();
+
+                for (line_number, highlight_items) in highlight_info {
+                    let line = self.vim.getbufoneline(bufnr, line_number + 1).await?;
+                    let highlighted_tokens = highlight_items
+                        .iter()
+                        .map(|i| {
+                            (
+                                &line[i.start.column..i.end.column],
+                                &highlight_names[i.highlight.0],
+                            )
+                        })
+                        .collect::<Vec<_>>();
+
+                    tracing::debug!("==== {highlighted_tokens:?}");
+
+                    let highlights_in_line: Vec<(usize, usize, &str)> = highlight_items
+                        .iter()
+                        .map(|i| {
+                            (
+                                i.start.column,
+                                i.end.column - i.start.column,
+                                *&highlight_names[i.highlight.0].1,
+                            )
+                        })
+                        .collect();
+
+                    vim_highlights.push((line_number, highlights_in_line));
+                }
+
+                self.vim.exec(
+                    "clap#highlighter#add_line_highlights",
+                    (bufnr, vim_highlights),
+                )?;
             }
             SyntaxAction::ListThemes => {
                 let highlighter = &HIGHLIGHTER;

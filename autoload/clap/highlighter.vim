@@ -132,6 +132,20 @@ function! clap#highlighter#highlight_line(bufnr, lnum, token_highlights) abort
   endfor
 endfunction
 
+
+function! clap#highlighter#add_line_highlights(bufnr, highlights) abort
+  for [line_number, highlights] in a:highlights
+    for [column_start, length, group_name] in highlights
+      if !has('nvim')
+        if empty(prop_type_get(group_name))
+          call prop_type_add(group_name, {'highlight': group_name})
+        endif
+      endif
+      call s:add_highlight_at(a:bufnr, line_number, column_start, length, group_name)
+    endfor
+  endfor
+endfunction
+
 " Highlight a list of lines.
 function! clap#highlighter#highlight_lines(bufnr, line_highlights) abort
   for [lnum, line_highlight] in a:line_highlights

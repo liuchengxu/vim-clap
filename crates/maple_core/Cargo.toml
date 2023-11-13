@@ -51,6 +51,7 @@ pattern = { workspace = true }
 printer = { workspace = true }
 rpc = { workspace = true }
 types = { workspace = true }
+tree_sitter = { workspace = true }
 utils = { workspace = true }
 
 [dev-dependencies]

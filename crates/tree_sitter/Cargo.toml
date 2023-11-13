@@ -1,0 +1,16 @@
+[package]
+name = "tree_sitter"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+cc = "*"
+
+[dependencies]
+tree-sitter = "0.20"
+tree-sitter-rust = "0.20"
+tree-sitter-tags = "0.20"
+tree-sitter-highlight = "0.20"
+tree-sitter-traversal = "0.1"
