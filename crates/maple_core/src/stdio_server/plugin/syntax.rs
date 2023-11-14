@@ -89,7 +89,7 @@ impl Syntax {
             self.bufs.insert(bufnr, extension.to_string());
 
             if self.tree_sitter_enabled {
-                if let Some(language) = tree_sitter::Language::try_from_extension(extension) {
+                if tree_sitter::Language::try_from_extension(extension).is_some() {
                     self.tree_sitter_highlight(bufnr).await?;
                     self.toggle.turn_on();
                 }
@@ -340,6 +340,7 @@ impl ClapPlugin for Syntax {
             CursorMoved => {
                 if self.tree_sitter_enabled {
                     if let Some(ts_info) = self.tree_sitter_info.get(&bufnr) {
+                        // TODO: more efficient syntax highlighting update
                         let (_winid, line_start, line_end) =
                             self.vim.get_screen_lines_range().await?;
 

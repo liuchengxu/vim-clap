@@ -77,8 +77,13 @@ if has('nvim')
   endif
 
 else
-    " lnum is 0-based.
+  " lnum is 0-based.
   function! s:add_highlight_at(bufnr, lnum, col, length, hl_group) abort
+    call prop_add(a:lnum+1, a:col+1, {'length': a:length, 'type': a:hl_group, 'bufnr': a:bufnr})
+  endfunction
+
+  " lnum is 0-based.
+  function! s:add_ts_highlight_at(bufnr, lnum, col, length, hl_group) abort
     call prop_add(a:lnum+1, a:col+1, {'length': a:length, 'type': a:hl_group, 'bufnr': a:bufnr})
   endfunction
 
@@ -146,16 +151,16 @@ endfunction
 function! clap#highlighter#add_ts_highlights(bufnr, highlights) abort
   if has('nvim')
     call nvim_buf_clear_namespace(a:bufnr, s:tree_sitter_ns_id, 0, -1)
-  else
+  elseif !empty(s:ts_types)
     call prop_remove({ 'types': s:ts_types, 'all': v:true, 'bufnr': a:bufnr } )
   endif
 
   for [line_number, highlights] in a:highlights
     for [column_start, length, group_name] in highlights
       if !has('nvim')
-        if empty(prop_type_get(group_name))
-          call add(s:ts_types, 'clap_ts_'.group_name)
-          call prop_type_add('clap_ts_'.group_name, {'highlight': group_name})
+          if index(s:ts_types, group_name) == -1
+            call add(s:ts_types, group_name)
+            call prop_type_add(group_name, {'highlight': group_name})
         endif
       endif
       call s:add_ts_highlight_at(a:bufnr, line_number, column_start, length, group_name)
