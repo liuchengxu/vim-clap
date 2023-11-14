@@ -2,11 +2,10 @@ use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
 use crate::previewer::{get_file_preview, FilePreview};
 use crate::stdio_server::job;
-use crate::stdio_server::plugin::syntax::{highlight_lines, SYNTECT_HIGHLIGHTER};
+use crate::stdio_server::plugin::syntax::{sublime_syntax_highlight, SUBLIME_SYNTAX_HIGHLIGHTER};
 use crate::stdio_server::provider::{read_dir_entries, Context, ProviderSource};
 use crate::stdio_server::vim::{preview_syntax, VimResult};
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
-use highlighter::TokenHighlight;
 use paths::{expand_tilde, truncate_absolute_path};
 use pattern::*;
 use serde::{Deserialize, Serialize};
@@ -14,6 +13,7 @@ use std::io::{Error, ErrorKind, Result};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 use std::time::Duration;
+use sublime_syntax::TokenHighlight;
 use utils::display_width;
 
 /// Preview content.
@@ -481,7 +481,7 @@ impl<'a> CachedPreviewImpl<'a> {
                     &crate::config::config().provider.syntect_highlight_theme
                 {
                     const THEME: &str = "Visual Studio Dark+";
-                    let theme = if SYNTECT_HIGHLIGHTER.theme_exists(theme) {
+                    let theme = if SUBLIME_SYNTAX_HIGHLIGHTER.theme_exists(theme) {
                         theme
                     } else {
                         THEME
@@ -489,7 +489,7 @@ impl<'a> CachedPreviewImpl<'a> {
                     path.extension()
                         .and_then(|s| s.to_str())
                         .and_then(|extension| {
-                            SYNTECT_HIGHLIGHTER
+                            SUBLIME_SYNTAX_HIGHLIGHTER
                                 .syntax_set
                                 .find_syntax_by_extension(extension)
                         })
@@ -502,7 +502,7 @@ impl<'a> CachedPreviewImpl<'a> {
                                 let len = s.len().min(max_len);
                                 &s[..len]
                             });
-                            highlight_lines(syntax, lines, line_number_offset, theme)
+                            sublime_syntax_highlight(syntax, lines, line_number_offset, theme)
                         })
                 } else {
                     None

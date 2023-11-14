@@ -14,6 +14,7 @@ tree-sitter-highlight = "0.20"
 tree-sitter-rust = "0.20"
 tree-sitter-tags = "0.20"
 tree-sitter-toml = "0.20"
+tree-sitter-vim = { git = "https://github.com/liuchengxu/tree-sitter-vim" }
 tree-sitter-traversal = "0.1"
 
 [dev-dependencies]

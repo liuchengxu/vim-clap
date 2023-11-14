@@ -6,6 +6,7 @@ use tree_sitter_highlight::HighlightConfiguration;
 pub enum Language {
     Rust,
     Toml,
+    Viml,
 }
 
 impl Language {
@@ -14,6 +15,7 @@ impl Language {
         let language = match extension {
             "rs" => Self::Rust,
             "toml" => Self::Toml,
+            "vim" => Self::Viml,
             _ => return None,
         };
 
@@ -25,6 +27,7 @@ impl Language {
         let language = match filetype {
             "rust" => Self::Rust,
             "toml" => Self::Toml,
+            "vim" => Self::Viml,
             _ => return None,
         };
 
@@ -63,6 +66,12 @@ fn create_new_highlight_config(
         Language::Toml => HighlightConfiguration::new(
             tree_sitter_toml::language(),
             tree_sitter_toml::HIGHLIGHT_QUERY,
+            "",
+            "",
+        ),
+        Language::Viml => HighlightConfiguration::new(
+            tree_sitter_vim::language(),
+            tree_sitter_vim::HIGHLIGHT_QUERY,
             "",
             "",
         ),

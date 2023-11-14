@@ -923,19 +923,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d77f7ec81a6d05a3abb01ab6eb7590f6083d08449fe5a1c8b1e620283546ccb7"
 
 [[package]]
-name = "highlighter"
-version = "0.1.0"
-dependencies = [
- "colors-transform",
- "once_cell",
- "rgb2ansi256",
- "serde",
- "syntect",
- "tracing",
- "utils",
-]
-
-[[package]]
 name = "home"
 version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1315,7 +1302,6 @@ dependencies = [
  "futures",
  "grep-matcher",
  "grep-searcher",
- "highlighter",
  "icon",
  "ide",
  "ignore",
@@ -1334,6 +1320,7 @@ dependencies = [
  "rpc",
  "serde",
  "serde_json",
+ "sublime_syntax",
  "subprocess",
  "thiserror",
  "tokio",
@@ -2059,6 +2046,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
+name = "sublime_syntax"
+version = "0.1.0"
+dependencies = [
+ "colors-transform",
+ "once_cell",
+ "rgb2ansi256",
+ "serde",
+ "syntect",
+ "tracing",
+ "utils",
+]
+
+[[package]]
 name = "subprocess"
 version = "0.2.10"
 source = "git+https://github.com/hniksic/rust-subprocess#5e89ac093f378bcfc03c69bdb1b4bcacf4313ce4"
@@ -2437,6 +2437,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "tree-sitter-vim"
+version = "0.3.1-dev.0"
+source = "git+https://github.com/liuchengxu/tree-sitter-vim#a001587c17ab24fdade5403eb6c4763460d6814c"
+dependencies = [
+ "cc",
+ "tree-sitter",
+]
+
+[[package]]
 name = "tree_sitter"
 version = "0.1.0"
 dependencies = [
@@ -2447,6 +2456,7 @@ dependencies = [
  "tree-sitter-tags",
  "tree-sitter-toml",
  "tree-sitter-traversal",
+ "tree-sitter-vim",
 ]
 
 [[package]]

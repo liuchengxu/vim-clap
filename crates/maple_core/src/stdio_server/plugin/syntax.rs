@@ -1,14 +1,15 @@
 use std::collections::{BTreeMap, HashMap};
+use std::ops::Range;
 
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::vim::{Vim, VimResult};
-use highlighter::{SyntaxReference, TokenHighlight};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
+use sublime_syntax::{SyntaxReference, TokenHighlight};
 
-pub static SYNTECT_HIGHLIGHTER: Lazy<highlighter::SyntaxHighlighter> =
-    Lazy::new(highlighter::SyntaxHighlighter::new);
+pub static SUBLIME_SYNTAX_HIGHLIGHTER: Lazy<sublime_syntax::SyntaxHighlighter> =
+    Lazy::new(sublime_syntax::SyntaxHighlighter::new);
 
 const HIGHLIGHT_NAMES: &[(&str, &str)] = &[
     ("comment", "Comment"),
@@ -28,6 +29,7 @@ const HIGHLIGHT_NAMES: &[(&str, &str)] = &[
     ("type.builtin", "Type"),
     ("tag", "Tag"),
     ("attribute", "Conditional"),
+    ("conditional", "Conditional"),
     ("punctuation", "Delimiter"),
     ("punctuation.bracket", "Delimiter"),
     ("variable", "Identifier"),
@@ -38,8 +40,7 @@ const HIGHLIGHT_NAMES: &[(&str, &str)] = &[
 #[derive(Debug)]
 struct SyntaxProps {
     row: usize,
-    column_start: usize,
-    column_end: usize,
+    range: Range<usize>,
     length: usize,
     node: &'static str,
 }
@@ -54,8 +55,7 @@ impl BufferHighlights {
                 if (h.start.column..h.end.column).contains(&column) {
                     Some(SyntaxProps {
                         row: h.start.row,
-                        column_start: h.start.column,
-                        column_end: h.end.column,
+                        range: h.start.column..h.end.column,
                         length: h.end.column - h.start.column,
                         node: HIGHLIGHT_NAMES[h.highlight.0].0,
                     })
@@ -111,7 +111,7 @@ impl Syntax {
             return Ok(());
         };
 
-        let highlighter = &SYNTECT_HIGHLIGHTER;
+        let highlighter = &SUBLIME_SYNTAX_HIGHLIGHTER;
         let Some(syntax) = highlighter.syntax_set.find_syntax_by_extension(extension) else {
             tracing::debug!("Can not find syntax for extension {extension}");
             return Ok(());
@@ -142,7 +142,7 @@ impl Syntax {
         }
 
         let now = std::time::Instant::now();
-        let line_highlights = highlight_lines(syntax, lines.iter(), line_start, THEME);
+        let line_highlights = sublime_syntax_highlight(syntax, lines.iter(), line_start, THEME);
 
         // TODO: Clear the outdated highlights first and then render the new highlights.
         self.vim.exec(
@@ -166,8 +166,14 @@ impl Syntax {
             e.to_str()
                 .and_then(|extension| tree_sitter::Language::try_from_extension(extension))
         }) else {
+            // Enable vim regex syntax highlighting.
+            self.vim.exec("execute", "syntax on")?;
             return Ok(());
         };
+
+        if self.vim.eval::<usize>("exists('g:syntax_on')").await? != 0 {
+            self.vim.exec("execute", "syntax off")?;
+        }
 
         // TODO: efficient SyntaxHighlighter
         let mut tree_sitter_highlighter = tree_sitter::SyntaxHighlighter::new();
@@ -206,14 +212,13 @@ impl Syntax {
     }
 
     async fn tree_sitter_props_at_cursor(&mut self) -> Result<(), PluginError> {
-        let cursor_pos = self.vim.getpos(".").await?;
-        let bufnr = self.vim.bufnr("").await?;
-        let row = cursor_pos[1];
-        let column = cursor_pos[2];
+        let (bufnr, row, column) = self.vim.get_cursor_pos().await?;
 
         if let Some(buf_highlights) = self.tree_sitter_highlights.get(&bufnr) {
             if let Some(props) = buf_highlights.syntax_props_at(row - 1, column - 1) {
-                self.vim.echo_info(format!("{props:?}"))?;
+                self.vim.echo_message(format!("{props:?}"))?;
+            } else {
+                self.vim.echo_message("tree sitter props not found")?;
             }
         }
 
@@ -221,13 +226,13 @@ impl Syntax {
     }
 }
 
-pub fn highlight_lines<T: AsRef<str>>(
+pub fn sublime_syntax_highlight<T: AsRef<str>>(
     syntax: &SyntaxReference,
     lines: impl Iterator<Item = T>,
     line_start_number: usize,
     theme: &str,
 ) -> Vec<(usize, Vec<TokenHighlight>)> {
-    let highlighter = &SYNTECT_HIGHLIGHTER;
+    let highlighter = &SUBLIME_SYNTAX_HIGHLIGHTER;
 
     lines
         .enumerate()
@@ -286,7 +291,7 @@ impl ClapPlugin for Syntax {
                 self.tree_sitter_props_at_cursor().await?;
             }
             SyntaxAction::ListThemes => {
-                let highlighter = &SYNTECT_HIGHLIGHTER;
+                let highlighter = &SUBLIME_SYNTAX_HIGHLIGHTER;
                 let theme_list = highlighter.get_theme_list();
                 self.vim.echo_info(theme_list.into_iter().join(","))?;
             }

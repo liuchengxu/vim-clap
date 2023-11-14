@@ -51,6 +51,15 @@ function! clap#helper#complete(ArgLead, CmdLine, P) abort
   return filter(uniq(sort(s:autoload_providers + keys(g:clap#provider_alias) + registered)), 'v:val =~# "^".a:ArgLead')
 endfunction
 
+function! clap#helper#echo_message(msg) abort
+  echohl Function
+  echo 'vim-clap: '
+  echohl NONE
+  echohl Normal
+  echon a:msg
+  echohl NONE
+endfunction
+
 function! clap#helper#echo_info(msg) abort
   echohl Function
   echom 'vim-clap: '.a:msg

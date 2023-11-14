@@ -5,7 +5,6 @@ members = [
     "dirs",
     "dumb_analyzer",
     "filter",
-    "highlighter",
     "icon",
     "cli",
     "ide",
@@ -17,6 +16,7 @@ members = [
     "pattern",
     "printer",
     "rpc",
+    "sublime_syntax",
     "types",
     "tree_sitter",
     "utils",
@@ -69,7 +69,6 @@ cli = { path = "./cli" }
 dirs = { path = "./dirs" }
 dumb_analyzer = { path = "./dumb_analyzer" }
 filter = { path = "./filter" }
-highlighter = { path = "./highlighter" }
 icon = { path = "./icon" }
 ide = { path = "./ide" }
 maple_core = { path = "./maple_core" }
@@ -79,6 +78,7 @@ paths = { path = "./paths" }
 pattern = { path = "./pattern" }
 printer = { path = "./printer" }
 rpc = { path = "./rpc" }
+sublime_syntax = { path = "./sublime_syntax" }
 types = { path = "./types" }
 tree_sitter = { path = "./tree_sitter" }
 upgrade = { path = "./upgrade" }

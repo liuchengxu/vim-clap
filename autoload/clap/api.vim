@@ -69,6 +69,11 @@ function! s:api.get_screenlinesrange() abort
   return [win_getid(), line('w0'), line('w$')]
 endfunction
 
+function! s:api.get_cursor_pos() abort
+  let [_, row, column, _] = getpos('.')
+  return [bufnr(), row, column]
+endfunction
+
 " The leading icon is stripped.
 function! s:api.display_getcurline() abort
   return [g:clap.display.getcurline(), get(g:, '__clap_icon_added_by_maple', v:false)]

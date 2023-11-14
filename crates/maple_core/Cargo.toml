@@ -42,7 +42,6 @@ dirs = { workspace = true }
 dumb_analyzer = { workspace = true }
 maple_derive = { workspace = true }
 filter = { workspace = true }
-highlighter = { workspace = true }
 icon = { workspace = true }
 ide = { workspace = true }
 matcher = { workspace = true }
@@ -50,6 +49,7 @@ paths = { workspace = true }
 pattern = { workspace = true }
 printer = { workspace = true }
 rpc = { workspace = true }
+sublime_syntax = { workspace = true }
 types = { workspace = true }
 tree_sitter = { workspace = true }
 utils = { workspace = true }

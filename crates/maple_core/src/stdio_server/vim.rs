@@ -478,6 +478,10 @@ impl Vim {
     //    General helpers
     /////////////////////////////////////////////////////////////////
 
+    pub fn echo_message(&self, msg: impl AsRef<str>) -> VimResult<()> {
+        self.exec("clap#helper#echo_message", [msg.as_ref()])
+    }
+
     pub fn echo_info(&self, msg: impl AsRef<str>) -> VimResult<()> {
         self.exec("clap#helper#echo_info", [msg.as_ref()])
     }
@@ -488,6 +492,10 @@ impl Vim {
 
     pub async fn get_screenlinesrange(&self) -> VimResult<(usize, usize, usize)> {
         self.bare_call("get_screenlinesrange").await
+    }
+
+    pub async fn get_cursor_pos(&self) -> VimResult<(usize, usize, usize)> {
+        self.bare_call("get_cursor_pos").await
     }
 
     pub async fn bufmodified(&self, bufnr: impl Serialize) -> VimResult<bool> {
