@@ -2418,6 +2418,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tree-sitter-toml"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca517f578a98b23d20780247cc2688407fa81effad5b627a5a364ec3339b53e8"
+dependencies = [
+ "cc",
+ "tree-sitter",
+]
+
+[[package]]
 name = "tree-sitter-traversal"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2435,6 +2445,7 @@ dependencies = [
  "tree-sitter-highlight",
  "tree-sitter-rust",
  "tree-sitter-tags",
+ "tree-sitter-toml",
  "tree-sitter-traversal",
 ]
 

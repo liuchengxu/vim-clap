@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::process::Stdio;
 
 pub async fn run_cargo_fmt(workspace_root: &Path) -> std::io::Result<()> {
     let exit_status = tokio::process::Command::new("cargo")
@@ -26,6 +27,7 @@ pub async fn run_rustfmt(source_file: &Path, workspace_root: &Path) -> std::io::
         .arg("2021")
         .arg(source_file)
         .current_dir(workspace_root)
+        .stderr(Stdio::null())
         .kill_on_drop(true)
         .spawn()?
         .wait()

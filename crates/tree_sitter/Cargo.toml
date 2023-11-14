@@ -9,8 +9,17 @@ edition = "2021"
 cc = "*"
 
 [dependencies]
-tree-sitter = "0.20"
+tree-sitter-core = { package = "tree-sitter", version = "0.20" }
+tree-sitter-highlight = "0.20"
 tree-sitter-rust = "0.20"
 tree-sitter-tags = "0.20"
-tree-sitter-highlight = "0.20"
+tree-sitter-toml = "0.20"
 tree-sitter-traversal = "0.1"
+
+[dev-dependencies]
+criterion = "0.3"
+rand = "0.8"
+
+[[bench]]
+name = "benchmark"
+harness = false
