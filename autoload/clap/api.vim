@@ -65,7 +65,7 @@ else
   endfunction
 endif
 
-function! s:api.get_screenlinesrange() abort
+function! s:api.get_screen_lines_range() abort
   return [win_getid(), line('w0'), line('w$')]
 endfunction
 

@@ -43,6 +43,12 @@ impl Toggle {
         }
     }
 
+    pub fn turn_on(&mut self) {
+        if self.is_off() {
+            *self = Self::On;
+        }
+    }
+
     pub fn is_off(&self) -> bool {
         matches!(self, Self::Off)
     }

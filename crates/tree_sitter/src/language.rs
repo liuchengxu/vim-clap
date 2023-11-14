@@ -1,6 +1,5 @@
 use std::{cell::RefCell, collections::HashMap, sync::Arc};
-
-use tree_sitter_highlight::HighlightConfiguration;
+use tree_sitter_highlight::{Highlight, HighlightConfiguration};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum Language {
@@ -10,6 +9,33 @@ pub enum Language {
 }
 
 impl Language {
+    // TODO: configurable per language
+    pub const HIGHLIGHT_NAMES: [(&'static str, &'static str); 23] = [
+        ("comment", "Comment"),
+        ("constant", "Constant"),
+        ("constant.builtin", "Constant"),
+        ("function", "Function"),
+        ("function.builtin", "Special"),
+        ("function.macro", "Macro"),
+        ("keyword", "Keyword"),
+        ("operator", "Operator"),
+        ("property", "Identifier"),
+        ("punctuation.delimiter", "Delimiter"),
+        ("string", "String"),
+        ("string.special", "SpecialChar"),
+        ("type", "Type"),
+        ("type.definition", "Typedef"),
+        ("type.builtin", "Type"),
+        ("tag", "Tag"),
+        ("attribute", "Conditional"),
+        ("conditional", "Conditional"),
+        ("punctuation", "Delimiter"),
+        ("punctuation.bracket", "Delimiter"),
+        ("variable", "Identifier"),
+        ("variable.builtin", "Identifier"),
+        ("variable.parameter", "Identifier"),
+    ];
+
     /// Constructs a new instance of [`Language`] from the file extension if any.
     pub fn try_from_extension(extension: &str) -> Option<Self> {
         let language = match extension {
@@ -32,6 +58,14 @@ impl Language {
         };
 
         Some(language)
+    }
+
+    pub fn highlight_name(&self, highlight: Highlight) -> &'static str {
+        Self::HIGHLIGHT_NAMES[highlight.0].0
+    }
+
+    pub fn highlight_group(&self, highlight: Highlight) -> &'static str {
+        Self::HIGHLIGHT_NAMES[highlight.0].1
     }
 }
 

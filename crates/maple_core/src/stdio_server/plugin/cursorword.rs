@@ -206,7 +206,7 @@ impl Cursorword {
         }
 
         // Lines in view.
-        let (winid, line_start, line_end) = self.vim.get_screenlinesrange().await?;
+        let (winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
 
         let maybe_new_highlights = if self.vim.bufmodified(bufnr).await? {
             let lines = self.vim.getbufline(bufnr, line_start, line_end).await?;

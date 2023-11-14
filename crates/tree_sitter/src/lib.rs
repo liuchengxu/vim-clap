@@ -51,7 +51,7 @@ pub struct HighlightItem {
     pub start: Point,
     /// Column end, in bytes.
     pub end: Point,
-    /// Highlight group.
+    /// Highlight id.
     pub highlight: Highlight,
 }
 

@@ -7,35 +7,10 @@ use crate::stdio_server::vim::{Vim, VimResult};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use sublime_syntax::{SyntaxReference, TokenHighlight};
+use tree_sitter::Language;
 
 pub static SUBLIME_SYNTAX_HIGHLIGHTER: Lazy<sublime_syntax::SyntaxHighlighter> =
     Lazy::new(sublime_syntax::SyntaxHighlighter::new);
-
-const HIGHLIGHT_NAMES: &[(&str, &str)] = &[
-    ("comment", "Comment"),
-    ("constant", "Constant"),
-    ("constant.builtin", "Constant"),
-    ("function", "Function"),
-    ("function.builtin", "Special"),
-    ("function.macro", "Macro"),
-    ("keyword", "Keyword"),
-    ("operator", "Operator"),
-    ("property", "Identifier"),
-    ("punctuation.delimiter", "Delimiter"),
-    ("string", "String"),
-    ("string.special", "SpecialChar"),
-    ("type", "Type"),
-    ("type.definition", "Typedef"),
-    ("type.builtin", "Type"),
-    ("tag", "Tag"),
-    ("attribute", "Conditional"),
-    ("conditional", "Conditional"),
-    ("punctuation", "Delimiter"),
-    ("punctuation.bracket", "Delimiter"),
-    ("variable", "Identifier"),
-    ("variable.builtin", "Identifier"),
-    ("variable.parameter", "Identifier"),
-];
 
 #[derive(Debug)]
 struct SyntaxProps {
@@ -49,7 +24,12 @@ struct SyntaxProps {
 struct BufferHighlights(BTreeMap<usize, Vec<tree_sitter::HighlightItem>>);
 
 impl BufferHighlights {
-    fn syntax_props_at(&self, row: usize, column: usize) -> Option<SyntaxProps> {
+    fn syntax_props_at(
+        &self,
+        language: Language,
+        row: usize,
+        column: usize,
+    ) -> Option<SyntaxProps> {
         self.0.get(&row).and_then(|highlights| {
             highlights.iter().find_map(|h| {
                 if (h.start.column..h.end.column).contains(&column) {
@@ -57,7 +37,7 @@ impl BufferHighlights {
                         row: h.start.row,
                         range: h.start.column..h.end.column,
                         length: h.end.column - h.start.column,
-                        node: HIGHLIGHT_NAMES[h.highlight.0].0,
+                        node: language.highlight_name(h.highlight),
                     })
                 } else {
                     None
@@ -73,13 +53,20 @@ impl From<BTreeMap<usize, Vec<tree_sitter::HighlightItem>>> for BufferHighlights
     }
 }
 
+#[derive(Debug, Clone)]
+struct TreeSitterInfo {
+    language: Language,
+    highlights: BufferHighlights,
+}
+
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
 #[clap_plugin(id = "syntax", actions = ["on", "tree-sitter-props-at-cursor", "tree-sitter-highlight", "list-themes", "toggle"])]
 pub struct Syntax {
     vim: Vim,
     bufs: HashMap<usize, String>,
-    tree_sitter_highlights: HashMap<usize, BufferHighlights>,
     toggle: Toggle,
+    tree_sitter_info: HashMap<usize, TreeSitterInfo>,
+    tree_sitter_enabled: bool,
 }
 
 impl Syntax {
@@ -87,18 +74,26 @@ impl Syntax {
         Self {
             vim,
             bufs: HashMap::new(),
-            tree_sitter_highlights: HashMap::new(),
             toggle: Toggle::Off,
+            tree_sitter_info: HashMap::new(),
+            tree_sitter_enabled: false,
         }
     }
 
-    async fn on_buf_enter(&mut self, bufnr: usize) -> VimResult<()> {
+    async fn on_buf_enter(&mut self, bufnr: usize) -> Result<(), PluginError> {
         let fpath = self.vim.bufabspath(bufnr).await?;
         if let Some(extension) = std::path::Path::new(&fpath)
             .extension()
             .and_then(|e| e.to_str())
         {
             self.bufs.insert(bufnr, extension.to_string());
+
+            if self.tree_sitter_enabled {
+                if let Some(language) = tree_sitter::Language::try_from_extension(extension) {
+                    self.tree_sitter_highlight(bufnr).await?;
+                    self.toggle.turn_on();
+                }
+            }
         }
 
         Ok(())
@@ -121,14 +116,6 @@ impl Syntax {
         let end = self.vim.line("w$").await?;
         let lines = self.vim.getbufline(bufnr, line_start, end).await?;
 
-        tracing::debug!(
-            "=========== themes: {:?}, fg: {:?}",
-            highlighter.theme_set.themes.keys(),
-            highlighter.theme_set.themes["Coldark-Dark"]
-                .settings
-                .foreground
-        );
-
         // const THEME: &str = "Coldark-Dark";
         const THEME: &str = "Visual Studio Dark+";
 
@@ -142,6 +129,7 @@ impl Syntax {
         }
 
         let now = std::time::Instant::now();
+
         let line_highlights = sublime_syntax_highlight(syntax, lines.iter(), line_start, THEME);
 
         // TODO: Clear the outdated highlights first and then render the new highlights.
@@ -155,12 +143,11 @@ impl Syntax {
         Ok(())
     }
 
-    async fn tree_sitter_highlight(&mut self) -> Result<(), PluginError> {
-        let bufnr = self.vim.bufnr("").await?;
+    async fn tree_sitter_highlight(&mut self, bufnr: usize) -> Result<(), PluginError> {
         let source_file = self.vim.bufabspath(bufnr).await?;
         let source_file = std::path::PathBuf::from(source_file);
 
-        let source_code = std::fs::read_to_string(&source_file).unwrap();
+        let source_code = std::fs::read(&source_file)?;
 
         let Some(language) = source_file.extension().and_then(|e| {
             e.to_str()
@@ -179,34 +166,104 @@ impl Syntax {
         let mut tree_sitter_highlighter = tree_sitter::SyntaxHighlighter::new();
         let buffer_highlights = tree_sitter_highlighter.highlight(
             language,
-            source_code.as_bytes(),
-            &HIGHLIGHT_NAMES.iter().map(|(h, _)| *h).collect::<Vec<_>>(),
-        )?;
-
-        let mut vim_highlights = Vec::new();
-
-        for (line_number, highlight_items) in &buffer_highlights {
-            let line_highlights: Vec<(usize, usize, &str)> = highlight_items
+            &source_code,
+            &Language::HIGHLIGHT_NAMES
                 .iter()
-                .map(|i| {
-                    (
-                        i.start.column,
-                        i.end.column - i.start.column,
-                        *&HIGHLIGHT_NAMES[i.highlight.0].1,
-                    )
-                })
-                .collect();
-
-            vim_highlights.push((line_number, line_highlights));
-        }
-
-        self.vim.exec(
-            "clap#highlighter#add_line_highlights",
-            (bufnr, vim_highlights),
+                .map(|(h, _)| *h)
+                .collect::<Vec<_>>(),
         )?;
 
-        self.tree_sitter_highlights
-            .insert(bufnr, buffer_highlights.into());
+        let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
+        self.apply_ts_highlights(
+            bufnr,
+            language,
+            &buffer_highlights,
+            Some(line_start - 1..line_end),
+        )?;
+
+        self.tree_sitter_info.insert(
+            bufnr,
+            TreeSitterInfo {
+                language,
+                highlights: buffer_highlights.into(),
+            },
+        );
+
+        Ok(())
+    }
+
+    fn apply_ts_highlights(
+        &self,
+        bufnr: usize,
+        language: Language,
+        buffer_highlights: &BTreeMap<usize, Vec<tree_sitter::HighlightItem>>,
+        lines_range: Option<Range<usize>>,
+    ) -> Result<(), PluginError> {
+        // Build highlights that can be applied by Vim easily.
+        let ts_highlights = buffer_highlights
+            .iter()
+            .filter(|(line_number, _)| {
+                lines_range
+                    .as_ref()
+                    .map(|range| range.contains(&line_number))
+                    .unwrap_or(true)
+            })
+            .map(|(line_number, highlight_items)| {
+                let line_highlights: Vec<(usize, usize, &str)> = highlight_items
+                    .iter()
+                    .map(|i| {
+                        (
+                            i.start.column,
+                            i.end.column - i.start.column,
+                            language.highlight_group(i.highlight),
+                        )
+                    })
+                    .collect();
+
+                (line_number, line_highlights)
+            })
+            .collect::<Vec<_>>();
+
+        self.vim
+            .exec("clap#highlighter#add_ts_highlights", (bufnr, ts_highlights))?;
+
+        Ok(())
+    }
+
+    // Refresh tree sitter highlights by reading the entire file and parse again.
+    // TODO: optimize this.
+    async fn refresh_tree_sitter_highlight(
+        &mut self,
+        bufnr: usize,
+        language: Language,
+    ) -> Result<(), PluginError> {
+        let source_file = self.vim.bufabspath(bufnr).await?;
+        let source_file = std::path::PathBuf::from(source_file);
+
+        let source_code = std::fs::read(&source_file)?;
+
+        let mut tree_sitter_highlighter = tree_sitter::SyntaxHighlighter::new();
+        let new_highlights = tree_sitter_highlighter.highlight(
+            language,
+            &source_code,
+            &Language::HIGHLIGHT_NAMES
+                .iter()
+                .map(|(h, _)| *h)
+                .collect::<Vec<_>>(),
+        )?;
+
+        let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
+
+        self.apply_ts_highlights(
+            bufnr,
+            language,
+            &new_highlights,
+            Some(line_start - 1..line_end),
+        )?;
+
+        self.tree_sitter_info.entry(bufnr).and_modify(|i| {
+            i.highlights = new_highlights.into();
+        });
 
         Ok(())
     }
@@ -214,8 +271,12 @@ impl Syntax {
     async fn tree_sitter_props_at_cursor(&mut self) -> Result<(), PluginError> {
         let (bufnr, row, column) = self.vim.get_cursor_pos().await?;
 
-        if let Some(buf_highlights) = self.tree_sitter_highlights.get(&bufnr) {
-            if let Some(props) = buf_highlights.syntax_props_at(row - 1, column - 1) {
+        if let Some(ts_info) = self.tree_sitter_info.get(&bufnr) {
+            if let Some(props) =
+                ts_info
+                    .highlights
+                    .syntax_props_at(ts_info.language, row - 1, column - 1)
+            {
                 self.vim.echo_message(format!("{props:?}"))?;
             } else {
                 self.vim.echo_message("tree sitter props not found")?;
@@ -263,12 +324,35 @@ impl ClapPlugin for Syntax {
 
         match autocmd_event_type {
             BufEnter => self.on_buf_enter(bufnr).await?,
-            BufWritePost => {}
+            BufWritePost => {
+                if self.tree_sitter_enabled {
+                    if self.vim.bufmodified(bufnr).await? {
+                        if let Some(ts_info) = self.tree_sitter_info.get(&bufnr) {
+                            self.refresh_tree_sitter_highlight(bufnr, ts_info.language)
+                                .await?;
+                        }
+                    }
+                }
+            }
             BufDelete => {
                 self.bufs.remove(&bufnr);
             }
             CursorMoved => {
-                self.syntect_highlight(bufnr).await?;
+                if self.tree_sitter_enabled {
+                    if let Some(ts_info) = self.tree_sitter_info.get(&bufnr) {
+                        let (_winid, line_start, line_end) =
+                            self.vim.get_screen_lines_range().await?;
+
+                        self.apply_ts_highlights(
+                            bufnr,
+                            ts_info.language,
+                            &ts_info.highlights.0,
+                            Some(line_start - 1..line_end),
+                        )?;
+                    }
+                } else {
+                    self.syntect_highlight(bufnr).await?;
+                }
             }
             event => return Err(PluginError::UnhandledEvent(event)),
         }
@@ -285,7 +369,10 @@ impl ClapPlugin for Syntax {
                 self.syntect_highlight(bufnr).await?;
             }
             SyntaxAction::TreeSitterHighlight => {
-                self.tree_sitter_highlight().await?;
+                let bufnr = self.vim.bufnr("").await?;
+                self.tree_sitter_highlight(bufnr).await?;
+                self.tree_sitter_enabled = true;
+                self.toggle.turn_on();
             }
             SyntaxAction::TreeSitterPropsAtCursor => {
                 self.tree_sitter_props_at_cursor().await?;

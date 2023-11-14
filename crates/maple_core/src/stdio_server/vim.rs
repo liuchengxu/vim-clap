@@ -490,8 +490,8 @@ impl Vim {
         self.exec("clap#helper#echo_warn", [msg.as_ref()])
     }
 
-    pub async fn get_screenlinesrange(&self) -> VimResult<(usize, usize, usize)> {
-        self.bare_call("get_screenlinesrange").await
+    pub async fn get_screen_lines_range(&self) -> VimResult<(usize, usize, usize)> {
+        self.bare_call("get_screen_lines_range").await
     }
 
     pub async fn get_cursor_pos(&self) -> VimResult<(usize, usize, usize)> {

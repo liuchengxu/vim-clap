@@ -7,9 +7,20 @@ set cpoptions&vim
 let s:default_priority = 10
 
 if has('nvim')
+  let s:tree_sitter_ns_id = nvim_create_namespace('clap_tree_sitter_highlight')
+else
+  let s:ts_types = []
+endif
+
+if has('nvim')
   " lnum is 0-based.
   function! s:add_highlight_at(bufnr, lnum, col, length, hl_group) abort
     call nvim_buf_add_highlight(a:bufnr, -1, a:hl_group, a:lnum, a:col, a:col+a:length)
+  endfunction
+
+  " lnum is 0-based.
+  function! s:add_ts_highlight_at(bufnr, lnum, col, length, hl_group) abort
+    call nvim_buf_add_highlight(a:bufnr, s:tree_sitter_ns_id, a:hl_group, a:lnum, a:col, a:col+a:length)
   endfunction
 
   " lnum and col are 0-based.
@@ -132,16 +143,22 @@ function! clap#highlighter#highlight_line(bufnr, lnum, token_highlights) abort
   endfor
 endfunction
 
+function! clap#highlighter#add_ts_highlights(bufnr, highlights) abort
+  if has('nvim')
+    call nvim_buf_clear_namespace(a:bufnr, s:tree_sitter_ns_id, 0, -1)
+  else
+    call prop_remove({ 'types': s:ts_types, 'all': v:true, 'bufnr': a:bufnr } )
+  endif
 
-function! clap#highlighter#add_line_highlights(bufnr, highlights) abort
   for [line_number, highlights] in a:highlights
     for [column_start, length, group_name] in highlights
       if !has('nvim')
         if empty(prop_type_get(group_name))
-          call prop_type_add(group_name, {'highlight': group_name})
+          call add(s:ts_types, 'clap_ts_'.group_name)
+          call prop_type_add('clap_ts_'.group_name, {'highlight': group_name})
         endif
       endif
-      call s:add_highlight_at(a:bufnr, line_number, column_start, length, group_name)
+      call s:add_ts_highlight_at(a:bufnr, line_number, column_start, length, group_name)
     endfor
   endfor
 endfunction
