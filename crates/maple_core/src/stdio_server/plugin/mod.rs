@@ -58,6 +58,8 @@ pub enum PluginError {
     Other(String),
     #[error(transparent)]
     GitPlugin(#[from] self::git::GitError),
+    #[error("tree sitter highlighting error: {0:?}")]
+    Highlight(#[from] tree_sitter::HighlightError),
     #[error(transparent)]
     Vim(#[from] VimError),
     #[error(transparent)]

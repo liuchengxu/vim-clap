@@ -2,7 +2,7 @@ use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
 use crate::previewer::{get_file_preview, FilePreview};
 use crate::stdio_server::job;
-use crate::stdio_server::plugin::syntax::{highlight_lines, HIGHLIGHTER};
+use crate::stdio_server::plugin::syntax::{highlight_lines, SYNTECT_HIGHLIGHTER};
 use crate::stdio_server::provider::{read_dir_entries, Context, ProviderSource};
 use crate::stdio_server::vim::{preview_syntax, VimResult};
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
@@ -481,7 +481,7 @@ impl<'a> CachedPreviewImpl<'a> {
                     &crate::config::config().provider.syntect_highlight_theme
                 {
                     const THEME: &str = "Visual Studio Dark+";
-                    let theme = if HIGHLIGHTER.theme_exists(theme) {
+                    let theme = if SYNTECT_HIGHLIGHTER.theme_exists(theme) {
                         theme
                     } else {
                         THEME
@@ -489,7 +489,9 @@ impl<'a> CachedPreviewImpl<'a> {
                     path.extension()
                         .and_then(|s| s.to_str())
                         .and_then(|extension| {
-                            HIGHLIGHTER.syntax_set.find_syntax_by_extension(extension)
+                            SYNTECT_HIGHLIGHTER
+                                .syntax_set
+                                .find_syntax_by_extension(extension)
                         })
                         .map(|syntax| {
                             //  Same reason as [`Self::truncate_preview_lines()`], if a line is too

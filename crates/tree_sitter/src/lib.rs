@@ -1,10 +1,17 @@
+mod language;
+mod utf8_char_indices;
+
 use std::collections::{BTreeMap, HashSet};
-use tree_sitter::{Language, Node, Parser, Point, TreeCursor};
+use tree_sitter_core::{Node, Parser, Point, TreeCursor};
 use tree_sitter_highlight::{Highlight, HighlightConfiguration, HighlightEvent, Highlighter};
 use tree_sitter_tags::{TagsConfiguration, TagsContext};
 use tree_sitter_traversal::{traverse, traverse_tree, Order};
 
-/// Parse .scm file for a list of node kinds.
+pub use self::language::Language;
+pub use self::utf8_char_indices::{UncheckedUtf8CharIndices, Utf8CharIndices};
+pub use tree_sitter_highlight::Error as HighlightError;
+
+/// Parse .scm file for a list of node names.
 pub fn parse_nodes_table(query: &str) -> Vec<&str> {
     let mut groups = query
         .split('\n')
@@ -37,31 +44,42 @@ pub fn parse_nodes_table(query: &str) -> Vec<&str> {
     groups
 }
 
+/// Represents a highlight element within a line.
 #[derive(Debug, Clone)]
 pub struct HighlightItem {
+    /// Column start, in bytes.
     pub start: Point,
+    /// Column end, in bytes.
     pub end: Point,
+    /// Highlight group.
     pub highlight: Highlight,
 }
 
-pub fn get_highlight_items(
-    source: &[u8],
-    highlight_names: &[&str],
-) -> Result<BTreeMap<usize, Vec<HighlightItem>>, tree_sitter_highlight::Error> {
-    let rust_language = tree_sitter_rust::language();
-
-    let mut rust_config =
-        HighlightConfiguration::new(rust_language, tree_sitter_rust::HIGHLIGHT_QUERY, "", "")
-            .unwrap();
-
-    rust_config.configure(highlight_names);
-
-    let mut highlighter = Highlighter::new();
-
-    get_highlight_items_inner(&mut highlighter, &rust_config, source)
+pub struct SyntaxHighlighter {
+    highlighter: Highlighter,
 }
 
-fn get_highlight_items_inner(
+impl SyntaxHighlighter {
+    pub fn new() -> Self {
+        Self {
+            highlighter: Highlighter::new(),
+        }
+    }
+
+    /// Implements the syntax highlighting.
+    pub fn highlight(
+        &mut self,
+        language: Language,
+        source: &[u8],
+        highlight_names: &[&str],
+    ) -> Result<BTreeMap<usize, Vec<HighlightItem>>, tree_sitter_highlight::Error> {
+        let config = language::get_highlight_config(language, highlight_names);
+
+        highlight_inner(&mut self.highlighter, &config, source)
+    }
+}
+
+fn highlight_inner(
     highlighter: &mut Highlighter,
     highlight_config: &HighlightConfiguration,
     source: &[u8],
@@ -70,12 +88,15 @@ fn get_highlight_items_inner(
     let mut column = 0;
     let mut byte_offset = 0;
     let mut was_newline = false;
-    let mut result = BTreeMap::new();
+    let mut res = BTreeMap::new();
     let mut highlight_stack = Vec::new();
+    // TODO: avoid allocation?
     let source = String::from_utf8_lossy(source);
     let mut char_indices = source.char_indices();
-    for event in highlighter.highlight(highlight_config, source.as_bytes(), None, |_string| None)? {
-        match event? {
+    for highlight_result in
+        highlighter.highlight(highlight_config, source.as_bytes(), None, |_string| None)?
+    {
+        match highlight_result? {
             HighlightEvent::HighlightStart(h) => highlight_stack.push(h),
             HighlightEvent::HighlightEnd => {
                 highlight_stack.pop();
@@ -106,79 +127,13 @@ fn get_highlight_items_inner(
                         end: Point::new(row, column),
                         highlight: *highlight,
                     };
-                    let line_pos: &mut Vec<_> = result.entry(line_number).or_default();
-                    line_pos.push(info);
+                    let items: &mut Vec<_> = res.entry(line_number).or_default();
+                    items.push(info);
                 }
             }
         }
     }
-    Ok(result)
-}
-
-fn highlight() {
-    let rust_language = tree_sitter_rust::language();
-
-    let mut rust_config =
-        HighlightConfiguration::new(rust_language, tree_sitter_rust::HIGHLIGHT_QUERY, "", "")
-            .unwrap();
-
-    let highlight_names = [
-        "attribute",
-        "constant",
-        "function.builtin",
-        "function",
-        "keyword",
-        "operator",
-        "property",
-        "punctuation",
-        "punctuation.bracket",
-        "punctuation.delimiter",
-        "string",
-        "string.special",
-        "tag",
-        "type",
-        "type.builtin",
-        "variable",
-        "variable.builtin",
-        "variable.parameter",
-    ];
-
-    rust_config.configure(&highlight_names);
-
-    let source_file = std::path::Path::new(
-        "/home/xlc/.vim/plugged/vim-clap/crates/maple_core/src/stdio_server/plugin/system.rs",
-    );
-    let source_code = std::fs::read_to_string(source_file).unwrap();
-
-    let mut highlighter = Highlighter::new();
-
-    let highlights = highlighter
-        .highlight(&rust_config, source_code.as_bytes(), None, |_| None)
-        .unwrap();
-
-    for highlight in highlights {
-        println!("{highlight:?}");
-
-        match highlight.unwrap() {
-            HighlightEvent::Source { start, end } => {
-                println!("source: {}-{}, {}", start, end, &source_code[start..end]);
-            }
-            HighlightEvent::HighlightStart(s) => {
-                println!("highlight style started: {:?}", s);
-            }
-            HighlightEvent::HighlightEnd => {
-                println!("highlight style ended");
-            }
-        }
-    }
-
-    let positions =
-        get_highlight_items_inner(&mut highlighter, &rust_config, source_code.as_bytes()).unwrap();
-    for pos in &positions {
-        println!("{pos:?}");
-    }
-
-    println!("total highlights: {}", positions.len());
+    Ok(res)
 }
 
 fn node_is_visible(node: &Node) -> bool {
@@ -238,90 +193,6 @@ fn pretty_print_tree_impl<W: std::fmt::Write>(
 
     if visible {
         fmt.write_char(')')?;
-    }
-
-    Ok(())
-}
-
-pub fn pretty_print_tree_full<W: std::fmt::Write>(
-    fmt: &mut W,
-    node: Node,
-    source_code: &[u8],
-) -> std::fmt::Result {
-    if node.child_count() == 0 {
-        if node.kind() == "field_declaration" {
-            write!(fmt, "---------- node {:?}", node.parent());
-        }
-
-        if node_is_visible(&node) {
-            write!(
-                fmt,
-                "({})[{}]",
-                node.kind(),
-                String::from_utf8_lossy(&source_code[node.byte_range()])
-            )
-        } else {
-            write!(
-                fmt,
-                "\"{}\"[{}]",
-                node.kind(),
-                String::from_utf8_lossy(&source_code[node.byte_range()])
-            )
-        }
-    } else {
-        pretty_print_tree_impl_full(fmt, &mut node.walk(), 0, source_code)
-    }
-}
-
-fn pretty_print_tree_impl_full<W: std::fmt::Write>(
-    fmt: &mut W,
-    cursor: &mut TreeCursor,
-    depth: usize,
-    source_code: &[u8],
-) -> std::fmt::Result {
-    let node = cursor.node();
-    let visible = node_is_visible(&node);
-
-    if node.kind() == "field_declaration" {
-        let parent = node.parent().unwrap().parent().unwrap();
-        let text = &source_code[parent.byte_range()];
-        write!(fmt, "========== node text: {text:?}\n");
-    }
-
-    if visible {
-        let indentation_columns = depth * 2;
-        write!(fmt, "{:indentation_columns$}", "")?;
-
-        if let Some(field_name) = cursor.field_name() {
-            write!(fmt, "{}: ", field_name)?;
-        }
-
-        write!(fmt, "({}", node.kind())?;
-    }
-
-    // Handle children.
-    if cursor.goto_first_child() {
-        loop {
-            if node_is_visible(&cursor.node()) {
-                fmt.write_char('\n')?;
-            }
-
-            pretty_print_tree_impl_full(fmt, cursor, depth + 1, source_code)?;
-
-            if !cursor.goto_next_sibling() {
-                break;
-            }
-        }
-
-        let moved = cursor.goto_parent();
-        // The parent of the first child must exist, and must be `node`.
-        debug_assert!(moved);
-        debug_assert!(cursor.node() == node);
-    }
-
-    if visible {
-        fmt.write_char(')')?;
-        // write!(fmt, "[{}]", String::from_utf8_lossy(&source_code[node.byte_range()]));
     }
 
     Ok(())
@@ -415,23 +286,6 @@ mod tests {
                 _ => {}
             }
         }
-
-        let mut output = String::new();
-        pretty_print_tree_full(&mut output, tree.root_node(), source_code.as_bytes());
-        println!("{output}");
-
-        // let rust_language = tree_sitter_rust::language();
-
-        // for i in 0..rust_language.node_kind_count() {
-        // println!("node kind for id: {:?} {:?}", rust_language.node_kind_for_id(i as u16), rust_language.field_name_for_id(i as u16));
-        // }
-
-        // for i in 0..rust_language.field_count() {
-        // println!("field for id: {:?}", rust_language.field_name_for_id(i as u16));
-        // }
-
-        // println!("preorder: {preorder:?}");
-        // println!("postorder: {postorder:?}");
     }
 
     #[test]
