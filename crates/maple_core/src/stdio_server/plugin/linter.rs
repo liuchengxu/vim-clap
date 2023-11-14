@@ -303,7 +303,7 @@ impl Linter {
                 .collect::<Vec<_>>();
 
             if current_diagnostics.is_empty() {
-                self.vim.bare_exec("clap#plugin#linter#clear_top_right")?;
+                self.vim.bare_exec("clap#plugin#linter#close_top_right")?;
             } else {
                 let diagnostic_at_cursor = current_diagnostics
                     .iter()
