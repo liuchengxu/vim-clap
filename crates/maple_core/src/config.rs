@@ -216,13 +216,26 @@ pub struct ProviderConfig {
     /// Specifies how many items will be displayed in the results window.
     pub max_display_size: Option<usize>,
 
-    /// Render the preview highlight with specified theme using syntect backend.
+    /// Specify the syntax highlight engine for the provider preview.
+    pub preview_highlight_engine: HighlightEngine,
+
+    /// Specify the theme for the highlight engine.
     ///
-    /// If the theme is not found, the default theme (`Visual Studio Dark+`) will be used.
-    pub syntect_highlight_theme: Option<String>,
+    /// If the theme is not found and the engine is [`HighlightEngine::SublimeSyntax`],
+    /// the default theme (`Visual Studio Dark+`) will be used.
+    pub preview_color_scheme: Option<String>,
 
     /// Whether to share the input history of each provider.
     pub share_input_history: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub enum HighlightEngine {
+    SublimeSyntax,
+    TreeSitter,
+    #[default]
+    Vim,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]

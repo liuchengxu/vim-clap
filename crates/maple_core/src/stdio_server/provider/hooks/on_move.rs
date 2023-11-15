@@ -660,32 +660,48 @@ fn fetch_syntax_highlights(
     line_number_offset: usize,
     max_line_width: usize,
 ) -> Option<SyntaxHighlights> {
-    if let Some(theme) = &crate::config::config().provider.syntect_highlight_theme {
-        const THEME: &str = "Visual Studio Dark+";
-        let theme = if SUBLIME_SYNTAX_HIGHLIGHTER.theme_exists(theme) {
-            theme
-        } else {
-            THEME
-        };
-        path.extension()
-            .and_then(|s| s.to_str())
-            .and_then(|extension| {
-                SUBLIME_SYNTAX_HIGHLIGHTER
-                    .syntax_set
-                    .find_syntax_by_extension(extension)
-            })
-            .map(|syntax| {
-                //  Same reason as [`Self::truncate_preview_lines()`], if a line is too
-                //  long and the query is short, the highlights can be enomerous and
-                //  cause the Vim frozen due to the too many highlight works.
-                let max_len = max_line_width;
-                let lines = lines.iter().map(|s| {
-                    let len = s.len().min(max_len);
-                    &s[..len]
-                });
-                sublime_syntax_highlight(syntax, lines, line_number_offset, theme)
-            })
-    } else {
-        None
+    use crate::config::HighlightEngine;
+
+    let provider_config = &crate::config::config().provider;
+
+    match provider_config.preview_highlight_engine {
+        HighlightEngine::SublimeSyntax => {
+            const THEME: &str = "Visual Studio Dark+";
+
+            let theme = match &provider_config.preview_color_scheme {
+                Some(theme) => {
+                    if SUBLIME_SYNTAX_HIGHLIGHTER.theme_exists(theme) {
+                        theme.as_str()
+                    } else {
+                        tracing::warn!(
+                            "preview color theme {theme} not found, fallback to {THEME}"
+                        );
+                        THEME
+                    }
+                }
+                None => THEME,
+            };
+
+            path.extension()
+                .and_then(|s| s.to_str())
+                .and_then(|extension| {
+                    SUBLIME_SYNTAX_HIGHLIGHTER
+                        .syntax_set
+                        .find_syntax_by_extension(extension)
+                })
+                .map(|syntax| {
+                    //  Same reason as [`Self::truncate_preview_lines()`], if a line is too
+                    //  long and the query is short, the highlights can be enomerous and
+                    //  cause the Vim frozen due to the too many highlight works.
+                    let max_len = max_line_width;
+                    let lines = lines.iter().map(|s| {
+                        let len = s.len().min(max_len);
+                        &s[..len]
+                    });
+                    sublime_syntax_highlight(syntax, lines, line_number_offset, theme)
+                })
+        }
+        HighlightEngine::TreeSitter => None,
+        HighlightEngine::Vim => None,
     }
 }

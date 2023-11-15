@@ -74,6 +74,7 @@ pub struct Syntax {
     ts_bufs: HashMap<usize, TreeSitterInfo>,
     sublime_bufs: HashMap<usize, String>,
     tree_sitter_enabled: bool,
+    sublime_syntax_enabled: bool,
 }
 
 impl Syntax {
@@ -84,6 +85,7 @@ impl Syntax {
             ts_bufs: HashMap::new(),
             sublime_bufs: HashMap::new(),
             tree_sitter_enabled: false,
+            sublime_syntax_enabled: false,
         }
     }
 
@@ -95,11 +97,11 @@ impl Syntax {
         {
             self.sublime_bufs.insert(bufnr, extension.to_string());
 
-            if self.tree_sitter_enabled {
-                if tree_sitter::Language::try_from_extension(extension).is_some() {
-                    self.tree_sitter_highlight(bufnr).await?;
-                    self.toggle.turn_on();
-                }
+            if self.tree_sitter_enabled
+                && tree_sitter::Language::try_from_extension(extension).is_some()
+            {
+                self.tree_sitter_highlight(bufnr).await?;
+                self.toggle.turn_on();
             }
         }
 
@@ -158,7 +160,7 @@ impl Syntax {
 
         let Some(language) = source_file.extension().and_then(|e| {
             e.to_str()
-                .and_then(|extension| tree_sitter::Language::try_from_extension(extension))
+                .and_then(tree_sitter::Language::try_from_extension)
         }) else {
             // Enable vim regex syntax highlighting.
             self.vim.exec("execute", "syntax on")?;
@@ -203,7 +205,7 @@ impl Syntax {
             .filter(|(line_number, _)| {
                 lines_range
                     .as_ref()
-                    .map(|range| range.contains(&line_number))
+                    .map(|range| range.contains(line_number))
                     .unwrap_or(true)
             })
             .map(|(line_number, highlight_items)| {
@@ -316,12 +318,12 @@ impl ClapPlugin for Syntax {
             BufEnter => self.on_buf_enter(bufnr).await?,
             BufWritePost => {
                 if self.tree_sitter_enabled {
-                    if self.vim.bufmodified(bufnr).await? {
-                        if let Some(ts_info) = self.ts_bufs.get(&bufnr) {
-                            self.refresh_tree_sitter_highlight(bufnr, ts_info.language)
-                                .await?;
-                        }
+                    // if self.vim.bufmodified(bufnr).await? {
+                    if let Some(ts_info) = self.ts_bufs.get(&bufnr) {
+                        self.refresh_tree_sitter_highlight(bufnr, ts_info.language)
+                            .await?;
                     }
+                    //}
                 }
             }
             BufDelete => {
@@ -342,7 +344,7 @@ impl ClapPlugin for Syntax {
                             Some(line_start - 1..line_end),
                         )?;
                     }
-                } else {
+                } else if self.sublime_syntax_enabled {
                     self.sublime_syntax_highlight(bufnr).await?;
                 }
             }
@@ -373,6 +375,7 @@ impl ClapPlugin for Syntax {
                 let bufnr = self.vim.bufnr("").await?;
                 self.on_buf_enter(bufnr).await?;
                 self.sublime_syntax_highlight(bufnr).await?;
+                self.sublime_syntax_enabled = true;
             }
             SyntaxAction::Toggle => {
                 match self.toggle {
