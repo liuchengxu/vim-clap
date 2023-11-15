@@ -3,19 +3,20 @@ name = "tree_sitter"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [build-dependencies]
 cc = "*"
 
 [dependencies]
 tree-sitter-core = { package = "tree-sitter", version = "0.20" }
 tree-sitter-highlight = "0.20"
+# tree-sitter-tags = "0.20"
+# tree-sitter-traversal = "0.1"
+
+# Languages
+tree-sitter-go = "0.20"
 tree-sitter-rust = "0.20"
-tree-sitter-tags = "0.20"
 tree-sitter-toml = "0.20"
-tree-sitter-vim = { git = "https://github.com/liuchengxu/tree-sitter-vim" }
-tree-sitter-traversal = "0.1"
+tree-sitter-vim = { git = "https://github.com/liuchengxu/tree-sitter-vim", rev = "a001587c17ab24fdade5403eb6c4763460d6814c" }
 
 [dev-dependencies]
 criterion = "0.3"

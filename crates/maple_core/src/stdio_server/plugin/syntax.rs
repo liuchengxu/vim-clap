@@ -3,7 +3,7 @@ use std::ops::Range;
 
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
-use crate::stdio_server::vim::{Vim, VimResult};
+use crate::stdio_server::vim::Vim;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use sublime_syntax::{SyntaxReference, TokenHighlight};
@@ -164,14 +164,7 @@ impl Syntax {
 
         // TODO: efficient SyntaxHighlighter
         let mut tree_sitter_highlighter = tree_sitter::SyntaxHighlighter::new();
-        let buffer_highlights = tree_sitter_highlighter.highlight(
-            language,
-            &source_code,
-            &Language::HIGHLIGHT_NAMES
-                .iter()
-                .map(|(h, _)| *h)
-                .collect::<Vec<_>>(),
-        )?;
+        let buffer_highlights = tree_sitter_highlighter.highlight(language, &source_code)?;
 
         let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
         self.apply_ts_highlights(
@@ -243,14 +236,7 @@ impl Syntax {
         let source_code = std::fs::read(&source_file)?;
 
         let mut tree_sitter_highlighter = tree_sitter::SyntaxHighlighter::new();
-        let new_highlights = tree_sitter_highlighter.highlight(
-            language,
-            &source_code,
-            &Language::HIGHLIGHT_NAMES
-                .iter()
-                .map(|(h, _)| *h)
-                .collect::<Vec<_>>(),
-        )?;
+        let new_highlights = tree_sitter_highlighter.highlight(language, &source_code)?;
 
         let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
 

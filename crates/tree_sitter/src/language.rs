@@ -3,14 +3,27 @@ use tree_sitter_highlight::{Highlight, HighlightConfiguration};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum Language {
+    Go,
     Rust,
     Toml,
     Viml,
 }
 
+/// Small macro to declare the list of highlight name in tree_sitter_highlight
+/// and associated vim highlight group name.
+macro_rules! highlight_names {
+    ($( ($name:expr, $group:expr) ),* $(,)?) => {
+        const HIGHLIGHT_NAMES: &'static [&'static str] = &[
+            $( $name ),*
+        ];
+        const HIGHLIGHT_GROUPS: &'static [(&'static str, &'static str)] = &[
+            $( ($name, $group) ),*
+        ];
+    };
+}
+
 impl Language {
-    // TODO: configurable per language
-    pub const HIGHLIGHT_NAMES: [(&'static str, &'static str); 23] = [
+    highlight_names![
         ("comment", "Comment"),
         ("constant", "Constant"),
         ("constant.builtin", "Constant"),
@@ -39,6 +52,7 @@ impl Language {
     /// Constructs a new instance of [`Language`] from the file extension if any.
     pub fn try_from_extension(extension: &str) -> Option<Self> {
         let language = match extension {
+            "go" => Self::Go,
             "rs" => Self::Rust,
             "toml" => Self::Toml,
             "vim" => Self::Viml,
@@ -51,6 +65,7 @@ impl Language {
     /// Constructs a new instance of [`Language`] from the filetype if any.
     pub fn try_from_filetype(filetype: &str) -> Option<Self> {
         let language = match filetype {
+            "go" => Self::Go,
             "rust" => Self::Rust,
             "toml" => Self::Toml,
             "vim" => Self::Viml,
@@ -60,12 +75,52 @@ impl Language {
         Some(language)
     }
 
+    pub fn highlight_names(&self) -> &[&str] {
+        Self::HIGHLIGHT_NAMES
+    }
+
     pub fn highlight_name(&self, highlight: Highlight) -> &'static str {
-        Self::HIGHLIGHT_NAMES[highlight.0].0
+        Self::HIGHLIGHT_NAMES[highlight.0]
     }
 
     pub fn highlight_group(&self, highlight: Highlight) -> &'static str {
-        Self::HIGHLIGHT_NAMES[highlight.0].1
+        Self::HIGHLIGHT_GROUPS[highlight.0].1
+    }
+
+    fn create_new_highlight_config(&self) -> HighlightConfiguration {
+        let create_config_result = match self {
+            Language::Go => HighlightConfiguration::new(
+                tree_sitter_go::language(),
+                tree_sitter_go::HIGHLIGHT_QUERY,
+                "",
+                "",
+            ),
+
+            Language::Rust => HighlightConfiguration::new(
+                tree_sitter_rust::language(),
+                tree_sitter_rust::HIGHLIGHT_QUERY,
+                "",
+                "",
+            ),
+            Language::Toml => HighlightConfiguration::new(
+                tree_sitter_toml::language(),
+                tree_sitter_toml::HIGHLIGHT_QUERY,
+                "",
+                "",
+            ),
+            Language::Viml => HighlightConfiguration::new(
+                tree_sitter_vim::language(),
+                tree_sitter_vim::HIGHLIGHT_QUERY,
+                "",
+                "",
+            ),
+        };
+
+        let mut config = create_config_result.expect("Query creation must be succeed");
+
+        config.configure(self.highlight_names());
+
+        config
     }
 }
 
@@ -73,47 +128,12 @@ thread_local! {
     static HIGHLIGHT_CONFIGS: RefCell<HashMap<Language, Arc<HighlightConfiguration>>> = Default::default();
 }
 
-pub fn get_highlight_config(
-    language: Language,
-    highlight_names: &[&str],
-) -> Arc<HighlightConfiguration> {
+pub fn get_highlight_config(language: Language) -> Arc<HighlightConfiguration> {
     HIGHLIGHT_CONFIGS.with(|configs| {
         let mut configs = configs.borrow_mut();
         let config = configs
             .entry(language)
-            .or_insert_with(|| Arc::new(create_new_highlight_config(language, highlight_names)));
+            .or_insert_with(|| Arc::new(language.create_new_highlight_config()));
         config.clone()
     })
-}
-
-fn create_new_highlight_config(
-    language: Language,
-    highlight_names: &[&str],
-) -> HighlightConfiguration {
-    let create_config_result = match language {
-        Language::Rust => HighlightConfiguration::new(
-            tree_sitter_rust::language(),
-            tree_sitter_rust::HIGHLIGHT_QUERY,
-            "",
-            "",
-        ),
-        Language::Toml => HighlightConfiguration::new(
-            tree_sitter_toml::language(),
-            tree_sitter_toml::HIGHLIGHT_QUERY,
-            "",
-            "",
-        ),
-        Language::Viml => HighlightConfiguration::new(
-            tree_sitter_vim::language(),
-            tree_sitter_vim::HIGHLIGHT_QUERY,
-            "",
-            "",
-        ),
-    };
-
-    let mut config = create_config_result.expect("Query creation must be succeed");
-
-    config.configure(highlight_names);
-
-    config
 }

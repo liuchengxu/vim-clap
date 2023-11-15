@@ -2385,6 +2385,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tree-sitter-go"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ad6d11f19441b961af2fda7f12f5d0dac325f6d6de83836a1d3750018cc5114"
+dependencies = [
+ "cc",
+ "tree-sitter",
+]
+
+[[package]]
 name = "tree-sitter-highlight"
 version = "0.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2406,18 +2416,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tree-sitter-tags"
-version = "0.20.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccb3f1376219530a37a809751ecf65aa35fd8b9c1c4ab6d4faf5f6a9eeda2c05"
-dependencies = [
- "memchr",
- "regex",
- "thiserror",
- "tree-sitter",
-]
-
-[[package]]
 name = "tree-sitter-toml"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2428,18 +2426,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "tree-sitter-traversal"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df8a158225e4a4d8505f071340bba9edd109b23f01b70540dccb7c799868f307"
-dependencies = [
- "tree-sitter",
-]
-
-[[package]]
 name = "tree-sitter-vim"
 version = "0.3.1-dev.0"
-source = "git+https://github.com/liuchengxu/tree-sitter-vim#a001587c17ab24fdade5403eb6c4763460d6814c"
+source = "git+https://github.com/liuchengxu/tree-sitter-vim?rev=a001587c17ab24fdade5403eb6c4763460d6814c#a001587c17ab24fdade5403eb6c4763460d6814c"
 dependencies = [
  "cc",
  "tree-sitter",
@@ -2451,11 +2440,10 @@ version = "0.1.0"
 dependencies = [
  "cc",
  "tree-sitter",
+ "tree-sitter-go",
  "tree-sitter-highlight",
  "tree-sitter-rust",
- "tree-sitter-tags",
  "tree-sitter-toml",
- "tree-sitter-traversal",
  "tree-sitter-vim",
 ]
 

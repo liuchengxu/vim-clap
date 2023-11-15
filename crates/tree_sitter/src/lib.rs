@@ -2,10 +2,8 @@ mod language;
 mod utf8_char_indices;
 
 use std::collections::{BTreeMap, HashSet};
-use tree_sitter_core::{Node, Parser, Point, TreeCursor};
+use tree_sitter_core::{Node, Point, TreeCursor};
 use tree_sitter_highlight::{Highlight, HighlightConfiguration, HighlightEvent, Highlighter};
-use tree_sitter_tags::{TagsConfiguration, TagsContext};
-use tree_sitter_traversal::{traverse, traverse_tree, Order};
 
 pub use self::language::Language;
 pub use self::utf8_char_indices::{UncheckedUtf8CharIndices, Utf8CharIndices};
@@ -71,9 +69,8 @@ impl SyntaxHighlighter {
         &mut self,
         language: Language,
         source: &[u8],
-        highlight_names: &[&str],
     ) -> Result<BTreeMap<usize, Vec<HighlightItem>>, tree_sitter_highlight::Error> {
-        let config = language::get_highlight_config(language, highlight_names);
+        let config = language::get_highlight_config(language);
 
         highlight_inner(&mut self.highlighter, &config, source)
     }
@@ -202,6 +199,7 @@ fn pretty_print_tree_impl<W: std::fmt::Write>(
 mod tests {
     use super::*;
 
+    /*
     fn tags() {
         let source_file = std::path::Path::new(
             "/home/xlc/.vim/plugged/vim-clap/crates/maple_core/src/stdio_server/plugin/system.rs",
@@ -230,6 +228,7 @@ mod tests {
             );
         }
     }
+    */
 
     #[test]
     fn it_works() {
