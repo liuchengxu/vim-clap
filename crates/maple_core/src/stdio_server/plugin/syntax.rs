@@ -12,6 +12,7 @@ use tree_sitter::Language;
 pub static SUBLIME_SYNTAX_HIGHLIGHTER: Lazy<sublime_syntax::SyntaxHighlighter> =
     Lazy::new(sublime_syntax::SyntaxHighlighter::new);
 
+#[allow(unused)]
 #[derive(Debug)]
 struct SyntaxProps {
     row: usize,
@@ -60,12 +61,18 @@ struct TreeSitterInfo {
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "syntax", actions = ["on", "tree-sitter-props-at-cursor", "tree-sitter-highlight", "list-themes", "toggle"])]
+#[clap_plugin(id = "syntax", actions = [
+    "list-sublime-themes",
+    "sublime-syntax-highlight",
+    "tree-sitter-highlight",
+    "tree-sitter-props-at-cursor",
+    "toggle",
+])]
 pub struct Syntax {
     vim: Vim,
-    bufs: HashMap<usize, String>,
     toggle: Toggle,
-    tree_sitter_info: HashMap<usize, TreeSitterInfo>,
+    ts_bufs: HashMap<usize, TreeSitterInfo>,
+    sublime_bufs: HashMap<usize, String>,
     tree_sitter_enabled: bool,
 }
 
@@ -73,9 +80,9 @@ impl Syntax {
     pub fn new(vim: Vim) -> Self {
         Self {
             vim,
-            bufs: HashMap::new(),
             toggle: Toggle::Off,
-            tree_sitter_info: HashMap::new(),
+            ts_bufs: HashMap::new(),
+            sublime_bufs: HashMap::new(),
             tree_sitter_enabled: false,
         }
     }
@@ -86,7 +93,7 @@ impl Syntax {
             .extension()
             .and_then(|e| e.to_str())
         {
-            self.bufs.insert(bufnr, extension.to_string());
+            self.sublime_bufs.insert(bufnr, extension.to_string());
 
             if self.tree_sitter_enabled {
                 if tree_sitter::Language::try_from_extension(extension).is_some() {
@@ -101,8 +108,8 @@ impl Syntax {
 
     /// Highlight the visual lines of specified buffer.
     // TODO: this may be inaccurate, e.g., the lines are part of a bigger block of comments.
-    async fn syntect_highlight(&mut self, bufnr: usize) -> Result<(), PluginError> {
-        let Some(extension) = self.bufs.get(&bufnr) else {
+    async fn sublime_syntax_highlight(&mut self, bufnr: usize) -> Result<(), PluginError> {
+        let Some(extension) = self.sublime_bufs.get(&bufnr) else {
             return Ok(());
         };
 
@@ -174,7 +181,7 @@ impl Syntax {
             Some(line_start - 1..line_end),
         )?;
 
-        self.tree_sitter_info.insert(
+        self.ts_bufs.insert(
             bufnr,
             TreeSitterInfo {
                 language,
@@ -247,7 +254,7 @@ impl Syntax {
             Some(line_start - 1..line_end),
         )?;
 
-        self.tree_sitter_info.entry(bufnr).and_modify(|i| {
+        self.ts_bufs.entry(bufnr).and_modify(|i| {
             i.highlights = new_highlights.into();
         });
 
@@ -257,7 +264,7 @@ impl Syntax {
     async fn tree_sitter_props_at_cursor(&mut self) -> Result<(), PluginError> {
         let (bufnr, row, column) = self.vim.get_cursor_pos().await?;
 
-        if let Some(ts_info) = self.tree_sitter_info.get(&bufnr) {
+        if let Some(ts_info) = self.ts_bufs.get(&bufnr) {
             if let Some(props) =
                 ts_info
                     .highlights
@@ -313,7 +320,7 @@ impl ClapPlugin for Syntax {
             BufWritePost => {
                 if self.tree_sitter_enabled {
                     if self.vim.bufmodified(bufnr).await? {
-                        if let Some(ts_info) = self.tree_sitter_info.get(&bufnr) {
+                        if let Some(ts_info) = self.ts_bufs.get(&bufnr) {
                             self.refresh_tree_sitter_highlight(bufnr, ts_info.language)
                                 .await?;
                         }
@@ -321,11 +328,12 @@ impl ClapPlugin for Syntax {
                 }
             }
             BufDelete => {
-                self.bufs.remove(&bufnr);
+                self.ts_bufs.remove(&bufnr);
+                self.sublime_bufs.remove(&bufnr);
             }
             CursorMoved => {
                 if self.tree_sitter_enabled {
-                    if let Some(ts_info) = self.tree_sitter_info.get(&bufnr) {
+                    if let Some(ts_info) = self.ts_bufs.get(&bufnr) {
                         // TODO: more efficient syntax highlighting update
                         let (_winid, line_start, line_end) =
                             self.vim.get_screen_lines_range().await?;
@@ -338,7 +346,7 @@ impl ClapPlugin for Syntax {
                         )?;
                     }
                 } else {
-                    self.syntect_highlight(bufnr).await?;
+                    self.sublime_syntax_highlight(bufnr).await?;
                 }
             }
             event => return Err(PluginError::UnhandledEvent(event)),
@@ -350,11 +358,6 @@ impl ClapPlugin for Syntax {
     async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
         let ActionRequest { method, params: _ } = action;
         match self.parse_action(method)? {
-            SyntaxAction::On => {
-                let bufnr = self.vim.bufnr("").await?;
-                self.on_buf_enter(bufnr).await?;
-                self.syntect_highlight(bufnr).await?;
-            }
             SyntaxAction::TreeSitterHighlight => {
                 let bufnr = self.vim.bufnr("").await?;
                 self.tree_sitter_highlight(bufnr).await?;
@@ -364,10 +367,15 @@ impl ClapPlugin for Syntax {
             SyntaxAction::TreeSitterPropsAtCursor => {
                 self.tree_sitter_props_at_cursor().await?;
             }
-            SyntaxAction::ListThemes => {
+            SyntaxAction::ListSublimeThemes => {
                 let highlighter = &SUBLIME_SYNTAX_HIGHLIGHTER;
                 let theme_list = highlighter.get_theme_list();
                 self.vim.echo_info(theme_list.into_iter().join(","))?;
+            }
+            SyntaxAction::SublimeSyntaxHighlight => {
+                let bufnr = self.vim.bufnr("").await?;
+                self.on_buf_enter(bufnr).await?;
+                self.sublime_syntax_highlight(bufnr).await?;
             }
             SyntaxAction::Toggle => {
                 match self.toggle {

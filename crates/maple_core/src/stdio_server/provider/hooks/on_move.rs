@@ -16,17 +16,20 @@ use std::time::Duration;
 use sublime_syntax::TokenHighlight;
 use utils::display_width;
 
+type SyntaxHighlights = Vec<(usize, Vec<TokenHighlight>)>;
+
 /// Preview content.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Preview {
     pub lines: Vec<String>,
+    /// Highlights from other highlight engine (sublime_syntax or tree_sitter).
+    pub syntax_highlights: SyntaxHighlights,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub syntax: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fname: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hi_lnum: Option<usize>,
-    pub line_highlights: Vec<(usize, Vec<TokenHighlight>)>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scrollbar: Option<(usize, usize)>,
 }
@@ -419,94 +422,28 @@ impl<'a> CachedPreviewImpl<'a> {
                 highlight_lnum,
                 lines,
             }) => {
-                let mut context_lines = Vec::new();
-
-                // Some checks against the latest preview line.
-                if let Some(latest_line) = lines.get(highlight_lnum - 1) {
-                    // TODO: No long needed once switched to libgrep officically.
-                    // self.try_refresh_cache(latest_line);
-
-                    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                        const BLACK_LIST: &[&str] =
-                            &["log", "txt", "lock", "toml", "yaml", "mod", "conf"];
-
-                        if !BLACK_LIST.contains(&ext)
-                            && !dumb_analyzer::is_comment(latest_line, ext)
-                        {
-                            match context_tag_with_timeout(path, lnum).await {
-                                Some(tag) if tag.line_number < start => {
-                                    context_lines.reserve_exact(3);
-
-                                    let border_line = "─".repeat(if self.ctx.env.is_nvim {
-                                        container_width
-                                    } else {
-                                        // Vim has a different border width.
-                                        container_width - 2
-                                    });
-
-                                    context_lines.push(border_line.clone());
-
-                                    // Truncate the right of pattern, 2 whitespaces + 💡
-                                    let max_pattern_len = container_width - 4;
-                                    let pattern = tag.trimmed_pattern();
-                                    let (mut context_line, to_push) = if pattern.len()
-                                        > max_pattern_len
-                                    {
-                                        // Use the chars instead of indexing the str to avoid the char boundary error.
-                                        let p: String =
-                                            pattern.chars().take(max_pattern_len - 4 - 2).collect();
-                                        (p, "..  💡")
-                                    } else {
-                                        (String::from(pattern), "  💡")
-                                    };
-                                    context_line.reserve(to_push.len());
-                                    context_line.push_str(to_push);
-                                    context_lines.push(context_line);
-
-                                    context_lines.push(border_line);
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                }
-
+                let context_lines = fetch_context_lines(
+                    &lines,
+                    highlight_lnum,
+                    lnum,
+                    start,
+                    container_width,
+                    path,
+                    self.ctx.env.is_nvim,
+                )
+                .await;
                 let highlight_lnum = highlight_lnum + context_lines.len();
 
                 let context_lines_is_empty = context_lines.is_empty();
 
                 // 1 (header line) + 1 (1-based line number)
                 let line_number_offset = context_lines.len() + 1 + 1;
-                let maybe_line_highlights = if let Some(theme) =
-                    &crate::config::config().provider.syntect_highlight_theme
-                {
-                    const THEME: &str = "Visual Studio Dark+";
-                    let theme = if SUBLIME_SYNTAX_HIGHLIGHTER.theme_exists(theme) {
-                        theme
-                    } else {
-                        THEME
-                    };
-                    path.extension()
-                        .and_then(|s| s.to_str())
-                        .and_then(|extension| {
-                            SUBLIME_SYNTAX_HIGHLIGHTER
-                                .syntax_set
-                                .find_syntax_by_extension(extension)
-                        })
-                        .map(|syntax| {
-                            //  Same reason as [`Self::truncate_preview_lines()`], if a line is too
-                            //  long and the query is short, the highlights can be enomerous and
-                            //  cause the Vim frozen due to the too many highlight works.
-                            let max_len = self.max_line_width();
-                            let lines = lines.iter().map(|s| {
-                                let len = s.len().min(max_len);
-                                &s[..len]
-                            });
-                            sublime_syntax_highlight(syntax, lines, line_number_offset, theme)
-                        })
-                } else {
-                    None
-                };
+                let maybe_syntax_highlights = fetch_syntax_highlights(
+                    &lines,
+                    path,
+                    line_number_offset,
+                    self.max_line_width(),
+                );
 
                 let header_line = truncated_preview_header();
                 let lines = std::iter::once(header_line)
@@ -553,8 +490,8 @@ impl<'a> CachedPreviewImpl<'a> {
                     ..Default::default()
                 };
 
-                if let Some(line_highlights) = maybe_line_highlights {
-                    preview.line_highlights = line_highlights;
+                if let Some(syntax_highlights) = maybe_syntax_highlights {
+                    preview.syntax_highlights = syntax_highlights;
                 } else if let Some(syntax) = preview_syntax(path) {
                     preview.syntax.replace(syntax.into());
                 } else {
@@ -660,5 +597,99 @@ async fn context_tag_with_timeout(path: &Path, lnum: usize) -> Option<BufferTag>
             tracing::debug!(timeout = ?TIMEOUT, "⏳ Did not get the context tag in time");
             None
         }
+    }
+}
+
+async fn fetch_context_lines(
+    lines: &[String],
+    highlight_lnum: usize,
+    lnum: usize,
+    start: usize,
+    container_width: usize,
+    path: &Path,
+    is_nvim: bool,
+) -> Vec<String> {
+    let mut context_lines = Vec::new();
+
+    // Some checks against the latest preview line.
+    if let Some(latest_line) = lines.get(highlight_lnum - 1) {
+        // TODO: No long needed once switched to libgrep officically.
+        // self.try_refresh_cache(latest_line);
+
+        if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+            const BLACK_LIST: &[&str] = &["log", "txt", "lock", "toml", "yaml", "mod", "conf"];
+
+            if !BLACK_LIST.contains(&ext) && !dumb_analyzer::is_comment(latest_line, ext) {
+                match context_tag_with_timeout(path, lnum).await {
+                    Some(tag) if tag.line_number < start => {
+                        context_lines.reserve_exact(3);
+
+                        let border_line = "─".repeat(if is_nvim {
+                            container_width
+                        } else {
+                            // Vim has a different border width.
+                            container_width - 2
+                        });
+
+                        context_lines.push(border_line.clone());
+
+                        // Truncate the right of pattern, 2 whitespaces + 💡
+                        let max_pattern_len = container_width - 4;
+                        let pattern = tag.trimmed_pattern();
+                        let (mut context_line, to_push) = if pattern.len() > max_pattern_len {
+                            // Use the chars instead of indexing the str to avoid the char boundary error.
+                            let p: String = pattern.chars().take(max_pattern_len - 4 - 2).collect();
+                            (p, "..  💡")
+                        } else {
+                            (String::from(pattern), "  💡")
+                        };
+                        context_line.reserve(to_push.len());
+                        context_line.push_str(to_push);
+                        context_lines.push(context_line);
+
+                        context_lines.push(border_line);
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    context_lines
+}
+
+fn fetch_syntax_highlights(
+    lines: &[String],
+    path: &Path,
+    line_number_offset: usize,
+    max_line_width: usize,
+) -> Option<SyntaxHighlights> {
+    if let Some(theme) = &crate::config::config().provider.syntect_highlight_theme {
+        const THEME: &str = "Visual Studio Dark+";
+        let theme = if SUBLIME_SYNTAX_HIGHLIGHTER.theme_exists(theme) {
+            theme
+        } else {
+            THEME
+        };
+        path.extension()
+            .and_then(|s| s.to_str())
+            .and_then(|extension| {
+                SUBLIME_SYNTAX_HIGHLIGHTER
+                    .syntax_set
+                    .find_syntax_by_extension(extension)
+            })
+            .map(|syntax| {
+                //  Same reason as [`Self::truncate_preview_lines()`], if a line is too
+                //  long and the query is short, the highlights can be enomerous and
+                //  cause the Vim frozen due to the too many highlight works.
+                let max_len = max_line_width;
+                let lines = lines.iter().map(|s| {
+                    let len = s.len().min(max_len);
+                    &s[..len]
+                });
+                sublime_syntax_highlight(syntax, lines, line_number_offset, theme)
+            })
+    } else {
+        None
     }
 }
