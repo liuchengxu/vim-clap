@@ -347,28 +347,27 @@ impl<'a> CachedPreviewImpl<'a> {
         let total = utils::count_lines(std::fs::File::open(path)?)?;
         let end = lines.len();
 
-        let scrollbar =
-            if self.ctx.env.is_nvim && self.ctx.env.preview_direction.is_left_right() && end > 0 {
-                let preview_winheight = self.ctx.env.display_winheight;
+        let scrollbar = if self.ctx.env.should_add_scrollbar(end) {
+            let preview_winheight = self.ctx.env.display_winheight;
 
-                let length = ((end * preview_winheight) as f32 / total as f32) as usize;
+            let length = ((end * preview_winheight) as f32 / total as f32) as usize;
 
-                if length == 0 {
-                    None
-                } else {
-                    let mut length = preview_winheight.min(length);
-                    let top_position = if self.ctx.env.preview_border_enabled {
-                        length -= if length == preview_winheight { 1 } else { 0 };
-
-                        1usize
-                    } else {
-                        0usize
-                    };
-                    Some((top_position, length))
-                }
-            } else {
+            if length == 0 {
                 None
-            };
+            } else {
+                let mut length = preview_winheight.min(length);
+                let top_position = if self.ctx.env.preview_border_enabled {
+                    length -= if length == preview_winheight { 1 } else { 0 };
+
+                    1usize
+                } else {
+                    0usize
+                };
+                Some((top_position, length))
+            }
+        } else {
+            None
+        };
 
         if std::fs::metadata(path)?.len() == 0 {
             let mut lines = lines;
@@ -451,10 +450,7 @@ impl<'a> CachedPreviewImpl<'a> {
                     .chain(self.truncate_preview_lines(lines.into_iter()))
                     .collect::<Vec<_>>();
 
-                let scrollbar = if self.ctx.env.is_nvim
-                    && self.ctx.env.preview_direction.is_left_right()
-                    && total > 0
-                {
+                let scrollbar = if self.ctx.env.should_add_scrollbar(total) {
                     let start = if context_lines_is_empty {
                         start.saturating_sub(3)
                     } else {
@@ -594,7 +590,7 @@ async fn context_tag_with_timeout(path: &Path, lnum: usize) -> Option<BufferTag>
     match tokio::time::timeout(TIMEOUT, current_context_tag_async(path, lnum)).await {
         Ok(res) => res,
         Err(_) => {
-            tracing::debug!(timeout = ?TIMEOUT, "⏳ Did not get the context tag in time");
+            tracing::debug!(timeout = ?TIMEOUT, ?path, lnum, "⏳ Did not get the context tag in time");
             None
         }
     }

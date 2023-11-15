@@ -1,6 +1,7 @@
 mod language;
 mod utf8_char_indices;
 
+use std::cell::RefCell;
 use std::collections::{BTreeMap, HashSet};
 use tree_sitter_core::{Node, Point, TreeCursor};
 use tree_sitter_highlight::{Highlight, HighlightConfiguration, HighlightEvent, Highlighter};
@@ -53,27 +54,17 @@ pub struct HighlightItem {
     pub highlight: Highlight,
 }
 
-pub struct SyntaxHighlighter {
-    highlighter: Highlighter,
+thread_local! {
+    static HIGHLIGHTER: RefCell<Highlighter> = RefCell::new(Highlighter::new());
 }
 
-impl SyntaxHighlighter {
-    pub fn new() -> Self {
-        Self {
-            highlighter: Highlighter::new(),
-        }
-    }
-
-    /// Implements the syntax highlighting.
-    pub fn highlight(
-        &mut self,
-        language: Language,
-        source: &[u8],
-    ) -> Result<BTreeMap<usize, Vec<HighlightItem>>, tree_sitter_highlight::Error> {
-        let config = language::get_highlight_config(language);
-
-        highlight_inner(&mut self.highlighter, &config, source)
-    }
+/// Implements the syntax highlighting.
+pub fn highlight(
+    language: Language,
+    source: &[u8],
+) -> Result<BTreeMap<usize, Vec<HighlightItem>>, tree_sitter_highlight::Error> {
+    let config = language::get_highlight_config(language);
+    HIGHLIGHTER.with_borrow_mut(|highlighter| highlight_inner(highlighter, &config, source))
 }
 
 fn highlight_inner(
@@ -198,94 +189,6 @@ fn pretty_print_tree_impl<W: std::fmt::Write>(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /*
-    fn tags() {
-        let source_file = std::path::Path::new(
-            "/home/xlc/.vim/plugged/vim-clap/crates/maple_core/src/stdio_server/plugin/system.rs",
-        );
-        let source_code = std::fs::read_to_string(source_file).unwrap();
-
-        let mut context = TagsContext::new();
-        let rust_config = TagsConfiguration::new(
-            tree_sitter_rust::language(),
-            tree_sitter_rust::TAGGING_QUERY,
-            "",
-        )
-        .unwrap();
-
-        let (tags, _) = context
-            .generate_tags(&rust_config, source_code.as_bytes(), None)
-            .unwrap();
-
-        for tag in tags {
-            let tag = tag.unwrap();
-            let syntax_type = rust_config.syntax_type_name(tag.syntax_type_id);
-            println!("text: {}", &source_code[tag.range]);
-            println!(
-                "name: {}, syntax type: {syntax_type}",
-                &source_code[tag.name_range]
-            );
-        }
-    }
-    */
-
-    #[test]
-    fn it_works() {
-        let mut parser = Parser::new();
-
-        parser
-            .set_language(tree_sitter_rust::language())
-            .expect("Error loading Rust grammar");
-
-        let source_file = std::path::Path::new(
-            "/home/xlc/.vim/plugged/vim-clap/crates/maple_core/src/stdio_server/plugin/system.rs",
-        );
-        let source_code = std::fs::read_to_string(source_file).unwrap();
-        let tree = parser.parse(&source_code, None).unwrap();
-
-        let preorder: Vec<Node<'_>> = traverse(tree.walk(), Order::Pre).collect::<Vec<_>>();
-        let postorder: Vec<Node<'_>> = traverse_tree(&tree, Order::Post).collect::<Vec<_>>();
-
-        println!("");
-        for node in preorder {
-            println!("node: {:?}", node.kind());
-
-            let text = &source_code[node.byte_range()];
-            let node_kind = node.kind();
-            match node_kind {
-                "struct_item" => {
-                    println!("struct: {text}");
-                    let mut walk = node.walk();
-                    for child in node.children(&mut walk) {
-                        println!(
-                            "level 0, child: {:?}, kind: {}",
-                            &source_code[child.byte_range()],
-                            child.kind()
-                        );
-                        let mut w = child.walk();
-                        for c in child.children(&mut w) {
-                            println!(
-                                "level 1, child: {:?}, kind: {}",
-                                &source_code[c.byte_range()],
-                                c.kind()
-                            );
-                        }
-                    }
-                }
-                "enum_item" => {
-                    println!("enum: {text}");
-                }
-                "function_item" => {
-                    println!("function: {text}");
-                }
-                "function_signature_item" => {
-                    println!("function definition: {text}");
-                }
-                _ => {}
-            }
-        }
-    }
 
     #[test]
     fn test_parse_highlight_groups() {

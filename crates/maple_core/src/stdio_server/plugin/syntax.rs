@@ -169,9 +169,7 @@ impl Syntax {
             self.vim.exec("execute", "syntax off")?;
         }
 
-        // TODO: efficient SyntaxHighlighter
-        let mut tree_sitter_highlighter = tree_sitter::SyntaxHighlighter::new();
-        let buffer_highlights = tree_sitter_highlighter.highlight(language, &source_code)?;
+        let buffer_highlights = tree_sitter::highlight(language, &source_code)?;
 
         let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
         self.apply_ts_highlights(
@@ -242,8 +240,7 @@ impl Syntax {
 
         let source_code = std::fs::read(&source_file)?;
 
-        let mut tree_sitter_highlighter = tree_sitter::SyntaxHighlighter::new();
-        let new_highlights = tree_sitter_highlighter.highlight(language, &source_code)?;
+        let new_highlights = tree_sitter::highlight(language, &source_code)?;
 
         let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
 
