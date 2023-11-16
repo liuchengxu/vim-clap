@@ -40,10 +40,12 @@ function! s:providers.source() abort
         let evaled = eval('g:'.maybe_var_provider)
         if type(evaled) == v:t_dict
           let provider_id = matchstr(maybe_var_provider, 'clap_provider_\zs\(.*\)')
-          call add(s:global_source, provider_id.': '.evaled['description'])
+          let description = get(evaled, 'description', '')
+          call add(s:global_source, provider_id.': '.description)
         endif
       catch
-        " Ignore
+        echom 'Failed to fetch user defined clap providers: 'v:exception
+        return g:global_source
       endtry
     endfor
   endif

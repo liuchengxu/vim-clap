@@ -303,7 +303,7 @@ impl Linter {
                 .collect::<Vec<_>>();
 
             if current_diagnostics.is_empty() {
-                self.vim.bare_exec("clap#plugin#linter#clear_top_right")?;
+                self.vim.bare_exec("clap#plugin#linter#close_top_right")?;
             } else {
                 let diagnostic_at_cursor = current_diagnostics
                     .iter()
@@ -422,7 +422,10 @@ impl ClapPlugin for Linter {
                 let workspace = workspace.to_path_buf();
                 let vim = self.vim.clone();
                 tokio::spawn(async move {
-                    if ide::formatting::run_cargo_fmt(&workspace).await.is_ok() {
+                    if ide::formatting::run_rustfmt(&source_file, &workspace)
+                        .await
+                        .is_ok()
+                    {
                         let _ = vim.bare_exec("clap#util#reload_current_file");
                     }
                 });

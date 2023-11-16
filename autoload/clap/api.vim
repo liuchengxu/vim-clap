@@ -65,8 +65,13 @@ else
   endfunction
 endif
 
-function! s:api.get_screenlinesrange() abort
+function! s:api.get_screen_lines_range() abort
   return [win_getid(), line('w0'), line('w$')]
+endfunction
+
+function! s:api.get_cursor_pos() abort
+  let [_, row, column, _] = getpos('.')
+  return [bufnr(), row, column]
 endfunction
 
 " The leading icon is stripped.

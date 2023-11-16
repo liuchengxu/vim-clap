@@ -923,19 +923,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d77f7ec81a6d05a3abb01ab6eb7590f6083d08449fe5a1c8b1e620283546ccb7"
 
 [[package]]
-name = "highlighter"
-version = "0.1.0"
-dependencies = [
- "colors-transform",
- "once_cell",
- "rgb2ansi256",
- "serde",
- "syntect",
- "tracing",
- "utils",
-]
-
-[[package]]
 name = "home"
 version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1315,7 +1302,6 @@ dependencies = [
  "futures",
  "grep-matcher",
  "grep-searcher",
- "highlighter",
  "icon",
  "ide",
  "ignore",
@@ -1334,11 +1320,13 @@ dependencies = [
  "rpc",
  "serde",
  "serde_json",
+ "sublime_syntax",
  "subprocess",
  "thiserror",
  "tokio",
  "toml 0.5.11",
  "tracing",
+ "tree_sitter",
  "types",
  "utils",
  "webbrowser",
@@ -2058,6 +2046,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
+name = "sublime_syntax"
+version = "0.1.0"
+dependencies = [
+ "colors-transform",
+ "once_cell",
+ "rgb2ansi256",
+ "serde",
+ "syntect",
+ "tracing",
+ "utils",
+]
+
+[[package]]
 name = "subprocess"
 version = "0.2.10"
 source = "git+https://github.com/hniksic/rust-subprocess#5e89ac093f378bcfc03c69bdb1b4bcacf4313ce4"
@@ -2371,6 +2372,90 @@ dependencies = [
  "thread_local",
  "tracing-core",
  "tracing-log",
+]
+
+[[package]]
+name = "tree-sitter"
+version = "0.20.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e747b1f9b7b931ed39a548c1fae149101497de3c1fc8d9e18c62c1a66c683d3d"
+dependencies = [
+ "cc",
+ "regex",
+]
+
+[[package]]
+name = "tree-sitter-go"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ad6d11f19441b961af2fda7f12f5d0dac325f6d6de83836a1d3750018cc5114"
+dependencies = [
+ "cc",
+ "tree-sitter",
+]
+
+[[package]]
+name = "tree-sitter-highlight"
+version = "0.20.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "042342584c5a7a0b833d9fc4e2bdab3f9868ddc6c4b339a1e01451c6720868bc"
+dependencies = [
+ "regex",
+ "thiserror",
+ "tree-sitter",
+]
+
+[[package]]
+name = "tree-sitter-md"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c20d3ef8d202430b644a307e6299d84bf8ed87fa1b796e4638f8805a595060c"
+dependencies = [
+ "cc",
+ "tree-sitter",
+]
+
+[[package]]
+name = "tree-sitter-rust"
+version = "0.20.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0832309b0b2b6d33760ce5c0e818cb47e1d72b468516bfe4134408926fa7594"
+dependencies = [
+ "cc",
+ "tree-sitter",
+]
+
+[[package]]
+name = "tree-sitter-toml"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca517f578a98b23d20780247cc2688407fa81effad5b627a5a364ec3339b53e8"
+dependencies = [
+ "cc",
+ "tree-sitter",
+]
+
+[[package]]
+name = "tree-sitter-vim"
+version = "0.3.1-dev.0"
+source = "git+https://github.com/liuchengxu/tree-sitter-vim?rev=a001587c17ab24fdade5403eb6c4763460d6814c#a001587c17ab24fdade5403eb6c4763460d6814c"
+dependencies = [
+ "cc",
+ "tree-sitter",
+]
+
+[[package]]
+name = "tree_sitter"
+version = "0.1.0"
+dependencies = [
+ "cc",
+ "tree-sitter",
+ "tree-sitter-go",
+ "tree-sitter-highlight",
+ "tree-sitter-md",
+ "tree-sitter-rust",
+ "tree-sitter-toml",
+ "tree-sitter-vim",
 ]
 
 [[package]]

@@ -43,6 +43,12 @@ impl Toggle {
         }
     }
 
+    pub fn turn_on(&mut self) {
+        if self.is_off() {
+            *self = Self::On;
+        }
+    }
+
     pub fn is_off(&self) -> bool {
         matches!(self, Self::Off)
     }
@@ -58,6 +64,8 @@ pub enum PluginError {
     Other(String),
     #[error(transparent)]
     GitPlugin(#[from] self::git::GitError),
+    #[error("tree sitter highlighting error: {0:?}")]
+    Highlight(#[from] tree_sitter::HighlightError),
     #[error(transparent)]
     Vim(#[from] VimError),
     #[error(transparent)]

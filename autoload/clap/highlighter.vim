@@ -7,9 +7,20 @@ set cpoptions&vim
 let s:default_priority = 10
 
 if has('nvim')
+  let s:tree_sitter_ns_id = nvim_create_namespace('clap_tree_sitter_highlight')
+else
+  let s:ts_types = []
+endif
+
+if has('nvim')
   " lnum is 0-based.
   function! s:add_highlight_at(bufnr, lnum, col, length, hl_group) abort
     call nvim_buf_add_highlight(a:bufnr, -1, a:hl_group, a:lnum, a:col, a:col+a:length)
+  endfunction
+
+  " lnum is 0-based.
+  function! s:add_ts_highlight_at(bufnr, lnum, col, length, hl_group) abort
+    call nvim_buf_add_highlight(a:bufnr, s:tree_sitter_ns_id, a:hl_group, a:lnum, a:col, a:col+a:length)
   endfunction
 
   " lnum and col are 0-based.
@@ -66,8 +77,13 @@ if has('nvim')
   endif
 
 else
-    " lnum is 0-based.
+  " lnum is 0-based.
   function! s:add_highlight_at(bufnr, lnum, col, length, hl_group) abort
+    call prop_add(a:lnum+1, a:col+1, {'length': a:length, 'type': a:hl_group, 'bufnr': a:bufnr})
+  endfunction
+
+  " lnum is 0-based.
+  function! s:add_ts_highlight_at(bufnr, lnum, col, length, hl_group) abort
     call prop_add(a:lnum+1, a:col+1, {'length': a:length, 'type': a:hl_group, 'bufnr': a:bufnr})
   endfunction
 
@@ -129,6 +145,39 @@ function! clap#highlighter#highlight_line(bufnr, lnum, token_highlights) abort
       call s:create_token_highlight_group(token_highlight)
     endif
     call s:add_highlight_at(a:bufnr, a:lnum - 1, token_highlight.col_start, token_highlight.length, token_highlight.group_name)
+  endfor
+endfunction
+
+function! clap#highlighter#add_ts_highlights(bufnr, to_replace_line_ranges, highlights) abort
+  if has('nvim')
+    " All old highlights need to be replaced.
+    if empty(a:to_replace_line_ranges)
+      call nvim_buf_clear_namespace(a:bufnr, s:tree_sitter_ns_id, 0, -1)
+    else
+      for [start, end] in a:to_replace_line_ranges
+        call nvim_buf_clear_namespace(a:bufnr, s:tree_sitter_ns_id, start, end)
+      endfor
+    endif
+  elseif !empty(s:ts_types)
+    if empty(a:to_replace_line_ranges)
+      call prop_remove({ 'types': s:ts_types, 'all': v:true, 'bufnr': a:bufnr } )
+    else
+      for [start, end] in a:to_replace_line_ranges
+        call prop_remove({ 'types': s:ts_types, 'all': v:true, 'bufnr': a:bufnr }, start + 1, end - 1)
+      endfor
+    endif
+  endif
+
+  for [line_number, highlights] in a:highlights
+    for [column_start, length, group_name] in highlights
+      if !has('nvim')
+          if index(s:ts_types, group_name) == -1
+            call add(s:ts_types, group_name)
+            call prop_type_add(group_name, {'highlight': group_name})
+        endif
+      endif
+      call s:add_ts_highlight_at(a:bufnr, line_number, column_start, length, group_name)
+    endfor
   endfor
 endfunction
 

@@ -134,6 +134,12 @@ pub struct ProviderEnvironment {
     pub start_buffer_path: PathBuf,
 }
 
+impl ProviderEnvironment {
+    pub fn should_add_scrollbar(&self, total: usize) -> bool {
+        self.is_nvim && self.preview_direction.is_left_right() && total > 0
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Direction {
     Down,

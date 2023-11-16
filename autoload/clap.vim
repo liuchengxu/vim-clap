@@ -241,8 +241,12 @@ function! s:try_register_is_ok(provider_id) abort
     try
       let registration_info = g:clap#provider#{a:provider_id}#
     catch /^Vim\%((\a\+)\)\=:E121/
-      call clap#helper#echo_error('Fail to load provider: '.a:provider_id.', E:'.v:exception)
-      return v:false
+      try
+        let registration_info = g:clap_provider_{a:provider_id}
+      catch
+        call clap#helper#echo_error('Fail to load provider: '.a:provider_id.', E:'.v:exception)
+        return v:false
+      endtry
     endtry
   endif
 

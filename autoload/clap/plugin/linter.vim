@@ -118,7 +118,7 @@ function! s:render_on_top_right(lines, line_highlights) abort
       call nvim_win_set_config(s:diagnostic_msg_winid, config)
     else
       " Make sure the invalid window is closed and create a new one.
-      call clap#plugin#linter#clear_top_right()
+      call clap#plugin#linter#close_top_right()
 
       silent let s:diagnostic_msg_winid = nvim_open_win(buffer, v:false, config)
       call setwinvar(s:diagnostic_msg_winid, '&spell', 0)
@@ -138,7 +138,7 @@ function! s:render_on_top_right(lines, line_highlights) abort
   endfor
 endfunction
 
-function! clap#plugin#linter#clear_top_right() abort
+function! clap#plugin#linter#close_top_right() abort
   if exists('s:diagnostic_msg_winid')
     call nvim_win_close(s:diagnostic_msg_winid, v:true)
     call nvim_buf_clear_namespace(s:diagnostic_msg_buffer, s:linter_msg_highlight_ns_id, 0, -1)
@@ -218,11 +218,15 @@ endfunction
 else
 
 function! s:highlight_span(bufnr, span) abort
-  call prop_add(a:span.line_start, a:span.column_start,
-        \ { 'type': 'ClapDiagnosticUnderline', 'length': a:span.column_end - a:span.column_start, 'bufnr': a:bufnr })
+  let length = a:span.column_end - a:span.column_start
+  " It's possible that the span across multiple lines and this can be negative.
+  if length < 0
+    let length = 1
+  endif
+  call prop_add(a:span.line_start, a:span.column_start, { 'type': 'ClapDiagnosticUnderline', 'length': length, 'bufnr': a:bufnr })
 endfunction
 
-function! clap#plugin#linter#clear_top_right() abort
+function! clap#plugin#linter#close_top_right() abort
   if exists('s:diagnostic_msg_winid')
     call popup_close(s:diagnostic_msg_winid)
     unlet s:diagnostic_msg_winid
@@ -256,7 +260,7 @@ function! clap#plugin#linter#display_top_right(current_diagnostics) abort
       call popup_setoptions(s:diagnostic_msg_winid, { 'minheight': len(lines), 'col': col })
       call popup_settext(s:diagnostic_msg_winid, lines)
     else
-      call clap#plugin#linter#clear_top_right()
+      call clap#plugin#linter#close_top_right()
 
       silent let s:diagnostic_msg_winid = popup_create(lines, {
             \ 'zindex': 100,
@@ -296,7 +300,7 @@ endfunction
 
 function! clap#plugin#linter#toggle_off(bufnr) abort
   call clap#plugin#linter#delete_highlights(a:bufnr)
-  call clap#plugin#linter#clear_top_right(a:bufnr)
+  call clap#plugin#linter#close_top_right(a:bufnr)
 endfunction
 
 let &cpoptions = s:save_cpo
