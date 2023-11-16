@@ -605,49 +605,62 @@ async fn fetch_context_lines(
     path: &Path,
     is_nvim: bool,
 ) -> Vec<String> {
+    // Some checks against the latest preview line.
+    let Some(line) = lines.get(highlight_lnum - 1) else {
+        return Vec::new();
+    };
+
+    let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
+        return Vec::new();
+    };
+
+    let skip_context_tag = {
+        const BLACK_LIST: &[&str] = &["log", "txt", "lock", "toml", "yaml", "mod", "conf"];
+
+        BLACK_LIST.contains(&ext) || dumb_analyzer::is_comment(line, ext)
+    };
+
+    if skip_context_tag {
+        return Vec::new();
+    };
+
+    let generate_border_line = |container_width: usize, is_nvim: bool| -> String {
+        // Vim has a different border width.
+        "─".repeat(if is_nvim {
+            container_width
+        } else {
+            container_width - 2
+        })
+    };
+
     let mut context_lines = Vec::new();
 
-    // Some checks against the latest preview line.
-    if let Some(latest_line) = lines.get(highlight_lnum - 1) {
-        // TODO: No long needed once switched to libgrep officically.
-        // self.try_refresh_cache(latest_line);
+    match context_tag_with_timeout(path, lnum).await {
+        Some(tag) if tag.line_number < start => {
+            context_lines.reserve_exact(3);
 
-        if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-            const BLACK_LIST: &[&str] = &["log", "txt", "lock", "toml", "yaml", "mod", "conf"];
+            let border_line = generate_border_line(container_width, is_nvim);
 
-            if !BLACK_LIST.contains(&ext) && !dumb_analyzer::is_comment(latest_line, ext) {
-                match context_tag_with_timeout(path, lnum).await {
-                    Some(tag) if tag.line_number < start => {
-                        context_lines.reserve_exact(3);
+            context_lines.push(border_line.clone());
 
-                        let border_line = "─".repeat(if is_nvim {
-                            container_width
-                        } else {
-                            // Vim has a different border width.
-                            container_width - 2
-                        });
+            // Truncate the right of pattern, 2 whitespaces + 💡
+            let max_pattern_len = container_width - 4;
+            let pattern = tag.trimmed_pattern();
+            let (mut context_line, to_push) = if pattern.len() > max_pattern_len {
+                // Use the chars instead of indexing the str to avoid the char boundary error.
+                let p: String = pattern.chars().take(max_pattern_len - 4 - 2).collect();
+                (p, "..  💡")
+            } else {
+                (String::from(pattern), "  💡")
+            };
+            context_line.reserve(to_push.len());
+            context_line.push_str(to_push);
+            context_lines.push(context_line);
 
-                        context_lines.push(border_line.clone());
-
-                        // Truncate the right of pattern, 2 whitespaces + 💡
-                        let max_pattern_len = container_width - 4;
-                        let pattern = tag.trimmed_pattern();
-                        let (mut context_line, to_push) = if pattern.len() > max_pattern_len {
-                            // Use the chars instead of indexing the str to avoid the char boundary error.
-                            let p: String = pattern.chars().take(max_pattern_len - 4 - 2).collect();
-                            (p, "..  💡")
-                        } else {
-                            (String::from(pattern), "  💡")
-                        };
-                        context_line.reserve(to_push.len());
-                        context_line.push_str(to_push);
-                        context_lines.push(context_line);
-
-                        context_lines.push(border_line);
-                    }
-                    _ => {}
-                }
-            }
+            context_lines.push(border_line);
+        }
+        _ => {
+            // No context lines if no tag found prior to the line number.
         }
     }
 
