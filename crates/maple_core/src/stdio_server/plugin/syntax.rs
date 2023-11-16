@@ -22,8 +22,10 @@ struct SyntaxProps {
     node: &'static str,
 }
 
+type RawTsHighlights = BTreeMap<usize, Vec<tree_sitter::HighlightItem>>;
+
 #[derive(Debug, Clone)]
-struct BufferHighlights(BTreeMap<usize, Vec<tree_sitter::HighlightItem>>);
+struct BufferHighlights(RawTsHighlights);
 
 impl BufferHighlights {
     fn syntax_props_at(
@@ -49,8 +51,8 @@ impl BufferHighlights {
     }
 }
 
-impl From<BTreeMap<usize, Vec<tree_sitter::HighlightItem>>> for BufferHighlights {
-    fn from(inner: BTreeMap<usize, Vec<tree_sitter::HighlightItem>>) -> Self {
+impl From<RawTsHighlights> for BufferHighlights {
+    fn from(inner: RawTsHighlights) -> Self {
         Self(inner)
     }
 }
@@ -219,13 +221,13 @@ impl Syntax {
             self.vim.exec("execute", "syntax off")?;
         }
 
-        let buffer_highlights = tree_sitter::highlight(language, &source_code)?;
+        let raw_highlights = tree_sitter::highlight(language, &source_code)?;
 
         let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
         let maybe_vim_highlights = self.apply_ts_highlights(
             bufnr,
             language,
-            &buffer_highlights,
+            &raw_highlights,
             Some(line_start - 1..line_end),
         )?;
 
@@ -233,7 +235,7 @@ impl Syntax {
             bufnr,
             TreeSitterInfo {
                 language,
-                highlights: buffer_highlights.into(),
+                highlights: raw_highlights.into(),
                 vim_highlights: maybe_vim_highlights.unwrap_or_default(),
             },
         );
@@ -245,33 +247,11 @@ impl Syntax {
         &self,
         bufnr: usize,
         language: Language,
-        buffer_highlights: &BTreeMap<usize, Vec<tree_sitter::HighlightItem>>,
+        raw_ts_highlights: &RawTsHighlights,
         lines_range: Option<Range<usize>>,
     ) -> Result<Option<VimHighlights>, PluginError> {
-        // Convert the raw highlight info to something that is easily applied by Vim.
-        let new_vim_highlights = buffer_highlights
-            .iter()
-            .filter(|(line_number, _)| {
-                lines_range
-                    .as_ref()
-                    .map(|range| range.contains(line_number))
-                    .unwrap_or(true)
-            })
-            .map(|(line_number, highlight_items)| {
-                let line_highlights: Vec<(usize, usize, &str)> = highlight_items
-                    .iter()
-                    .map(|i| {
-                        (
-                            i.start.column,
-                            i.end.column - i.start.column,
-                            language.highlight_group(i.highlight),
-                        )
-                    })
-                    .collect();
-
-                (*line_number, line_highlights)
-            })
-            .collect::<Vec<_>>();
+        let new_vim_highlights =
+            convert_raw_ts_highlights_to_vim_highlights(raw_ts_highlights, language, lines_range);
 
         if let Some(old) = self.ts_bufs.get(&bufnr) {
             let old_vim_highlights = &old.vim_highlights;
@@ -399,6 +379,37 @@ pub fn sublime_syntax_highlight<T: AsRef<str>>(
                     None
                 }
             }
+        })
+        .collect::<Vec<_>>()
+}
+
+/// Convert the raw highlight info to something that is directly applied by Vim.
+pub fn convert_raw_ts_highlights_to_vim_highlights(
+    raw_ts_highlights: &RawTsHighlights,
+    language: Language,
+    lines_range: Option<Range<usize>>,
+) -> VimHighlights {
+    raw_ts_highlights
+        .iter()
+        .filter(|(line_number, _)| {
+            lines_range
+                .as_ref()
+                .map(|range| range.contains(line_number))
+                .unwrap_or(true)
+        })
+        .map(|(line_number, highlight_items)| {
+            let line_highlights: Vec<(usize, usize, &str)> = highlight_items
+                .iter()
+                .map(|i| {
+                    (
+                        i.start.column,
+                        i.end.column - i.start.column,
+                        language.highlight_group(i.highlight),
+                    )
+                })
+                .collect();
+
+            (*line_number, line_highlights)
         })
         .collect::<Vec<_>>()
 }
