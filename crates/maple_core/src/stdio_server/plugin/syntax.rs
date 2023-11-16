@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 use std::ops::Range;
+use std::path::Path;
 
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
@@ -104,11 +105,20 @@ impl Syntax {
         {
             self.sublime_bufs.insert(bufnr, extension.to_string());
 
-            if self.tree_sitter_enabled
-                && tree_sitter::Language::try_from_extension(extension).is_some()
-            {
-                self.tree_sitter_highlight(bufnr, false).await?;
-                self.toggle.turn_on();
+            if self.tree_sitter_enabled {
+                if let Some(language) = tree_sitter::Language::try_from_extension(extension) {
+                    self.tree_sitter_highlight(bufnr, false, Some(language))
+                        .await?;
+                    self.toggle.turn_on();
+                } else {
+                    let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+
+                    if let Some(language) = tree_sitter::Language::try_from_filetype(&filetype) {
+                        self.tree_sitter_highlight(bufnr, false, Some(language))
+                            .await?;
+                        self.toggle.turn_on();
+                    }
+                }
             }
         }
 
@@ -158,13 +168,41 @@ impl Syntax {
         Ok(())
     }
 
+    async fn identify_buffer_language(&self, bufnr: usize, source_file: &Path) -> Option<Language> {
+        if let Some(language) = source_file.extension().and_then(|e| {
+            e.to_str()
+                .and_then(tree_sitter::Language::try_from_extension)
+        }) {
+            Some(language)
+        } else if let Ok(filetype) = self.vim.getbufvar::<String>(bufnr, "&filetype").await {
+            tree_sitter::Language::try_from_filetype(&filetype)
+        } else {
+            None
+        }
+    }
+
     async fn tree_sitter_highlight(
         &mut self,
         bufnr: usize,
         buf_modified: bool,
+        maybe_language: Option<Language>,
     ) -> Result<(), PluginError> {
         let source_file = self.vim.bufabspath(bufnr).await?;
         let source_file = std::path::PathBuf::from(source_file);
+
+        let language = match maybe_language {
+            Some(language) => language,
+            None => {
+                let Some(language) = self.identify_buffer_language(bufnr, &source_file).await
+                else {
+                    // No language detected, fallback to the vim regex syntax highlighting.
+                    self.vim.exec("execute", "syntax on")?;
+                    return Ok(());
+                };
+
+                language
+            }
+        };
 
         let source_code = if buf_modified {
             // TODO: this request the entire buffer content, which might be performance sensitive
@@ -175,15 +213,6 @@ impl Syntax {
             lines.join("\n").into_bytes()
         } else {
             std::fs::read(&source_file)?
-        };
-
-        let Some(language) = source_file.extension().and_then(|e| {
-            e.to_str()
-                .and_then(tree_sitter::Language::try_from_extension)
-        }) else {
-            // Enable vim regex syntax highlighting.
-            self.vim.exec("execute", "syntax on")?;
-            return Ok(());
         };
 
         if self.vim.eval::<usize>("exists('g:syntax_on')").await? != 0 {
@@ -406,7 +435,7 @@ impl ClapPlugin for Syntax {
             CursorMoved => {
                 if self.tree_sitter_enabled {
                     if self.vim.bufmodified(bufnr).await? {
-                        self.tree_sitter_highlight(bufnr, true).await?;
+                        self.tree_sitter_highlight(bufnr, true, None).await?;
                     } else if let Some(ts_info) = self.ts_bufs.get(&bufnr) {
                         let (_winid, line_start, line_end) =
                             self.vim.get_screen_lines_range().await?;
@@ -433,7 +462,7 @@ impl ClapPlugin for Syntax {
         match self.parse_action(method)? {
             SyntaxAction::TreeSitterHighlight => {
                 let bufnr = self.vim.bufnr("").await?;
-                self.tree_sitter_highlight(bufnr, false).await?;
+                self.tree_sitter_highlight(bufnr, false, None).await?;
                 self.tree_sitter_enabled = true;
                 self.toggle.turn_on();
             }
