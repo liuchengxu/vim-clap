@@ -16,19 +16,43 @@ use std::time::Duration;
 use sublime_syntax::TokenHighlight;
 use utils::display_width;
 
-type SyntaxHighlights = Vec<(usize, Vec<TokenHighlight>)>;
+type SublimeSyntaxHighlights = Vec<(usize, Vec<TokenHighlight>)>;
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct VimSyntaxInfo {
+    syntax: String,
+    fname: String,
+}
+
+impl VimSyntaxInfo {
+    fn syntax(syntax: String) -> Self {
+        Self {
+            syntax,
+            ..Default::default()
+        }
+    }
+
+    fn fname(fname: String) -> Self {
+        Self {
+            fname,
+            ..Default::default()
+        }
+    }
+}
 
 /// Preview content.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Preview {
     pub lines: Vec<String>,
-    /// Highlights from other highlight engine (sublime_syntax or tree_sitter).
+    /// If no sublime-syntax or tree-sitter highligths,
+    /// this field is intended to tell vim what syntax value
+    /// should be used for the highlighting. Ideally `syntax`
+    /// is returned, otherwise `fname` is returned and
+    /// Vim will inspect the syntax value from `fname`.
+    pub vim_syntax_info: VimSyntaxInfo,
+    /// Highlights from sublime-syntax highlight engine.
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub syntax_highlights: SyntaxHighlights,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub syntax: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub fname: Option<String>,
+    pub sublime_syntax_highlights: SublimeSyntaxHighlights,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hi_lnum: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -250,7 +274,7 @@ impl<'a> CachedPreviewImpl<'a> {
             .map(Into::into)
             .collect::<Vec<_>>();
         let mut preview = Preview::new(lines);
-        preview.syntax.replace("diff".into());
+        preview.vim_syntax_info.syntax = "diff".to_string();
         Ok(preview)
     }
 
@@ -268,7 +292,7 @@ impl<'a> CachedPreviewImpl<'a> {
             Preview {
                 lines,
                 hi_lnum: Some(1),
-                syntax: Some("help".into()),
+                vim_syntax_info: VimSyntaxInfo::syntax("help".into()),
                 ..Default::default()
             }
         } else {
@@ -375,21 +399,21 @@ impl<'a> CachedPreviewImpl<'a> {
             lines.push("<Empty file>".to_string());
             Ok(Preview {
                 lines,
-                fname: Some(fname),
+                vim_syntax_info: VimSyntaxInfo::fname(fname),
                 scrollbar,
                 ..Default::default()
             })
         } else if let Some(syntax) = preview_syntax(path) {
             Ok(Preview {
                 lines,
-                syntax: Some(syntax.into()),
+                vim_syntax_info: VimSyntaxInfo::syntax(syntax.into()),
                 scrollbar,
                 ..Default::default()
             })
         } else {
             Ok(Preview {
                 lines,
-                fname: Some(fname),
+                vim_syntax_info: VimSyntaxInfo::fname(fname),
                 scrollbar,
                 ..Default::default()
             })
@@ -488,11 +512,11 @@ impl<'a> CachedPreviewImpl<'a> {
                 };
 
                 if let Some(syntax_highlights) = maybe_syntax_highlights {
-                    preview.syntax_highlights = syntax_highlights;
+                    preview.sublime_syntax_highlights = syntax_highlights;
                 } else if let Some(syntax) = preview_syntax(path) {
-                    preview.syntax.replace(syntax.into());
+                    preview.vim_syntax_info.syntax = syntax.into();
                 } else {
-                    preview.fname.replace(fname);
+                    preview.vim_syntax_info.fname = fname;
                 }
 
                 preview
@@ -510,7 +534,7 @@ impl<'a> CachedPreviewImpl<'a> {
                 ];
                 Preview {
                     lines,
-                    fname: Some(fname),
+                    vim_syntax_info: VimSyntaxInfo::fname(fname),
                     ..Default::default()
                 }
             }
@@ -673,7 +697,7 @@ fn fetch_syntax_highlights(
     path: &Path,
     line_number_offset: usize,
     max_line_width: usize,
-) -> Option<SyntaxHighlights> {
+) -> Option<SublimeSyntaxHighlights> {
     use crate::config::HighlightEngine;
 
     let provider_config = &crate::config::config().provider;
