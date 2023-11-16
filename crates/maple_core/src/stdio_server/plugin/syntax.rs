@@ -159,7 +159,7 @@ impl Syntax {
         let line_highlights = sublime_syntax_highlight(syntax, lines.iter(), line_start, THEME);
 
         self.vim.exec(
-            "clap#highlighter#highlight_lines",
+            "clap#highlighter#add_sublime_highlights",
             (bufnr, &line_highlights),
         )?;
 

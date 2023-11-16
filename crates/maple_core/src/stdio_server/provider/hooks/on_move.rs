@@ -23,6 +23,7 @@ type SyntaxHighlights = Vec<(usize, Vec<TokenHighlight>)>;
 pub struct Preview {
     pub lines: Vec<String>,
     /// Highlights from other highlight engine (sublime_syntax or tree_sitter).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub syntax_highlights: SyntaxHighlights,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub syntax: Option<String>,
