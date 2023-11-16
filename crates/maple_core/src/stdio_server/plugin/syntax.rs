@@ -116,7 +116,7 @@ impl Syntax {
     }
 
     /// Highlight the visual lines of specified buffer.
-    // TODO: this may be inaccurate, e.g., the lines are part of a bigger block of comments.
+    // TODO: this may be inaccurate, e.g., the highlighted lines are part of a bigger block of comments.
     async fn sublime_syntax_highlight(&mut self, bufnr: usize) -> Result<(), PluginError> {
         let Some(extension) = self.sublime_bufs.get(&bufnr) else {
             return Ok(());
@@ -148,7 +148,6 @@ impl Syntax {
 
         let line_highlights = sublime_syntax_highlight(syntax, lines.iter(), line_start, THEME);
 
-        // TODO: Clear the outdated highlights first and then render the new highlights.
         self.vim.exec(
             "clap#highlighter#highlight_lines",
             (bufnr, &line_highlights),
@@ -168,7 +167,9 @@ impl Syntax {
         let source_file = std::path::PathBuf::from(source_file);
 
         let source_code = if buf_modified {
-            // TODO: this request the entire buffer content, which might be performance sensitive.
+            // TODO: this request the entire buffer content, which might be performance sensitive
+            // in case of large buffer, we should add some kind of buffer size limit.
+            //
             // Optimization: Get changed lines and apply to the previous version on the disk?
             let lines = self.vim.getbufline(bufnr, 1, "$").await?;
             lines.join("\n").into_bytes()
@@ -192,7 +193,7 @@ impl Syntax {
         let buffer_highlights = tree_sitter::highlight(language, &source_code)?;
 
         let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
-        let vim_highlights = self.apply_ts_highlights(
+        let maybe_vim_highlights = self.apply_ts_highlights(
             bufnr,
             language,
             &buffer_highlights,
@@ -204,7 +205,7 @@ impl Syntax {
             TreeSitterInfo {
                 language,
                 highlights: buffer_highlights.into(),
-                vim_highlights,
+                vim_highlights: maybe_vim_highlights.unwrap_or_default(),
             },
         );
 
@@ -217,7 +218,7 @@ impl Syntax {
         language: Language,
         buffer_highlights: &BTreeMap<usize, Vec<tree_sitter::HighlightItem>>,
         lines_range: Option<Range<usize>>,
-    ) -> Result<VimHighlights, PluginError> {
+    ) -> Result<Option<VimHighlights>, PluginError> {
         // Convert the raw highlight info to something that is easily applied by Vim.
         let new_vim_highlights = buffer_highlights
             .iter()
@@ -269,12 +270,7 @@ impl Syntax {
 
             // No new highlight changes since the last highlighting operation.
             if changed_highlights.is_empty() {
-                self.vim.exec(
-                    "clap#highlighter#add_ts_highlights",
-                    (bufnr, Vec::<(usize, usize)>::new(), &new_vim_highlights),
-                )?;
-
-                return Ok(new_vim_highlights);
+                return Ok(None);
             }
 
             // Keep the changed highlights only.
@@ -302,11 +298,10 @@ impl Syntax {
             )?;
         }
 
-        Ok(new_vim_highlights)
+        Ok(Some(new_vim_highlights))
     }
 
-    /// Refresh tree sitter highlights by reading the entire file and parse again.
-    // TODO: optimize this.
+    /// Refresh tree sitter highlights by reading the entire file and parsing it again.
     async fn refresh_tree_sitter_highlight(
         &mut self,
         bufnr: usize,
@@ -321,7 +316,7 @@ impl Syntax {
 
         let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
 
-        let new_vim_highlights = self.apply_ts_highlights(
+        let maybe_new_vim_highlights = self.apply_ts_highlights(
             bufnr,
             language,
             &new_highlights,
@@ -330,7 +325,9 @@ impl Syntax {
 
         self.ts_bufs.entry(bufnr).and_modify(|i| {
             i.highlights = new_highlights.into();
-            i.vim_highlights = new_vim_highlights;
+            if let Some(new_vim_highlights) = maybe_new_vim_highlights {
+                i.vim_highlights = new_vim_highlights;
+            }
         });
 
         Ok(())
@@ -411,7 +408,6 @@ impl ClapPlugin for Syntax {
                     if self.vim.bufmodified(bufnr).await? {
                         self.tree_sitter_highlight(bufnr, true).await?;
                     } else if let Some(ts_info) = self.ts_bufs.get(&bufnr) {
-                        // TODO: more efficient syntax highlighting update
                         let (_winid, line_start, line_end) =
                             self.vim.get_screen_lines_range().await?;
 
