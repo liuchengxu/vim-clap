@@ -148,11 +148,24 @@ function! clap#highlighter#highlight_line(bufnr, lnum, token_highlights) abort
   endfor
 endfunction
 
-function! clap#highlighter#add_ts_highlights(bufnr, highlights) abort
+function! clap#highlighter#add_ts_highlights(bufnr, to_replace_line_ranges, highlights) abort
   if has('nvim')
-    call nvim_buf_clear_namespace(a:bufnr, s:tree_sitter_ns_id, 0, -1)
+    " All old highlights need to be replaced.
+    if empty(a:to_replace_line_ranges)
+      call nvim_buf_clear_namespace(a:bufnr, s:tree_sitter_ns_id, 0, -1)
+    else
+      for [start, end] in a:to_replace_line_ranges
+        call nvim_buf_clear_namespace(a:bufnr, s:tree_sitter_ns_id, start, end)
+      endfor
+    endif
   elseif !empty(s:ts_types)
-    call prop_remove({ 'types': s:ts_types, 'all': v:true, 'bufnr': a:bufnr } )
+    if empty(a:to_replace_line_ranges)
+      call prop_remove({ 'types': s:ts_types, 'all': v:true, 'bufnr': a:bufnr } )
+    else
+      for [start, end] in a:to_replace_line_ranges
+        call prop_remove({ 'types': s:ts_types, 'all': v:true, 'bufnr': a:bufnr }, start + 1, end - 1)
+      endfor
+    endif
   endif
 
   for [line_number, highlights] in a:highlights

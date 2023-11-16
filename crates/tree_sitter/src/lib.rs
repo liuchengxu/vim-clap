@@ -11,7 +11,7 @@ pub use self::utf8_char_indices::{UncheckedUtf8CharIndices, Utf8CharIndices};
 pub use tree_sitter_highlight::Error as HighlightError;
 
 /// Parse .scm file for a list of node names.
-pub fn parse_nodes_table(query: &str) -> Vec<&str> {
+pub fn parse_scopes(query: &str) -> Vec<&str> {
     let mut groups = query
         .split('\n')
         .filter_map(|line| {
@@ -44,7 +44,7 @@ pub fn parse_nodes_table(query: &str) -> Vec<&str> {
 }
 
 /// Represents a highlight element within a line.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct HighlightItem {
     /// Column start, in bytes.
     pub start: Point,
@@ -192,6 +192,6 @@ mod tests {
 
     #[test]
     fn test_parse_highlight_groups() {
-        println!("{:?}", parse_nodes_table(tree_sitter_rust::HIGHLIGHT_QUERY));
+        println!("{:?}", parse_scopes(tree_sitter_rust::HIGHLIGHT_QUERY));
     }
 }

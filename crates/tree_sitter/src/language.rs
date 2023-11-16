@@ -4,6 +4,7 @@ use tree_sitter_highlight::{Highlight, HighlightConfiguration};
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum Language {
     Go,
+    Markdown,
     Rust,
     Toml,
     Viml,
@@ -34,11 +35,17 @@ impl Language {
         ("operator", "Operator"),
         ("property", "Identifier"),
         ("punctuation.delimiter", "Delimiter"),
+        ("punctuation.special", "Special"),
         ("string", "String"),
+        ("string.escape", "String"),
         ("string.special", "SpecialChar"),
         ("type", "Type"),
         ("type.definition", "Typedef"),
         ("type.builtin", "Type"),
+        ("text.literal", "SpecialChar"),
+        ("text.reference", "Float"),
+        ("text.title", "Title"),
+        ("text.uri", "Directory"),
         ("tag", "Tag"),
         ("attribute", "Conditional"),
         ("conditional", "Conditional"),
@@ -53,6 +60,7 @@ impl Language {
     pub fn try_from_extension(extension: &str) -> Option<Self> {
         let language = match extension {
             "go" => Self::Go,
+            "md" => Self::Markdown,
             "rs" => Self::Rust,
             "toml" => Self::Toml,
             "vim" => Self::Viml,
@@ -66,6 +74,7 @@ impl Language {
     pub fn try_from_filetype(filetype: &str) -> Option<Self> {
         let language = match filetype {
             "go" => Self::Go,
+            "markdown" => Self::Markdown,
             "rust" => Self::Rust,
             "toml" => Self::Toml,
             "vim" => Self::Viml,
@@ -76,7 +85,12 @@ impl Language {
     }
 
     pub fn highlight_names(&self) -> &[&str] {
-        Self::HIGHLIGHT_NAMES
+        match self {
+            Self::Markdown => {
+                todo!()
+            }
+            _ => Self::HIGHLIGHT_NAMES,
+        }
     }
 
     pub fn highlight_name(&self, highlight: Highlight) -> &'static str {
@@ -87,6 +101,16 @@ impl Language {
         Self::HIGHLIGHT_GROUPS[highlight.0].1
     }
 
+    pub fn highlight_query(&self) -> &str {
+        match self {
+            Self::Go => tree_sitter_go::HIGHLIGHT_QUERY,
+            Self::Markdown => tree_sitter_md::HIGHLIGHT_QUERY_BLOCK,
+            Self::Rust => tree_sitter_rust::HIGHLIGHT_QUERY,
+            Self::Toml => tree_sitter_toml::HIGHLIGHT_QUERY,
+            Self::Viml => tree_sitter_vim::HIGHLIGHT_QUERY,
+        }
+    }
+
     fn create_new_highlight_config(&self) -> HighlightConfiguration {
         let create_config_result = match self {
             Language::Go => HighlightConfiguration::new(
@@ -95,7 +119,12 @@ impl Language {
                 "",
                 "",
             ),
-
+            Language::Markdown => HighlightConfiguration::new(
+                tree_sitter_md::language(),
+                tree_sitter_md::HIGHLIGHT_QUERY_BLOCK,
+                "",
+                "",
+            ),
             Language::Rust => HighlightConfiguration::new(
                 tree_sitter_rust::language(),
                 tree_sitter_rust::HIGHLIGHT_QUERY,

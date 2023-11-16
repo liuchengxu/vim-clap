@@ -54,10 +54,16 @@ impl From<BTreeMap<usize, Vec<tree_sitter::HighlightItem>>> for BufferHighlights
     }
 }
 
+/// (start, length, highlight_group)
+type LineHighlights = Vec<(usize, usize, &'static str)>;
+type VimHighlights = Vec<(usize, LineHighlights)>;
+
 #[derive(Debug, Clone)]
 struct TreeSitterInfo {
     language: Language,
     highlights: BufferHighlights,
+    /// Current highlighting info.
+    vim_highlights: VimHighlights,
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
@@ -65,6 +71,7 @@ struct TreeSitterInfo {
     "list-sublime-themes",
     "sublime-syntax-highlight",
     "tree-sitter-highlight",
+    "tree-sitter-list-scopes",
     "tree-sitter-props-at-cursor",
     "toggle",
 ])]
@@ -100,7 +107,7 @@ impl Syntax {
             if self.tree_sitter_enabled
                 && tree_sitter::Language::try_from_extension(extension).is_some()
             {
-                self.tree_sitter_highlight(bufnr).await?;
+                self.tree_sitter_highlight(bufnr, false).await?;
                 self.toggle.turn_on();
             }
         }
@@ -152,11 +159,22 @@ impl Syntax {
         Ok(())
     }
 
-    async fn tree_sitter_highlight(&mut self, bufnr: usize) -> Result<(), PluginError> {
+    async fn tree_sitter_highlight(
+        &mut self,
+        bufnr: usize,
+        buf_modified: bool,
+    ) -> Result<(), PluginError> {
         let source_file = self.vim.bufabspath(bufnr).await?;
         let source_file = std::path::PathBuf::from(source_file);
 
-        let source_code = std::fs::read(&source_file)?;
+        let source_code = if buf_modified {
+            // TODO: this request the entire buffer content, which might be performance sensitive.
+            // Optimization: Get changed lines and apply to the previous version on the disk?
+            let lines = self.vim.getbufline(bufnr, 1, "$").await?;
+            lines.join("\n").into_bytes()
+        } else {
+            std::fs::read(&source_file)?
+        };
 
         let Some(language) = source_file.extension().and_then(|e| {
             e.to_str()
@@ -174,7 +192,7 @@ impl Syntax {
         let buffer_highlights = tree_sitter::highlight(language, &source_code)?;
 
         let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
-        self.apply_ts_highlights(
+        let vim_highlights = self.apply_ts_highlights(
             bufnr,
             language,
             &buffer_highlights,
@@ -186,6 +204,7 @@ impl Syntax {
             TreeSitterInfo {
                 language,
                 highlights: buffer_highlights.into(),
+                vim_highlights,
             },
         );
 
@@ -198,9 +217,9 @@ impl Syntax {
         language: Language,
         buffer_highlights: &BTreeMap<usize, Vec<tree_sitter::HighlightItem>>,
         lines_range: Option<Range<usize>>,
-    ) -> Result<(), PluginError> {
-        // Build highlights that can be applied by Vim easily.
-        let ts_highlights = buffer_highlights
+    ) -> Result<VimHighlights, PluginError> {
+        // Convert the raw highlight info to something that is easily applied by Vim.
+        let new_vim_highlights = buffer_highlights
             .iter()
             .filter(|(line_number, _)| {
                 lines_range
@@ -220,17 +239,73 @@ impl Syntax {
                     })
                     .collect();
 
-                (line_number, line_highlights)
+                (*line_number, line_highlights)
             })
             .collect::<Vec<_>>();
 
-        self.vim
-            .exec("clap#highlighter#add_ts_highlights", (bufnr, ts_highlights))?;
+        if let Some(old) = self.ts_bufs.get(&bufnr) {
+            let old_vim_highlights = &old.vim_highlights;
 
-        Ok(())
+            let (unchanged_highlights, changed_highlights): (Vec<_>, Vec<_>) = new_vim_highlights
+                .iter()
+                .partition(|item| old_vim_highlights.contains(item));
+
+            let unchanged_highlights = unchanged_highlights
+                .into_iter()
+                .map(|item| item.0)
+                .collect::<Vec<_>>();
+
+            let mut changed_highlights = changed_highlights
+                .into_iter()
+                .map(|item| item.0)
+                .collect::<Vec<_>>();
+
+            tracing::debug!(
+                total = new_vim_highlights.len(),
+                unchanged = unchanged_highlights.len(),
+                changed = changed_highlights.len(),
+                "Applying new highlights",
+            );
+
+            // No new highlight changes since the last highlighting operation.
+            if changed_highlights.is_empty() {
+                self.vim.exec(
+                    "clap#highlighter#add_ts_highlights",
+                    (bufnr, Vec::<(usize, usize)>::new(), &new_vim_highlights),
+                )?;
+
+                return Ok(new_vim_highlights);
+            }
+
+            // Keep the changed highlights only.
+            let diff_highlights = new_vim_highlights
+                .iter()
+                .filter(|item| changed_highlights.contains(&item.0))
+                .collect::<Vec<_>>();
+
+            changed_highlights.sort();
+
+            let changed_ranges = convert_consecutive_line_numbers_to_ranges(&changed_highlights);
+            let changed_ranges = changed_ranges
+                .into_iter()
+                .map(|range| (range.start, range.end))
+                .collect::<Vec<_>>();
+
+            self.vim.exec(
+                "clap#highlighter#add_ts_highlights",
+                (bufnr, changed_ranges, diff_highlights),
+            )?;
+        } else {
+            self.vim.exec(
+                "clap#highlighter#add_ts_highlights",
+                (bufnr, Vec::<(usize, usize)>::new(), &new_vim_highlights),
+            )?;
+        }
+
+        Ok(new_vim_highlights)
     }
 
-    // Refresh tree sitter highlights by reading the entire file and parse again.
+    /// Refresh tree sitter highlights by reading the entire file and parse again.
     // TODO: optimize this.
     async fn refresh_tree_sitter_highlight(
         &mut self,
@@ -246,7 +321,7 @@ impl Syntax {
 
         let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
 
-        self.apply_ts_highlights(
+        let new_vim_highlights = self.apply_ts_highlights(
             bufnr,
             language,
             &new_highlights,
@@ -255,6 +330,7 @@ impl Syntax {
 
         self.ts_bufs.entry(bufnr).and_modify(|i| {
             i.highlights = new_highlights.into();
+            i.vim_highlights = new_vim_highlights;
         });
 
         Ok(())
@@ -332,7 +408,9 @@ impl ClapPlugin for Syntax {
             }
             CursorMoved => {
                 if self.tree_sitter_enabled {
-                    if let Some(ts_info) = self.ts_bufs.get(&bufnr) {
+                    if self.vim.bufmodified(bufnr).await? {
+                        self.tree_sitter_highlight(bufnr, true).await?;
+                    } else if let Some(ts_info) = self.ts_bufs.get(&bufnr) {
                         // TODO: more efficient syntax highlighting update
                         let (_winid, line_start, line_end) =
                             self.vim.get_screen_lines_range().await?;
@@ -359,9 +437,17 @@ impl ClapPlugin for Syntax {
         match self.parse_action(method)? {
             SyntaxAction::TreeSitterHighlight => {
                 let bufnr = self.vim.bufnr("").await?;
-                self.tree_sitter_highlight(bufnr).await?;
+                self.tree_sitter_highlight(bufnr, false).await?;
                 self.tree_sitter_enabled = true;
                 self.toggle.turn_on();
+            }
+            SyntaxAction::TreeSitterListScopes => {
+                let bufnr = self.vim.bufnr("").await?;
+                let extension = self.vim.expand(format!("#{bufnr}:p:e")).await?;
+                if let Some(language) = tree_sitter::Language::try_from_extension(&extension) {
+                    let highlight_scopes = tree_sitter::parse_scopes(language.highlight_query());
+                    self.vim.echo_message(format!("{highlight_scopes:?}"))?;
+                }
             }
             SyntaxAction::TreeSitterPropsAtCursor => {
                 self.tree_sitter_props_at_cursor().await?;
@@ -387,5 +473,51 @@ impl ClapPlugin for Syntax {
         }
 
         Ok(())
+    }
+}
+
+fn convert_consecutive_line_numbers_to_ranges(input: &[usize]) -> Vec<Range<usize>> {
+    if input.is_empty() {
+        return Vec::new();
+    }
+
+    let mut ranges = Vec::new();
+
+    let mut start = input[0];
+    let mut end = input[0];
+
+    for &num in &input[1..] {
+        if num == end + 1 {
+            end = num;
+        } else {
+            ranges.push(start..end + 1);
+            start = num;
+            end = num;
+        }
+    }
+
+    ranges.push(start..end + 1);
+
+    ranges
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_convert_consecutive_line_numbers_to_ranges() {
+        let input = [1, 2, 4, 5, 6, 7, 8, 9, 20, 23, 24];
+
+        assert_eq!(
+            vec![1..3, 4..10, 20..21, 23..25],
+            convert_consecutive_line_numbers_to_ranges(&input)
+        );
+
+        let input = [1];
+        assert_eq!(
+            vec![1..2],
+            convert_consecutive_line_numbers_to_ranges(&input)
+        );
     }
 }
