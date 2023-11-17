@@ -737,7 +737,7 @@ fn fetch_syntax_highlights(
         HighlightEngine::SublimeSyntax => {
             const THEME: &str = "Visual Studio Dark+";
 
-            let theme = match &provider_config.preview_color_scheme {
+            let theme = match &provider_config.sublime_syntax_color_scheme {
                 Some(theme) => {
                     if sublime_theme_exists(theme) {
                         theme.as_str()

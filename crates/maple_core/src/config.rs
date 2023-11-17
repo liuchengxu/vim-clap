@@ -223,7 +223,7 @@ pub struct ProviderConfig {
     ///
     /// If the theme is not found and the engine is [`HighlightEngine::SublimeSyntax`],
     /// the default theme (`Visual Studio Dark+`) will be used.
-    pub preview_color_scheme: Option<String>,
+    pub sublime_syntax_color_scheme: Option<String>,
 
     /// Whether to share the input history of each provider.
     pub share_input_history: bool,
