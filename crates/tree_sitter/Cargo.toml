@@ -13,8 +13,14 @@ tree-sitter-highlight = "0.20"
 # tree-sitter-traversal = "0.1"
 
 # Languages
+tree-sitter-bash = "0.20"
+tree-sitter-c = "0.20"
+tree-sitter-cpp = "0.20"
 tree-sitter-go = "0.20"
+tree-sitter-javascript = "0.20"
+tree-sitter-json = "0.20"
 tree-sitter-md = "0.1.7"
+tree-sitter-python = "0.20"
 tree-sitter-rust = "0.20"
 tree-sitter-toml = "0.20"
 tree-sitter-vim = { git = "https://github.com/liuchengxu/tree-sitter-vim", rev = "a001587c17ab24fdade5403eb6c4763460d6814c" }
