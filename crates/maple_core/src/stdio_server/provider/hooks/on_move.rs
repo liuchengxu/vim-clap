@@ -2,7 +2,10 @@ use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
 use crate::previewer::{get_file_preview, FilePreview};
 use crate::stdio_server::job;
-use crate::stdio_server::plugin::syntax::{sublime_syntax_highlight, SUBLIME_SYNTAX_HIGHLIGHTER};
+use crate::stdio_server::plugin::syntax::{
+    convert_raw_ts_highlights_to_vim_highlights, sublime_syntax_by_extension,
+    sublime_syntax_highlight, sublime_theme_exists,
+};
 use crate::stdio_server::provider::{read_dir_entries, Context, ProviderSource};
 use crate::stdio_server::vim::{preview_syntax, VimResult};
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
@@ -17,7 +20,7 @@ use std::time::Duration;
 use sublime_syntax::TokenHighlight;
 use utils::display_width;
 
-type SublimeSyntaxHighlights = Vec<(usize, Vec<TokenHighlight>)>;
+type SublimeHighlights = Vec<(usize, Vec<TokenHighlight>)>;
 
 /// (start, length, highlight_group)
 type LineHighlights = Vec<(usize, usize, String)>;
@@ -57,7 +60,7 @@ pub struct Preview {
     pub vim_syntax_info: VimSyntaxInfo,
     /// Highlights from sublime-syntax highlight engine.
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub sublime_syntax_highlights: SublimeSyntaxHighlights,
+    pub sublime_syntax_highlights: SublimeHighlights,
     /// Highlights from tree-sitter highlight engine.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tree_sitter_highlights: TsHighlights,
@@ -76,15 +79,16 @@ impl Preview {
     }
 }
 
+/// Represents various targets for previews in clap provider.
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
 pub enum PreviewTarget {
     /// List the entries under a directory.
     Directory(PathBuf),
     /// Start from the beginning of a file.
     File(PathBuf),
-    /// A specific location in a file.
+    /// Represents a specific location in a file identified by its path and line number.
     LineInFile { path: PathBuf, line_number: usize },
-    /// Git commit revision.
+    /// Represents a Git commit revision specified by its commit hash.
     GitCommit(String),
     /// Specifically for the `help_tags` provider.
     HelpTags {
@@ -95,6 +99,7 @@ pub enum PreviewTarget {
 }
 
 impl PreviewTarget {
+    /// Returns the path associated with the enum variant, or `None` if no path exists.
     pub fn path(&self) -> Option<&Path> {
         match self {
             Self::File(path) | Self::Directory(path) | Self::LineInFile { path, .. } => Some(path),
@@ -711,7 +716,7 @@ async fn fetch_context_lines(
 }
 
 enum SublimeOrTreeSitter {
-    Sublime(SublimeSyntaxHighlights),
+    Sublime(SublimeHighlights),
     TreeSitter(TsHighlights),
     Neither,
 }
@@ -734,7 +739,7 @@ fn fetch_syntax_highlights(
 
             let theme = match &provider_config.preview_color_scheme {
                 Some(theme) => {
-                    if SUBLIME_SYNTAX_HIGHLIGHTER.theme_exists(theme) {
+                    if sublime_theme_exists(theme) {
                         theme.as_str()
                     } else {
                         tracing::warn!(
@@ -748,11 +753,7 @@ fn fetch_syntax_highlights(
 
             path.extension()
                 .and_then(|s| s.to_str())
-                .and_then(|extension| {
-                    SUBLIME_SYNTAX_HIGHLIGHTER
-                        .syntax_set
-                        .find_syntax_by_extension(extension)
-                })
+                .and_then(sublime_syntax_by_extension)
                 .map(|syntax| {
                     //  Same reason as [`Self::truncate_preview_lines()`], if a line is too
                     //  long and the query is short, the highlights can be enomerous and
@@ -768,41 +769,49 @@ fn fetch_syntax_highlights(
                 .unwrap_or(SublimeOrTreeSitter::Neither)
         }
         HighlightEngine::TreeSitter => {
-            // TODO: max file size limit?
+            // TODO: max file size limit and max line limit?
             path.extension()
                 .and_then(|s| s.to_str())
-                .and_then(|extension| {
-                  tree_sitter::Language::try_from_extension(extension)
+                .and_then(tree_sitter::Language::try_from_extension)
+                .and_then(|language| {
+                    let Ok(source_code) = std::fs::read(path) else {
+                        return None;
+                    };
+
+                    let Ok(raw_highlights) = tree_sitter::highlight(language, &source_code) else {
+                        return None;
+                    };
+
+                    let line_start = range.start;
+                    let ts_highlights = convert_raw_ts_highlights_to_vim_highlights(
+                        &raw_highlights,
+                        language,
+                        Some(range),
+                    );
+
+                    Some(
+                        ts_highlights
+                            .into_iter()
+                            .map(|(line_number, line_highlights)| {
+                                let line_number_in_preview_win =
+                                    line_number - line_start + 1 + context_lines_offset;
+
+                                // Workaround the lifetime issue, nice to remove this allocation
+                                // `group.to_string()` as it's essentially `&'static str`.
+                                let line_highlights = line_highlights
+                                    .into_iter()
+                                    .map(|(start, length, group)| {
+                                        (start, length, group.to_string())
+                                    })
+                                    .collect();
+
+                                (line_number_in_preview_win, line_highlights)
+                            })
+                            .collect(),
+                    )
                 })
-            .and_then(|language|{
-                let Ok(source_code) = std::fs::read(path) else {
-                  return None;
-                };
-
-                let Ok(raw_highlights) = tree_sitter::highlight(language, &source_code) else {
-                  return None;
-                };
-
-                let line_start = range.start;
-                let ts_highlights = crate::stdio_server::plugin::syntax::convert_raw_ts_highlights_to_vim_highlights(&raw_highlights, language, Some(range));
-
-                Some(
-                  ts_highlights
-                  .into_iter()
-                  .map(|(line_number, line_highlights)| {
-                    let line_number_in_preview_win = line_number - line_start + 1 + context_lines_offset;
-
-                    // Workaround the lifetime issue, nice to remove this allocation
-                    // `group.to_string()` as it's essentially `&'static str`.
-                    let line_highlights = line_highlights
-                        .into_iter()
-                        .map(|(start, length, group)| (start, length, group.to_string())).collect();
-
-                    (line_number_in_preview_win, line_highlights)
-                  }).collect())
-            })
-            .map(SublimeOrTreeSitter::TreeSitter)
-            .unwrap_or(SublimeOrTreeSitter::Neither)
+                .map(SublimeOrTreeSitter::TreeSitter)
+                .unwrap_or(SublimeOrTreeSitter::Neither)
         }
         HighlightEngine::Vim => SublimeOrTreeSitter::Neither,
     }

@@ -23,6 +23,8 @@ macro_rules! highlight_names {
     };
 }
 
+// language => scope, Link
+
 impl Language {
     highlight_names![
         ("comment", "Comment"),

@@ -10,7 +10,7 @@ use once_cell::sync::Lazy;
 use sublime_syntax::{SyntaxReference, TokenHighlight};
 use tree_sitter::Language;
 
-pub static SUBLIME_SYNTAX_HIGHLIGHTER: Lazy<sublime_syntax::SyntaxHighlighter> =
+static SUBLIME_SYNTAX_HIGHLIGHTER: Lazy<sublime_syntax::SyntaxHighlighter> =
     Lazy::new(sublime_syntax::SyntaxHighlighter::new);
 
 #[allow(unused)]
@@ -359,6 +359,16 @@ impl Syntax {
 
         Ok(())
     }
+}
+
+pub fn sublime_theme_exists(theme: &str) -> bool {
+    SUBLIME_SYNTAX_HIGHLIGHTER.theme_exists(theme)
+}
+
+pub fn sublime_syntax_by_extension(extension: &str) -> Option<&SyntaxReference> {
+    SUBLIME_SYNTAX_HIGHLIGHTER
+        .syntax_set
+        .find_syntax_by_extension(extension)
 }
 
 pub fn sublime_syntax_highlight<T: AsRef<str>>(
