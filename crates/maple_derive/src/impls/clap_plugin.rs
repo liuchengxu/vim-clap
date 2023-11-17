@@ -143,14 +143,14 @@ pub fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
             callable_actions_list.push(action_var.clone());
 
             quote! {
-                const #action_lit: &str = #namespaced_action;
+                const #action_lit: &'static str = #namespaced_action;
                 const #action_var: types::Action = types::Action::callable(Self::#action_lit);
             }
         } else {
             internal_actions_list.push(action_var.clone());
 
             quote! {
-                const #action_lit: &str = #namespaced_action;
+                const #action_lit: &'static str = #namespaced_action;
                 #[allow(non_upper_case_globals)]
                 const #action_var: types::Action = types::Action::internal(Self::#action_lit);
             }
@@ -204,9 +204,9 @@ pub fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
         impl #ident {
             #(#constants)*
 
-            const CALLABLE_ACTIONS: &[types::Action] = &[#(Self::#callable_actions_list),*];
-            const INTERNAL_ACTIONS: &[types::Action] = &[#(Self::#internal_actions_list),*];
-            const ACTIONS: &[types::Action] = &[#(Self::#actions_list),*];
+            const CALLABLE_ACTIONS: &'static [types::Action] = &[#(Self::#callable_actions_list),*];
+            const INTERNAL_ACTIONS: &'static [types::Action] = &[#(Self::#internal_actions_list),*];
+            const ACTIONS: &'static [types::Action] = &[#(Self::#actions_list),*];
 
         }
 
