@@ -726,6 +726,8 @@ enum SublimeOrTreeSitter {
     Neither,
 }
 
+// TODO: this might be slow for larger files (over 100k lines) as tree-sitter will have to
+// parse the whole file to obtain the highlight info. We may make the highlighting async.
 fn fetch_syntax_highlights(
     lines: &[String],
     path: &Path,
