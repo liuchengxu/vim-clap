@@ -17,7 +17,7 @@ pub use self::cursorword::Cursorword as CursorwordPlugin;
 pub use self::git::Git as GitPlugin;
 pub use self::linter::Linter as LinterPlugin;
 pub use self::markdown::Markdown as MarkdownPlugin;
-pub use self::syntax::Syntax as SyntaxHighlighterPlugin;
+pub use self::syntax::Syntax as SyntaxPlugin;
 pub use self::system::System as SystemPlugin;
 pub use types::{Action, ActionType, ClapAction};
 
