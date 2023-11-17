@@ -97,7 +97,6 @@ impl ClapPlugin for System {
                 })?;
 
                 let mut ctx = ClipboardContext::new().map_err(PluginError::Clipboard)?;
-                tracing::debug!("{content} copied to clipboard");
                 match ctx.set_contents(content) {
                     Ok(()) => {
                         self.vim.echo_info("copied to clipboard successfully")?;

@@ -123,7 +123,6 @@ function! clap#state#render_preview(preview) abort
         endtry
       endfor
     elseif has_key(a:preview, 'tree_sitter_highlights')
-      " echom string(a:preview.tree_sitter_highlights)
       call clap#highlighter#add_ts_highlights(g:clap.preview.bufnr, [], a:preview.tree_sitter_highlights)
     elseif has_key(a:preview, 'vim_syntax_info')
       let vim_syntax_info = a:preview.vim_syntax_info
