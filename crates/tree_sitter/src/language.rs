@@ -85,12 +85,8 @@ impl Language {
     }
 
     pub fn highlight_names(&self) -> &[&str] {
-        match self {
-            Self::Markdown => {
-                todo!()
-            }
-            _ => Self::HIGHLIGHT_NAMES,
-        }
+        // TODO: configurable
+        Self::HIGHLIGHT_NAMES
     }
 
     pub fn highlight_name(&self, highlight: Highlight) -> &'static str {
