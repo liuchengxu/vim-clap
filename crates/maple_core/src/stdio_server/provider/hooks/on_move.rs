@@ -46,6 +46,10 @@ impl VimSyntaxInfo {
             ..Default::default()
         }
     }
+
+    fn is_empty(&self) -> bool {
+        self.syntax.is_empty() && self.fname.is_empty()
+    }
 }
 
 /// Preview content.
@@ -57,6 +61,7 @@ pub struct Preview {
     /// should be used for the highlighting. Ideally `syntax`
     /// is returned, otherwise `fname` is returned and
     /// Vim will inspect the syntax value from `fname`.
+    #[serde(skip_serializing_if = "VimSyntaxInfo::is_empty")]
     pub vim_syntax_info: VimSyntaxInfo,
     /// Highlights from sublime-syntax highlight engine.
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -800,8 +805,12 @@ fn fetch_syntax_highlights(
                                 // `group.to_string()` as it's essentially `&'static str`.
                                 let line_highlights = line_highlights
                                     .into_iter()
-                                    .map(|(start, length, group)| {
-                                        (start, length, group.to_string())
+                                    .filter_map(|(start, length, group)| {
+                                        if start + length > max_line_width {
+                                            None
+                                        } else {
+                                            Some((start, length, group.to_string()))
+                                        }
                                     })
                                     .collect();
 

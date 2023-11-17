@@ -84,7 +84,12 @@ else
 
   " lnum is 0-based.
   function! s:add_ts_highlight_at(bufnr, lnum, col, length, hl_group) abort
-    call prop_add(a:lnum+1, a:col+1, {'length': a:length, 'type': a:hl_group, 'bufnr': a:bufnr})
+    try
+      call prop_add(a:lnum+1, a:col+1, {'length': a:length, 'type': a:hl_group, 'bufnr': a:bufnr})
+    catch
+      " Not sure why, but I keep run into error: Invalid line number, neovim
+      " does not have this issue.
+    endtry
   endfunction
 
   function! s:add_display_highlights(hl_lines) abort
@@ -170,7 +175,7 @@ function! clap#highlighter#add_ts_highlights(bufnr, to_replace_line_ranges, high
       call prop_remove({ 'types': s:ts_types, 'all': v:true, 'bufnr': a:bufnr } )
     else
       for [start, end] in a:to_replace_line_ranges
-        call prop_remove({ 'types': s:ts_types, 'all': v:true, 'bufnr': a:bufnr }, start + 1, end - 1)
+        call prop_remove({ 'types': s:ts_types, 'all': v:true, 'bufnr': a:bufnr }, start, end)
       endfor
     endif
   endif
