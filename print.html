@@ -545,11 +545,15 @@ Use <code>:q</code> to exit.</li>
 </blockquote>
 <p>Vim-Clap was originally a mere Vim fuzzy picker plugin, however, the integration of a robust Rust backend unveiled the potential to implement various additional functionalities effortlessly, for enjoyable experimentation and potential performance enhancements.</p>
 <p>Note that the vim-Clap plugins were mainly created for the plugin author's personal uses, thus they may not be feature-complete as their alternatives. Bugs are expected as these plugins are not extensively tested, feel free to use if you are brave enough.</p>
-<p>All the non-system plugins are disabled by default. To enable the plugins, you must create a <a href="plugins/./config.html">config file</a> first and set <code>enable = true</code> explicitly for the plugins in the config file.</p>
+<p>You must enable the <code>g:clap_plugin_experimental</code> flag in your <code>.vimrc</code> and create a <a href="plugins/./config.html">config file</a> beforehand.</p>
+<pre><code class="language-vim">&quot; Specify this variable to enable the plugin feature.
+let g:clap_plugin_experimental = v:true
+</code></pre>
+<p>All the non-system plugins are disabled by default. To enable the plugins, you need to set <code>enable = true</code> explicitly for the plugins in the config file.</p>
 <pre><code class="language-toml">[plugin.git]
 enable = true
 </code></pre>
-<p>Check out <a href="plugins/./plugins.html">Available Plugins</a> for more info.</p>
+<p>Check out <a href="plugins/./plugins.html">Available Plugins</a> for detailed introduction to the plugins. Try <code>:Clap clap_actions</code> to take a look at the existing actions.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
 <p>User config file is loaded from:</p>
 <ul>
@@ -578,6 +582,7 @@ tiebreak = &quot;score,-begin,-end,-length&quot;
 <li><a href="plugins/plugins.html#git">git</a></li>
 <li><a href="plugins/plugins.html#linter">linter</a></li>
 <li><a href="plugins/plugins.html#markdown">markdown</a></li>
+<li><a href="plugins/plugins.html#syntax">syntax</a></li>
 </ul>
 <!-- /clap-markdown-toc -->
 <h2 id="colorizer"><a class="header" href="#colorizer">colorizer</a></h2>
@@ -641,6 +646,11 @@ enable = true
 </ul>
 </li>
 </ul>
+<h2 id="syntax"><a class="header" href="#syntax">syntax</a></h2>
+<pre><code class="language-toml">[plugin.syntax]
+enable = true
+</code></pre>
+<p>This plugin implements the sublime-syntax and tree-sitter highlighting. The plugin author already uses the latter a lot.</p>
 
                     </main>
 
