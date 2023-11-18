@@ -1,6 +1,5 @@
 use clap::Parser;
 use cli::{Args, RunCmd};
-use color_eyre::eyre::Result;
 
 const BUILD_TIME: &str = include!(concat!(env!("OUT_DIR"), "/compiled_at.txt"));
 
@@ -41,9 +40,7 @@ pub struct Maple {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
-    color_eyre::install()?;
-
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let maple = Maple::parse();
 
     match maple.cmd {

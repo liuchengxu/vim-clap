@@ -114,18 +114,23 @@ function! clap#state#render_preview(preview) abort
       call g:clap.preview.show(['Error occurred while showing the preview:', v:exception, '', string(a:preview.lines)])
       return
     endtry
-    if has_key(a:preview, 'syntax')
-      call g:clap.preview.set_syntax(a:preview.syntax)
-    elseif has_key(a:preview, 'fname')
-      call g:clap.preview.set_syntax(clap#ext#into_filetype(a:preview.fname))
-    elseif has_key(a:preview, 'syntax_highlights')
-      for [lnum, line_highlight] in a:preview.syntax_highlights
+    if has_key(a:preview, 'sublime_syntax_highlights')
+      for [lnum, line_highlight] in a:preview.sublime_syntax_highlights
         try
           call clap#highlighter#highlight_line(g:clap.preview.bufnr, lnum, line_highlight)
         catch
           " Ignore any potential errors as the line might be truncated.
         endtry
       endfor
+    elseif has_key(a:preview, 'tree_sitter_highlights')
+      call clap#highlighter#add_ts_highlights(g:clap.preview.bufnr, [], a:preview.tree_sitter_highlights)
+    elseif has_key(a:preview, 'vim_syntax_info')
+      let vim_syntax_info = a:preview.vim_syntax_info
+      if !empty(vim_syntax_info.syntax)
+        call g:clap.preview.set_syntax(vim_syntax_info.syntax)
+      elseif !empty(vim_syntax_info.fname)
+        call g:clap.preview.set_syntax(clap#ext#into_filetype(vim_syntax_info.fname))
+      endif
     endif
     call clap#preview#highlight_header()
 

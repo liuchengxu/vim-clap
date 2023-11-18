@@ -221,7 +221,7 @@ impl ProjectCtagsCommand {
     pub const TAGS_CMD: &'static [&'static str] =
         &["ctags", "-R", "-x", "--output-format=json", "--fields=+n"];
 
-    const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
+    const BASE_TAGS_CMD: &'static str = "ctags -R -x --output-format=json --fields=+n";
 
     /// Creates an instance of [`ProjectCtagsCommand`].
     pub fn new(std_cmd: std::process::Command, shell_cmd: ShellCommand) -> Self {

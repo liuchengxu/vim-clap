@@ -1,4 +1,4 @@
-//! This crate provides the feature of diplaying the information of filtered lines
+//! This crate provides the feature of displaying the information of filtered lines
 //! by printing them to stdout in JSON format.
 
 mod trimmer;

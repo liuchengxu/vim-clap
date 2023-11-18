@@ -2,7 +2,10 @@ use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
 use crate::previewer::{get_file_preview, FilePreview};
 use crate::stdio_server::job;
-use crate::stdio_server::plugin::syntax::{sublime_syntax_highlight, SUBLIME_SYNTAX_HIGHLIGHTER};
+use crate::stdio_server::plugin::syntax::{
+    convert_raw_ts_highlights_to_vim_highlights, sublime_syntax_by_extension,
+    sublime_syntax_highlight, sublime_theme_exists,
+};
 use crate::stdio_server::provider::{read_dir_entries, Context, ProviderSource};
 use crate::stdio_server::vim::{preview_syntax, VimResult};
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
@@ -10,24 +13,62 @@ use paths::{expand_tilde, truncate_absolute_path};
 use pattern::*;
 use serde::{Deserialize, Serialize};
 use std::io::{Error, ErrorKind, Result};
+use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 use sublime_syntax::TokenHighlight;
 use utils::display_width;
 
-type SyntaxHighlights = Vec<(usize, Vec<TokenHighlight>)>;
+type SublimeHighlights = Vec<(usize, Vec<TokenHighlight>)>;
+
+/// (start, length, highlight_group)
+type LineHighlights = Vec<(usize, usize, String)>;
+type TsHighlights = Vec<(usize, LineHighlights)>;
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct VimSyntaxInfo {
+    syntax: String,
+    fname: String,
+}
+
+impl VimSyntaxInfo {
+    fn syntax(syntax: String) -> Self {
+        Self {
+            syntax,
+            ..Default::default()
+        }
+    }
+
+    fn fname(fname: String) -> Self {
+        Self {
+            fname,
+            ..Default::default()
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.syntax.is_empty() && self.fname.is_empty()
+    }
+}
 
 /// Preview content.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Preview {
     pub lines: Vec<String>,
-    /// Highlights from other highlight engine (sublime_syntax or tree_sitter).
-    pub syntax_highlights: SyntaxHighlights,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub syntax: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub fname: Option<String>,
+    /// If no sublime-syntax or tree-sitter highligths,
+    /// this field is intended to tell vim what syntax value
+    /// should be used for the highlighting. Ideally `syntax`
+    /// is returned, otherwise `fname` is returned and
+    /// Vim will inspect the syntax value from `fname`.
+    #[serde(skip_serializing_if = "VimSyntaxInfo::is_empty")]
+    pub vim_syntax_info: VimSyntaxInfo,
+    /// Highlights from sublime-syntax highlight engine.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub sublime_syntax_highlights: SublimeHighlights,
+    /// Highlights from tree-sitter highlight engine.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub tree_sitter_highlights: TsHighlights,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hi_lnum: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -43,15 +84,16 @@ impl Preview {
     }
 }
 
+/// Represents various targets for previews in clap provider.
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
 pub enum PreviewTarget {
     /// List the entries under a directory.
     Directory(PathBuf),
     /// Start from the beginning of a file.
     File(PathBuf),
-    /// A specific location in a file.
+    /// Represents a specific location in a file identified by its path and line number.
     LineInFile { path: PathBuf, line_number: usize },
-    /// Git commit revision.
+    /// Represents a Git commit revision specified by its commit hash.
     GitCommit(String),
     /// Specifically for the `help_tags` provider.
     HelpTags {
@@ -62,6 +104,7 @@ pub enum PreviewTarget {
 }
 
 impl PreviewTarget {
+    /// Returns the path associated with the enum variant, or `None` if no path exists.
     pub fn path(&self) -> Option<&Path> {
         match self {
             Self::File(path) | Self::Directory(path) | Self::LineInFile { path, .. } => Some(path),
@@ -249,7 +292,7 @@ impl<'a> CachedPreviewImpl<'a> {
             .map(Into::into)
             .collect::<Vec<_>>();
         let mut preview = Preview::new(lines);
-        preview.syntax.replace("diff".into());
+        preview.vim_syntax_info.syntax = "diff".to_string();
         Ok(preview)
     }
 
@@ -267,7 +310,7 @@ impl<'a> CachedPreviewImpl<'a> {
             Preview {
                 lines,
                 hi_lnum: Some(1),
-                syntax: Some("help".into()),
+                vim_syntax_info: VimSyntaxInfo::syntax("help".into()),
                 ..Default::default()
             }
         } else {
@@ -374,21 +417,21 @@ impl<'a> CachedPreviewImpl<'a> {
             lines.push("<Empty file>".to_string());
             Ok(Preview {
                 lines,
-                fname: Some(fname),
+                vim_syntax_info: VimSyntaxInfo::fname(fname),
                 scrollbar,
                 ..Default::default()
             })
         } else if let Some(syntax) = preview_syntax(path) {
             Ok(Preview {
                 lines,
-                syntax: Some(syntax.into()),
+                vim_syntax_info: VimSyntaxInfo::syntax(syntax.into()),
                 scrollbar,
                 ..Default::default()
             })
         } else {
             Ok(Preview {
                 lines,
-                fname: Some(fname),
+                vim_syntax_info: VimSyntaxInfo::fname(fname),
                 scrollbar,
                 ..Default::default()
             })
@@ -437,11 +480,13 @@ impl<'a> CachedPreviewImpl<'a> {
 
                 // 1 (header line) + 1 (1-based line number)
                 let line_number_offset = context_lines.len() + 1 + 1;
-                let maybe_syntax_highlights = fetch_syntax_highlights(
+                let sublime_or_ts_highlights = fetch_syntax_highlights(
                     &lines,
                     path,
                     line_number_offset,
                     self.max_line_width(),
+                    start..end + 1,
+                    context_lines.len(),
                 );
 
                 let header_line = truncated_preview_header();
@@ -486,12 +531,20 @@ impl<'a> CachedPreviewImpl<'a> {
                     ..Default::default()
                 };
 
-                if let Some(syntax_highlights) = maybe_syntax_highlights {
-                    preview.syntax_highlights = syntax_highlights;
-                } else if let Some(syntax) = preview_syntax(path) {
-                    preview.syntax.replace(syntax.into());
-                } else {
-                    preview.fname.replace(fname);
+                match sublime_or_ts_highlights {
+                    SublimeOrTreeSitter::Sublime(v) => {
+                        preview.sublime_syntax_highlights = v;
+                    }
+                    SublimeOrTreeSitter::TreeSitter(v) => {
+                        preview.tree_sitter_highlights = v;
+                    }
+                    SublimeOrTreeSitter::Neither => {
+                        if let Some(syntax) = preview_syntax(path) {
+                            preview.vim_syntax_info.syntax = syntax.into();
+                        } else {
+                            preview.vim_syntax_info.fname = fname;
+                        }
+                    }
                 }
 
                 preview
@@ -509,7 +562,7 @@ impl<'a> CachedPreviewImpl<'a> {
                 ];
                 Preview {
                     lines,
-                    fname: Some(fname),
+                    vim_syntax_info: VimSyntaxInfo::fname(fname),
                     ..Default::default()
                 }
             }
@@ -667,12 +720,22 @@ async fn fetch_context_lines(
     context_lines
 }
 
+enum SublimeOrTreeSitter {
+    Sublime(SublimeHighlights),
+    TreeSitter(TsHighlights),
+    Neither,
+}
+
+// TODO: this might be slow for larger files (over 100k lines) as tree-sitter will have to
+// parse the whole file to obtain the highlight info. We may make the highlighting async.
 fn fetch_syntax_highlights(
     lines: &[String],
     path: &Path,
     line_number_offset: usize,
     max_line_width: usize,
-) -> Option<SyntaxHighlights> {
+    range: Range<usize>,
+    context_lines_offset: usize,
+) -> SublimeOrTreeSitter {
     use crate::config::HighlightEngine;
 
     let provider_config = &crate::config::config().provider;
@@ -681,9 +744,9 @@ fn fetch_syntax_highlights(
         HighlightEngine::SublimeSyntax => {
             const THEME: &str = "Visual Studio Dark+";
 
-            let theme = match &provider_config.preview_color_scheme {
+            let theme = match &provider_config.sublime_syntax_color_scheme {
                 Some(theme) => {
-                    if SUBLIME_SYNTAX_HIGHLIGHTER.theme_exists(theme) {
+                    if sublime_theme_exists(theme) {
                         theme.as_str()
                     } else {
                         tracing::warn!(
@@ -697,11 +760,7 @@ fn fetch_syntax_highlights(
 
             path.extension()
                 .and_then(|s| s.to_str())
-                .and_then(|extension| {
-                    SUBLIME_SYNTAX_HIGHLIGHTER
-                        .syntax_set
-                        .find_syntax_by_extension(extension)
-                })
+                .and_then(sublime_syntax_by_extension)
                 .map(|syntax| {
                     //  Same reason as [`Self::truncate_preview_lines()`], if a line is too
                     //  long and the query is short, the highlights can be enomerous and
@@ -713,8 +772,58 @@ fn fetch_syntax_highlights(
                     });
                     sublime_syntax_highlight(syntax, lines, line_number_offset, theme)
                 })
+                .map(SublimeOrTreeSitter::Sublime)
+                .unwrap_or(SublimeOrTreeSitter::Neither)
         }
-        HighlightEngine::TreeSitter => None,
-        HighlightEngine::Vim => None,
+        HighlightEngine::TreeSitter => {
+            // TODO: max file size limit and max line limit?
+            path.extension()
+                .and_then(|s| s.to_str())
+                .and_then(tree_sitter::Language::try_from_extension)
+                .and_then(|language| {
+                    let Ok(source_code) = std::fs::read(path) else {
+                        return None;
+                    };
+
+                    let Ok(raw_highlights) = tree_sitter::highlight(language, &source_code) else {
+                        return None;
+                    };
+
+                    let line_start = range.start;
+                    let ts_highlights = convert_raw_ts_highlights_to_vim_highlights(
+                        &raw_highlights,
+                        language,
+                        Some(range),
+                    );
+
+                    Some(
+                        ts_highlights
+                            .into_iter()
+                            .map(|(line_number, line_highlights)| {
+                                let line_number_in_preview_win =
+                                    line_number - line_start + 1 + context_lines_offset;
+
+                                // Workaround the lifetime issue, nice to remove this allocation
+                                // `group.to_string()` as it's essentially `&'static str`.
+                                let line_highlights = line_highlights
+                                    .into_iter()
+                                    .filter_map(|(start, length, group)| {
+                                        if start + length > max_line_width {
+                                            None
+                                        } else {
+                                            Some((start, length, group.to_string()))
+                                        }
+                                    })
+                                    .collect();
+
+                                (line_number_in_preview_win, line_highlights)
+                            })
+                            .collect(),
+                    )
+                })
+                .map(SublimeOrTreeSitter::TreeSitter)
+                .unwrap_or(SublimeOrTreeSitter::Neither)
+        }
+        HighlightEngine::Vim => SublimeOrTreeSitter::Neither,
     }
 }

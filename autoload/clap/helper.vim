@@ -48,7 +48,22 @@ function! clap#helper#complete(ArgLead, CmdLine, P) abort
   if !exists('s:autoload_providers')
     let s:autoload_providers = map(split(globpath(&runtimepath, 'autoload/clap/provider/*.vim'), "\n"), 'fnamemodify(v:val, ":t:r")')
   endif
-  return filter(uniq(sort(s:autoload_providers + keys(g:clap#provider_alias) + registered)), 'v:val =~# "^".a:ArgLead')
+  if !exists('s:user_providers')
+    let s:user_providers = map(clap#provider#providers#get_user_defined(), 'split(v:val, ":")[0]')
+  endif
+  return filter(uniq(sort(s:autoload_providers + s:user_providers + keys(g:clap#provider_alias) + registered)), 'v:val =~# "^".a:ArgLead')
+endfunction
+
+function! clap#helper#complete_actions(A, L, P) abort
+  if !exists('g:clap_actions')
+      echoerr '`g:clap_actions` not found'
+      return []
+  endif
+  if empty(a:A)
+    return g:clap_actions
+  else
+    return filter(g:clap_actions, printf('v:val =~ "^%s"', a:A))
+  endif
 endfunction
 
 function! clap#helper#echo_message(msg) abort

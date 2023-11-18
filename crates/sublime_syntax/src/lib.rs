@@ -181,7 +181,7 @@ impl Default for SyntaxHighlighter {
 }
 
 impl SyntaxHighlighter {
-    const DEFAULT_THEME: &str = "Solarized (dark)";
+    const DEFAULT_THEME: &'static str = "Solarized (dark)";
 
     /// Constructs a new instance of [`SyntaxHighlighter`].
     ///
