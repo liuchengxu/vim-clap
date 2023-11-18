@@ -494,6 +494,9 @@ function! clap#floating_win#preview.close() abort
     call clap#util#nvim_win_close_safe(s:preview_winid)
     unlet s:preview_winid
   endif
+  if exists('s:preview_scrollbar_winid')
+    call s:win_close(s:preview_scrollbar_winid)
+  endif
 endfunction
 
 function! clap#floating_win#preview.hide() abort
@@ -604,9 +607,6 @@ function! clap#floating_win#close() abort
   call s:win_close(g:clap.input.winid)
   call s:win_close(g:clap.spinner.winid)
   call s:win_close(s:indicator_winid)
-  if exists('s:preview_scrollbar_winid')
-    call s:win_close(s:preview_scrollbar_winid)
-  endif
 
   " I don't know why, but this could be related to the cursor move in grep.vim
   " thus I have to go back to the start window in grep.vim

@@ -271,17 +271,17 @@ impl Syntax {
                 .map(|item| item.0)
                 .collect::<Vec<_>>();
 
+            // No new highlight changes since the last highlighting operation.
+            if changed_highlights.is_empty() {
+                return Ok(None);
+            }
+
             tracing::debug!(
                 total = new_vim_highlights.len(),
                 unchanged = unchanged_highlights.len(),
                 changed = changed_highlights.len(),
                 "Applying new highlights",
             );
-
-            // No new highlight changes since the last highlighting operation.
-            if changed_highlights.is_empty() {
-                return Ok(None);
-            }
 
             // Keep the changed highlights only.
             let diff_highlights = new_vim_highlights
