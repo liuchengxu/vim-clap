@@ -183,7 +183,8 @@ function! clap#highlighter#add_ts_highlights(bufnr, to_replace_line_ranges, high
       call prop_remove({ 'types': s:ts_types, 'all': v:true, 'bufnr': a:bufnr } )
     else
       for [start, end] in a:to_replace_line_ranges
-        call prop_remove({ 'types': s:ts_types, 'all': v:true, 'bufnr': a:bufnr }, start, end)
+        " start is 0-based
+        call prop_remove({ 'types': s:ts_types, 'all': v:true, 'bufnr': a:bufnr }, start+1, end)
       endfor
     endif
   endif
