@@ -12,6 +12,7 @@ TODO: elaborate on plugins' usage.
 * [git](#git)
 * [linter](#linter)
 * [markdown](#markdown)
+* [syntax](#syntax)
 
 <!-- /clap-markdown-toc -->
 
@@ -81,3 +82,12 @@ enable = true
 
 - Features
     - Generate/Update/Delete toc
+
+## syntax
+
+```toml
+[plugin.syntax]
+enable = true
+```
+
+This plugin implements the sublime-syntax and tree-sitter highlighting. The plugin author already uses the latter a lot.
