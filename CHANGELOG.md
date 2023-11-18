@@ -3,6 +3,12 @@
 ## [unreleased]
 
 
+## [0.48] 2023-11-18
+
+### Added
+
+The highlight of this release is the integration of tree-sitter highlighting, use `:ClapAction syntax/tree-sitter-highlight` to have a try.
+
 ## [0.47] 2023-10-28
 
 ## [0.46] 2023-08-29
