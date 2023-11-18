@@ -74,6 +74,7 @@ struct TreeSitterInfo {
     "list-sublime-themes",
     "sublime-syntax-highlight",
     "tree-sitter-highlight",
+    "tree-sitter-highlight-disable",
     "tree-sitter-list-scopes",
     "tree-sitter-props-at-cursor",
     "toggle",
@@ -486,6 +487,12 @@ impl ClapPlugin for Syntax {
                 self.tree_sitter_highlight(bufnr, false, None).await?;
                 self.tree_sitter_enabled = true;
                 self.toggle.turn_on();
+            }
+            SyntaxAction::TreeSitterHighlightDisable => {
+                let bufnr = self.vim.bufnr("").await?;
+                self.vim
+                    .exec("clap#highlighter#disable_tree_sitter", bufnr)?;
+                self.tree_sitter_enabled = false;
             }
             SyntaxAction::TreeSitterListScopes => {
                 let bufnr = self.vim.bufnr("").await?;

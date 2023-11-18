@@ -160,6 +160,14 @@ function! clap#highlighter#add_sublime_highlights(bufnr, line_highlights) abort
   endfor
 endfunction
 
+function! clap#highlighter#disable_tree_sitter(bufnr) abort
+  if has('nvim')
+    call nvim_buf_clear_namespace(a:bufnr, s:tree_sitter_ns_id, 0, -1)
+  elseif !empty(s:ts_types)
+    call prop_remove({ 'types': s:ts_types, 'all': v:true, 'bufnr': a:bufnr } )
+  endif
+endfunction
+
 function! clap#highlighter#add_ts_highlights(bufnr, to_replace_line_ranges, highlights) abort
   if has('nvim')
     " All old highlights need to be replaced.

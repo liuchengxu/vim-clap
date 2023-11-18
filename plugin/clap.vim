@@ -72,6 +72,12 @@ augroup VimClap
                 \ 'source': { -> get(g:, 'clap_actions', []) },
                 \ 'sink': { line -> clap#client#notify(line, []) },
                 \ })
+
+    function! s:RequestClapAction(bang, action) abort
+      call clap#client#notify(a:action, [])
+    endfunction
+
+    command! -bang -nargs=* -bar -range -complete=customlist,clap#helper#complete_actions ClapAction call s:RequestClapAction(<bang>0, <f-args>)
   endif
 
   " yanks provider

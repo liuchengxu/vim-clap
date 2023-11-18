@@ -54,6 +54,18 @@ function! clap#helper#complete(ArgLead, CmdLine, P) abort
   return filter(uniq(sort(s:autoload_providers + s:user_providers + keys(g:clap#provider_alias) + registered)), 'v:val =~# "^".a:ArgLead')
 endfunction
 
+function! clap#helper#complete_actions(A, L, P) abort
+  if !exists('g:clap_actions')
+      echoerr '`g:clap_actions` not found'
+      return []
+  endif
+  if empty(a:A)
+    return g:clap_actions
+  else
+    return filter(g:clap_actions, printf('v:val =~ "^%s"', a:A))
+  endif
+endfunction
+
 function! clap#helper#echo_message(msg) abort
   echohl Function
   echo 'vim-clap: '
