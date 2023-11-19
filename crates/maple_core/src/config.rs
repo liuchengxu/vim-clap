@@ -83,6 +83,7 @@ impl MatcherConfig {
 pub struct LogConfig {
     pub log_file: Option<String>,
     pub max_level: String,
+    pub log_target: String,
 }
 
 impl Default for LogConfig {
@@ -90,6 +91,7 @@ impl Default for LogConfig {
         Self {
             log_file: None,
             max_level: "debug".into(),
+            log_target: "".into(),
         }
     }
 }
