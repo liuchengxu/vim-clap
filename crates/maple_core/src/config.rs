@@ -328,7 +328,8 @@ mod tests {
             Config {
                 log: LogConfig {
                     log_file: Some("/tmp/clap.log".to_string()),
-                    max_level: "trace".to_string()
+                    max_level: "trace".to_string(),
+                    ..Default::default()
                 },
                 matcher: MatcherConfig {
                     tiebreak: "score,-begin,-end,-length".to_string()
