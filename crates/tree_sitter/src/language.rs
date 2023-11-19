@@ -28,6 +28,30 @@ highlight_names_module! {
   ("text.uri", "Directory"),
 }
 
+highlight_names_module! {
+  rust;
+  ("attribute", "Special"),
+  ("comment", "Comment"),
+  ("constant", "Constant"),
+  ("constant.builtin", "Constant"),
+  ("constructor", "Function"),
+  ("escape", "Todo"),
+  ("function", "Function"),
+  ("function.macro", "Macro"),
+  ("function.method", "Directory"),
+  ("keyword", "Keyword"),
+  ("label", "SpecialKey"),
+  ("operator", "Operator"),
+  ("property", "Number"),
+  ("punctuation.bracket", "Delimiter"),
+  ("punctuation.delimiter", "Delimiter"),
+  ("string", "String"),
+  ("type", "Type"),
+  ("type.builtin", "Type"),
+  ("variable.builtin", "Identifier"),
+  ("variable.parameter", "Identifier"),
+}
+
 highlight_names_module![
   builtin;
     ("comment", "Comment"),
@@ -117,6 +141,7 @@ impl Language {
     pub fn highlight_names(&self) -> &[&str] {
         match self {
             Self::Markdown => markdown::HIGHLIGHT_NAMES,
+            Self::Rust => rust::HIGHLIGHT_NAMES,
             _ => builtin::HIGHLIGHT_NAMES,
         }
     }
@@ -124,6 +149,7 @@ impl Language {
     pub fn highlight_name(&self, highlight: Highlight) -> &'static str {
         match self {
             Self::Markdown => markdown::HIGHLIGHT_NAMES[highlight.0],
+            Self::Rust => rust::HIGHLIGHT_NAMES[highlight.0],
             _ => builtin::HIGHLIGHT_NAMES[highlight.0],
         }
     }
@@ -131,6 +157,7 @@ impl Language {
     pub fn highlight_group(&self, highlight: Highlight) -> &'static str {
         match self {
             Self::Markdown => markdown::HIGHLIGHT_GROUPS[highlight.0].1,
+            Self::Rust => rust::HIGHLIGHT_GROUPS[highlight.0].1,
             _ => builtin::HIGHLIGHT_GROUPS[highlight.0].1,
         }
     }
