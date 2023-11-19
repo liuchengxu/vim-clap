@@ -20,6 +20,7 @@ struct SyntaxProps {
     range: Range<usize>,
     length: usize,
     node: &'static str,
+    highlight_group: &'static str,
 }
 
 type RawTsHighlights = BTreeMap<usize, Vec<tree_sitter::HighlightItem>>;
@@ -42,6 +43,7 @@ impl BufferHighlights {
                         range: h.start.column..h.end.column,
                         length: h.end.column - h.start.column,
                         node: language.highlight_name(h.highlight),
+                        highlight_group: language.highlight_group(h.highlight),
                     })
                 } else {
                     None
