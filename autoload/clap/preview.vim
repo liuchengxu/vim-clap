@@ -138,7 +138,12 @@ let s:PREVIEW_DISABLED = tolower(g:clap_open_preview) ==# 'never'
 let s:ALWAYS_OPEN_PREVIEW = tolower(g:clap_open_preview) ==# 'always'
 
 function! clap#preview#is_enabled() abort
-  return !s:PREVIEW_DISABLED
+  if g:clap.provider.mode() ==# 'quick_pick'
+    " Must return 0 as the return value is interpreted as usize on the Rust side.
+    return 0
+  else
+    return !s:PREVIEW_DISABLED
+  endif
 endfunction
 
 function! clap#preview#is_always_open() abort

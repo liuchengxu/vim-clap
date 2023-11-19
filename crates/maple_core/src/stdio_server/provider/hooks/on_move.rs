@@ -56,7 +56,7 @@ impl VimSyntaxInfo {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Preview {
     pub lines: Vec<String>,
-    /// If no sublime-syntax or tree-sitter highligths,
+    /// If no sublime-syntax or tree-sitter highlights,
     /// this field is intended to tell vim what syntax value
     /// should be used for the highlighting. Ideally `syntax`
     /// is returned, otherwise `fname` is returned and
@@ -79,6 +79,19 @@ impl Preview {
     pub fn new(lines: Vec<String>) -> Self {
         Self {
             lines,
+            ..Default::default()
+        }
+    }
+
+    fn new_file_preview(
+        lines: Vec<String>,
+        scrollbar: Option<(usize, usize)>,
+        vim_syntax_info: VimSyntaxInfo,
+    ) -> Self {
+        Self {
+            lines,
+            vim_syntax_info,
+            scrollbar,
             ..Default::default()
         }
     }
@@ -283,7 +296,7 @@ impl<'a> CachedPreviewImpl<'a> {
         Ok((self.preview_target.clone(), preview))
     }
 
-    fn preview_commits(&self, rev: &str) -> std::io::Result<Preview> {
+    fn preview_commits(&self, rev: &str) -> Result<Preview> {
         let stdout = self.ctx.exec_cmd(&format!("git show {rev}"))?;
         let stdout_str = String::from_utf8_lossy(&stdout);
         let lines = stdout_str
@@ -415,26 +428,23 @@ impl<'a> CachedPreviewImpl<'a> {
         if std::fs::metadata(path)?.len() == 0 {
             let mut lines = lines;
             lines.push("<Empty file>".to_string());
-            Ok(Preview {
+            Ok(Preview::new_file_preview(
                 lines,
-                vim_syntax_info: VimSyntaxInfo::fname(fname),
                 scrollbar,
-                ..Default::default()
-            })
+                VimSyntaxInfo::fname(fname),
+            ))
         } else if let Some(syntax) = preview_syntax(path) {
-            Ok(Preview {
+            Ok(Preview::new_file_preview(
                 lines,
-                vim_syntax_info: VimSyntaxInfo::syntax(syntax.into()),
                 scrollbar,
-                ..Default::default()
-            })
+                VimSyntaxInfo::syntax(syntax.into()),
+            ))
         } else {
-            Ok(Preview {
+            Ok(Preview::new_file_preview(
                 lines,
-                vim_syntax_info: VimSyntaxInfo::fname(fname),
                 scrollbar,
-                ..Default::default()
-            })
+                VimSyntaxInfo::fname(fname),
+            ))
         }
     }
 

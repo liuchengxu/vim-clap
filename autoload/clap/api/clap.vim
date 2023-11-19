@@ -411,6 +411,10 @@ function! s:init_provider() abort
     endif
   endfunction
 
+  function! provider.mode() abort
+    return get(self._(), 'mode', 'full')
+  endfunction
+
   return provider
 endfunction
 

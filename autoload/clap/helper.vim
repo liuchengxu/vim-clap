@@ -62,7 +62,8 @@ function! clap#helper#complete_actions(A, L, P) abort
   if empty(a:A)
     return g:clap_actions
   else
-    return filter(g:clap_actions, printf('v:val =~ "^%s"', a:A))
+    " Use copy otherwise the variable will be altered after map.
+    return filter(copy(g:clap_actions), printf('v:val =~ "^%s"', a:A))
   endif
 endfunction
 

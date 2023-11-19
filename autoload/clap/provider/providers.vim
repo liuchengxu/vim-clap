@@ -59,6 +59,7 @@ function! s:providers.source() abort
 endfunction
 
 let s:providers.syntax = 'clap_providers'
+let s:providers.mode = 'quick_pick'
 let g:clap#provider#providers# = s:providers
 
 let &cpoptions = s:save_cpo

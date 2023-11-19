@@ -20,6 +20,7 @@ struct SyntaxProps {
     range: Range<usize>,
     length: usize,
     node: &'static str,
+    highlight_group: &'static str,
 }
 
 type RawTsHighlights = BTreeMap<usize, Vec<tree_sitter::HighlightItem>>;
@@ -42,6 +43,7 @@ impl BufferHighlights {
                         range: h.start.column..h.end.column,
                         length: h.end.column - h.start.column,
                         node: language.highlight_name(h.highlight),
+                        highlight_group: language.highlight_group(h.highlight),
                     })
                 } else {
                     None
@@ -244,6 +246,7 @@ impl Syntax {
         Ok(())
     }
 
+    /// Returns Some() if the vim highlights are changed.
     fn apply_ts_highlights(
         &self,
         bufnr: usize,
@@ -261,37 +264,40 @@ impl Syntax {
                 .iter()
                 .partition(|item| old_vim_highlights.contains(item));
 
-            let unchanged_highlights = unchanged_highlights
+            let unchanged_lines = unchanged_highlights
                 .into_iter()
                 .map(|item| item.0)
                 .collect::<Vec<_>>();
 
-            let mut changed_highlights = changed_highlights
+            let mut changed_lines = changed_highlights
                 .into_iter()
                 .map(|item| item.0)
                 .collect::<Vec<_>>();
+
+            // No new highlight changes since the last highlighting operation.
+            if changed_lines.is_empty() {
+                return Ok(None);
+            }
 
             tracing::debug!(
                 total = new_vim_highlights.len(),
-                unchanged = unchanged_highlights.len(),
-                changed = changed_highlights.len(),
-                "Applying new highlights",
+                unchanged_lines_count = unchanged_lines.len(),
+                changed_lines_count = changed_lines.len(),
+                "Applying new highlight changes"
             );
-
-            // No new highlight changes since the last highlighting operation.
-            if changed_highlights.is_empty() {
-                return Ok(None);
-            }
+            tracing::trace!(
+                "unchanged lines: {unchanged_lines:?}, changed lines: {changed_lines:?}"
+            );
 
             // Keep the changed highlights only.
             let diff_highlights = new_vim_highlights
                 .iter()
-                .filter(|item| changed_highlights.contains(&item.0))
+                .filter(|item| changed_lines.contains(&item.0))
                 .collect::<Vec<_>>();
 
-            changed_highlights.sort();
+            changed_lines.sort();
 
-            let changed_ranges = convert_consecutive_line_numbers_to_ranges(&changed_highlights);
+            let changed_ranges = convert_consecutive_line_numbers_to_ranges(&changed_lines);
             let changed_ranges = changed_ranges
                 .into_iter()
                 .map(|range| (range.start, range.end))
@@ -458,16 +464,26 @@ impl ClapPlugin for Syntax {
                 if self.tree_sitter_enabled {
                     if self.vim.bufmodified(bufnr).await? {
                         self.tree_sitter_highlight(bufnr, true, None).await?;
-                    } else if let Some(ts_info) = self.ts_bufs.get(&bufnr) {
-                        let (_winid, line_start, line_end) =
-                            self.vim.get_screen_lines_range().await?;
+                    } else {
+                        let maybe_new_vim_highlights =
+                            if let Some(ts_info) = self.ts_bufs.get(&bufnr) {
+                                let (_winid, line_start, line_end) =
+                                    self.vim.get_screen_lines_range().await?;
 
-                        self.apply_ts_highlights(
-                            bufnr,
-                            ts_info.language,
-                            &ts_info.highlights.0,
-                            Some(line_start - 1..line_end),
-                        )?;
+                                self.apply_ts_highlights(
+                                    bufnr,
+                                    ts_info.language,
+                                    &ts_info.highlights.0,
+                                    Some(line_start - 1..line_end),
+                                )?
+                            } else {
+                                None
+                            };
+                        if let Some(new_vim_highlights) = maybe_new_vim_highlights {
+                            self.ts_bufs.entry(bufnr).and_modify(|i| {
+                                i.vim_highlights = new_vim_highlights;
+                            });
+                        }
                     }
                 } else if self.sublime_syntax_enabled {
                     self.sublime_syntax_highlight(bufnr).await?;
