@@ -15,12 +15,22 @@ endif
 " ancored to the display window.
 function! s:get_base_layout() abort
   if g:clap.provider.mode()  ==# 'quick_pick'
-    let base_layout = {
-              \ 'width': '40%',
-              \ 'height': '67%',
-              \ 'row': '20%',
-              \ 'col': '30%',
-              \ }
+    " Increase the default width if the screen is not large.
+    if &columns < 150
+      let base_layout = {
+                  \ 'width': '60%',
+                  \ 'height': '67%',
+                  \ 'row': '20%',
+                  \ 'col': '20%',
+                  \ }
+    else
+      let base_layout = {
+                  \ 'width': '40%',
+                  \ 'height': '67%',
+                  \ 'row': '20%',
+                  \ 'col': '30%',
+                  \ }
+    endif
   elseif !clap#preview#is_enabled()
     let base_layout = {
               \ 'width': '70%',
