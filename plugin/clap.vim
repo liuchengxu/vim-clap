@@ -71,6 +71,7 @@ augroup VimClap
     let g:clap_provider_clap_actions = get(g:, 'clap_provider_clap_actions', {
                 \ 'source': { -> get(g:, 'clap_actions', []) },
                 \ 'sink': { line -> clap#client#notify(line, []) },
+                \ 'mode': 'quick_pick',
                 \ })
 
     function! s:RequestClapAction(bang, action) abort

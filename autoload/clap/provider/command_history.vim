@@ -17,6 +17,7 @@ let s:command_history = {}
 let s:command_history.sink = function('s:command_history_sink')
 let s:command_history.source = function('s:command_history_source')
 let s:command_history.syntax = 'clap_command_history'
+let s:command_history.mode = 'quick_pick'
 
 let g:clap#provider#command_history# = s:command_history
 

@@ -17,6 +17,7 @@ let s:search_history = {}
 let s:search_history.sink = function('s:search_history_sink')
 let s:search_history.source = function('s:search_history_source')
 let s:search_history.syntax = 'clap_command_history'
+let s:search_history.mode = 'quick_pick'
 
 let g:clap#provider#search_history# = s:search_history
 

@@ -8,6 +8,7 @@ let s:filetypes = {}
 
 let s:filetypes.source = uniq(sort(map(split(globpath(&runtimepath, 'syntax/*.vim'), '\n'), 'fnamemodify(v:val, ":t:r")')))
 let s:filetypes.sink = 'setf'
+let s:filetypes.mode = 'quick_pick'
 
 let g:clap#provider#filetypes# = s:filetypes
 

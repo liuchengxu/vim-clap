@@ -56,6 +56,7 @@ function! s:colors.on_exit() abort
   endif
 endfunction
 
+let s:colors.mode = 'quick_pick'
 let g:clap#provider#colors# = s:colors
 
 let &cpoptions = s:save_cpo

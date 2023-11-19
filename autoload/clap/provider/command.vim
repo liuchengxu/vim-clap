@@ -37,6 +37,7 @@ let s:command = {}
 let s:command.syntax = 'clap_command'
 let s:command.source = function('s:source')
 let s:command.sink = function('s:sink')
+let s:command.mode = 'quick_pick'
 
 let g:clap#provider#command# = s:command
 
