@@ -95,6 +95,24 @@ impl Preview {
             ..Default::default()
         }
     }
+
+    fn update_highlights(&mut self, sublime_or_ts_highlights: SublimeOrTreeSitter, path: &Path) {
+        match sublime_or_ts_highlights {
+            SublimeOrTreeSitter::Sublime(v) => {
+                self.sublime_syntax_highlights = v;
+            }
+            SublimeOrTreeSitter::TreeSitter(v) => {
+                self.tree_sitter_highlights = v;
+            }
+            SublimeOrTreeSitter::Neither => {
+                if let Some(syntax) = preview_syntax(path) {
+                    self.vim_syntax_info.syntax = syntax.into();
+                } else {
+                    self.vim_syntax_info.fname = path.display().to_string();
+                }
+            }
+        }
+    }
 }
 
 /// Represents various targets for previews in clap provider.
@@ -400,6 +418,9 @@ impl<'a> CachedPreviewImpl<'a> {
             }
         };
 
+        let sublime_or_ts_highlights =
+            fetch_syntax_highlights(&lines, path, 0, self.max_line_width(), 0..lines.len(), 0);
+
         let total = utils::count_lines(std::fs::File::open(path)?)?;
         let end = lines.len();
 
@@ -428,24 +449,17 @@ impl<'a> CachedPreviewImpl<'a> {
         if std::fs::metadata(path)?.len() == 0 {
             let mut lines = lines;
             lines.push("<Empty file>".to_string());
-            Ok(Preview::new_file_preview(
+            return Ok(Preview::new_file_preview(
                 lines,
                 scrollbar,
                 VimSyntaxInfo::fname(fname),
-            ))
-        } else if let Some(syntax) = preview_syntax(path) {
-            Ok(Preview::new_file_preview(
-                lines,
-                scrollbar,
-                VimSyntaxInfo::syntax(syntax.into()),
-            ))
-        } else {
-            Ok(Preview::new_file_preview(
-                lines,
-                scrollbar,
-                VimSyntaxInfo::fname(fname),
-            ))
+            ));
         }
+
+        let mut preview = Preview::new_file_preview(lines, scrollbar, VimSyntaxInfo::default());
+        preview.update_highlights(sublime_or_ts_highlights, path);
+
+        Ok(preview)
     }
 
     async fn preview_file_at(&self, path: &Path, lnum: usize, container_width: usize) -> Preview {
@@ -541,21 +555,7 @@ impl<'a> CachedPreviewImpl<'a> {
                     ..Default::default()
                 };
 
-                match sublime_or_ts_highlights {
-                    SublimeOrTreeSitter::Sublime(v) => {
-                        preview.sublime_syntax_highlights = v;
-                    }
-                    SublimeOrTreeSitter::TreeSitter(v) => {
-                        preview.tree_sitter_highlights = v;
-                    }
-                    SublimeOrTreeSitter::Neither => {
-                        if let Some(syntax) = preview_syntax(path) {
-                            preview.vim_syntax_info.syntax = syntax.into();
-                        } else {
-                            preview.vim_syntax_info.fname = fname;
-                        }
-                    }
-                }
+                preview.update_highlights(sublime_or_ts_highlights, path);
 
                 preview
             }

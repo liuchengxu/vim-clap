@@ -94,7 +94,4 @@ This plugin implements the sublime-syntax and tree-sitter highlighting.
 
 Tree-Sitter supported languages:
 
-- Bash
-- Markdown
-- Rust
-- Viml
+- Bash, C, Markdown, Go, Rust, Viml
