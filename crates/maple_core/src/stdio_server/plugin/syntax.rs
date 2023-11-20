@@ -13,6 +13,38 @@ use tree_sitter::Language;
 static SUBLIME_SYNTAX_HIGHLIGHTER: Lazy<sublime_syntax::SyntaxHighlighter> =
     Lazy::new(sublime_syntax::SyntaxHighlighter::new);
 
+pub fn sublime_theme_exists(theme: &str) -> bool {
+    SUBLIME_SYNTAX_HIGHLIGHTER.theme_exists(theme)
+}
+
+pub fn sublime_syntax_by_extension(extension: &str) -> Option<&SyntaxReference> {
+    SUBLIME_SYNTAX_HIGHLIGHTER
+        .syntax_set
+        .find_syntax_by_extension(extension)
+}
+
+pub fn sublime_syntax_highlight<T: AsRef<str>>(
+    syntax: &SyntaxReference,
+    lines: impl Iterator<Item = T>,
+    line_start_number: usize,
+    theme: &str,
+) -> Vec<(usize, Vec<TokenHighlight>)> {
+    let highlighter = &SUBLIME_SYNTAX_HIGHLIGHTER;
+
+    lines
+        .enumerate()
+        .filter_map(|(index, line)| {
+            match highlighter.get_token_highlights_in_line(syntax, line.as_ref(), theme) {
+                Ok(token_highlights) => Some((line_start_number + index, token_highlights)),
+                Err(err) => {
+                    tracing::error!(line = ?line.as_ref(), ?err, "Error at fetching line highlight");
+                    None
+                }
+            }
+        })
+        .collect::<Vec<_>>()
+}
+
 #[allow(unused)]
 #[derive(Debug)]
 struct SyntaxProps {
@@ -66,13 +98,17 @@ type VimHighlights = Vec<(usize, LineHighlights)>;
 #[derive(Debug, Clone)]
 struct TreeSitterInfo {
     language: Language,
+    /// Highlights of entire buffer.
     highlights: BufferHighlights,
-    /// Current highlighting info.
+    /// Current vim highlighting info, note that we only
+    /// highlight the visual lines on the vim side.
     vim_highlights: VimHighlights,
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "syntax", actions = [
+#[clap_plugin(
+  id = "syntax",
+  actions = [
     "sublime-syntax-highlight",
     "sublime-syntax-list-themes",
     "tree-sitter-highlight",
@@ -80,7 +116,8 @@ struct TreeSitterInfo {
     "tree-sitter-list-scopes",
     "tree-sitter-props-at-cursor",
     "toggle",
-])]
+  ],
+)]
 pub struct Syntax {
     vim: Vim,
     toggle: Toggle,
@@ -213,7 +250,7 @@ impl Syntax {
         };
 
         let source_code = if buf_modified {
-            // TODO: this request the entire buffer content, which might be performance sensitive
+            // TODO: this requests the entire buffer content, which might be performance sensitive
             // in case of large buffer, we should add some kind of buffer size limit.
             //
             // Optimization: Get changed lines and apply to the previous version on the disk?
@@ -369,38 +406,6 @@ impl Syntax {
 
         Ok(())
     }
-}
-
-pub fn sublime_theme_exists(theme: &str) -> bool {
-    SUBLIME_SYNTAX_HIGHLIGHTER.theme_exists(theme)
-}
-
-pub fn sublime_syntax_by_extension(extension: &str) -> Option<&SyntaxReference> {
-    SUBLIME_SYNTAX_HIGHLIGHTER
-        .syntax_set
-        .find_syntax_by_extension(extension)
-}
-
-pub fn sublime_syntax_highlight<T: AsRef<str>>(
-    syntax: &SyntaxReference,
-    lines: impl Iterator<Item = T>,
-    line_start_number: usize,
-    theme: &str,
-) -> Vec<(usize, Vec<TokenHighlight>)> {
-    let highlighter = &SUBLIME_SYNTAX_HIGHLIGHTER;
-
-    lines
-        .enumerate()
-        .filter_map(|(index, line)| {
-            match highlighter.get_token_highlights_in_line(syntax, line.as_ref(), theme) {
-                Ok(token_highlights) => Some((line_start_number + index, token_highlights)),
-                Err(err) => {
-                    tracing::error!(line = ?line.as_ref(), ?err, "Error at fetching line highlight");
-                    None
-                }
-            }
-        })
-        .collect::<Vec<_>>()
 }
 
 /// Convert the raw highlight info to something that is directly applied by Vim.

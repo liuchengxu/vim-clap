@@ -229,20 +229,23 @@ impl BufferLinterInfo {
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "linter", actions = [
-  "lint",
-  "format",
-  "first-error",
-  "last-error",
-  "next-error",
-  "prev-error",
-  "first-warn",
-  "last-warn",
-  "next-warn",
-  "prev-warn",
-  "debug",
-  "toggle",
-])]
+#[clap_plugin(
+  id = "linter",
+  actions = [
+    "lint",
+    "format",
+    "first-error",
+    "last-error",
+    "next-error",
+    "prev-error",
+    "first-warn",
+    "last-warn",
+    "next-warn",
+    "prev-warn",
+    "debug",
+    "toggle",
+  ]
+)]
 pub struct Linter {
     vim: Vim,
     bufs: HashMap<usize, BufferLinterInfo>,
