@@ -52,14 +52,14 @@ impl BufferTag {
     }
 
     #[inline]
-    pub fn from_ctags_json(line: &str) -> Option<Self> {
+    pub fn from_json_line(line: &str) -> Option<Self> {
         serde_json::from_str::<Self>(line).ok()
     }
 
     // The last scope field is optional.
     //
     // Blines	crates/maple_cli/src/app.rs	/^    Blines(command::blines::Blines),$/;"	enumerator	line:39	enum:Cmd
-    pub fn from_ctags_raw(line: &str) -> Option<Self> {
+    pub fn from_raw_line(line: &str) -> Option<Self> {
         let mut items = line.split('\t');
 
         let name = items.next()?.into();
@@ -131,7 +131,7 @@ mod tests {
     fn test_parse_ctags_raw() {
         let line = r#"with_dir	crates/maple_core/src/tools/ctags/mod.rs	/^    pub fn with_dir(dir: P) -> Self {$/;"	method	line:150	implementation:TagsGenerator"#;
         assert_eq!(
-            BufferTag::from_ctags_raw(line).unwrap(),
+            BufferTag::from_raw_line(line).unwrap(),
             BufferTag {
                 name: "with_dir".to_string(),
                 pattern: "/^    pub fn with_dir(dir: P) -> Self {$/".to_string(),
@@ -151,7 +151,7 @@ mod tests {
 {"_type": "tag", "name": "with_dir", "path": "crates/maple_core/src/tools/ctags/mod.rs", "pattern": "/^    pub fn with_dir(dir: P) -> Self {$/", "line": 150, "kind": "method", "scope": "TagsGenerator", "scopeKind": "implementation"}
       "#;
         assert_eq!(
-            BufferTag::from_ctags_json(json_line).unwrap(),
+            BufferTag::from_json_line(json_line).unwrap(),
             BufferTag {
                 name: "with_dir".to_string(),
                 pattern: "/^    pub fn with_dir(dir: P) -> Self {$/".to_string(),
