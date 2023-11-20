@@ -52,15 +52,6 @@ pub fn get_file_preview<P: AsRef<Path>>(
     })
 }
 
-// Copypasted from stdlib.
-/// Indicates how large a buffer to pre-allocate before reading the entire file.
-fn initial_buffer_size(file: &File) -> usize {
-    // Allocate one extra byte so the buffer doesn't need to grow before the
-    // final `read` call at the end of the file.  Don't worry about `usize`
-    // overflow because reading will fail regardless in that case.
-    file.metadata().map(|m| m.len() as usize + 1).unwrap_or(0)
-}
-
 fn read_preview_lines<P: AsRef<Path>>(
     path: P,
     start: usize,
@@ -73,7 +64,7 @@ fn read_preview_lines<P: AsRef<Path>>(
             // XXX: is megabyte enough for any text file?
             const MEGABYTE: usize = 32 * 1_048_576;
 
-            let filesize = initial_buffer_size(&file);
+            let filesize = utils::file_size(&file);
             if filesize > MEGABYTE {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::Other,

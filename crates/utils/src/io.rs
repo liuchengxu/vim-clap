@@ -33,6 +33,34 @@ pub fn line_count<P: AsRef<Path>>(path: P) -> std::io::Result<usize> {
     count_lines(std::fs::File::open(path)?)
 }
 
+// Copypasted from stdlib.
+/// Indicates how large a buffer to pre-allocate before reading the entire file.
+pub fn file_size(file: &File) -> usize {
+    // Allocate one extra byte so the buffer doesn't need to grow before the
+    // final `read` call at the end of the file.  Don't worry about `usize`
+    // overflow because reading will fail regardless in that case.
+    file.metadata().map(|m| m.len() as usize + 1).unwrap_or(0)
+}
+
+/// A utility for checking if the byte size of a file exceeds a specified limit.
+#[derive(Debug, Clone)]
+pub struct SizeChecker(usize);
+
+impl SizeChecker {
+    /// Creates a new [`SizeChecker`] with the size limit.
+    pub const fn new(byte_size_limit: usize) -> Self {
+        Self(byte_size_limit)
+    }
+
+    /// Checks if the file size exceeds the specified limit.
+    pub fn is_too_large<P: AsRef<Path>>(&self, path: P) -> Result<bool> {
+        let file = File::open(path.as_ref())?;
+        let metadata = file.metadata()?;
+
+        Ok(metadata.len() as usize > self.0)
+    }
+}
+
 /// Removes all the file and directories under `target_dir`.
 pub fn remove_dir_contents<P: AsRef<Path>>(target_dir: P) -> Result<()> {
     let entries = read_dir(target_dir)?;
