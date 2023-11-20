@@ -90,7 +90,7 @@ endfunction
 function! s:layout() abort
   let layout = s:get_base_layout()
   if exists('g:clap_layout')
-    call extend(copy(layout), g:clap_layout)
+    let layout = extend(copy(layout), g:clap_layout)
   endif
   return layout
 endfunction
