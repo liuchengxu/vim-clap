@@ -73,8 +73,8 @@ struct TreeSitterInfo {
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
 #[clap_plugin(id = "syntax", actions = [
-    "list-sublime-themes",
     "sublime-syntax-highlight",
+    "sublime-syntax-list-themes",
     "tree-sitter-highlight",
     "tree-sitter-highlight-disable",
     "tree-sitter-list-scopes",
@@ -104,25 +104,28 @@ impl Syntax {
 
     async fn on_buf_enter(&mut self, bufnr: usize) -> Result<(), PluginError> {
         let fpath = self.vim.bufabspath(bufnr).await?;
-        if let Some(extension) = std::path::Path::new(&fpath)
+        let maybe_extension = std::path::Path::new(&fpath)
             .extension()
-            .and_then(|e| e.to_str())
-        {
-            self.sublime_bufs.insert(bufnr, extension.to_string());
+            .and_then(|e| e.to_str());
 
-            if self.tree_sitter_enabled {
-                if let Some(language) = tree_sitter::Language::try_from_extension(extension) {
+        if let Some(extension) = maybe_extension {
+            self.sublime_bufs.insert(bufnr, extension.to_string());
+        }
+
+        if self.tree_sitter_enabled {
+            if let Some(language) =
+                maybe_extension.and_then(tree_sitter::Language::try_from_extension)
+            {
+                self.tree_sitter_highlight(bufnr, false, Some(language))
+                    .await?;
+                self.toggle.turn_on();
+            } else {
+                let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+
+                if let Some(language) = tree_sitter::Language::try_from_filetype(&filetype) {
                     self.tree_sitter_highlight(bufnr, false, Some(language))
                         .await?;
                     self.toggle.turn_on();
-                } else {
-                    let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
-
-                    if let Some(language) = tree_sitter::Language::try_from_filetype(&filetype) {
-                        self.tree_sitter_highlight(bufnr, false, Some(language))
-                            .await?;
-                        self.toggle.turn_on();
-                    }
                 }
             }
         }
@@ -448,12 +451,10 @@ impl ClapPlugin for Syntax {
             BufEnter => self.on_buf_enter(bufnr).await?,
             BufWritePost => {
                 if self.tree_sitter_enabled {
-                    // if self.vim.bufmodified(bufnr).await? {
                     if let Some(ts_info) = self.ts_bufs.get(&bufnr) {
                         self.refresh_tree_sitter_highlight(bufnr, ts_info.language)
                             .await?;
                     }
-                    //}
                 }
             }
             BufDelete => {
@@ -521,16 +522,16 @@ impl ClapPlugin for Syntax {
             SyntaxAction::TreeSitterPropsAtCursor => {
                 self.tree_sitter_props_at_cursor().await?;
             }
-            SyntaxAction::ListSublimeThemes => {
-                let highlighter = &SUBLIME_SYNTAX_HIGHLIGHTER;
-                let theme_list = highlighter.get_theme_list();
-                self.vim.echo_info(theme_list.into_iter().join(","))?;
-            }
             SyntaxAction::SublimeSyntaxHighlight => {
                 let bufnr = self.vim.bufnr("").await?;
                 self.on_buf_enter(bufnr).await?;
                 self.sublime_syntax_highlight(bufnr).await?;
                 self.sublime_syntax_enabled = true;
+            }
+            SyntaxAction::SublimeSyntaxListThemes => {
+                let highlighter = &SUBLIME_SYNTAX_HIGHLIGHTER;
+                let theme_list = highlighter.get_theme_list();
+                self.vim.echo_info(theme_list.into_iter().join(","))?;
             }
             SyntaxAction::Toggle => {
                 match self.toggle {
