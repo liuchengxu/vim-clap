@@ -17,6 +17,40 @@ macro_rules! highlight_names_module {
 }
 
 highlight_names_module! {
+  c;
+  ("comment", "Comment"),
+  ("constant", "Constant"),
+  ("delimiter", "Delimiter"),
+  ("function", "Function"),
+  ("function.special", "Special"),
+  ("keyword", "Keyword"),
+  ("label", "Label"),
+  ("number", "Number"),
+  ("operator", "Operator"),
+  ("property", "SpecialKey"),
+  ("string", "String"),
+  ("type", "Type"),
+  ("variable", "Identifier"),
+}
+
+highlight_names_module! {
+  go;
+  ("comment", "Comment"),
+  ("constant.builtin", "Constant"),
+  ("escape", "Delimiter"),
+  ("function", "Function"),
+  ("function.builtin", "Special"),
+  ("function.method", "Include"),
+  ("keyword", "Keyword"),
+  ("number", "Number"),
+  ("operator", "Operator"),
+  ("property", "SpecialKey"),
+  ("string", "String"),
+  ("type", "Type"),
+  ("variable", "Identifier"),
+}
+
+highlight_names_module! {
   markdown;
   ("none", "Normal"),
   ("punctuation.delimiter", "Delimiter"),
@@ -177,6 +211,8 @@ impl Language {
 
     pub fn highlight_names(&self) -> &[&str] {
         match self {
+            Self::C => c::HIGHLIGHT_NAMES,
+            Self::Go => go::HIGHLIGHT_NAMES,
             Self::Markdown => markdown::HIGHLIGHT_NAMES,
             Self::Rust => rust::HIGHLIGHT_NAMES,
             Self::Viml => viml::HIGHLIGHT_NAMES,
@@ -186,6 +222,8 @@ impl Language {
 
     pub fn highlight_name(&self, highlight: Highlight) -> &'static str {
         match self {
+            Self::C => c::HIGHLIGHT_NAMES[highlight.0],
+            Self::Go => go::HIGHLIGHT_NAMES[highlight.0],
             Self::Markdown => markdown::HIGHLIGHT_NAMES[highlight.0],
             Self::Rust => rust::HIGHLIGHT_NAMES[highlight.0],
             Self::Viml => viml::HIGHLIGHT_NAMES[highlight.0],
@@ -195,6 +233,8 @@ impl Language {
 
     pub fn highlight_group(&self, highlight: Highlight) -> &'static str {
         match self {
+            Self::C => c::HIGHLIGHT_GROUPS[highlight.0].1,
+            Self::Go => go::HIGHLIGHT_GROUPS[highlight.0].1,
             Self::Markdown => markdown::HIGHLIGHT_GROUPS[highlight.0].1,
             Self::Rust => rust::HIGHLIGHT_GROUPS[highlight.0].1,
             Self::Viml => viml::HIGHLIGHT_GROUPS[highlight.0].1,
