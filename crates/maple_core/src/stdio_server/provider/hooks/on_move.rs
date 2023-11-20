@@ -421,7 +421,7 @@ impl<'a> CachedPreviewImpl<'a> {
         let sublime_or_ts_highlights =
             fetch_syntax_highlights(&lines, path, 0, self.max_line_width(), 0..lines.len(), 0);
 
-        let total = utils::count_lines(std::fs::File::open(path)?)?;
+        let total = utils::line_count(path)?;
         let end = lines.len();
 
         let scrollbar = if self.ctx.env.should_add_scrollbar(end) {
@@ -818,6 +818,7 @@ fn fetch_syntax_highlights(
                                 let line_highlights = line_highlights
                                     .into_iter()
                                     .filter_map(|(start, length, group)| {
+                                        // Ignore the invisible highlights.
                                         if start + length > max_line_width {
                                             None
                                         } else {

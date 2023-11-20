@@ -8,7 +8,7 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
 use types::ClapItem;
-use utils::count_lines;
+use utils::line_count;
 
 async fn execute_and_write_cache(
     cmd: &str,
@@ -20,7 +20,7 @@ async fn execute_and_write_cache(
 
     let mut tokio_cmd = crate::process::tokio::shell_command(cmd);
     crate::process::tokio::write_stdout_to_file(&mut tokio_cmd, &cache_file).await?;
-    let total = count_lines(std::fs::File::open(&cache_file)?)?;
+    let total = line_count(&cache_file)?;
     Ok(ProviderSource::CachedFile {
         total,
         path: cache_file,
@@ -64,7 +64,7 @@ async fn initialize_provider_source(ctx: &Context) -> Result<ProviderSource> {
     // Known providers.
     match ctx.provider_id() {
         "blines" => {
-            let total = count_lines(std::fs::File::open(&ctx.env.start_buffer_path)?)?;
+            let total = line_count(&ctx.env.start_buffer_path)?;
             let path = ctx.env.start_buffer_path.clone();
             return Ok(ProviderSource::File { total, path });
         }

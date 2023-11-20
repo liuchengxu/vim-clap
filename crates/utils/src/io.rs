@@ -28,6 +28,11 @@ pub fn count_lines<R: std::io::Read>(handle: R) -> std::io::Result<usize> {
     Ok(count)
 }
 
+/// Returns the number of total lines of given filepath.
+pub fn line_count<P: AsRef<Path>>(path: P) -> std::io::Result<usize> {
+    count_lines(std::fs::File::open(path)?)
+}
+
 /// Removes all the file and directories under `target_dir`.
 pub fn remove_dir_contents<P: AsRef<Path>>(target_dir: P) -> Result<()> {
     let entries = read_dir(target_dir)?;

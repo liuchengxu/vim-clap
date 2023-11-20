@@ -10,7 +10,7 @@ pub mod bytelines;
 mod io;
 
 pub use self::io::{
-    count_lines, create_or_overwrite, read_first_lines, read_lines, read_lines_from,
+    count_lines, create_or_overwrite, line_count, read_first_lines, read_lines, read_lines_from,
     remove_dir_contents,
 };
 

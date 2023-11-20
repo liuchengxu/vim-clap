@@ -38,7 +38,7 @@ pub fn get_file_preview<P: AsRef<Path>>(
         (0, winheight, target_line_number)
     };
 
-    let total = utils::count_lines(std::fs::File::open(path.as_ref())?)?;
+    let total = utils::line_count(path.as_ref())?;
 
     let lines = read_preview_lines(path, start, end)?;
     let end = end.min(total);

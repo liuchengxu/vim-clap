@@ -156,7 +156,7 @@ impl ScrollFile {
     fn new(line_start: usize, path: &Path) -> std::io::Result<Self> {
         Ok(Self {
             line_start,
-            total_lines: utils::count_lines(std::fs::File::open(path)?)?,
+            total_lines: utils::line_count(path)?,
         })
     }
 }
