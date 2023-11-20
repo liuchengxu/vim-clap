@@ -52,6 +52,43 @@ highlight_names_module! {
   ("variable.parameter", "Identifier"),
 }
 
+highlight_names_module! {
+  viml;
+  ("_option", "StorageClass"),
+  ("_scope", "Special"),
+  ("boolean", "Boolean"),
+  ("comment", "Comment"),
+  ("conditional", "Conditional"),
+  ("conditional.ternary", "Conditional"),
+  ("constant", "Constant"),
+  ("constant.builtin", "Constant"),
+  ("exception", "Exception"),
+  ("float", "Float"),
+  ("function", "Function"),
+  ("function.call", "Function"),
+  ("function.macro", "Macro"),
+  ("keyword", "Keyword"),
+  ("keyword.function", "Keyword"),
+  ("keyword.operator", "Keyword"),
+  ("label", "Label"),
+  ("namespace", "PreProc"),
+  ("number", "Number"),
+  ("operator", "Operator"),
+  ("parameter", "Special"),
+  ("property", "Identifier"),
+  ("punctuation.bracket", "Delimiter"),
+  ("punctuation.delimiter", "Delimiter"),
+  ("punctuation.special", "Delimiter"),
+  ("repeat", "Repeat"),
+  ("spell", "SpellLocal"),
+  ("string", "String"),
+  ("string.regex", "Typedef"),
+  ("string.special", "SpecialChar"),
+  ("type", "Type"),
+  ("variable", "Identifier"),
+  ("variable.builtin", "Identifier"),
+}
+
 highlight_names_module![
   builtin;
     ("comment", "Comment"),
@@ -142,6 +179,7 @@ impl Language {
         match self {
             Self::Markdown => markdown::HIGHLIGHT_NAMES,
             Self::Rust => rust::HIGHLIGHT_NAMES,
+            Self::Viml => viml::HIGHLIGHT_NAMES,
             _ => builtin::HIGHLIGHT_NAMES,
         }
     }
@@ -150,6 +188,7 @@ impl Language {
         match self {
             Self::Markdown => markdown::HIGHLIGHT_NAMES[highlight.0],
             Self::Rust => rust::HIGHLIGHT_NAMES[highlight.0],
+            Self::Viml => viml::HIGHLIGHT_NAMES[highlight.0],
             _ => builtin::HIGHLIGHT_NAMES[highlight.0],
         }
     }
@@ -158,6 +197,7 @@ impl Language {
         match self {
             Self::Markdown => markdown::HIGHLIGHT_GROUPS[highlight.0].1,
             Self::Rust => rust::HIGHLIGHT_GROUPS[highlight.0].1,
+            Self::Viml => viml::HIGHLIGHT_GROUPS[highlight.0].1,
             _ => builtin::HIGHLIGHT_GROUPS[highlight.0].1,
         }
     }
