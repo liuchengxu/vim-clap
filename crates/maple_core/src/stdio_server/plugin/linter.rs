@@ -18,6 +18,8 @@ struct Count {
 }
 
 enum Direction {
+    First,
+    Last,
     Next,
     Prev,
 }
@@ -78,6 +80,9 @@ impl BufferDiagnostics {
         kind: DiagnosticKind,
         direction: Direction,
     ) -> Option<(usize, usize)> {
+        use DiagnosticKind::{Error, Warn};
+        use Direction::{First, Last, Next, Prev};
+
         let diagnostics = self.inner.read();
 
         let errors = || {
@@ -102,16 +107,24 @@ impl BufferDiagnostics {
 
         // TODO: binary search since the diagnostics are already sorted?
         match (kind, direction) {
-            (DiagnosticKind::Error, Direction::Next) => {
-                errors().find_map(|span| check_span(span, CmpOrdering::Greater))
-            }
-            (DiagnosticKind::Error, Direction::Prev) => errors()
+            (Error, First) => errors()
+                .next()
+                .map(|span| (span.line_start, span.column_start)),
+            (Error, Last) => errors()
+                .last()
+                .map(|span| (span.line_start, span.column_start)),
+            (Error, Next) => errors().find_map(|span| check_span(span, CmpOrdering::Greater)),
+            (Error, Prev) => errors()
                 .rev()
                 .find_map(|span| check_span(span, CmpOrdering::Less)),
-            (DiagnosticKind::Warn, Direction::Next) => {
-                warnings().find_map(|span| check_span(span, CmpOrdering::Greater))
-            }
-            (DiagnosticKind::Warn, Direction::Prev) => warnings()
+            (Warn, First) => errors()
+                .next()
+                .map(|span| (span.line_start, span.column_start)),
+            (Warn, Last) => errors()
+                .last()
+                .map(|span| (span.line_start, span.column_start)),
+            (Warn, Next) => warnings().find_map(|span| check_span(span, CmpOrdering::Greater)),
+            (Warn, Prev) => warnings()
                 .rev()
                 .find_map(|span| check_span(span, CmpOrdering::Less)),
         }
@@ -216,7 +229,20 @@ impl BufferLinterInfo {
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "linter", actions = ["lint", "format", "next-error", "prev-error", "next-warn", "prev-warn", "debug", "toggle"])]
+#[clap_plugin(id = "linter", actions = [
+  "lint",
+  "format",
+  "first-error",
+  "last-error",
+  "next-error",
+  "prev-error",
+  "first-warn",
+  "last-warn",
+  "next-warn",
+  "prev-warn",
+  "debug",
+  "toggle",
+])]
 pub struct Linter {
     vim: Vim,
     bufs: HashMap<usize, BufferLinterInfo>,
@@ -430,12 +456,28 @@ impl ClapPlugin for Linter {
                     }
                 });
             }
+            LinterAction::FirstError => {
+                self.navigate_diagnostics(DiagnosticKind::Error, Direction::First)
+                    .await?;
+            }
+            LinterAction::LastError => {
+                self.navigate_diagnostics(DiagnosticKind::Error, Direction::Last)
+                    .await?;
+            }
             LinterAction::NextError => {
                 self.navigate_diagnostics(DiagnosticKind::Error, Direction::Next)
                     .await?;
             }
             LinterAction::PrevError => {
                 self.navigate_diagnostics(DiagnosticKind::Error, Direction::Prev)
+                    .await?;
+            }
+            LinterAction::FirstWarn => {
+                self.navigate_diagnostics(DiagnosticKind::Warn, Direction::First)
+                    .await?;
+            }
+            LinterAction::LastWarn => {
+                self.navigate_diagnostics(DiagnosticKind::Warn, Direction::Last)
                     .await?;
             }
             LinterAction::NextWarn => {
