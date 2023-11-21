@@ -44,11 +44,11 @@ pub fn file_size(file: &File) -> usize {
 
 /// A utility for checking if the byte size of a file exceeds a specified limit.
 #[derive(Debug, Clone)]
-pub struct SizeChecker(usize);
+pub struct SizeChecker(u64);
 
 impl SizeChecker {
     /// Creates a new [`SizeChecker`] with the size limit.
-    pub const fn new(byte_size_limit: usize) -> Self {
+    pub const fn new(byte_size_limit: u64) -> Self {
         Self(byte_size_limit)
     }
 
@@ -57,7 +57,7 @@ impl SizeChecker {
         let file = File::open(path.as_ref())?;
         let metadata = file.metadata()?;
 
-        Ok(metadata.len() as usize > self.0)
+        Ok(metadata.len() > self.0)
     }
 }
 

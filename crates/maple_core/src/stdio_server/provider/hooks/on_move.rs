@@ -747,6 +747,7 @@ fn fetch_syntax_highlights(
     context_lines_offset: usize,
 ) -> SublimeOrTreeSitter {
     use crate::config::HighlightEngine;
+    use utils::SizeChecker;
 
     let provider_config = &crate::config::config().provider;
 
@@ -786,7 +787,12 @@ fn fetch_syntax_highlights(
                 .unwrap_or(SublimeOrTreeSitter::Neither)
         }
         HighlightEngine::TreeSitter => {
-            // TODO: max file size limit and max line limit?
+            const FILE_SIZE_CHECKER: SizeChecker = SizeChecker::new(1024 * 1024);
+
+            if FILE_SIZE_CHECKER.is_too_large(path).unwrap_or(true) {
+                return SublimeOrTreeSitter::Neither;
+            }
+
             path.extension()
                 .and_then(|s| s.to_str())
                 .and_then(tree_sitter::Language::try_from_extension)
@@ -795,6 +801,10 @@ fn fetch_syntax_highlights(
                         return None;
                     };
 
+                    // TODO: Cache the highlights per one provider session or even globally?
+                    // 1. Check the last modified time.
+                    // 2. If unchanged, try retrieving from the cache.
+                    // 3. Otherwise parse it.
                     let Ok(raw_highlights) = tree_sitter::highlight(language, &source_code) else {
                         return None;
                     };

@@ -6,6 +6,7 @@ use icon::IconType;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
+use utils::SizeChecker;
 
 #[derive(Serialize, Debug)]
 struct ScopeRef<'a> {
@@ -31,14 +32,17 @@ pub struct CtagsPlugin {
     vim: Vim,
     last_cursor_tag: Option<BufferTag>,
     buf_tags: HashMap<usize, Vec<BufferTag>>,
+    file_size_checker: SizeChecker,
 }
 
 impl CtagsPlugin {
     pub fn new(vim: Vim) -> Self {
+        let ctags_config = &crate::config::config().plugin.ctags;
         Self {
             vim,
             last_cursor_tag: None,
             buf_tags: HashMap::new(),
+            file_size_checker: SizeChecker::new(ctags_config.max_file_size),
         }
     }
 
@@ -110,7 +114,9 @@ impl ClapPlugin for CtagsPlugin {
         match event_type {
             BufEnter | BufWritePost => {
                 let file_path: String = self.vim.expand(format!("#{bufnr}:p")).await?;
-                if !Path::new(&file_path).exists() {
+                if !Path::new(&file_path).exists()
+                    || self.file_size_checker.is_too_large(&file_path)?
+                {
                     return Ok(());
                 }
                 let buffer_tags = crate::tools::ctags::fetch_buffer_tags(file_path)?;

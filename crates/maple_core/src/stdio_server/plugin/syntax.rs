@@ -264,7 +264,15 @@ impl Syntax {
             self.vim.exec("execute", "syntax off")?;
         }
 
+        let start = std::time::Instant::now();
         let raw_highlights = tree_sitter::highlight(language, &source_code)?;
+        tracing::debug!(
+            ?language,
+            raw_highlights_lines = raw_highlights.len(),
+            "source file size: {} byte, ts highlighting elapsed: {:?}ms",
+            source_code.len(),
+            start.elapsed().as_millis()
+        );
 
         let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
         let maybe_vim_highlights = self.apply_ts_highlights(

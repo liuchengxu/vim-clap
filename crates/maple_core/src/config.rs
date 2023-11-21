@@ -124,11 +124,24 @@ pub struct MarkdownPluginConfig {
     pub enable: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct CtagsPluginConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
+    /// Disable the ctags plugin if the size of file exceeds the max size limit.
+    ///
+    /// By default the max file size limit is 4MiB.
+    pub max_file_size: u64,
+}
+
+impl Default for CtagsPluginConfig {
+    fn default() -> Self {
+        Self {
+            enable: false,
+            max_file_size: 4 * 1024 * 1024,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
