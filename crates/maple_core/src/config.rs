@@ -206,6 +206,27 @@ pub struct IgnoreConfig {
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct ProviderConfig {
+    /// Whether to share the input history of each provider.
+    pub share_input_history: bool,
+
+    /// Specifies how many items will be displayed in the results window.
+    pub max_display_size: Option<usize>,
+
+    /// Specify the syntax highlight engine for the provider preview.
+    pub preview_highlight_engine: HighlightEngine,
+
+    /// Specify the theme for the highlight engine.
+    ///
+    /// If the theme is not found and the engine is [`HighlightEngine::SublimeSyntax`],
+    /// the default theme (`Visual Studio Dark+`) will be used.
+    pub sublime_syntax_color_scheme: Option<String>,
+
+    /// Ignore configuration per provider.
+    ///
+    /// Priorities of the ignore config:
+    ///   provider_ignores > provider_ignores > global_ignore
+    pub ignore: HashMap<String, IgnoreConfig>,
+
     /// Delay in milliseconds before the user query will be handled actually.
     ///
     /// When enabled and not-zero, some intermediate inputs will be dropped if user types too fast.
@@ -221,27 +242,6 @@ pub struct ProviderConfig {
     /// "files" = 100
     /// ```
     pub debounce: HashMap<String, u64>,
-
-    /// Ignore configuration per provider.
-    ///
-    /// Priorities of the ignore config:
-    ///   provider_ignores > provider_ignores > global_ignore
-    pub ignore: HashMap<String, IgnoreConfig>,
-
-    /// Specifies how many items will be displayed in the results window.
-    pub max_display_size: Option<usize>,
-
-    /// Specify the syntax highlight engine for the provider preview.
-    pub preview_highlight_engine: HighlightEngine,
-
-    /// Specify the theme for the highlight engine.
-    ///
-    /// If the theme is not found and the engine is [`HighlightEngine::SublimeSyntax`],
-    /// the default theme (`Visual Studio Dark+`) will be used.
-    pub sublime_syntax_color_scheme: Option<String>,
-
-    /// Whether to share the input history of each provider.
-    pub share_input_history: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
@@ -256,6 +256,11 @@ pub enum HighlightEngine {
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
+    /// Ignore configuration per project.
+    ///
+    /// The project path must be specified as absolute path or a path relative to the home directory.
+    pub project_ignore: HashMap<AbsPathBuf, IgnoreConfig>,
+
     /// Log configuration.
     pub log: LogConfig,
 
@@ -270,11 +275,6 @@ pub struct Config {
 
     /// Global ignore configuration.
     pub global_ignore: IgnoreConfig,
-
-    /// Ignore configuration per project.
-    ///
-    /// The project path must be specified as absolute path or a path relative to the home directory.
-    pub project_ignore: HashMap<AbsPathBuf, IgnoreConfig>,
 }
 
 impl Config {
@@ -301,6 +301,27 @@ impl Config {
                     .unwrap_or(DEFAULT_DEBOUNCE)
             })
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct TestConfig {
+    /// Ignore configuration per project.
+    ///
+    /// The project path must be specified as absolute path or a path relative to the home directory.
+    pub project_ignore: HashMap<AbsPathBuf, IgnoreConfig>,
+
+    /// Log configuration.
+    pub log: LogConfig,
+
+    /// Matcher configuration.
+    pub matcher: MatcherConfig,
+
+    /// Plugin configuration.
+    pub plugin: PluginConfig,
+
+    /// Provider configuration.
+    pub provider: ProviderConfig,
 }
 
 #[cfg(test)]
@@ -375,5 +396,11 @@ mod tests {
                 ..Default::default()
             }
         );
+    }
+
+    #[test]
+    fn test_config_deserialize() {
+        let config = Config::default();
+        toml::to_string_pretty(&config).expect("Deserialize config is okay");
     }
 }

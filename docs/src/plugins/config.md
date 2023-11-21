@@ -16,4 +16,7 @@ max-level = "debug"
 # There are four sort keys for results: score, begin, end, length,
 # you can specify how the records are sorted using `tiebreak`.
 tiebreak = "score,-begin,-end,-length"
+
+[provider]
+preview-highlight-engine = "tree-sitter"
 ```
