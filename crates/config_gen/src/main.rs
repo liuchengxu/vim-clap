@@ -7,8 +7,8 @@ use quote::{quote, ToTokens};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use syn::{
-    parse_quote, Attribute, Field, Fields, ItemStruct, Lit, Meta, MetaNameValue, NestedMeta, Type,
-    PathSegment
+    parse_quote, Attribute, Field, Fields, ItemStruct, Lit, Meta, MetaNameValue, NestedMeta,
+    PathSegment, Type,
 };
 
 #[derive(Default, Debug, Serialize, Deserialize)]
@@ -119,7 +119,14 @@ fn is_struct_type(field: &Field) -> bool {
     false
 }
 
-fn parse_struct(s: &ItemStruct) -> BTreeMap<Ident, Vec<String>> {
+#[derive(Debug, Clone)]
+struct FieldInfo {
+    is_struct: Option<String>,
+    /// Extracted doc comments on this field.
+    docs: Vec<String>,
+}
+
+fn parse_struct(s: &ItemStruct) -> BTreeMap<String, FieldInfo> {
     let mut struct_docs = BTreeMap::new();
     match &s.fields {
         Fields::Named(named_fields) => {
@@ -131,21 +138,16 @@ fn parse_struct(s: &ItemStruct) -> BTreeMap<Ident, Vec<String>> {
                     .collect::<Vec<_>>();
 
                 let field_type = get_field_type_as_string(field);
-                println!("get filed_type as string: {:?}", field_type);
 
-                // Format the type using quote!
-                let mut formatted_ty = quote::quote! {};
-                field.ty.to_tokens(&mut formatted_ty);
-
-                // if let Type::Path(type_path) = &field.ty {
-                // println!("============ ty: {:?}", type_path.path.segments);
-                // }
-
-                if is_struct_type(field) {
-                    println!("filed type: {:?}", formatted_ty);
-                }
                 let ident = field.ident.clone().unwrap();
-                struct_docs.insert(ident, field_docs);
+
+                struct_docs.insert(
+                    ident.to_string(),
+                    FieldInfo {
+                        is_struct: is_struct_type(field).then_some(field_type),
+                        docs: field_docs,
+                    },
+                );
             }
         }
         _ => {}
@@ -154,6 +156,8 @@ fn parse_struct(s: &ItemStruct) -> BTreeMap<Ident, Vec<String>> {
 }
 
 fn process_ast(ast: &syn::File) {
+    let mut all_struct_docs = BTreeMap::new();
+
     // You can now traverse the AST and perform actions based on its structure.
     // For example, let's print the names of all structs in the AST.
     for item in &ast.items {
@@ -162,14 +166,54 @@ fn process_ast(ast: &syn::File) {
             let struct_docs = parse_struct(s);
             println!("struct {} docs: {:#?}", s.ident, struct_docs);
 
-            for (field, field_docs) in struct_docs {
+            for (field, field_info) in &struct_docs {
                 println!(
                     "{}",
-                    field_docs.iter().map(|line| format!("#{line}")).join("\n")
+                    field_info
+                        .docs
+                        .iter()
+                        .map(|line| format!("#{line}"))
+                        .join("\n")
                 );
                 println!("[{field}]\n");
             }
+
+            all_struct_docs.insert(s.ident.to_string(), struct_docs);
         }
+    }
+
+    let root_config_docs = all_struct_docs.get("Config").expect("Config not found");
+    println!("{all_struct_docs:#?}");
+    println!("{root_config_docs:#?}");
+
+    for (field, field_info) in root_config_docs {
+        let docs = field_info
+            .docs
+            .iter()
+            .map(|line| format!("#{line}"))
+            .join("\n");
+        println!("{docs}\n[{field}]\n");
+
+        if let Some(struct_name) = &field_info.is_struct {
+            let struct_fields_docs = all_struct_docs.get(struct_name).expect("Struct not found");
+            generate_nested_struct_config_docs(&field, struct_fields_docs, &all_struct_docs);
+        }
+    }
+}
+
+fn generate_nested_struct_config_docs(
+    parent: &str,
+    field_docs: &BTreeMap<String, FieldInfo>,
+    all_struct_docs: &BTreeMap<String, BTreeMap<String, FieldInfo>>,
+) {
+    for (field, field_info) in field_docs {
+        // println!("field: {field}, field_info: {field_info:?}");
+        let docs = field_info
+            .docs
+            .iter()
+            .map(|line| format!("#{line}"))
+            .join("\n");
+        println!("{docs}\n[{parent}.{field}]\n");
     }
 }
 
