@@ -303,27 +303,6 @@ impl Config {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
-#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
-pub struct TestConfig {
-    /// Ignore configuration per project.
-    ///
-    /// The project path must be specified as absolute path or a path relative to the home directory.
-    pub project_ignore: HashMap<AbsPathBuf, IgnoreConfig>,
-
-    /// Log configuration.
-    pub log: LogConfig,
-
-    /// Matcher configuration.
-    pub matcher: MatcherConfig,
-
-    /// Plugin configuration.
-    pub plugin: PluginConfig,
-
-    /// Provider configuration.
-    pub provider: ProviderConfig,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

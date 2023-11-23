@@ -10,3 +10,4 @@ syn = { version = "1", features = ["full"] }
 quote = "1"
 serde = { version = "1", features = ["derive"] }
 proc-macro2 = "1.0"
+itertools = "0.12.0"
