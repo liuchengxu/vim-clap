@@ -162,7 +162,12 @@ fn process_ast(ast: &syn::File) {
     // For example, let's print the names of all structs in the AST.
     for item in &ast.items {
         if let syn::Item::Struct(ref s) = item {
-            println!("Found struct: {}", s.ident);
+            if !s.ident.to_string().ends_with("Config") {
+                println!("Ignoring non-Config struct");
+            }
+
+            println!("Found Config struct: {}", s.ident);
+
             let struct_docs = parse_struct(s);
             println!("struct {} docs: {:#?}", s.ident, struct_docs);
 
@@ -183,8 +188,8 @@ fn process_ast(ast: &syn::File) {
     }
 
     let root_config_docs = all_struct_docs.get("Config").expect("Config not found");
-    println!("{all_struct_docs:#?}");
-    println!("{root_config_docs:#?}");
+
+    let mut lines = Vec::new();
 
     for (field, field_info) in root_config_docs {
         let docs = field_info
@@ -193,27 +198,36 @@ fn process_ast(ast: &syn::File) {
             .map(|line| format!("#{line}"))
             .join("\n");
         println!("{docs}\n[{field}]\n");
+        lines.extend_from_slice(format!("{docs}\n[{field}]\n").as_bytes());
 
         if let Some(struct_name) = &field_info.is_struct {
             let struct_fields_docs = all_struct_docs.get(struct_name).expect("Struct not found");
-            generate_nested_struct_config_docs(&field, struct_fields_docs, &all_struct_docs);
+            generate_nested_struct_config_docs(
+                &mut lines,
+                &field,
+                struct_fields_docs,
+                &all_struct_docs,
+            );
         }
     }
+
+    std::fs::write("/tmp/config.toml", lines).expect("Unable to write generated config.toml");
 }
 
 fn generate_nested_struct_config_docs(
+    lines: &mut Vec<u8>,
     parent: &str,
     field_docs: &BTreeMap<String, FieldInfo>,
     all_struct_docs: &BTreeMap<String, BTreeMap<String, FieldInfo>>,
 ) {
     for (field, field_info) in field_docs {
-        // println!("field: {field}, field_info: {field_info:?}");
         let docs = field_info
             .docs
             .iter()
             .map(|line| format!("#{line}"))
             .join("\n");
         println!("{docs}\n[{parent}.{field}]\n");
+        lines.extend_from_slice(format!("\n{docs}\n[{parent}.{field}]\n").as_bytes());
     }
 }
 
