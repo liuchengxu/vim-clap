@@ -11,47 +11,6 @@ use syn::{
     PathSegment, Type,
 };
 
-#[derive(Default, Debug, Serialize, Deserialize)]
-struct DefaultConfig(Config);
-
-impl quote::ToTokens for DefaultConfig {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let struct_ident = proc_macro2::Ident::new(
-            &format!("{}", quote!(#self)),
-            proc_macro2::Span::call_site(),
-        );
-        let default_impl = quote! {
-            impl Default for #struct_ident {
-                fn default() -> Self {
-                  Self({
-                      /// Ignore configuration per project.
-                      ///
-                      /// The project path must be specified as absolute path or a path relative to the home directory.
-                      project_ignore: HashMap::new(),
-
-                      /// Log configuration.
-                      log: LogConfig::default(),
-
-                      /// Matcher configuration.
-                      matcher: MatcherConfig::default(),
-
-                      /// Plugin configuration.
-                      plugin: PluginConfig::default(),
-
-                      /// Provider configuration.
-                      provider: ProviderConfig::default(),
-
-                      /// Global ignore configuration.
-                      global_ignore: IgnoreConfig::default(),
-                  })
-                }
-            }
-        };
-        default_impl.to_tokens(tokens);
-        // self.to_tokens(tokens);
-    }
-}
-
 // Function to extract doc comments for a given struct
 fn extract_doc_comments<T: Default + Serialize + quote::ToTokens>() -> BTreeMap<String, String> {
     let default_struct = T::default();

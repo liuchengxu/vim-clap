@@ -81,8 +81,18 @@ impl MatcherConfig {
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct LogConfig {
+    /// Specify the log file path.
     pub log_file: Option<String>,
+
+    /// Specify the max log level.
     pub max_level: String,
+
+    /// Specify the log target.
+    ///
+    /// ```toml
+    /// [log]
+    /// log-target = "maple_core::stdio_server=trace,rpc=debug"
+    /// ```
     pub log_target: String,
 }
 
@@ -101,8 +111,10 @@ impl Default for LogConfig {
 pub struct CursorWordConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
+
     /// Whether to ignore the comment line
     pub ignore_comment_line: bool,
+
     /// Disable the plugin when the file matches this pattern.
     pub ignore_files: String,
 }
@@ -129,6 +141,7 @@ pub struct MarkdownPluginConfig {
 pub struct CtagsPluginConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
+
     /// Disable the ctags plugin if the size of file exceeds the max size limit.
     ///
     /// By default the max file size limit is 4MiB.
@@ -195,10 +208,13 @@ pub struct PluginConfig {
 pub struct IgnoreConfig {
     /// Whether to ignore the comment line when it's possible.
     pub ignore_comments: bool,
+
     /// Only include the results from the files being tracked by git if in a git repo.
     pub git_tracked_only: bool,
+
     /// Ignore the results from the files whose file name matches this pattern.
     pub ignore_file_name_pattern: Vec<String>,
+
     /// Ignore the results from the files whose file path matches this pattern.
     pub ignore_file_path_pattern: Vec<String>,
 }
@@ -206,10 +222,10 @@ pub struct IgnoreConfig {
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct ProviderConfig {
-    /// Whether to share the input history of each provider.
+    /// Whether to share the input history among providers.
     pub share_input_history: bool,
 
-    /// Specifies how many items will be displayed in the results window.
+    /// Specifies the maximum number of items to be displayed in the results window.
     pub max_display_size: Option<usize>,
 
     /// Specify the syntax highlight engine for the provider preview.
@@ -217,19 +233,21 @@ pub struct ProviderConfig {
 
     /// Specify the theme for the highlight engine.
     ///
-    /// If the theme is not found and the engine is [`HighlightEngine::SublimeSyntax`],
-    /// the default theme (`Visual Studio Dark+`) will be used.
+    /// If not found, the default theme (`Visual Studio Dark+`) is used
+    /// when the engine is [`HighlightEngine::SublimeSyntax`],
     pub sublime_syntax_color_scheme: Option<String>,
 
-    /// Ignore configuration per provider.
-    ///
-    /// Priorities of the ignore config:
-    ///   provider_ignores > provider_ignores > global_ignore
-    pub ignore: HashMap<String, IgnoreConfig>,
+    /// Ignore configuration per project, with paths specified as absoluate path
+    /// or relative to the home directory.
+    pub project_ignores: HashMap<AbsPathBuf, IgnoreConfig>,
 
-    /// Delay in milliseconds before the user query will be handled actually.
+    /// Ignore configuration per provider, with priorities as follows:
+    /// `provider_ignores` > `provider_ignores` > `global_ignore`
+    pub provider_ignores: HashMap<String, IgnoreConfig>,
+
+    /// Delay in milliseconds before handling the the user query.
     ///
-    /// When enabled and not-zero, some intermediate inputs will be dropped if user types too fast.
+    /// When enabled and not-zero, some intermediate inputs may be dropped if user types too fast.
     ///
     /// # Config example
     ///
@@ -256,11 +274,6 @@ pub enum HighlightEngine {
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
-    /// Ignore configuration per project.
-    ///
-    /// The project path must be specified as absolute path or a path relative to the home directory.
-    pub project_ignore: HashMap<AbsPathBuf, IgnoreConfig>,
-
     /// Log configuration.
     pub log: LogConfig,
 
@@ -278,28 +291,29 @@ pub struct Config {
 }
 
 impl Config {
+    /// Retrieves the `IgnoreConfig` for a given provider and project directory.
+    ///
+    /// If a specific `provider_id` is provided, it looks up the configuration in the provider-specific
+    /// ignores. If not found, it falls back to checking the project-specific ignores based on the
+    /// provided `project_dir`. If neither is found, it defaults to the global ignore configuration.
     pub fn ignore_config(&self, provider_id: &str, project_dir: &AbsPathBuf) -> &IgnoreConfig {
-        self.provider.ignore.get(provider_id).unwrap_or_else(|| {
-            self.project_ignore
-                .get(project_dir)
-                .unwrap_or(&self.global_ignore)
-        })
+        self.provider
+            .provider_ignores
+            .get(provider_id)
+            .or_else(|| self.provider.project_ignores.get(project_dir))
+            .unwrap_or(&self.global_ignore)
     }
 
+    /// Retrieves the debounce configuration for a specific provider or falls back to a default value.
     pub fn provider_debounce(&self, provider_id: &str) -> u64 {
         const DEFAULT_DEBOUNCE: u64 = 200;
 
         self.provider
             .debounce
             .get(provider_id)
+            .or_else(|| self.provider.debounce.get("*"))
             .copied()
-            .unwrap_or_else(|| {
-                self.provider
-                    .debounce
-                    .get("*")
-                    .copied()
-                    .unwrap_or(DEFAULT_DEBOUNCE)
-            })
+            .unwrap_or(DEFAULT_DEBOUNCE)
     }
 }
 
