@@ -341,10 +341,10 @@ mod tests {
           [global-ignore]
           ignore-file-path-pattern = ["test", "build"]
 
-          # [project-ignore."~/src/github.com/subspace/subspace"]
+          # [provider.project-ignore."~/src/github.com/subspace/subspace"]
           # ignore-comments = true
 
-          [provider.ignore.dumb_jump]
+          [provider.provider-ignores.dumb_jump]
           ignore-comments = true
 "#;
         let user_config: Config =
@@ -373,7 +373,7 @@ mod tests {
                         ("*".to_string(), 200),
                         ("files".to_string(), 100)
                     ]),
-                    ignore: HashMap::from([(
+                    provider_ignores: HashMap::from([(
                         "dumb_jump".to_string(),
                         IgnoreConfig {
                             ignore_comments: true,

@@ -319,6 +319,6 @@ mod tests {
 
     #[test]
     fn test_tree_sitter_config() {
-        assert_eq!(CONFIG.language.len(), 6);
+        assert_eq!(CONFIG.language.len(), 7);
     }
 }
