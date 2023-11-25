@@ -130,9 +130,8 @@ if s:is_nvim
     let height = s:calc(height, layout.height)
     let row = s:calc(height, layout.row)
     let col = s:calc(width, layout.col)
-    if opts.relative ==# 'editor'
-      let total_width = &columns
-      let adjustment = (total_width - col - width) / 2
+    if opts.relative ==# 'editor' && g:clap.provider.mode()  ==# 'quick_pick'
+      let adjustment = (&columns - col - width) / 2
       let col += adjustment
     endif
     return extend(opts, { 'width': width, 'height': height, 'row': row, 'col': col })
@@ -167,7 +166,7 @@ else
     let width = s:calc(width, layout.width)
     let col = s:calc(width, layout.col) + col
 
-    if relative_to_editor
+    if relative_to_editor && g:clap.provider.mode()  ==# 'quick_pick'
       let adjustment = (&columns - col - width) / 2
       let col += adjustment
     endif
