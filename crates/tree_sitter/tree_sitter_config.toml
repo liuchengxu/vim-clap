@@ -15,6 +15,30 @@ highlight-name-and-groups = [
   ["variable", "Identifier"],
 ]
 
+[language.javascript]
+highlight-name-and-groups = [
+  ["comment", "Comment"],
+  ["constant", "Constant"],
+  ["constant.builtin", "Constant"],
+  ["constructor", "Function"],
+  ["embedded", "Function"],
+  ["function", "Function"],
+  ["function.builtin", "Function"],
+  ["function.method", "Function"],
+  ["keyword", "Keyword"],
+  ["number", "Number"],
+  ["operator", "Operator"],
+  ["property", "SpecialKey"],
+  ["punctuation.bracket", "Delimiter"],
+  ["punctuation.delimiter", "Delimiter"],
+  ["punctuation.special", "Delimiter"],
+  ["string", "String"],
+  ["string.special", "SpecialChar"],
+  ["type", "Type"],
+  ["variable", "Identifier"],
+  ["variable.builtin", "Variable"],
+]
+
 [language.python]
 highlight-name-and-groups = [
   ["comment", "Comment"],

@@ -21,6 +21,7 @@ macro_rules! highlight_names_module {
     };
 }
 
+// Bash
 highlight_names_module![
   builtin;
     ("comment", "Comment"),
