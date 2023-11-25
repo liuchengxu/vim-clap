@@ -2471,6 +2471,9 @@ name = "tree_sitter"
 version = "0.1.0"
 dependencies = [
  "cc",
+ "once_cell",
+ "serde",
+ "toml 0.5.11",
  "tree-sitter",
  "tree-sitter-bash",
  "tree-sitter-c",
