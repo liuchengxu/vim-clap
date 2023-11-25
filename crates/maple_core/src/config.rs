@@ -386,7 +386,6 @@ mod tests {
                     ignore_file_path_pattern: vec!["test".to_string(), "build".to_string()],
                     ..Default::default()
                 },
-                ..Default::default()
             }
         );
     }
