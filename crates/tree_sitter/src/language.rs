@@ -6,6 +6,60 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tree_sitter_highlight::{Highlight, HighlightConfiguration};
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+struct HighlightConfig {
+    highlight_name_and_groups: Vec<(String, String)>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+struct Config {
+    language: BTreeMap<String, HighlightConfig>,
+}
+
+#[derive(Debug)]
+struct HighlightConfigInner {
+    highlight_names: Vec<String>,
+    highlight_groups: Vec<String>,
+}
+
+#[derive(Debug)]
+struct ConfigInner {
+    language: BTreeMap<Language, HighlightConfigInner>,
+}
+
+static CONFIG: Lazy<ConfigInner> = Lazy::new(|| {
+    let tree_sitter_config = include_bytes!("../tree_sitter_config.toml");
+    let config: Config = toml::from_slice(tree_sitter_config).unwrap();
+    config.into_config_inner()
+});
+
+impl Config {
+    fn into_config_inner(self) -> ConfigInner {
+        ConfigInner {
+            language: self
+                .language
+                .into_iter()
+                .map(|(lang, highlight_config)| {
+                    let lang: Language = lang.parse().unwrap();
+                    let (names, groups): (Vec<_>, Vec<_>) = highlight_config
+                        .highlight_name_and_groups
+                        .into_iter()
+                        .unzip();
+                    (
+                        lang,
+                        HighlightConfigInner {
+                            highlight_names: names,
+                            highlight_groups: groups,
+                        },
+                    )
+                })
+                .collect(),
+        }
+    }
+}
+
 /// Small macro to generate a module, declaring the list of highlight name
 /// in tree_sitter_highlight and associated vim highlight group name.
 macro_rules! highlight_names_module {
@@ -129,11 +183,17 @@ impl Language {
     }
 
     pub fn highlight_name(&self, highlight: Highlight) -> &'static str {
-        get_highlight_name(self, highlight)
+        match &CONFIG.language.get(self) {
+            Some(config) => &config.highlight_names[highlight.0],
+            None => builtin::HIGHLIGHT_NAMES[highlight.0],
+        }
     }
 
     pub fn highlight_group(&self, highlight: Highlight) -> &'static str {
-        get_highlight_group(self, highlight)
+        match &CONFIG.language.get(self) {
+            Some(config) => &config.highlight_groups[highlight.0],
+            None => builtin::HIGHLIGHT_GROUPS[highlight.0],
+        }
     }
 
     pub fn highlight_query(&self) -> &str {
@@ -250,74 +310,6 @@ pub fn get_highlight_config(language: Language) -> Arc<HighlightConfiguration> {
             .or_insert_with(|| Arc::new(language.create_new_highlight_config()));
         config.clone()
     })
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-struct HighlightConfig {
-    highlight_name_and_groups: Vec<(String, String)>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-struct Config {
-    language: BTreeMap<String, HighlightConfig>,
-}
-
-#[derive(Debug)]
-struct HighlightConfigInner {
-    highlight_names: Vec<String>,
-    highlight_groups: Vec<String>,
-}
-
-#[derive(Debug)]
-struct ConfigInner {
-    language: BTreeMap<Language, HighlightConfigInner>,
-}
-
-static CONFIG: Lazy<ConfigInner> = Lazy::new(|| {
-    let tree_sitter_config = include_bytes!("../tree_sitter_config.toml");
-    let config: Config = toml::from_slice(tree_sitter_config).unwrap();
-    config.into_config_inner()
-});
-
-fn get_highlight_name(language: &Language, highlight: Highlight) -> &'static str {
-    match &CONFIG.language.get(language) {
-        Some(config) => &config.highlight_names[highlight.0],
-        None => builtin::HIGHLIGHT_NAMES[highlight.0],
-    }
-}
-
-fn get_highlight_group(language: &Language, highlight: Highlight) -> &'static str {
-    match &CONFIG.language.get(language) {
-        Some(config) => &config.highlight_groups[highlight.0],
-        None => builtin::HIGHLIGHT_GROUPS[highlight.0],
-    }
-}
-
-impl Config {
-    fn into_config_inner(self) -> ConfigInner {
-        ConfigInner {
-            language: self
-                .language
-                .into_iter()
-                .map(|(lang, highlight_config)| {
-                    let lang: Language = lang.parse().unwrap();
-                    let (names, groups): (Vec<_>, Vec<_>) = highlight_config
-                        .highlight_name_and_groups
-                        .into_iter()
-                        .unzip();
-                    (
-                        lang,
-                        HighlightConfigInner {
-                            highlight_names: names,
-                            highlight_groups: groups,
-                        },
-                    )
-                })
-                .collect(),
-        }
-    }
 }
 
 #[cfg(test)]
