@@ -425,7 +425,7 @@ impl<'a> CachedPreviewImpl<'a> {
         let end = lines.len();
 
         let scrollbar = if self.ctx.env.should_add_scrollbar(end) {
-            calculate_scrollbar(&self.ctx, 0, end, total)
+            calculate_scrollbar(self.ctx, 0, end, total)
         } else {
             None
         };

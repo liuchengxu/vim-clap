@@ -129,6 +129,47 @@ impl BufferDiagnostics {
                 .find_map(|span| check_span(span, CmpOrdering::Less)),
         }
     }
+
+    async fn display_diagnostics_at_cursor(&self, vim: &Vim) -> VimResult<()> {
+        let lnum = vim.line(".").await?;
+        let col = vim.col(".").await?;
+
+        let diagnostics = self.inner.read();
+
+        let current_diagnostics = diagnostics
+            .iter()
+            .filter(|d| d.spans.iter().any(|span| span.line_start == lnum))
+            .collect::<Vec<_>>();
+
+        if current_diagnostics.is_empty() {
+            vim.bare_exec("clap#plugin#linter#close_top_right")?;
+        } else {
+            let diagnostic_at_cursor = current_diagnostics
+                .iter()
+                .filter(|d| {
+                    d.spans
+                        .iter()
+                        .any(|span| col >= span.column_start && col < span.column_end)
+                })
+                .collect::<Vec<_>>();
+
+            // Display the specific diagnostic if the cursor is on it,
+            // otherwise display all the diagnostics in this line.
+            if diagnostic_at_cursor.is_empty() {
+                vim.exec(
+                    "clap#plugin#linter#display_top_right",
+                    [current_diagnostics],
+                )?;
+            } else {
+                vim.exec(
+                    "clap#plugin#linter#display_top_right",
+                    [diagnostic_at_cursor],
+                )?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Clone)]
@@ -197,6 +238,12 @@ impl ide::linting::HandleLinterResult for LinterResultHandler {
         let _ = self
             .vim
             .setbufvar(self.bufnr, "clap_diagnostics", new_count);
+
+        let buffer_diagnostics = self.buffer_diagnostics.clone();
+        let vim = self.vim.clone();
+        tokio::spawn(async move {
+            let _ = buffer_diagnostics.display_diagnostics_at_cursor(&vim).await;
+        });
 
         Ok(())
     }
@@ -321,42 +368,10 @@ impl Linter {
 
     async fn on_cursor_moved(&self, bufnr: usize) -> VimResult<()> {
         if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
-            let lnum = self.vim.line(".").await?;
-            let col = self.vim.col(".").await?;
-
-            let diagnostics = buf_linter_info.diagnostics.inner.read();
-
-            let current_diagnostics = diagnostics
-                .iter()
-                .filter(|d| d.spans.iter().any(|span| span.line_start == lnum))
-                .collect::<Vec<_>>();
-
-            if current_diagnostics.is_empty() {
-                self.vim.bare_exec("clap#plugin#linter#close_top_right")?;
-            } else {
-                let diagnostic_at_cursor = current_diagnostics
-                    .iter()
-                    .filter(|d| {
-                        d.spans
-                            .iter()
-                            .any(|span| col >= span.column_start && col < span.column_end)
-                    })
-                    .collect::<Vec<_>>();
-
-                // Display the specific diagnostic if the cursor is on it, otherwise display all
-                // the diagnostics in this line.
-                if diagnostic_at_cursor.is_empty() {
-                    self.vim.exec(
-                        "clap#plugin#linter#display_top_right",
-                        [current_diagnostics],
-                    )?;
-                } else {
-                    self.vim.exec(
-                        "clap#plugin#linter#display_top_right",
-                        [diagnostic_at_cursor],
-                    )?;
-                }
-            }
+            buf_linter_info
+                .diagnostics
+                .display_diagnostics_at_cursor(&self.vim)
+                .await?;
         }
 
         Ok(())
