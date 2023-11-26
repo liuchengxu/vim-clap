@@ -570,6 +570,9 @@ max-level = &quot;debug&quot;
 # There are four sort keys for results: score, begin, end, length,
 # you can specify how the records are sorted using `tiebreak`.
 tiebreak = &quot;score,-begin,-end,-length&quot;
+
+[provider]
+preview-highlight-engine = &quot;tree-sitter&quot;
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="available-plugins"><a class="header" href="#available-plugins">Available Plugins</a></h1>
 <p>The following plugins may only implement a subset of features of their alternatives.</p>
@@ -650,7 +653,11 @@ enable = true
 <pre><code class="language-toml">[plugin.syntax]
 enable = true
 </code></pre>
-<p>This plugin implements the sublime-syntax and tree-sitter highlighting. The plugin author already uses the latter a lot.</p>
+<p>This plugin implements the sublime-syntax and tree-sitter highlighting. The sublime-syntax is feature-limited and pretty experimental, this plugin primarily focues on the tree-sitter highlighting support.</p>
+<p>Officially tree-sitter supported languages:</p>
+<ul>
+<li>Bash, C, Cpp, Go, Javascript, Json, Markdown, Python, Rust, Toml, Viml,</li>
+</ul>
 
                     </main>
 
