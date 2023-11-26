@@ -36,7 +36,7 @@ highlight-name-and-groups = [
   ["string.special", "SpecialChar"],
   ["type", "Type"],
   ["variable", "Identifier"],
-  ["variable.builtin", "Variable"],
+  ["variable.builtin", "Identifier"],
 ]
 
 [language.python]
@@ -57,7 +57,7 @@ highlight-name-and-groups = [
   ["punctuation.special", "Special"],
   ["string", "String"],
   ["type", "Type"],
-  ["variable", "Variable"],
+  ["variable", "Identifier"],
 ]
 
 [language.go]
