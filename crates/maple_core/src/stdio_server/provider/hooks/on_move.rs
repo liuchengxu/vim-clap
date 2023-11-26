@@ -425,23 +425,7 @@ impl<'a> CachedPreviewImpl<'a> {
         let end = lines.len();
 
         let scrollbar = if self.ctx.env.should_add_scrollbar(end) {
-            let preview_winheight = self.ctx.env.display_winheight;
-
-            let length = ((end * preview_winheight) as f32 / total as f32) as usize;
-
-            if length == 0 {
-                None
-            } else {
-                let mut length = preview_winheight.min(length);
-                let top_position = if self.ctx.env.preview_border_enabled {
-                    length -= if length == preview_winheight { 1 } else { 0 };
-
-                    1usize
-                } else {
-                    0usize
-                };
-                Some((top_position, length))
-            }
+            calculate_scrollbar(&self.ctx, 0, end, total)
         } else {
             None
         };
@@ -525,25 +509,8 @@ impl<'a> CachedPreviewImpl<'a> {
                     } else {
                         start
                     };
-                    let preview_winheight = self.ctx.env.display_winheight;
-                    let length =
-                        (((end - start) * preview_winheight) as f32 / total as f32) as usize;
-                    let top_position = (start * preview_winheight) as f32 / total as f32;
 
-                    if length == 0 {
-                        None
-                    } else {
-                        let mut length = preview_winheight.min(length);
-                        let top_position = if self.ctx.env.preview_border_enabled {
-                            length -= if length == preview_winheight { 1 } else { 0 };
-
-                            1usize.max(top_position as usize)
-                        } else {
-                            top_position as usize
-                        };
-
-                        Some((top_position, length))
-                    }
+                    calculate_scrollbar(&self.ctx, start, end, total)
                 } else {
                     None
                 };
@@ -728,6 +695,34 @@ async fn fetch_context_lines(
     }
 
     context_lines
+}
+
+fn calculate_scrollbar(
+    ctx: &Context,
+    start: usize,
+    end: usize,
+    total: usize,
+) -> Option<(usize, usize)> {
+    let preview_winheight = ctx.env.display_winheight;
+
+    let length = (((end - start) * preview_winheight) as f32 / total as f32) as usize;
+
+    let top_position = (start * preview_winheight) as f32 / total as f32;
+
+    if length == 0 {
+        None
+    } else {
+        let mut length = preview_winheight.min(length);
+        let top_position = if ctx.env.preview_border_enabled {
+            length -= if length == preview_winheight { 1 } else { 0 };
+
+            1usize.max(top_position as usize)
+        } else {
+            top_position as usize
+        };
+
+        Some((top_position, length))
+    }
 }
 
 enum SublimeOrTreeSitter {
