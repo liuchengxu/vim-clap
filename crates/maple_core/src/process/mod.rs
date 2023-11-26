@@ -9,7 +9,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use utils::{count_lines, read_first_lines};
+use utils::{line_count, read_first_lines};
 
 // TODO: make it configurable so that it can support powershell easier?
 // https://github.com/liuchengxu/vim-clap/issues/640
@@ -265,7 +265,7 @@ impl<'a> CacheableCommand<'a> {
             lines_iter.collect()
         };
 
-        let total = count_lines(std::fs::File::open(&cache_file_path)?)?;
+        let total = line_count(&cache_file_path)?;
 
         // Store the cache file if the total number of items exceeds the threshold, so that the
         // cache can be reused if the identical command is executed again.

@@ -8,7 +8,7 @@ use rayon::prelude::*;
 use std::io::BufRead;
 use std::sync::Arc;
 use types::ClapItem;
-use utils::count_lines;
+use utils::line_count;
 
 fn prepare_source_items() -> Vec<SourceItem> {
     let largest_cache = find_largest_cache_digest().expect("Cache is empty");
@@ -145,7 +145,7 @@ fn bench_regex_searcher(c: &mut Criterion) {
 fn bench_bytecount(c: &mut Criterion) {
     let largest_cache = find_largest_cache_digest().expect("Cache is empty");
     c.bench_function("bytecount", |b| {
-        b.iter(|| count_lines(std::fs::File::open(&largest_cache.cached_path).unwrap()))
+        b.iter(|| line_count(&largest_cache.cached_path).unwrap())
     });
 }
 

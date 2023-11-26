@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+if [ -z "$GH_TOKEN" ]; then
+  echo "GH_TOKEN is not set. Exiting"
+  exit 1
+fi
+
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
 MAPLE_CARGO_TOML="../Cargo.toml"
@@ -49,9 +54,9 @@ else
   echo 'Now run git diff to check again, then commit and tag a new version:'
   echo '    git add -u' > publish.sh
   echo "    git commit -m v0.$next_tag" >> publish.sh
-  echo "    git push origin master" >> publish.sh
+  echo "    git push https://$GH_TOKEN@github.com/liuchengxu/vim-clap master" >> publish.sh
   echo "    git tag v0.$next_tag" >> publish.sh
-  echo "    git push origin v0.$next_tag" >> publish.sh
+  echo "    git push https://$GH_TOKEN@github.com/liuchengxu/vim-clap v0.$next_tag" >> publish.sh
   echo 'Run `bash publish.sh` to publish this new release'
 
 fi

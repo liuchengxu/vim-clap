@@ -18,6 +18,8 @@ struct Count {
 }
 
 enum Direction {
+    First,
+    Last,
     Next,
     Prev,
 }
@@ -78,6 +80,10 @@ impl BufferDiagnostics {
         kind: DiagnosticKind,
         direction: Direction,
     ) -> Option<(usize, usize)> {
+        use CmpOrdering::{Greater, Less};
+        use DiagnosticKind::{Error, Warn};
+        use Direction::{First, Last, Next, Prev};
+
         let diagnostics = self.inner.read();
 
         let errors = || {
@@ -94,27 +100,63 @@ impl BufferDiagnostics {
 
         let check_span = |span: &DiagnosticSpan, ordering: CmpOrdering| {
             if span.line_start.cmp(&from_line_number) == ordering {
-                Some((span.line_start, span.column_start))
+                Some(span.start_pos())
             } else {
                 None
             }
         };
 
-        // TODO: binary search since the diagnostics are already sorted?
         match (kind, direction) {
-            (DiagnosticKind::Error, Direction::Next) => {
-                errors().find_map(|span| check_span(span, CmpOrdering::Greater))
-            }
-            (DiagnosticKind::Error, Direction::Prev) => errors()
-                .rev()
-                .find_map(|span| check_span(span, CmpOrdering::Less)),
-            (DiagnosticKind::Warn, Direction::Next) => {
-                warnings().find_map(|span| check_span(span, CmpOrdering::Greater))
-            }
-            (DiagnosticKind::Warn, Direction::Prev) => warnings()
-                .rev()
-                .find_map(|span| check_span(span, CmpOrdering::Less)),
+            (Error, First) => errors().next().map(|span| span.start_pos()),
+            (Error, Last) => errors().last().map(|span| span.start_pos()),
+            (Error, Next) => errors().find_map(|span| check_span(span, Greater)),
+            (Error, Prev) => errors().rev().find_map(|span| check_span(span, Less)),
+            (Warn, First) => warnings().next().map(|span| span.start_pos()),
+            (Warn, Last) => warnings().last().map(|span| span.start_pos()),
+            (Warn, Next) => warnings().find_map(|span| check_span(span, Greater)),
+            (Warn, Prev) => warnings().rev().find_map(|span| check_span(span, Less)),
         }
+    }
+
+    async fn display_diagnostics_at_cursor(&self, vim: &Vim) -> VimResult<()> {
+        let lnum = vim.line(".").await?;
+        let col = vim.col(".").await?;
+
+        let diagnostics = self.inner.read();
+
+        let current_diagnostics = diagnostics
+            .iter()
+            .filter(|d| d.spans.iter().any(|span| span.line_start == lnum))
+            .collect::<Vec<_>>();
+
+        if current_diagnostics.is_empty() {
+            vim.bare_exec("clap#plugin#linter#close_top_right")?;
+        } else {
+            let diagnostic_at_cursor = current_diagnostics
+                .iter()
+                .filter(|d| {
+                    d.spans
+                        .iter()
+                        .any(|span| col >= span.column_start && col < span.column_end)
+                })
+                .collect::<Vec<_>>();
+
+            // Display the specific diagnostic if the cursor is on it,
+            // otherwise display all the diagnostics in this line.
+            if diagnostic_at_cursor.is_empty() {
+                vim.exec(
+                    "clap#plugin#linter#display_top_right",
+                    [current_diagnostics],
+                )?;
+            } else {
+                vim.exec(
+                    "clap#plugin#linter#display_top_right",
+                    [diagnostic_at_cursor],
+                )?;
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -185,6 +227,12 @@ impl ide::linting::HandleLinterResult for LinterResultHandler {
             .vim
             .setbufvar(self.bufnr, "clap_diagnostics", new_count);
 
+        let buffer_diagnostics = self.buffer_diagnostics.clone();
+        let vim = self.vim.clone();
+        tokio::spawn(async move {
+            let _ = buffer_diagnostics.display_diagnostics_at_cursor(&vim).await;
+        });
+
         Ok(())
     }
 }
@@ -216,7 +264,23 @@ impl BufferLinterInfo {
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "linter", actions = ["lint", "format", "next-error", "prev-error", "next-warn", "prev-warn", "debug", "toggle"])]
+#[clap_plugin(
+  id = "linter",
+  actions = [
+    "lint",
+    "format",
+    "first-error",
+    "last-error",
+    "next-error",
+    "prev-error",
+    "first-warn",
+    "last-warn",
+    "next-warn",
+    "prev-warn",
+    "debug",
+    "toggle",
+  ]
+)]
 pub struct Linter {
     vim: Vim,
     bufs: HashMap<usize, BufferLinterInfo>,
@@ -272,6 +336,29 @@ impl Linter {
         }
     }
 
+    async fn format_buffer(&self, bufnr: usize) -> VimResult<()> {
+        let source_file = self.vim.bufabspath(bufnr).await?;
+        let source_file = PathBuf::from(source_file);
+
+        let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+
+        let Some(workspace) = ide::linting::find_workspace(&filetype, &source_file) else {
+            return Ok(());
+        };
+
+        let workspace = workspace.to_path_buf();
+        let vim = self.vim.clone();
+        tokio::spawn(async move {
+            if ide::formatting::run_rustfmt(&source_file, &workspace)
+                .await
+                .is_ok()
+            {
+                let _ = vim.bare_exec("clap#util#reload_current_file");
+            }
+        });
+        Ok(())
+    }
+
     async fn navigate_diagnostics(
         &self,
         kind: DiagnosticKind,
@@ -292,42 +379,10 @@ impl Linter {
 
     async fn on_cursor_moved(&self, bufnr: usize) -> VimResult<()> {
         if let Some(buf_linter_info) = self.bufs.get(&bufnr) {
-            let lnum = self.vim.line(".").await?;
-            let col = self.vim.col(".").await?;
-
-            let diagnostics = buf_linter_info.diagnostics.inner.read();
-
-            let current_diagnostics = diagnostics
-                .iter()
-                .filter(|d| d.spans.iter().any(|span| span.line_start == lnum))
-                .collect::<Vec<_>>();
-
-            if current_diagnostics.is_empty() {
-                self.vim.bare_exec("clap#plugin#linter#close_top_right")?;
-            } else {
-                let diagnostic_at_cursor = current_diagnostics
-                    .iter()
-                    .filter(|d| {
-                        d.spans
-                            .iter()
-                            .any(|span| col >= span.column_start && col < span.column_end)
-                    })
-                    .collect::<Vec<_>>();
-
-                // Display the specific diagnostic if the cursor is on it, otherwise display all
-                // the diagnostics in this line.
-                if diagnostic_at_cursor.is_empty() {
-                    self.vim.exec(
-                        "clap#plugin#linter#display_top_right",
-                        [current_diagnostics],
-                    )?;
-                } else {
-                    self.vim.exec(
-                        "clap#plugin#linter#display_top_right",
-                        [diagnostic_at_cursor],
-                    )?;
-                }
-            }
+            buf_linter_info
+                .diagnostics
+                .display_diagnostics_at_cursor(&self.vim)
+                .await?;
         }
 
         Ok(())
@@ -368,6 +423,9 @@ impl ClapPlugin for Linter {
     }
 
     async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
+        use DiagnosticKind::{Error, Warn};
+        use Direction::{First, Last, Next, Prev};
+
         let ActionRequest { method, params: _ } = action;
         match self.parse_action(method)? {
             LinterAction::Toggle => {
@@ -410,41 +468,31 @@ impl ClapPlugin for Linter {
             }
             LinterAction::Format => {
                 let bufnr = self.vim.bufnr("").await?;
-                let source_file = self.vim.bufabspath(bufnr).await?;
-                let source_file = PathBuf::from(source_file);
-
-                let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
-
-                let Some(workspace) = ide::linting::find_workspace(&filetype, &source_file) else {
-                    return Ok(());
-                };
-
-                let workspace = workspace.to_path_buf();
-                let vim = self.vim.clone();
-                tokio::spawn(async move {
-                    if ide::formatting::run_rustfmt(&source_file, &workspace)
-                        .await
-                        .is_ok()
-                    {
-                        let _ = vim.bare_exec("clap#util#reload_current_file");
-                    }
-                });
+                self.format_buffer(bufnr).await?;
+            }
+            LinterAction::FirstError => {
+                self.navigate_diagnostics(Error, First).await?;
+            }
+            LinterAction::LastError => {
+                self.navigate_diagnostics(Error, Last).await?;
             }
             LinterAction::NextError => {
-                self.navigate_diagnostics(DiagnosticKind::Error, Direction::Next)
-                    .await?;
+                self.navigate_diagnostics(Error, Next).await?;
             }
             LinterAction::PrevError => {
-                self.navigate_diagnostics(DiagnosticKind::Error, Direction::Prev)
-                    .await?;
+                self.navigate_diagnostics(Error, Prev).await?;
+            }
+            LinterAction::FirstWarn => {
+                self.navigate_diagnostics(Warn, First).await?;
+            }
+            LinterAction::LastWarn => {
+                self.navigate_diagnostics(Warn, Last).await?;
             }
             LinterAction::NextWarn => {
-                self.navigate_diagnostics(DiagnosticKind::Warn, Direction::Next)
-                    .await?;
+                self.navigate_diagnostics(Warn, Next).await?;
             }
             LinterAction::PrevWarn => {
-                self.navigate_diagnostics(DiagnosticKind::Warn, Direction::Prev)
-                    .await?;
+                self.navigate_diagnostics(Warn, Prev).await?;
             }
         }
 

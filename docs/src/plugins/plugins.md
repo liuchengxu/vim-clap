@@ -90,4 +90,8 @@ enable = true
 enable = true
 ```
 
-This plugin implements the sublime-syntax and tree-sitter highlighting. The plugin author already uses the latter a lot.
+This plugin implements the sublime-syntax and tree-sitter highlighting. The sublime-syntax is feature-limited and pretty experimental, this plugin primarily focues on the tree-sitter highlighting support.
+
+Officially tree-sitter supported languages:
+
+- Bash, C, Cpp, Go, Javascript, Json, Markdown, Python, Rust, Toml, Viml,

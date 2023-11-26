@@ -8,7 +8,7 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
 use types::ClapItem;
-use utils::count_lines;
+use utils::line_count;
 
 async fn execute_and_write_cache(
     cmd: &str,
@@ -20,7 +20,7 @@ async fn execute_and_write_cache(
 
     let mut tokio_cmd = crate::process::tokio::shell_command(cmd);
     crate::process::tokio::write_stdout_to_file(&mut tokio_cmd, &cache_file).await?;
-    let total = count_lines(std::fs::File::open(&cache_file)?)?;
+    let total = line_count(&cache_file)?;
     Ok(ProviderSource::CachedFile {
         total,
         path: cache_file,
@@ -64,7 +64,7 @@ async fn initialize_provider_source(ctx: &Context) -> Result<ProviderSource> {
     // Known providers.
     match ctx.provider_id() {
         "blines" => {
-            let total = count_lines(std::fs::File::open(&ctx.env.start_buffer_path)?)?;
+            let total = line_count(&ctx.env.start_buffer_path)?;
             let path = ctx.env.start_buffer_path.clone();
             return Ok(ProviderSource::File { total, path });
         }
@@ -228,8 +228,8 @@ pub async fn initialize_provider(ctx: &Context, init_display: bool) -> Result<()
     if ctx.env.source_is_list {
         let ctx = ctx.clone();
         ctx.set_provider_source(ProviderSource::Initializing);
-        // Initialize the list-style providers in another task so that the further messages won't
-        // be blocked by the initialization in case it takes too long.
+        // Initialize the list-style providers in another task so that the further
+        // messages won't be blocked by the initialization in case it takes too long.
         tokio::spawn(initialize_list_source(ctx, init_display));
         return Ok(());
     }
@@ -240,7 +240,7 @@ pub async fn initialize_provider(ctx: &Context, init_display: bool) -> Result<()
         Ok(Ok(provider_source)) => on_initialized_source(provider_source, ctx, init_display)?,
         Ok(Err(e)) => tracing::error!(?e, "Error occurred while initializing the provider source"),
         Err(_) => {
-            // The initialization was not super fast.
+            // The initialization was not finished quickly.
             tracing::debug!(timeout = ?TIMEOUT, "Did not receive value in time");
 
             let source_cmd: Vec<String> = ctx.vim.bare_call("provider_source_cmd").await?;

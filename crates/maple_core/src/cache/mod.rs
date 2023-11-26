@@ -106,8 +106,7 @@ impl CacheInfo {
                 && digest.cached_path.exists()
                 && now.signed_duration_since(digest.last_visit).num_days() < MAX_DAYS
                 // In case the cache was not created completely.
-                && std::fs::File::open(&digest.cached_path)
-                    .and_then(utils::count_lines)
+                && utils::line_count(&digest.cached_path)
                     .map(|total| total == digest.total)
                     .unwrap_or(false)
             {
@@ -211,7 +210,7 @@ pub fn store_cache_digest(
     shell_cmd: ShellCommand,
     new_created_cache: PathBuf,
 ) -> std::io::Result<Digest> {
-    let total = utils::count_lines(std::fs::File::open(&new_created_cache)?)?;
+    let total = utils::line_count(&new_created_cache)?;
 
     let digest = Digest::new(shell_cmd, total, new_created_cache);
 

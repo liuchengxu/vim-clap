@@ -23,6 +23,8 @@ members = [
     "upgrade",
 ]
 
+exclude = ["config_gen"]
+
 [workspace.dependencies]
 anyhow = "1.0"
 async-trait = "0.1"

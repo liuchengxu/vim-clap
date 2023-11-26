@@ -1,5 +1,64 @@
-use std::{cell::RefCell, collections::HashMap, sync::Arc};
+use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
+use std::collections::{BTreeMap, HashMap};
+use std::str::FromStr;
+use std::sync::Arc;
 use tree_sitter_highlight::{Highlight, HighlightConfiguration};
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+struct HighlightConfig {
+    highlight_name_and_groups: Vec<(String, String)>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+struct Config {
+    language: BTreeMap<String, HighlightConfig>,
+}
+
+#[derive(Debug)]
+struct HighlightConfigInner {
+    highlight_names: Vec<String>,
+    highlight_groups: Vec<String>,
+}
+
+#[derive(Debug)]
+struct ConfigInner {
+    language: BTreeMap<Language, HighlightConfigInner>,
+}
+
+static CONFIG: Lazy<ConfigInner> = Lazy::new(|| {
+    let tree_sitter_config = include_bytes!("../tree_sitter_config.toml");
+    let config: Config = toml::from_slice(tree_sitter_config).unwrap();
+    config.into_config_inner()
+});
+
+impl Config {
+    fn into_config_inner(self) -> ConfigInner {
+        ConfigInner {
+            language: self
+                .language
+                .into_iter()
+                .map(|(lang, highlight_config)| {
+                    let lang: Language = lang.parse().unwrap();
+                    let (names, groups): (Vec<_>, Vec<_>) = highlight_config
+                        .highlight_name_and_groups
+                        .into_iter()
+                        .unzip();
+                    (
+                        lang,
+                        HighlightConfigInner {
+                            highlight_names: names,
+                            highlight_groups: groups,
+                        },
+                    )
+                })
+                .collect(),
+        }
+    }
+}
 
 /// Small macro to generate a module, declaring the list of highlight name
 /// in tree_sitter_highlight and associated vim highlight group name.
@@ -9,72 +68,37 @@ macro_rules! highlight_names_module {
             pub(super) const HIGHLIGHT_NAMES: &'static [&'static str] = &[
                 $( $name ),*
             ];
-            pub(super) const HIGHLIGHT_GROUPS: &'static [(&'static str, &'static str)] = &[
-                $( ($name, $group) ),*
+            pub(super) const HIGHLIGHT_GROUPS: &'static [&'static str] = &[
+                $( $group ),*
             ];
         }
     };
 }
 
-highlight_names_module! {
-  markdown;
-  ("none", "Normal"),
-  ("punctuation.delimiter", "Delimiter"),
-  ("punctuation.special", "Special"),
-  ("string.escape", "String"),
-  ("text.literal", "SpecialChar"),
-  ("text.reference", "Float"),
-  ("text.title", "Title"),
-  ("text.uri", "Directory"),
-}
-
-highlight_names_module! {
-  rust;
-  ("attribute", "Special"),
-  ("comment", "Comment"),
-  ("constant", "Constant"),
-  ("constant.builtin", "Constant"),
-  ("constructor", "Tag"),
-  ("escape", "Todo"),
-  ("function", "Function"),
-  ("function.macro", "Macro"),
-  ("function.method", "SpecialKey"),
-  ("keyword", "Keyword"),
-  ("label", "Label"),
-  ("operator", "Operator"),
-  ("property", "Number"),
-  ("punctuation.bracket", "Delimiter"),
-  ("punctuation.delimiter", "Delimiter"),
-  ("string", "String"),
-  ("type", "Type"),
-  ("type.builtin", "Type"),
-  ("variable.builtin", "Identifier"),
-  ("variable.parameter", "Identifier"),
-}
-
+// Bash
 highlight_names_module![
   builtin;
     ("comment", "Comment"),
+    ("conditional", "Conditional"),
     ("constant", "Constant"),
     ("constant.builtin", "Constant"),
     ("function", "Function"),
     ("function.builtin", "Special"),
     ("function.macro", "Macro"),
     ("keyword", "Keyword"),
-    ("operator", "Operator"),
+    ("label", "Label"),
     ("number", "Number"),
+    ("operator", "Operator"),
     ("property", "Identifier"),
     ("punctuation.delimiter", "Delimiter"),
     ("punctuation.special", "Special"),
     ("string", "String"),
     ("string.escape", "String"),
     ("string.special", "SpecialChar"),
+    ("tag", "Tag"),
     ("type", "Type"),
     ("type.definition", "Typedef"),
     ("type.builtin", "Type"),
-    ("tag", "Tag"),
-    ("attribute", "Special"),
-    ("conditional", "Conditional"),
     ("punctuation", "Delimiter"),
     ("punctuation.bracket", "Delimiter"),
     ("variable", "Identifier"),
@@ -82,7 +106,7 @@ highlight_names_module![
     ("variable.parameter", "Identifier"),
 ];
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub enum Language {
     Bash,
     C,
@@ -95,6 +119,26 @@ pub enum Language {
     Rust,
     Toml,
     Viml,
+}
+
+impl FromStr for Language {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let language = match s.to_ascii_lowercase().as_str() {
+            "bash" => Self::Bash,
+            "c" => Self::C,
+            "go" => Self::Go,
+            "javascript" => Self::Javascript,
+            "json" => Self::Json,
+            "markdown" => Self::Markdown,
+            "python" => Self::Python,
+            "rust" => Self::Rust,
+            "toml" => Self::Toml,
+            "viml" => Self::Viml,
+            _ => return Err(format!("Unknown langauge: {s}")),
+        };
+        Ok(language)
+    }
 }
 
 impl Language {
@@ -138,27 +182,17 @@ impl Language {
         Some(language)
     }
 
-    pub fn highlight_names(&self) -> &[&str] {
-        match self {
-            Self::Markdown => markdown::HIGHLIGHT_NAMES,
-            Self::Rust => rust::HIGHLIGHT_NAMES,
-            _ => builtin::HIGHLIGHT_NAMES,
-        }
-    }
-
     pub fn highlight_name(&self, highlight: Highlight) -> &'static str {
-        match self {
-            Self::Markdown => markdown::HIGHLIGHT_NAMES[highlight.0],
-            Self::Rust => rust::HIGHLIGHT_NAMES[highlight.0],
-            _ => builtin::HIGHLIGHT_NAMES[highlight.0],
+        match &CONFIG.language.get(self) {
+            Some(config) => &config.highlight_names[highlight.0],
+            None => builtin::HIGHLIGHT_NAMES[highlight.0],
         }
     }
 
     pub fn highlight_group(&self, highlight: Highlight) -> &'static str {
-        match self {
-            Self::Markdown => markdown::HIGHLIGHT_GROUPS[highlight.0].1,
-            Self::Rust => rust::HIGHLIGHT_GROUPS[highlight.0].1,
-            _ => builtin::HIGHLIGHT_GROUPS[highlight.0].1,
+        match &CONFIG.language.get(self) {
+            Some(config) => &config.highlight_groups[highlight.0],
+            None => builtin::HIGHLIGHT_GROUPS[highlight.0],
         }
     }
 
@@ -251,7 +285,14 @@ impl Language {
 
         let mut config = create_config_result.expect("Query creation must be succeed");
 
-        config.configure(self.highlight_names());
+        match &CONFIG.language.get(self) {
+            Some(conf) => {
+                config.configure(conf.highlight_names.as_slice());
+            }
+            None => {
+                config.configure(builtin::HIGHLIGHT_NAMES);
+            }
+        }
 
         config
     }
@@ -269,4 +310,15 @@ pub fn get_highlight_config(language: Language) -> Arc<HighlightConfiguration> {
             .or_insert_with(|| Arc::new(language.create_new_highlight_config()));
         config.clone()
     })
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn test_tree_sitter_config() {
+        assert_eq!(CONFIG.language.len(), 7);
+    }
 }

@@ -126,12 +126,15 @@ if s:is_nvim
       let opts = {'relative': 'win', 'win': g:clap.start.winid}
       call s:adjust_indicator_width()
     endif
-    return extend(opts, {
-          \ 'width': s:calc(width, layout.width),
-          \ 'height': s:calc(height, layout.height),
-          \ 'row': s:calc(height, layout.row),
-          \ 'col': s:calc(width, layout.col),
-          \ })
+    let width = s:calc(width, layout.width)
+    let height = s:calc(height, layout.height)
+    let row = s:calc(height, layout.row)
+    let col = s:calc(width, layout.col)
+    if opts.relative ==# 'editor' && g:clap.provider.mode()  ==# 'quick_pick'
+      let adjustment = (&columns - col - width) / 2
+      let col += adjustment
+    endif
+    return extend(opts, { 'width': width, 'height': height, 'row': row, 'col': col })
   endfunction
 
   function! s:calc_default() abort
@@ -149,7 +152,8 @@ if s:is_nvim
 else
   function! s:user_layout() abort
     let layout = s:layout()
-    if has_key(layout, 'relative') && layout.relative ==# 'editor'
+    let relative_to_editor = has_key(layout, 'relative') && layout.relative ==# 'editor'
+    if relative_to_editor
       let [row, col] = [0, 0]
       let width = &columns
       let height = &lines
@@ -159,11 +163,19 @@ else
       let height = winheight(g:clap.start.winid)
       call s:adjust_indicator_width()
     endif
+    let width = s:calc(width, layout.width)
+    let col = s:calc(width, layout.col) + col
+
+    if relative_to_editor && g:clap.provider.mode()  ==# 'quick_pick'
+      let adjustment = (&columns - col - width) / 2
+      let col += adjustment
+    endif
+
     return {
-          \ 'width': s:calc(width, layout.width),
+          \ 'width': width,
           \ 'height': s:calc(height, layout.height),
           \ 'row': s:calc(height, layout.row) + row,
-          \ 'col': s:calc(width, layout.col) + col,
+          \ 'col': col
           \ }
   endfunction
 

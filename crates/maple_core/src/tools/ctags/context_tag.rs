@@ -1,5 +1,4 @@
-use super::BufferTag;
-use crate::tools::ctags::CTAGS_HAS_JSON_FEATURE;
+use crate::tools::ctags::{BufferTag, CTAGS_HAS_JSON_FEATURE};
 use rayon::prelude::*;
 use std::io::Result;
 use std::ops::Deref;
@@ -7,7 +6,7 @@ use std::path::Path;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use subprocess::{Exec as SubprocessCommand, Redirection};
+use subprocess::Exec as SubprocessCommand;
 use tokio::process::Command as TokioCommand;
 use types::ClapItem;
 
@@ -33,43 +32,41 @@ const CONTEXT_SUPERSET: &[&str] = &[
     "enumerator",
 ];
 
-fn subprocess_cmd_in_json_format(file: impl AsRef<std::ffi::OsStr>) -> SubprocessCommand {
-    // Redirect stderr otherwise the warning message might occur `ctags: Warning: ignoring null tag...`
-    SubprocessCommand::cmd("ctags")
-        .stderr(Redirection::None)
-        .arg("--fields=+n")
-        .arg("--output-format=json")
-        .arg(file)
+fn subprocess_cmd(file: impl AsRef<std::ffi::OsStr>, has_json: bool) -> SubprocessCommand {
+    if has_json {
+        // Redirect stderr otherwise the warning message might occur `ctags: Warning: ignoring null tag...`
+        SubprocessCommand::cmd("ctags")
+            .stderr(subprocess::NullFile)
+            .arg("--fields=+n")
+            .arg("--output-format=json")
+            .arg(file)
+    } else {
+        SubprocessCommand::cmd("ctags")
+            .stderr(subprocess::NullFile)
+            .arg("--fields=+Kn")
+            .arg("-f")
+            .arg("-")
+            .arg(file)
+    }
 }
 
-fn subprocess_cmd_in_raw_format(file: impl AsRef<std::ffi::OsStr>) -> SubprocessCommand {
-    // Redirect stderr otherwise the warning message might occur `ctags: Warning: ignoring null tag...`
-    SubprocessCommand::cmd("ctags")
-        .stderr(Redirection::None)
-        .arg("--fields=+Kn")
-        .arg("-f")
-        .arg("-")
-        .arg(file)
-}
-
-fn tokio_cmd_in_json_format(file: &Path) -> TokioCommand {
+fn tokio_cmd(file: &Path, has_json: bool) -> TokioCommand {
     let mut tokio_cmd = TokioCommand::new("ctags");
-    tokio_cmd
-        .stderr(Stdio::null())
-        .arg("--fields=+n")
-        .arg("--output-format=json")
-        .arg(file);
-    tokio_cmd
-}
+    if has_json {
+        tokio_cmd
+            .stderr(Stdio::null())
+            .arg("--fields=+n")
+            .arg("--output-format=json")
+            .arg(file);
+    } else {
+        tokio_cmd
+            .stderr(Stdio::null())
+            .arg("--fields=+Kn")
+            .arg("-f")
+            .arg("-")
+            .arg(file);
+    }
 
-fn tokio_cmd_in_raw_format(file: &Path) -> TokioCommand {
-    let mut tokio_cmd = TokioCommand::new("ctags");
-    tokio_cmd
-        .stderr(Stdio::null())
-        .arg("--fields=+Kn")
-        .arg("-f")
-        .arg("-")
-        .arg(file);
     tokio_cmd
 }
 
@@ -96,31 +93,25 @@ fn find_context_tag(superset_tags: Vec<BufferTag>, at: usize) -> Option<BufferTa
 /// Async version of [`current_context_tag`].
 pub async fn current_context_tag_async(file: &Path, at: usize) -> Option<BufferTag> {
     let superset_tags = if *CTAGS_HAS_JSON_FEATURE.deref() {
-        let cmd = tokio_cmd_in_json_format(file);
-        collect_superset_context_tags_async(cmd, BufferTag::from_ctags_json, at)
+        collect_superset_context_tags_async(tokio_cmd(file, true), BufferTag::from_json_line, at)
             .await
-            .ok()?
     } else {
-        let cmd = tokio_cmd_in_raw_format(file);
-        collect_superset_context_tags_async(cmd, BufferTag::from_ctags_raw, at)
+        collect_superset_context_tags_async(tokio_cmd(file, false), BufferTag::from_raw_line, at)
             .await
-            .ok()?
     };
 
-    find_context_tag(superset_tags, at)
+    find_context_tag(superset_tags.ok()?, at)
 }
 
 /// Returns the method/function context associated with line `at`.
 pub fn current_context_tag(file: &Path, at: usize) -> Option<BufferTag> {
     let superset_tags = if *CTAGS_HAS_JSON_FEATURE.deref() {
-        let cmd = subprocess_cmd_in_json_format(file);
-        collect_superset_context_tags(cmd, BufferTag::from_ctags_json, at).ok()?
+        collect_superset_context_tags(subprocess_cmd(file, true), BufferTag::from_json_line, at)
     } else {
-        let cmd = subprocess_cmd_in_raw_format(file);
-        collect_superset_context_tags(cmd, BufferTag::from_ctags_raw, at).ok()?
+        collect_superset_context_tags(subprocess_cmd(file, false), BufferTag::from_raw_line, at)
     };
 
-    find_context_tag(superset_tags, at)
+    find_context_tag(superset_tags.ok()?, at)
 }
 
 pub fn buffer_tags_lines(
@@ -128,11 +119,9 @@ pub fn buffer_tags_lines(
     force_raw: bool,
 ) -> Result<Vec<String>> {
     let (tags, max_name_len) = if *CTAGS_HAS_JSON_FEATURE.deref() && !force_raw {
-        let cmd = subprocess_cmd_in_json_format(file);
-        collect_buffer_tags(cmd, BufferTag::from_ctags_json)?
+        collect_buffer_tags(subprocess_cmd(file, true), BufferTag::from_json_line)?
     } else {
-        let cmd = subprocess_cmd_in_raw_format(file);
-        collect_buffer_tags(cmd, BufferTag::from_ctags_raw)?
+        collect_buffer_tags(subprocess_cmd(file, false), BufferTag::from_raw_line)?
     };
 
     Ok(tags
@@ -143,11 +132,9 @@ pub fn buffer_tags_lines(
 
 pub fn fetch_buffer_tags(file: impl AsRef<std::ffi::OsStr>) -> Result<Vec<BufferTag>> {
     let (mut tags, _max_name_len) = if *CTAGS_HAS_JSON_FEATURE.deref() {
-        let cmd = subprocess_cmd_in_json_format(file);
-        collect_buffer_tags(cmd, BufferTag::from_ctags_json)?
+        collect_buffer_tags(subprocess_cmd(file, true), BufferTag::from_json_line)?
     } else {
-        let cmd = subprocess_cmd_in_raw_format(file);
-        collect_buffer_tags(cmd, BufferTag::from_ctags_raw)?
+        collect_buffer_tags(subprocess_cmd(file, false), BufferTag::from_raw_line)?
     };
 
     tags.par_sort_unstable_by_key(|x| x.line_number);
@@ -160,11 +147,9 @@ pub fn buffer_tag_items(
     force_raw: bool,
 ) -> Result<Vec<Arc<dyn ClapItem>>> {
     let (tags, max_name_len) = if *CTAGS_HAS_JSON_FEATURE.deref() && !force_raw {
-        let cmd = subprocess_cmd_in_json_format(file);
-        collect_buffer_tags(cmd, BufferTag::from_ctags_json)?
+        collect_buffer_tags(subprocess_cmd(file, true), BufferTag::from_json_line)?
     } else {
-        let cmd = subprocess_cmd_in_raw_format(file);
-        collect_buffer_tags(cmd, BufferTag::from_ctags_raw)?
+        collect_buffer_tags(subprocess_cmd(file, false), BufferTag::from_raw_line)?
     };
 
     Ok(tags

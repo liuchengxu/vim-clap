@@ -56,21 +56,28 @@ impl VimSyntaxInfo {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Preview {
     pub lines: Vec<String>,
-    /// If no sublime-syntax or tree-sitter highlights,
-    /// this field is intended to tell vim what syntax value
-    /// should be used for the highlighting. Ideally `syntax`
-    /// is returned, otherwise `fname` is returned and
-    /// Vim will inspect the syntax value from `fname`.
+
+    /// This field is used to tell vim what syntax value
+    /// should be used for the highlighting when neither
+    /// sublime-syntax nor tree-sitter is available.
+    ///
+    /// Ideally `syntax` is returned directly, otherwise
+    /// `fname` is returned and then Vim will interpret
+    /// the syntax value from `fname` on its own.
     #[serde(skip_serializing_if = "VimSyntaxInfo::is_empty")]
     pub vim_syntax_info: VimSyntaxInfo,
+
     /// Highlights from sublime-syntax highlight engine.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub sublime_syntax_highlights: SublimeHighlights,
+
     /// Highlights from tree-sitter highlight engine.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tree_sitter_highlights: TsHighlights,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hi_lnum: Option<usize>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scrollbar: Option<(usize, usize)>,
 }
@@ -93,6 +100,24 @@ impl Preview {
             vim_syntax_info,
             scrollbar,
             ..Default::default()
+        }
+    }
+
+    fn set_highlights(&mut self, sublime_or_ts_highlights: SublimeOrTreeSitter, path: &Path) {
+        match sublime_or_ts_highlights {
+            SublimeOrTreeSitter::Sublime(v) => {
+                self.sublime_syntax_highlights = v;
+            }
+            SublimeOrTreeSitter::TreeSitter(v) => {
+                self.tree_sitter_highlights = v;
+            }
+            SublimeOrTreeSitter::Neither => {
+                if let Some(syntax) = preview_syntax(path) {
+                    self.vim_syntax_info.syntax = syntax.into();
+                } else {
+                    self.vim_syntax_info.fname = path.display().to_string();
+                }
+            }
         }
     }
 }
@@ -400,27 +425,14 @@ impl<'a> CachedPreviewImpl<'a> {
             }
         };
 
-        let total = utils::count_lines(std::fs::File::open(path)?)?;
+        let sublime_or_ts_highlights =
+            fetch_syntax_highlights(&lines, path, 0, self.max_line_width(), 0..lines.len(), 0);
+
+        let total = utils::line_count(path)?;
         let end = lines.len();
 
         let scrollbar = if self.ctx.env.should_add_scrollbar(end) {
-            let preview_winheight = self.ctx.env.display_winheight;
-
-            let length = ((end * preview_winheight) as f32 / total as f32) as usize;
-
-            if length == 0 {
-                None
-            } else {
-                let mut length = preview_winheight.min(length);
-                let top_position = if self.ctx.env.preview_border_enabled {
-                    length -= if length == preview_winheight { 1 } else { 0 };
-
-                    1usize
-                } else {
-                    0usize
-                };
-                Some((top_position, length))
-            }
+            calculate_scrollbar(self.ctx, 0, end, total)
         } else {
             None
         };
@@ -428,24 +440,17 @@ impl<'a> CachedPreviewImpl<'a> {
         if std::fs::metadata(path)?.len() == 0 {
             let mut lines = lines;
             lines.push("<Empty file>".to_string());
-            Ok(Preview::new_file_preview(
+            return Ok(Preview::new_file_preview(
                 lines,
                 scrollbar,
                 VimSyntaxInfo::fname(fname),
-            ))
-        } else if let Some(syntax) = preview_syntax(path) {
-            Ok(Preview::new_file_preview(
-                lines,
-                scrollbar,
-                VimSyntaxInfo::syntax(syntax.into()),
-            ))
-        } else {
-            Ok(Preview::new_file_preview(
-                lines,
-                scrollbar,
-                VimSyntaxInfo::fname(fname),
-            ))
+            ));
         }
+
+        let mut preview = Preview::new_file_preview(lines, scrollbar, VimSyntaxInfo::default());
+        preview.set_highlights(sublime_or_ts_highlights, path);
+
+        Ok(preview)
     }
 
     async fn preview_file_at(&self, path: &Path, lnum: usize, container_width: usize) -> Preview {
@@ -511,25 +516,8 @@ impl<'a> CachedPreviewImpl<'a> {
                     } else {
                         start
                     };
-                    let preview_winheight = self.ctx.env.display_winheight;
-                    let length =
-                        (((end - start) * preview_winheight) as f32 / total as f32) as usize;
-                    let top_position = (start * preview_winheight) as f32 / total as f32;
 
-                    if length == 0 {
-                        None
-                    } else {
-                        let mut length = preview_winheight.min(length);
-                        let top_position = if self.ctx.env.preview_border_enabled {
-                            length -= if length == preview_winheight { 1 } else { 0 };
-
-                            1usize.max(top_position as usize)
-                        } else {
-                            top_position as usize
-                        };
-
-                        Some((top_position, length))
-                    }
+                    calculate_scrollbar(self.ctx, start, end, total)
                 } else {
                     None
                 };
@@ -541,21 +529,7 @@ impl<'a> CachedPreviewImpl<'a> {
                     ..Default::default()
                 };
 
-                match sublime_or_ts_highlights {
-                    SublimeOrTreeSitter::Sublime(v) => {
-                        preview.sublime_syntax_highlights = v;
-                    }
-                    SublimeOrTreeSitter::TreeSitter(v) => {
-                        preview.tree_sitter_highlights = v;
-                    }
-                    SublimeOrTreeSitter::Neither => {
-                        if let Some(syntax) = preview_syntax(path) {
-                            preview.vim_syntax_info.syntax = syntax.into();
-                        } else {
-                            preview.vim_syntax_info.fname = fname;
-                        }
-                    }
-                }
+                preview.set_highlights(sublime_or_ts_highlights, path);
 
                 preview
             }
@@ -730,6 +704,34 @@ async fn fetch_context_lines(
     context_lines
 }
 
+fn calculate_scrollbar(
+    ctx: &Context,
+    start: usize,
+    end: usize,
+    total: usize,
+) -> Option<(usize, usize)> {
+    let preview_winheight = ctx.env.display_winheight;
+
+    let length = (((end - start) * preview_winheight) as f32 / total as f32) as usize;
+
+    let top_position = (start * preview_winheight) as f32 / total as f32;
+
+    if length == 0 {
+        None
+    } else {
+        let mut length = preview_winheight.min(length);
+        let top_position = if ctx.env.preview_border_enabled {
+            length -= if length == preview_winheight { 1 } else { 0 };
+
+            1usize.max(top_position as usize)
+        } else {
+            top_position as usize
+        };
+
+        Some((top_position, length))
+    }
+}
+
 enum SublimeOrTreeSitter {
     Sublime(SublimeHighlights),
     TreeSitter(TsHighlights),
@@ -747,6 +749,7 @@ fn fetch_syntax_highlights(
     context_lines_offset: usize,
 ) -> SublimeOrTreeSitter {
     use crate::config::HighlightEngine;
+    use utils::SizeChecker;
 
     let provider_config = &crate::config::config().provider;
 
@@ -786,7 +789,12 @@ fn fetch_syntax_highlights(
                 .unwrap_or(SublimeOrTreeSitter::Neither)
         }
         HighlightEngine::TreeSitter => {
-            // TODO: max file size limit and max line limit?
+            const FILE_SIZE_CHECKER: SizeChecker = SizeChecker::new(1024 * 1024);
+
+            if FILE_SIZE_CHECKER.is_too_large(path).unwrap_or(true) {
+                return SublimeOrTreeSitter::Neither;
+            }
+
             path.extension()
                 .and_then(|s| s.to_str())
                 .and_then(tree_sitter::Language::try_from_extension)
@@ -795,6 +803,10 @@ fn fetch_syntax_highlights(
                         return None;
                     };
 
+                    // TODO: Cache the highlights per one provider session or even globally?
+                    // 1. Check the last modified time.
+                    // 2. If unchanged, try retrieving from the cache.
+                    // 3. Otherwise parse it.
                     let Ok(raw_highlights) = tree_sitter::highlight(language, &source_code) else {
                         return None;
                     };
@@ -818,6 +830,7 @@ fn fetch_syntax_highlights(
                                 let line_highlights = line_highlights
                                     .into_iter()
                                     .filter_map(|(start, length, group)| {
+                                        // Ignore the invisible highlights.
                                         if start + length > max_line_width {
                                             None
                                         } else {

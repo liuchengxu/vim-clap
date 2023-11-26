@@ -13,6 +13,38 @@ use tree_sitter::Language;
 static SUBLIME_SYNTAX_HIGHLIGHTER: Lazy<sublime_syntax::SyntaxHighlighter> =
     Lazy::new(sublime_syntax::SyntaxHighlighter::new);
 
+pub fn sublime_theme_exists(theme: &str) -> bool {
+    SUBLIME_SYNTAX_HIGHLIGHTER.theme_exists(theme)
+}
+
+pub fn sublime_syntax_by_extension(extension: &str) -> Option<&SyntaxReference> {
+    SUBLIME_SYNTAX_HIGHLIGHTER
+        .syntax_set
+        .find_syntax_by_extension(extension)
+}
+
+pub fn sublime_syntax_highlight<T: AsRef<str>>(
+    syntax: &SyntaxReference,
+    lines: impl Iterator<Item = T>,
+    line_start_number: usize,
+    theme: &str,
+) -> Vec<(usize, Vec<TokenHighlight>)> {
+    let highlighter = &SUBLIME_SYNTAX_HIGHLIGHTER;
+
+    lines
+        .enumerate()
+        .filter_map(|(index, line)| {
+            match highlighter.get_token_highlights_in_line(syntax, line.as_ref(), theme) {
+                Ok(token_highlights) => Some((line_start_number + index, token_highlights)),
+                Err(err) => {
+                    tracing::error!(line = ?line.as_ref(), ?err, "Error at fetching line highlight");
+                    None
+                }
+            }
+        })
+        .collect::<Vec<_>>()
+}
+
 #[allow(unused)]
 #[derive(Debug)]
 struct SyntaxProps {
@@ -66,21 +98,26 @@ type VimHighlights = Vec<(usize, LineHighlights)>;
 #[derive(Debug, Clone)]
 struct TreeSitterInfo {
     language: Language,
+    /// Highlights of entire buffer.
     highlights: BufferHighlights,
-    /// Current highlighting info.
+    /// Current vim highlighting info, note that we only
+    /// highlight the visual lines on the vim side.
     vim_highlights: VimHighlights,
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "syntax", actions = [
-    "list-sublime-themes",
+#[clap_plugin(
+  id = "syntax",
+  actions = [
     "sublime-syntax-highlight",
+    "sublime-syntax-list-themes",
     "tree-sitter-highlight",
     "tree-sitter-highlight-disable",
     "tree-sitter-list-scopes",
     "tree-sitter-props-at-cursor",
     "toggle",
-])]
+  ],
+)]
 pub struct Syntax {
     vim: Vim,
     toggle: Toggle,
@@ -104,25 +141,28 @@ impl Syntax {
 
     async fn on_buf_enter(&mut self, bufnr: usize) -> Result<(), PluginError> {
         let fpath = self.vim.bufabspath(bufnr).await?;
-        if let Some(extension) = std::path::Path::new(&fpath)
+        let maybe_extension = std::path::Path::new(&fpath)
             .extension()
-            .and_then(|e| e.to_str())
-        {
-            self.sublime_bufs.insert(bufnr, extension.to_string());
+            .and_then(|e| e.to_str());
 
-            if self.tree_sitter_enabled {
-                if let Some(language) = tree_sitter::Language::try_from_extension(extension) {
+        if let Some(extension) = maybe_extension {
+            self.sublime_bufs.insert(bufnr, extension.to_string());
+        }
+
+        if self.tree_sitter_enabled {
+            if let Some(language) =
+                maybe_extension.and_then(tree_sitter::Language::try_from_extension)
+            {
+                self.tree_sitter_highlight(bufnr, false, Some(language))
+                    .await?;
+                self.toggle.turn_on();
+            } else {
+                let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+
+                if let Some(language) = tree_sitter::Language::try_from_filetype(&filetype) {
                     self.tree_sitter_highlight(bufnr, false, Some(language))
                         .await?;
                     self.toggle.turn_on();
-                } else {
-                    let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
-
-                    if let Some(language) = tree_sitter::Language::try_from_filetype(&filetype) {
-                        self.tree_sitter_highlight(bufnr, false, Some(language))
-                            .await?;
-                        self.toggle.turn_on();
-                    }
                 }
             }
         }
@@ -210,7 +250,7 @@ impl Syntax {
         };
 
         let source_code = if buf_modified {
-            // TODO: this request the entire buffer content, which might be performance sensitive
+            // TODO: this requests the entire buffer content, which might be performance sensitive
             // in case of large buffer, we should add some kind of buffer size limit.
             //
             // Optimization: Get changed lines and apply to the previous version on the disk?
@@ -224,7 +264,15 @@ impl Syntax {
             self.vim.exec("execute", "syntax off")?;
         }
 
+        let start = std::time::Instant::now();
         let raw_highlights = tree_sitter::highlight(language, &source_code)?;
+        tracing::debug!(
+            ?language,
+            raw_highlights_lines = raw_highlights.len(),
+            "source file size: {} byte, ts highlighting elapsed: {:?}ms",
+            source_code.len(),
+            start.elapsed().as_millis()
+        );
 
         let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
         let maybe_vim_highlights = self.apply_ts_highlights(
@@ -368,38 +416,6 @@ impl Syntax {
     }
 }
 
-pub fn sublime_theme_exists(theme: &str) -> bool {
-    SUBLIME_SYNTAX_HIGHLIGHTER.theme_exists(theme)
-}
-
-pub fn sublime_syntax_by_extension(extension: &str) -> Option<&SyntaxReference> {
-    SUBLIME_SYNTAX_HIGHLIGHTER
-        .syntax_set
-        .find_syntax_by_extension(extension)
-}
-
-pub fn sublime_syntax_highlight<T: AsRef<str>>(
-    syntax: &SyntaxReference,
-    lines: impl Iterator<Item = T>,
-    line_start_number: usize,
-    theme: &str,
-) -> Vec<(usize, Vec<TokenHighlight>)> {
-    let highlighter = &SUBLIME_SYNTAX_HIGHLIGHTER;
-
-    lines
-        .enumerate()
-        .filter_map(|(index, line)| {
-            match highlighter.get_token_highlights_in_line(syntax, line.as_ref(), theme) {
-                Ok(token_highlights) => Some((line_start_number + index, token_highlights)),
-                Err(err) => {
-                    tracing::error!(line = ?line.as_ref(), ?err, "Error at fetching line highlight");
-                    None
-                }
-            }
-        })
-        .collect::<Vec<_>>()
-}
-
 /// Convert the raw highlight info to something that is directly applied by Vim.
 pub fn convert_raw_ts_highlights_to_vim_highlights(
     raw_ts_highlights: &RawTsHighlights,
@@ -448,12 +464,10 @@ impl ClapPlugin for Syntax {
             BufEnter => self.on_buf_enter(bufnr).await?,
             BufWritePost => {
                 if self.tree_sitter_enabled {
-                    // if self.vim.bufmodified(bufnr).await? {
                     if let Some(ts_info) = self.ts_bufs.get(&bufnr) {
                         self.refresh_tree_sitter_highlight(bufnr, ts_info.language)
                             .await?;
                     }
-                    //}
                 }
             }
             BufDelete => {
@@ -521,16 +535,16 @@ impl ClapPlugin for Syntax {
             SyntaxAction::TreeSitterPropsAtCursor => {
                 self.tree_sitter_props_at_cursor().await?;
             }
-            SyntaxAction::ListSublimeThemes => {
-                let highlighter = &SUBLIME_SYNTAX_HIGHLIGHTER;
-                let theme_list = highlighter.get_theme_list();
-                self.vim.echo_info(theme_list.into_iter().join(","))?;
-            }
             SyntaxAction::SublimeSyntaxHighlight => {
                 let bufnr = self.vim.bufnr("").await?;
                 self.on_buf_enter(bufnr).await?;
                 self.sublime_syntax_highlight(bufnr).await?;
                 self.sublime_syntax_enabled = true;
+            }
+            SyntaxAction::SublimeSyntaxListThemes => {
+                let highlighter = &SUBLIME_SYNTAX_HIGHLIGHTER;
+                let theme_list = highlighter.get_theme_list();
+                self.vim.echo_info(theme_list.into_iter().join(","))?;
             }
             SyntaxAction::Toggle => {
                 match self.toggle {
