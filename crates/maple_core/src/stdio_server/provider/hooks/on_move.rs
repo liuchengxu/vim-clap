@@ -510,7 +510,7 @@ impl<'a> CachedPreviewImpl<'a> {
                         start
                     };
 
-                    calculate_scrollbar(&self.ctx, start, end, total)
+                    calculate_scrollbar(self.ctx, start, end, total)
                 } else {
                     None
                 };
