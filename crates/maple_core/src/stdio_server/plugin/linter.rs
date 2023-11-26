@@ -336,6 +336,29 @@ impl Linter {
         }
     }
 
+    async fn format_buffer(&self, bufnr: usize) -> VimResult<()> {
+        let source_file = self.vim.bufabspath(bufnr).await?;
+        let source_file = PathBuf::from(source_file);
+
+        let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+
+        let Some(workspace) = ide::linting::find_workspace(&filetype, &source_file) else {
+            return Ok(());
+        };
+
+        let workspace = workspace.to_path_buf();
+        let vim = self.vim.clone();
+        tokio::spawn(async move {
+            if ide::formatting::run_rustfmt(&source_file, &workspace)
+                .await
+                .is_ok()
+            {
+                let _ = vim.bare_exec("clap#util#reload_current_file");
+            }
+        });
+        Ok(())
+    }
+
     async fn navigate_diagnostics(
         &self,
         kind: DiagnosticKind,
@@ -400,6 +423,9 @@ impl ClapPlugin for Linter {
     }
 
     async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
+        use DiagnosticKind::{Error, Warn};
+        use Direction::{First, Last, Next, Prev};
+
         let ActionRequest { method, params: _ } = action;
         match self.parse_action(method)? {
             LinterAction::Toggle => {
@@ -442,57 +468,31 @@ impl ClapPlugin for Linter {
             }
             LinterAction::Format => {
                 let bufnr = self.vim.bufnr("").await?;
-                let source_file = self.vim.bufabspath(bufnr).await?;
-                let source_file = PathBuf::from(source_file);
-
-                let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
-
-                let Some(workspace) = ide::linting::find_workspace(&filetype, &source_file) else {
-                    return Ok(());
-                };
-
-                let workspace = workspace.to_path_buf();
-                let vim = self.vim.clone();
-                tokio::spawn(async move {
-                    if ide::formatting::run_rustfmt(&source_file, &workspace)
-                        .await
-                        .is_ok()
-                    {
-                        let _ = vim.bare_exec("clap#util#reload_current_file");
-                    }
-                });
+                self.format_buffer(bufnr).await?;
             }
             LinterAction::FirstError => {
-                self.navigate_diagnostics(DiagnosticKind::Error, Direction::First)
-                    .await?;
+                self.navigate_diagnostics(Error, First).await?;
             }
             LinterAction::LastError => {
-                self.navigate_diagnostics(DiagnosticKind::Error, Direction::Last)
-                    .await?;
+                self.navigate_diagnostics(Error, Last).await?;
             }
             LinterAction::NextError => {
-                self.navigate_diagnostics(DiagnosticKind::Error, Direction::Next)
-                    .await?;
+                self.navigate_diagnostics(Error, Next).await?;
             }
             LinterAction::PrevError => {
-                self.navigate_diagnostics(DiagnosticKind::Error, Direction::Prev)
-                    .await?;
+                self.navigate_diagnostics(Error, Prev).await?;
             }
             LinterAction::FirstWarn => {
-                self.navigate_diagnostics(DiagnosticKind::Warn, Direction::First)
-                    .await?;
+                self.navigate_diagnostics(Warn, First).await?;
             }
             LinterAction::LastWarn => {
-                self.navigate_diagnostics(DiagnosticKind::Warn, Direction::Last)
-                    .await?;
+                self.navigate_diagnostics(Warn, Last).await?;
             }
             LinterAction::NextWarn => {
-                self.navigate_diagnostics(DiagnosticKind::Warn, Direction::Next)
-                    .await?;
+                self.navigate_diagnostics(Warn, Next).await?;
             }
             LinterAction::PrevWarn => {
-                self.navigate_diagnostics(DiagnosticKind::Warn, Direction::Prev)
-                    .await?;
+                self.navigate_diagnostics(Warn, Prev).await?;
             }
         }
 
