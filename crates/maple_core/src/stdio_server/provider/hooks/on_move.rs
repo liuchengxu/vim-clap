@@ -56,21 +56,28 @@ impl VimSyntaxInfo {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Preview {
     pub lines: Vec<String>,
-    /// If no sublime-syntax or tree-sitter highlights,
-    /// this field is intended to tell vim what syntax value
-    /// should be used for the highlighting. Ideally `syntax`
-    /// is returned, otherwise `fname` is returned and
-    /// Vim will inspect the syntax value from `fname`.
+
+    /// This field is used to tell vim what syntax value
+    /// should be used for the highlighting when neither
+    /// sublime-syntax nor tree-sitter is available.
+    ///
+    /// Ideally `syntax` is returned directly, otherwise
+    /// `fname` is returned and then Vim will interpret
+    /// the syntax value from `fname` on its own.
     #[serde(skip_serializing_if = "VimSyntaxInfo::is_empty")]
     pub vim_syntax_info: VimSyntaxInfo,
+
     /// Highlights from sublime-syntax highlight engine.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub sublime_syntax_highlights: SublimeHighlights,
+
     /// Highlights from tree-sitter highlight engine.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tree_sitter_highlights: TsHighlights,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hi_lnum: Option<usize>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scrollbar: Option<(usize, usize)>,
 }
@@ -96,7 +103,7 @@ impl Preview {
         }
     }
 
-    fn update_highlights(&mut self, sublime_or_ts_highlights: SublimeOrTreeSitter, path: &Path) {
+    fn set_highlights(&mut self, sublime_or_ts_highlights: SublimeOrTreeSitter, path: &Path) {
         match sublime_or_ts_highlights {
             SublimeOrTreeSitter::Sublime(v) => {
                 self.sublime_syntax_highlights = v;
@@ -441,7 +448,7 @@ impl<'a> CachedPreviewImpl<'a> {
         }
 
         let mut preview = Preview::new_file_preview(lines, scrollbar, VimSyntaxInfo::default());
-        preview.update_highlights(sublime_or_ts_highlights, path);
+        preview.set_highlights(sublime_or_ts_highlights, path);
 
         Ok(preview)
     }
@@ -522,7 +529,7 @@ impl<'a> CachedPreviewImpl<'a> {
                     ..Default::default()
                 };
 
-                preview.update_highlights(sublime_or_ts_highlights, path);
+                preview.set_highlights(sublime_or_ts_highlights, path);
 
                 preview
             }

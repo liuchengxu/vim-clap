@@ -38,6 +38,12 @@ pub struct DiagnosticSpan {
     pub column_end: usize,
 }
 
+impl DiagnosticSpan {
+    pub fn start_pos(&self) -> (usize, usize) {
+        (self.line_start, self.column_start)
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Diagnostic {
     pub message: String,

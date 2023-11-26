@@ -228,8 +228,8 @@ pub async fn initialize_provider(ctx: &Context, init_display: bool) -> Result<()
     if ctx.env.source_is_list {
         let ctx = ctx.clone();
         ctx.set_provider_source(ProviderSource::Initializing);
-        // Initialize the list-style providers in another task so that the further messages won't
-        // be blocked by the initialization in case it takes too long.
+        // Initialize the list-style providers in another task so that the further
+        // messages won't be blocked by the initialization in case it takes too long.
         tokio::spawn(initialize_list_source(ctx, init_display));
         return Ok(());
     }
@@ -240,7 +240,7 @@ pub async fn initialize_provider(ctx: &Context, init_display: bool) -> Result<()
         Ok(Ok(provider_source)) => on_initialized_source(provider_source, ctx, init_display)?,
         Ok(Err(e)) => tracing::error!(?e, "Error occurred while initializing the provider source"),
         Err(_) => {
-            // The initialization was not super fast.
+            // The initialization was not finished quickly.
             tracing::debug!(timeout = ?TIMEOUT, "Did not receive value in time");
 
             let source_cmd: Vec<String> = ctx.vim.bare_call("provider_source_cmd").await?;

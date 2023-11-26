@@ -80,6 +80,7 @@ impl BufferDiagnostics {
         kind: DiagnosticKind,
         direction: Direction,
     ) -> Option<(usize, usize)> {
+        use CmpOrdering::{Greater, Less};
         use DiagnosticKind::{Error, Warn};
         use Direction::{First, Last, Next, Prev};
 
@@ -99,34 +100,21 @@ impl BufferDiagnostics {
 
         let check_span = |span: &DiagnosticSpan, ordering: CmpOrdering| {
             if span.line_start.cmp(&from_line_number) == ordering {
-                Some((span.line_start, span.column_start))
+                Some(span.start_pos())
             } else {
                 None
             }
         };
 
-        // TODO: binary search since the diagnostics are already sorted?
         match (kind, direction) {
-            (Error, First) => errors()
-                .next()
-                .map(|span| (span.line_start, span.column_start)),
-            (Error, Last) => errors()
-                .last()
-                .map(|span| (span.line_start, span.column_start)),
-            (Error, Next) => errors().find_map(|span| check_span(span, CmpOrdering::Greater)),
-            (Error, Prev) => errors()
-                .rev()
-                .find_map(|span| check_span(span, CmpOrdering::Less)),
-            (Warn, First) => errors()
-                .next()
-                .map(|span| (span.line_start, span.column_start)),
-            (Warn, Last) => errors()
-                .last()
-                .map(|span| (span.line_start, span.column_start)),
-            (Warn, Next) => warnings().find_map(|span| check_span(span, CmpOrdering::Greater)),
-            (Warn, Prev) => warnings()
-                .rev()
-                .find_map(|span| check_span(span, CmpOrdering::Less)),
+            (Error, First) => errors().next().map(|span| span.start_pos()),
+            (Error, Last) => errors().last().map(|span| span.start_pos()),
+            (Error, Next) => errors().find_map(|span| check_span(span, Greater)),
+            (Error, Prev) => errors().rev().find_map(|span| check_span(span, Less)),
+            (Warn, First) => warnings().next().map(|span| span.start_pos()),
+            (Warn, Last) => warnings().last().map(|span| span.start_pos()),
+            (Warn, Next) => warnings().find_map(|span| check_span(span, Greater)),
+            (Warn, Prev) => warnings().rev().find_map(|span| check_span(span, Less)),
         }
     }
 
