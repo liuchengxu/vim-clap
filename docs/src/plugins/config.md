@@ -6,6 +6,8 @@ User config file is loaded from:
 - macOS: `~/Library/Application\ Support/org.vim.Vim-Clap/config.toml`
 - Windows: `C:\Users\Alice\AppData\Roaming\Vim\Vim Clap\config\config.toml`
 
+The default config is as follows:
+
 ```toml
 ## Log configuration.
 [log]
