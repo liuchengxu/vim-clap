@@ -17,19 +17,19 @@ fn main() {
     // Print the modified TOML document
     println!("{}", doc.to_string());
 
-    let default_config_toml = std::env::current_dir()
-        .expect("Invalid current working directory")
-        .join("default_config.toml");
+    if cfg!(debug_assertions) {
+        let default_config_toml = std::env::current_dir()
+            .expect("Invalid current working directory")
+            .join("default_config.toml");
 
-    println!("Writing to: {}", default_config_toml.display());
+        println!("Writing to: {}", default_config_toml.display());
 
-    std::fs::write(default_config_toml, doc.to_string().trim().as_bytes())
-        .expect("Unable to write default_config.toml");
+        std::fs::write(default_config_toml, doc.to_string().trim().as_bytes())
+            .expect("Unable to write default_config.toml");
+    }
 
-    let cur_file_path = file!();
-
-    let config_md = std::env::current_dir()
-        .unwrap()
+    let current_dir = std::env::current_dir().unwrap();
+    let config_md = current_dir
         .parent()
         .unwrap()
         .parent()
@@ -39,7 +39,16 @@ fn main() {
         .join("plugins")
         .join("config.md");
 
+    if !config_md.exists() {
+        panic!(
+            "../../docs/src/plugins/config.md not found, cwd: {}",
+            current_dir.display()
+        );
+    }
+
     let s = std::fs::read_to_string(&config_md).unwrap();
+    // The convention in config.md is there is one and only one toml code block, which will be
+    // periodly updated using the auto-generated toml above.
     let mut config_md_content = s
         .split("\n")
         .take_while(|line| !line.starts_with("```toml"))
@@ -50,11 +59,6 @@ fn main() {
     config_md_content.push_str("\n```toml");
     config_md_content.push_str(doc.to_string().as_str());
     config_md_content.push_str("```");
-
-    println!(
-        "cur_file_path: {cur_file_path}, config_md: {:?}",
-        config_md.display()
-    );
 
     std::fs::write(config_md, config_md_content.as_bytes()).expect("Failed to write config.md");
 }

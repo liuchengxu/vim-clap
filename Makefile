@@ -8,4 +8,7 @@ MAKE_CMD ?= "make"
 python-dynamic-module:
 	cd pythonx/clap && $(MAKE_CMD) build
 
-.PHONY: all maple python-dynamic-module
+config-doc:
+	cd crates/config_gen && cargo run
+
+.PHONY: all maple python-dynamic-module config-doc

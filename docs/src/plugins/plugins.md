@@ -94,4 +94,4 @@ This plugin implements the sublime-syntax and tree-sitter highlighting. The subl
 
 Officially tree-sitter supported languages:
 
-- Bash, C, Cpp, Go, Javascript, Json, Markdown, Python, Rust, Toml, Viml,
+- Bash, C, Cpp, Go, Javascript, Json, Markdown, Python, Rust, Toml, Viml
