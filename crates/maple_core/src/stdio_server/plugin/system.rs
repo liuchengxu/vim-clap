@@ -8,7 +8,16 @@ use regex::Regex;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "system", actions = ["__note_recent_files", "__copy-to-clipboard", "__configure-vim-which-key", "open-config", "list-plugins"])]
+#[clap_plugin(
+  id = "system",
+  actions = [
+    "__note_recent_files",
+    "__copy-to-clipboard",
+    "__configure-vim-which-key",
+    "open-config",
+    "list-plugins",
+  ]
+)]
 pub struct System {
     vim: Vim,
 }

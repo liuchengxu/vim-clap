@@ -351,13 +351,14 @@ dependencies = [
 name = "config_gen"
 version = "0.1.0"
 dependencies = [
+ "inflections",
  "itertools 0.12.0",
  "maple_core",
  "proc-macro2",
  "quote",
- "serde",
  "syn 1.0.109",
  "toml",
+ "toml_edit",
 ]
 
 [[package]]
@@ -1756,6 +1757,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "toml_datetime"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3550f4e9685620ac18a50ed434eb3aec30db8ba93b0287467bca5826ea25baf1"
+
+[[package]]
+name = "toml_edit"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d34d383cd00a163b4a5b85053df514d45bc330f6de7737edfe0a93311d1eaa03"
+dependencies = [
+ "indexmap",
+ "toml_datetime",
+ "winnow",
+]
+
+[[package]]
 name = "tracing"
 version = "0.1.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1921,6 +1939,9 @@ name = "tree_sitter"
 version = "0.1.0"
 dependencies = [
  "cc",
+ "once_cell",
+ "serde",
+ "toml",
  "tree-sitter",
  "tree-sitter-bash",
  "tree-sitter-c",
@@ -2275,6 +2296,15 @@ name = "windows_x86_64_msvc"
 version = "0.48.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed94fce61571a4006852b7389a063ab983c02eb1bb37b47f8272ce92d06d9538"
+
+[[package]]
+name = "winnow"
+version = "0.5.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "829846f3e3db426d4cee4510841b71a8e58aa2a76b1132579487ae430ccd9c7b"
+dependencies = [
+ "memchr",
+]
 
 [[package]]
 name = "x11-clipboard"

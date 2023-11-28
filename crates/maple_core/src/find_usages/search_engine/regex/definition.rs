@@ -84,12 +84,11 @@ pub fn get_definition_rules(lang: &str) -> Option<&DefinitionRules> {
     static EXTENSION_LANGUAGE_MAP: Lazy<HashMap<&str, &str>> =
         Lazy::new(|| [("js", "javascript")].iter().cloned().collect());
 
-    match RG_PCRE2_REGEX_RULES.get(lang) {
-        Some(rules) => Some(rules),
-        None => EXTENSION_LANGUAGE_MAP
+    RG_PCRE2_REGEX_RULES.get(lang).or_else(|| {
+        EXTENSION_LANGUAGE_MAP
             .get(lang)
-            .and_then(|l| RG_PCRE2_REGEX_RULES.get(l)),
-    }
+            .and_then(|l| RG_PCRE2_REGEX_RULES.get(l))
+    })
 }
 
 pub(super) fn build_full_regexp(lang: &str, kind: &DefinitionKind, word: &Word) -> Option<String> {
