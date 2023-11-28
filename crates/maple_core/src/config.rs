@@ -249,6 +249,8 @@ pub struct ProviderConfig {
     pub max_display_size: Option<usize>,
 
     /// Specify the syntax highlight engine for the provider preview.
+    ///
+    /// Possible values: `vim`, `sublime-syntax` and `tree-sitter`
     pub preview_highlight_engine: HighlightEngine,
 
     /// Specify the theme for the highlight engine.
@@ -305,7 +307,7 @@ pub struct Config {
     /// Plugin configuration.
     pub plugin: PluginConfig,
 
-    /// Provider configuration.
+    /// Provider (fuzzy picker) configuration.
     pub provider: ProviderConfig,
 
     /// Global ignore configuration.

@@ -59,11 +59,13 @@ enable = false
 # Whether to enable this plugin.
 enable = false
 
-## Provider configuration.
+## Provider (fuzzy picker) configuration.
 [provider]
 # Whether to share the input history among providers.
 share-input-history = false
 # Specify the syntax highlight engine for the provider preview.
+#
+# Possible values: `vim`, `sublime-syntax` and `tree-sitter`
 preview-highlight-engine = "vim"
 
 # Ignore configuration per project, with paths specified as
