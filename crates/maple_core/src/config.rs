@@ -58,6 +58,7 @@ pub fn config_file() -> &'static PathBuf {
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct MatcherConfig {
+    /// Specify how the results are sorted.
     pub tiebreak: String,
 }
 

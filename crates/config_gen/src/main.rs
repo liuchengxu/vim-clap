@@ -4,6 +4,7 @@ use maple_core::config::Config;
 use quote::ToTokens;
 use std::{collections::BTreeMap, str::FromStr};
 use syn::{Attribute, Field, Fields, ItemStruct, Lit, Meta, MetaNameValue, PathSegment, Type};
+use toml_edit::Document;
 
 fn main() {
     let source_code = include_str!("../../maple_core/src/config.rs");
@@ -11,7 +12,51 @@ fn main() {
     // Parse the source code into an AST
     let ast: syn::File = syn::parse_str(source_code).expect("Failed to parse Rust source code");
 
-    process_ast(&ast);
+    let doc = process_ast(&ast);
+
+    // Print the modified TOML document
+    println!("{}", doc.to_string());
+
+    let default_config_toml = std::env::current_dir()
+        .expect("Invalid current working directory")
+        .join("default_config.toml");
+
+    println!("Writing to: {}", default_config_toml.display());
+
+    std::fs::write(default_config_toml, doc.to_string().trim().as_bytes())
+        .expect("Unable to write default_config.toml");
+
+    let cur_file_path = file!();
+
+    let config_md = std::env::current_dir()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("docs")
+        .join("src")
+        .join("plugins")
+        .join("config.md");
+
+    let s = std::fs::read_to_string(&config_md).unwrap();
+    let mut config_md_content = s
+        .split("\n")
+        .take_while(|line| !line.starts_with("```toml"))
+        .collect::<Vec<_>>()
+        .into_iter()
+        .join("\n");
+
+    config_md_content.push_str("\n```toml");
+    config_md_content.push_str(doc.to_string().as_str());
+    config_md_content.push_str("```");
+
+    println!(
+        "cur_file_path: {cur_file_path}, config_md: {:?}",
+        config_md.display()
+    );
+
+    std::fs::write(config_md, config_md_content.as_bytes()).expect("Failed to write config.md");
 }
 
 fn is_struct_type(field: &Field) -> bool {
@@ -36,6 +81,12 @@ struct FieldInfo {
     struct_type: Option<String>,
     /// Extracted doc comments on this field.
     docs: Vec<String>,
+}
+
+impl FieldInfo {
+    fn as_toml_comments(&self) -> String {
+        self.docs.iter().map(|line| format!("#{line}")).join("\n")
+    }
 }
 
 fn extract_doc_comment(attr: &Attribute) -> Option<String> {
@@ -97,7 +148,7 @@ fn parse_struct(s: &ItemStruct) -> BTreeMap<String, FieldInfo> {
 /// Conventions:
 /// - All structs with a suffix of `Config` are considered as part of the config file.
 /// - `Config` struct is the entry of various configs.
-fn process_ast(ast: &syn::File) {
+fn process_ast(ast: &syn::File) -> Document {
     let mut all_struct_docs = BTreeMap::new();
 
     // Traverse the AST and perform actions on each struct.
@@ -122,52 +173,85 @@ fn process_ast(ast: &syn::File) {
     let mut doc = toml_edit::Document::from_str(&default_config_toml)
         .expect("Must be valid toml as it was just constructed internally");
 
+    // Iterate the fields in Config: log, matcher, plugin, provider, global_ignore
     for (key, item) in doc.as_table_mut().iter_mut() {
-        let docs_key = to_snake_case(key.get());
-        if let Some(root_field_info) = root_config_docs.get(&docs_key) {
-            let docs = root_field_info.docs.join("\n");
+        let field = to_snake_case(key.get());
+        let field_info = root_config_docs
+            .get(&field)
+            .expect("Field missing in Config");
 
-            let struct_type = root_field_info
-                .struct_type
-                .as_ref()
-                .expect("Each field in Config is a struct until it's not'");
+        let comments = field_info.as_toml_comments();
 
-            let table_docs = all_struct_docs
-                .get(struct_type)
-                .unwrap_or_else(|| panic!("{struct_type} not found in all_struct_docs"));
+        let struct_type = field_info
+            .struct_type
+            .as_ref()
+            .expect("Each field in Config is a struct until it's not'");
 
-            if let Some(table) = item.as_table_mut() {
-                table.decor_mut().set_prefix(format!("\n##{docs}\n"));
+        let struct_docs = all_struct_docs
+            .get(struct_type)
+            .unwrap_or_else(|| panic!("{struct_type} not found in all_struct_docs"));
 
-                for (mut t_key, t_item) in table.iter_mut() {
-                    let docs_key = to_snake_case(t_key.get());
+        if let Some(table) = item.as_table_mut() {
+            // Add comments on top of [log], [matcher], [plugin], etc.
+            table.decor_mut().set_prefix(format!("\n#{comments}\n"));
 
-                    let docs = &table_docs.get(&docs_key).unwrap().docs;
+            for (mut t_key, t_item) in table.iter_mut() {
+                // Fields like `max_level`, `log_target` in log { max_level, log_target }.
+                let docs_key = to_snake_case(t_key.get());
 
-                    if docs.is_empty() {
-                        continue;
+                let struct_field = struct_docs.get(&docs_key).unwrap();
+
+                // ctags: CtagsPluginConfig
+                if let Some(inner_struct_type) = &struct_field.struct_type {
+                    if let Some(struct_docs) = all_struct_docs.get(inner_struct_type) {
+                        if let Some(t) = t_item.as_table_mut() {
+                            for (mut t_key, _) in t.iter_mut() {
+                                let comments = struct_docs
+                                    .get(&to_snake_case(t_key.get()))
+                                    .unwrap()
+                                    .as_toml_comments();
+
+                                t_key.decor_mut().set_prefix(format!("{comments}\n"));
+                            }
+                        }
                     }
+                }
 
-                    let docs = docs.iter().map(|line| format!("#{line}")).join("\n");
+                if struct_field.docs.is_empty() {
+                    continue;
+                }
 
-                    if let Some(t) = t_item.as_table_mut() {
-                        t.decor_mut().set_prefix(format!("\n{docs}\n"));
-                    } else if t_item.is_value() {
-                        t_key.decor_mut().set_prefix(format!("{docs}\n"));
+                let comments = struct_field.as_toml_comments();
+
+                if let Some(t) = t_item.as_table_mut() {
+                    t.decor_mut().set_prefix(format!("\n{comments}\n"));
+
+                    for (mut t_key, t_item) in t.iter_mut() {
+                        let docs_key = to_snake_case(t_key.get());
+
+                        match struct_docs.get(&docs_key) {
+                            Some(s) => {
+                                if s.docs.is_empty() {
+                                    continue;
+                                }
+
+                                let comments = s.as_toml_comments();
+
+                                if let Some(t) = t_item.as_table_mut() {
+                                    t.decor_mut().set_prefix(format!("\n{comments}\n"));
+                                } else if t_item.is_value() {
+                                    t_key.decor_mut().set_prefix(format!("{comments}\n"));
+                                }
+                            }
+                            None => {}
+                        }
                     }
+                } else if t_item.is_value() {
+                    t_key.decor_mut().set_prefix(format!("{comments}\n"));
                 }
             }
         }
     }
 
-    // Print the modified TOML document
-    println!("{}", doc.to_string());
-
-    let default_config_toml = std::env::current_dir()
-        .expect("Invalid current working directory")
-        .join("default_config.toml");
-    println!("Writing to: {}", default_config_toml.display());
-
-    std::fs::write(default_config_toml, doc.to_string().trim().as_bytes())
-        .expect("Unable to write default_config.toml");
+    doc
 }
