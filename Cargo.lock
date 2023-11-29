@@ -355,6 +355,7 @@ dependencies = [
  "printer",
  "rayon",
  "regex",
+ "serde",
  "serde_json",
  "subprocess",
  "tokio",

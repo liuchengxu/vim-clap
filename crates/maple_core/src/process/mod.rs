@@ -3,7 +3,6 @@ pub mod tokio;
 
 use crate::cache::{push_cache_digest, Digest};
 use crate::datastore::{generate_cache_file_path, CACHE_INFO_IN_MEMORY};
-use printer::println_json;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -133,48 +132,5 @@ impl ShellCommand {
         push_cache_digest(digest);
 
         Ok(cache_file)
-    }
-}
-
-/// This struct represents all the info about the processed result of executed command.
-#[derive(Debug, Clone, Serialize)]
-pub struct ExecInfo {
-    /// The number of total output lines.
-    pub total: usize,
-    /// The lines that will be printed.
-    pub lines: Vec<String>,
-    /// If these info are from the cache.
-    pub using_cache: bool,
-    /// Optional temp cache file for the whole output.
-    pub tempfile: Option<PathBuf>,
-    pub icon_added: bool,
-}
-
-impl ExecInfo {
-    /// Print the fields that are not empty to the terminal in json format.
-    pub fn print(&self) {
-        let Self {
-            using_cache,
-            tempfile,
-            total,
-            lines,
-            icon_added,
-        } = self;
-
-        if self.using_cache {
-            if self.tempfile.is_some() {
-                if self.lines.is_empty() {
-                    println_json!(using_cache, tempfile, total, icon_added);
-                } else {
-                    println_json!(using_cache, tempfile, total, lines, icon_added);
-                }
-            } else {
-                println_json!(total, lines);
-            }
-        } else if self.tempfile.is_some() {
-            println_json!(tempfile, total, lines, icon_added);
-        } else {
-            println_json!(total, lines, icon_added);
-        }
     }
 }
