@@ -1,8 +1,8 @@
 use crate::app::Args;
+use crate::CacheableCommand;
 use anyhow::Result;
 use clap::Parser;
-use maple_core::process::shell_command;
-use maple_core::process::{CacheableCommand, ShellCommand};
+use maple_core::process::{shell_command, ShellCommand};
 use std::path::PathBuf;
 use std::process::Command;
 

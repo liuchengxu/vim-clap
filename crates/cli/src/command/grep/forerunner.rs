@@ -1,8 +1,7 @@
 use crate::app::Args;
-use crate::{send_response_from_cache, SendResponse};
+use crate::{send_response_from_cache, CacheableCommand, SendResponse};
 use anyhow::Result;
 use clap::Parser;
-use maple_core::process::CacheableCommand;
 use maple_core::tools::rg::{rg_command, rg_shell_command};
 use std::path::PathBuf;
 use utils::is_git_repo;

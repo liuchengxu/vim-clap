@@ -3,13 +3,11 @@ pub mod tokio;
 
 use crate::cache::{push_cache_digest, Digest};
 use crate::datastore::{generate_cache_file_path, CACHE_INFO_IN_MEMORY};
-use icon::Icon;
 use printer::println_json;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use utils::{line_count, read_first_lines};
 
 // TODO: make it configurable so that it can support powershell easier?
 // https://github.com/liuchengxu/vim-clap/issues/640
@@ -138,9 +136,6 @@ impl ShellCommand {
     }
 }
 
-/// Threshold for making a cache for the results.
-const OUTPUT_THRESHOLD: usize = 200_000;
-
 /// This struct represents all the info about the processed result of executed command.
 #[derive(Debug, Clone, Serialize)]
 pub struct ExecInfo {
@@ -181,110 +176,5 @@ impl ExecInfo {
         } else {
             println_json!(total, lines, icon_added);
         }
-    }
-}
-
-/// A wrapper of `std::process::Command` that can reuse the cache if possible.
-///
-/// When no cache is usable, the command will be executed and the output will be redirected to a
-/// cache file if there are too many items in the output.
-#[derive(Debug)]
-pub struct CacheableCommand<'a> {
-    /// Ready to be executed and get the output.
-    std_cmd: &'a mut Command,
-    /// Used to find and reuse the cache if any.
-    shell_cmd: ShellCommand,
-    number: usize,
-    icon: Icon,
-    output_threshold: usize,
-}
-
-impl<'a> CacheableCommand<'a> {
-    /// Contructs CacheableCommand from various common opts.
-    pub fn new(
-        std_cmd: &'a mut Command,
-        shell_cmd: ShellCommand,
-        number: Option<usize>,
-        icon: Icon,
-        output_threshold: Option<usize>,
-    ) -> Self {
-        Self {
-            std_cmd,
-            shell_cmd,
-            number: number.unwrap_or(100),
-            icon,
-            output_threshold: output_threshold.unwrap_or(OUTPUT_THRESHOLD),
-        }
-    }
-
-    /// Checks if the cache exists given `shell_cmd` and `no_cache` flag.
-    /// If the cache exists, return the cached info, otherwise execute
-    /// the command.
-    pub fn try_cache_or_execute(&mut self, no_cache: bool) -> std::io::Result<ExecInfo> {
-        if no_cache {
-            self.execute()
-        } else {
-            self.shell_cmd
-                .cache_digest()
-                .map(|digest| self.exec_info_from_cache_digest(&digest))
-                .unwrap_or_else(|| self.execute())
-        }
-    }
-
-    fn exec_info_from_cache_digest(&self, digest: &Digest) -> std::io::Result<ExecInfo> {
-        let Digest {
-            total, cached_path, ..
-        } = digest;
-
-        let lines_iter = read_first_lines(&cached_path, self.number)?;
-        let lines = if let Some(icon_kind) = self.icon.icon_kind() {
-            lines_iter.map(|x| icon_kind.add_icon_to_text(x)).collect()
-        } else {
-            lines_iter.collect()
-        };
-
-        Ok(ExecInfo {
-            using_cache: true,
-            total: *total,
-            tempfile: Some(cached_path.clone()),
-            lines,
-            icon_added: self.icon.enabled(),
-        })
-    }
-
-    /// Execute the command and redirect the stdout to a file.
-    pub fn execute(&mut self) -> std::io::Result<ExecInfo> {
-        let cache_file_path = self.shell_cmd.cache_file_path()?;
-
-        write_stdout_to_file(self.std_cmd, &cache_file_path)?;
-
-        let lines_iter = read_first_lines(&cache_file_path, 100)?;
-        let lines = if let Some(icon_kind) = self.icon.icon_kind() {
-            lines_iter.map(|x| icon_kind.add_icon_to_text(x)).collect()
-        } else {
-            lines_iter.collect()
-        };
-
-        let total = line_count(&cache_file_path)?;
-
-        // Store the cache file if the total number of items exceeds the threshold, so that the
-        // cache can be reused if the identical command is executed again.
-        if total > self.output_threshold {
-            let digest = Digest::new(self.shell_cmd.clone(), total, cache_file_path.clone());
-
-            {
-                let cache_info = crate::datastore::CACHE_INFO_IN_MEMORY.clone();
-                let mut cache_info = cache_info.lock();
-                cache_info.limited_push(digest)?;
-            }
-        }
-
-        Ok(ExecInfo {
-            using_cache: false,
-            total,
-            tempfile: Some(cache_file_path),
-            lines,
-            icon_added: self.icon.enabled(),
-        })
     }
 }
