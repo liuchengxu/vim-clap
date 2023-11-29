@@ -69,14 +69,6 @@ function! clap#util#nvim_buf_get_lines(bufnr) abort
   return nvim_buf_get_lines(a:bufnr, 0, -1, 0)
 endfunction
 
-function! clap#util#nvim_buf_set_lines(bufnr, lines) abort
-  call nvim_buf_set_lines(a:bufnr, 0, -1, 0, a:lines)
-endfunction
-
-function! clap#util#nvim_buf_clear(bufnr) abort
-  call nvim_buf_set_lines(a:bufnr, 0, -1, 0, [])
-endfunction
-
 function! clap#util#nvim_buf_is_empty(bufnr) abort
   return nvim_buf_line_count(a:bufnr) == 1 && empty(getbufline(a:bufnr, 1)[0])
 endfunction

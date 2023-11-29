@@ -71,12 +71,8 @@ function! s:init_display() abort
       call nvim_win_set_cursor(self.winid, [a:lnum, a:col])
     endfunction
 
-    function! display.set_lines(lines) abort
-      call clap#util#nvim_buf_set_lines(self.bufnr, a:lines)
-    endfunction
-
     function! display.clear() abort
-      call clap#util#nvim_buf_clear(self.bufnr)
+      call clap#api#buf_clear(self.bufnr)
     endfunction
 
     function! display.append_lines(lines) abort
@@ -126,22 +122,6 @@ function! s:init_display() abort
       call win_execute(self.winid, 'call cursor(a:lnum, a:col)')
     endfunction
 
-    function! display.set_lines(lines) abort
-      " silent is required to avoid the annoying --No lines in buffer--.
-      silent call deletebufline(self.bufnr, 1, '$')
-
-      call appendbufline(self.bufnr, 0, a:lines)
-      " Delete the last possible empty line.
-      " Is there a better solution in vim?
-      if empty(getbufline(self.bufnr, '$')[0])
-        silent call deletebufline(self.bufnr, '$')
-      endif
-    endfunction
-
-    function! display.clear() abort
-      silent call deletebufline(self.bufnr, 1, '$')
-    endfunction
-
     " Due to the smart cache strategy, this should not be expensive.
     " :e nonexist.vim
     " :call appendbufline('', '$', [1, 2])
@@ -181,6 +161,14 @@ function! s:init_display() abort
     endfunction
 
   endif
+
+  function! display.set_lines(lines) abort
+    call clap#api#buf_set_lines(self.bufnr, a:lines)
+  endfunction
+
+  function! display.clear() abort
+    call clap#api#buf_clear(self.bufnr)
+  endfunction
 
   function! display.set_lines_lazy(raw_lines) abort
     if len(a:raw_lines) >= g:clap.display.preload_capacity
@@ -255,7 +243,7 @@ function! s:init_input() abort
     endfunction
 
     function! input.clear() abort
-      call clap#util#nvim_buf_clear(self.bufnr)
+      call clap#api#buf_clear(self.bufnr)
     endfunction
   else
     function! input.goto_win() abort
