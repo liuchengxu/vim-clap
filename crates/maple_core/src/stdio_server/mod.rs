@@ -49,6 +49,14 @@ pub enum Error {
 async fn initialize_client(vim: Vim, actions: Vec<&str>, config_err: ConfigError) -> VimResult<()> {
     config_err.notify_error(&vim)?;
 
+    let (mut other_actions, mut system_actions): (Vec<_>, Vec<_>) =
+        actions.into_iter().partition(|action| action.contains('/'));
+    other_actions.sort();
+    system_actions.sort();
+    let mut clap_actions = system_actions;
+    clap_actions.extend(other_actions);
+    vim.set_var("g:clap_actions", json![clap_actions])?;
+
     // The output of `autocmd filetypedetect` could be incomplete as the
     // filetype won't be instantly initialized, thus the current workaround
     // is to introduce some delay.
@@ -61,14 +69,6 @@ async fn initialize_client(vim: Vim, actions: Vec<&str>, config_err: ConfigError
         .await?;
     let ext_map = initialize_filetype_map(&output);
     vim.exec("clap#ext#set", json![ext_map])?;
-
-    let (mut other_actions, mut system_actions): (Vec<_>, Vec<_>) =
-        actions.into_iter().partition(|action| action.contains('/'));
-    other_actions.sort();
-    system_actions.sort();
-    let mut actions = system_actions;
-    actions.extend(other_actions);
-    vim.set_var("g:clap_actions", json![actions])?;
 
     tracing::debug!("Client initialized successfully");
 
@@ -110,14 +110,19 @@ fn initialize_service(vim: Vim) -> InitializedService {
 
     let plugin_config = &crate::config::config().plugin;
 
-    if plugin_config.git.enable {
-        register_plugin(Box::new(GitPlugin::new(vim.clone())), None);
-    }
     if plugin_config.colorizer.enable {
         register_plugin(
             Box::new(ColorizerPlugin::new(vim.clone())),
             Some(Duration::from_millis(100)),
         );
+    }
+
+    if plugin_config.cursorword.enable {
+        register_plugin(Box::new(CursorwordPlugin::new(vim.clone())), None);
+    }
+
+    if plugin_config.git.enable {
+        register_plugin(Box::new(GitPlugin::new(vim.clone())), None);
     }
 
     if plugin_config.linter.enable {
@@ -132,11 +137,7 @@ fn initialize_service(vim: Vim) -> InitializedService {
     }
 
     if plugin_config.markdown.enable {
-        register_plugin(Box::new(MarkdownPlugin::new(vim.clone())), None);
-    }
-
-    if plugin_config.cursorword.enable {
-        register_plugin(Box::new(CursorwordPlugin::new(vim)), None);
+        register_plugin(Box::new(MarkdownPlugin::new(vim)), None);
     }
 
     InitializedService {
