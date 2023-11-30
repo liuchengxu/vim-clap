@@ -193,5 +193,39 @@ mod tests {
     #[test]
     fn test_parse_highlight_groups() {
         println!("{:?}", parse_scopes(tree_sitter_rust::HIGHLIGHT_QUERY));
+
+        use tree_sitter_core::Language as TSLanguage;
+        use tree_sitter_core::Query;
+        use tree_sitter_tags::TagsConfiguration;
+        use tree_sitter_tags::TagsContext;
+
+        let mut context = TagsContext::new();
+
+        let language = tree_sitter_rust::language();
+        let mut parser = tree_sitter_core::Parser::new();
+        parser
+            .set_language(language)
+            .expect("Error loading Rust grammar");
+
+        let tags_query = include_str!("../queries/rust/tags.scm");
+        let query = Query::new(language, tags_query).unwrap();
+
+        let source_code = include_bytes!("../../maple_core/src/stdio_server/service.rs");
+        let tree = parser.parse(source_code, None).unwrap();
+
+        for (i, name) in query.capture_names().iter().enumerate() {
+            println!("i: {i}, name: {name}");
+        }
+
+        let rust_config =
+            TagsConfiguration::new(tree_sitter_rust::language(), tags_query, "").unwrap();
+
+        let (tags, _) = context
+            .generate_tags(&rust_config, source_code, None)
+            .unwrap();
+
+        for tag in tags {
+            println!("tag: {tag:?}");
+        }
     }
 }

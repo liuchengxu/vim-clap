@@ -12,7 +12,7 @@ use self::plugin::PluginId;
 use self::provider::{create_provider, Context, ProviderError};
 use self::service::ServiceManager;
 use self::vim::{initialize_filetype_map, VimError, VimResult};
-pub use self::vim::{Vim, VimProgressor};
+pub use self::vim::{SearchProgressor, Vim};
 use parking_lot::Mutex;
 use rpc::{RpcClient, RpcNotification, RpcRequest, VimMessage};
 use serde_json::{json, Value};

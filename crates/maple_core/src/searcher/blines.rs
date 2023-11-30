@@ -1,5 +1,5 @@
 use crate::searcher::{SearchContext, SearcherMessage};
-use crate::stdio_server::VimProgressor;
+use crate::stdio_server::SearchProgressor;
 use filter::BestItems;
 use matcher::{MatchResult, Matcher};
 use printer::Printer;
@@ -100,7 +100,7 @@ pub async fn search(
 
     let printer = Printer::new(line_width, icon);
     let number = item_pool_size;
-    let progressor = VimProgressor::new(vim, stop_signal.clone());
+    let progressor = SearchProgressor::new(vim, stop_signal.clone());
 
     let mut best_items = BestItems::new(printer, number, progressor, Duration::from_millis(200));
 

@@ -1,5 +1,5 @@
 use crate::searcher::{walk_parallel, SearchContext, WalkConfig};
-use crate::stdio_server::VimProgressor;
+use crate::stdio_server::SearchProgressor;
 use filter::MatchedItem;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use icon::Icon;
@@ -192,7 +192,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
         item_pool_size,
     } = search_context;
 
-    let progressor = VimProgressor::new(vim, stop_signal.clone());
+    let progressor = SearchProgressor::new(vim, stop_signal.clone());
     let number = item_pool_size;
     let search_root = paths[0].clone();
 

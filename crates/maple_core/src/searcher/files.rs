@@ -1,6 +1,6 @@
 use super::{walk_parallel, WalkConfig};
 use crate::searcher::SearchContext;
-use crate::stdio_server::VimProgressor;
+use crate::stdio_server::SearchProgressor;
 use filter::{BestItems, MatchedItem};
 use ignore::{DirEntry, WalkState};
 use matcher::Matcher;
@@ -77,7 +77,7 @@ pub async fn search(query: String, hidden: bool, matcher: Matcher, search_contex
     } = search_context;
 
     let number = item_pool_size;
-    let progressor = VimProgressor::new(vim, stop_signal.clone());
+    let progressor = SearchProgressor::new(vim, stop_signal.clone());
 
     let (sender, mut receiver) = unbounded_channel();
 
