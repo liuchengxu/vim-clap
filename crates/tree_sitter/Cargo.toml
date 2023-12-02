@@ -12,7 +12,6 @@ tree-sitter-highlight = "0.20"
 once_cell = { workspace = true }
 serde = { workspace = true, features = [ "derive" ] }
 toml = { workspace = true }
-tree-sitter-tags = "0.20"
 # tree-sitter-traversal = "0.1"
 
 # Languages
@@ -31,6 +30,7 @@ tree-sitter-vim = { git = "https://github.com/liuchengxu/tree-sitter-vim", rev =
 [dev-dependencies]
 criterion = "0.3"
 rand = "0.8"
+tree-sitter-tags = "0.20"
 
 [[bench]]
 name = "benchmark"

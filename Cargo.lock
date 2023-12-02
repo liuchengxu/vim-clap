@@ -2438,18 +2438,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tree-sitter-tags"
-version = "0.20.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccb3f1376219530a37a809751ecf65aa35fd8b9c1c4ab6d4faf5f6a9eeda2c05"
-dependencies = [
- "memchr",
- "regex",
- "thiserror",
- "tree-sitter",
-]
-
-[[package]]
 name = "tree-sitter-toml"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2487,7 +2475,6 @@ dependencies = [
  "tree-sitter-md",
  "tree-sitter-python",
  "tree-sitter-rust",
- "tree-sitter-tags",
  "tree-sitter-toml",
  "tree-sitter-vim",
 ]
