@@ -192,9 +192,8 @@ mod tests {
 
     #[test]
     fn test_parse_highlight_groups() {
-        // use tree_sitter_core::Query;
-        // use tree_sitter_tags::TagsConfiguration;
-        // use tree_sitter_tags::TagsContext;
+        // use tree_sitter_core::{Query, QueryCursor, TextProvider};
+        // use tree_sitter_tags::{TagsConfiguration, TagsContext};
 
         // let mut context = TagsContext::new();
 
@@ -214,15 +213,23 @@ mod tests {
         // println!("i: {i}, name: {name}");
         // }
 
-        // let rust_config =
-        // TagsConfiguration::new(tree_sitter_rust::language(), tags_query, "").unwrap();
+        // let mut cursor = QueryCursor::new();
+        // let matches = cursor.matches(&query, tree.root_node(), source_code.as_slice());
 
-        // let (tags, _) = context
-        // .generate_tags(&rust_config, source_code, None)
-        // .unwrap();
+        // for mat in matches {
+        // for cap in mat.captures {
+        // let index = Some(cap.index);
+        // let range = cap.node.byte_range();
+        // if capture_names[cap.index as usize].starts_with("name.definition") {
 
-        // for tag in tags {
-        // println!("tag: {tag:?}");
+        // println!(
+        // "===== index: {index:?} {}, range: {:?}, text: {}",
+        // &capture_names[cap.index as usize],
+        // &range,
+        // String::from_utf8_lossy(&source_code[range.clone()]),
+        // );
+        // }
+        // }
         // }
     }
 }
