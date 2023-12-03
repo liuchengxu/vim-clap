@@ -94,7 +94,9 @@
             <div class="sidebar-scrollbox">
                 <ol class="chapter"><li class="chapter-item expanded affix "><a href="index.html">Introduction</a></li><li class="chapter-item expanded affix "><li class="part-title">User Guide</li><li class="chapter-item expanded "><a href="guide/installation.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guide/install_rust.html"><strong aria-hidden="true">1.1.</strong> Install Rust Dependency</a></li></ol></li><li class="chapter-item expanded "><a href="providers/intro.html"><strong aria-hidden="true">2.</strong> Clap Providers</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="providers/theme.html"><strong aria-hidden="true">2.1.</strong> Theme</a></li><li class="chapter-item expanded "><a href="providers/keybindings.html"><strong aria-hidden="true">2.2.</strong> Keybindings</a></li><li class="chapter-item expanded "><a href="providers/search_syntax.html"><strong aria-hidden="true">2.3.</strong> Search Syntax</a></li></ol></li><li class="chapter-item expanded "><a href="plugins/intro.html"><strong aria-hidden="true">3.</strong> Clap Plugins</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="plugins/config.html"><strong aria-hidden="true">3.1.</strong> Configuration</a></li><li class="chapter-item expanded "><a href="plugins/plugins.html"><strong aria-hidden="true">3.2.</strong> Available Plugins</a></li></ol></li></ol>
             </div>
-            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
         </nav>
 
         <!-- Track and set sidebar scroll position -->
@@ -561,18 +563,110 @@ enable = true
 <li>macOS: <code>~/Library/Application\ Support/org.vim.Vim-Clap/config.toml</code></li>
 <li>Windows: <code>C:\Users\Alice\AppData\Roaming\Vim\Vim Clap\config\config.toml</code></li>
 </ul>
-<pre><code class="language-toml">[log]
-# Note that the log file path must be an absolute path.
-log-file = &quot;/tmp/clap.log&quot;
+<p>The default config is as follows:</p>
+<pre><code class="language-toml">## Log configuration.
+[log]
+# Specify the max log level.
 max-level = &quot;debug&quot;
+# Specify the log target to enable more detailed logging.
+#
+# Particularlly useful for the debugging purpose.
+#
+# ```toml
+# [log]
+# log-target = &quot;maple_core::stdio_server=trace,rpc=debug&quot;
+# ```
+log-target = &quot;&quot;
 
+## Matcher configuration.
 [matcher]
-# There are four sort keys for results: score, begin, end, length,
-# you can specify how the records are sorted using `tiebreak`.
+# Specify how the results are sorted.
 tiebreak = &quot;score,-begin,-end,-length&quot;
+[plugin.colorizer]
+# Whether to enable this plugin.
+enable = false
 
+[plugin.cursorword]
+# Whether to enable this plugin.
+enable = false
+# Whether to ignore the comment line
+ignore-comment-line = false
+# Disable the plugin when the file matches this pattern.
+ignore-files = &quot;*.toml,*.json,*.yml,*.log,tmp&quot;
+
+[plugin.ctags]
+# Whether to enable this plugin.
+enable = false
+# Disable this plugin if the file size exceeds the max size limit.
+#
+# By default the max file size limit is 4MiB.
+max-file-size = 4194304
+
+[plugin.git]
+# Whether to enable this plugin.
+enable = true
+
+[plugin.linter]
+# Whether to enable this plugin.
+enable = false
+
+[plugin.markdown]
+# Whether to enable this plugin.
+enable = false
+
+## Provider (fuzzy picker) configuration.
 [provider]
-preview-highlight-engine = &quot;tree-sitter&quot;
+# Whether to share the input history among providers.
+share-input-history = false
+# Specify the syntax highlight engine for the provider preview.
+#
+# Possible values: `vim`, `sublime-syntax` and `tree-sitter`
+preview-highlight-engine = &quot;vim&quot;
+
+# Ignore configuration per project, with paths specified as
+# absoluate path or relative to the home directory.
+[provider.project-ignores]
+
+# Ignore configuration per provider.
+#
+# There are multiple ignore settings, with priorities as follows:
+# `provider_ignores` &gt; `provider_ignores` &gt; `global_ignore`
+[provider.provider-ignores]
+
+# Delay in milliseconds before handling the the user query.
+#
+# When the delay is set not-zero, some intermediate inputs
+# may be dropped if user types too fast.
+#
+# By default the debounce is set to 200ms to all providers.
+#
+# # Example
+#
+# ```toml
+# [provider.debounce]
+# # Set debounce to 100ms for files provider specifically.
+# &quot;files&quot; = 100
+# ```
+[provider.debounce]
+
+## Global ignore configuration.
+[global-ignore]
+# Whether to ignore the comment line when applicable.
+ignore-comments = false
+# Only include the results from the files being tracked by git if in a git repo.
+git-tracked-only = false
+# Ignore the results from the files whose file name matches this pattern.
+#
+# For instance, if you want to exclude the results whose file name matches
+# `test` for dumb_jump provider:
+#
+# ```toml
+# [provider.provider-ignores.dumb_jump]
+# ignore-file-path-pattern = [&quot;test&quot;]
+# ```
+ignore-file-name-pattern = []
+# Ignore the results from the files whose file path matches this pattern.
+ignore-file-path-pattern = []
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="available-plugins"><a class="header" href="#available-plugins">Available Plugins</a></h1>
 <p>The following plugins may only implement a subset of features of their alternatives.</p>
@@ -656,7 +750,7 @@ enable = true
 <p>This plugin implements the sublime-syntax and tree-sitter highlighting. The sublime-syntax is feature-limited and pretty experimental, this plugin primarily focues on the tree-sitter highlighting support.</p>
 <p>Officially tree-sitter supported languages:</p>
 <ul>
-<li>Bash, C, Cpp, Go, Javascript, Json, Markdown, Python, Rust, Toml, Viml,</li>
+<li>Bash, C, Cpp, Go, Javascript, Json, Markdown, Python, Rust, Toml, Viml</li>
 </ul>
 
                     </main>
