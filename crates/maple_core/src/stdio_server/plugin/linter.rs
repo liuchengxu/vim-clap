@@ -372,6 +372,7 @@ impl Linter {
                 .find_sibling(lnum, kind, direction)
             {
                 self.vim.exec("cursor", [lnum, col])?;
+                self.vim.exec("execute", "normal! zz")?;
             }
         }
         Ok(())

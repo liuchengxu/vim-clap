@@ -415,7 +415,7 @@ endfunction
 
 function! s:update_preview_scrollbar(length) abort
   let lines = repeat([s:preview_scrollbar_fill_char], a:length)
-  call clap#util#nvim_buf_set_lines(s:preview_scrollbar_buf, lines)
+  call clap#api#buf_set_lines(s:preview_scrollbar_buf, lines)
 endfunction
 
 function! s:create_preview_scrollbar_win(top_position, length) abort
@@ -486,7 +486,7 @@ function! clap#floating_win#preview.show(lines) abort
       endif
     endif
   endif
-  call clap#util#nvim_buf_set_lines(s:preview_bufnr, lines)
+  call clap#api#buf_set_lines(s:preview_bufnr, lines)
 endfunction
 
 function! clap#floating_win#preview.close() abort
@@ -506,7 +506,7 @@ function! clap#floating_win#preview.hide() abort
 endfunction
 
 function! clap#floating_win#preview.clear() abort
-  call clap#util#nvim_buf_clear(s:preview_bufnr)
+  call clap#api#buf_clear(s:preview_bufnr)
 endfunction
 
 function! s:ensure_closed() abort

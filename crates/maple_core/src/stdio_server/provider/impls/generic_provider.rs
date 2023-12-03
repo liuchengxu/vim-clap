@@ -2,7 +2,7 @@ use crate::stdio_server::provider::hooks::{initialize_provider, CachedPreviewImp
 use crate::stdio_server::provider::{
     BaseArgs, ClapProvider, Context, ProviderError, ProviderResult as Result, ProviderSource,
 };
-use crate::stdio_server::vim::VimProgressor;
+use crate::stdio_server::vim::SearchProgressor;
 use filter::{FilterContext, ParallelSource};
 use parking_lot::Mutex;
 use printer::{DisplayLines, Printer};
@@ -64,7 +64,7 @@ fn start_filter_parallel(
                         ParallelSource::Exec(Box::new(Exec::shell(command).cwd(cwd)))
                     }
                 },
-                VimProgressor::new(vim, stop_signal.clone()),
+                SearchProgressor::new(vim, stop_signal.clone()),
                 stop_signal,
             ) {
                 tracing::error!(error = ?e, "Error occurred when filtering the cache source");

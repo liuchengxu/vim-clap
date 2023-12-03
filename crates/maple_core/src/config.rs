@@ -58,6 +58,7 @@ pub fn config_file() -> &'static PathBuf {
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct MatcherConfig {
+    /// Specify how the results are sorted.
     pub tiebreak: String,
 }
 
@@ -82,12 +83,16 @@ impl MatcherConfig {
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct LogConfig {
     /// Specify the log file path.
+    ///
+    /// This path must be an absoluate path.
     pub log_file: Option<String>,
 
     /// Specify the max log level.
     pub max_level: String,
 
-    /// Specify the log target.
+    /// Specify the log target to enable more detailed logging.
+    ///
+    /// Particularlly useful for the debugging purpose.
     ///
     /// ```toml
     /// [log]
@@ -106,6 +111,7 @@ impl Default for LogConfig {
     }
 }
 
+/// Cursorword plugin.
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct CursorWordConfig {
@@ -129,6 +135,7 @@ impl Default for CursorWordConfig {
     }
 }
 
+/// Markdown plugin.
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct MarkdownPluginConfig {
@@ -136,13 +143,14 @@ pub struct MarkdownPluginConfig {
     pub enable: bool,
 }
 
+/// Ctags plugin.
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct CtagsPluginConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
 
-    /// Disable the ctags plugin if the size of file exceeds the max size limit.
+    /// Disable this plugin if the file size exceeds the max size limit.
     ///
     /// By default the max file size limit is 4MiB.
     pub max_file_size: u64,
@@ -157,6 +165,7 @@ impl Default for CtagsPluginConfig {
     }
 }
 
+/// Git plugin.
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct GitPluginConfig {
@@ -178,6 +187,7 @@ impl Default for GitPluginConfig {
     }
 }
 
+/// Colorizer plugin.
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct ColorizerPluginConfig {
@@ -185,6 +195,7 @@ pub struct ColorizerPluginConfig {
     pub enable: bool,
 }
 
+/// Linter plugin.
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct LinterPluginConfig {
@@ -206,13 +217,21 @@ pub struct PluginConfig {
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct IgnoreConfig {
-    /// Whether to ignore the comment line when it's possible.
+    /// Whether to ignore the comment line when applicable.
     pub ignore_comments: bool,
 
     /// Only include the results from the files being tracked by git if in a git repo.
     pub git_tracked_only: bool,
 
     /// Ignore the results from the files whose file name matches this pattern.
+    ///
+    /// For instance, if you want to exclude the results whose file name matches
+    /// `test` for dumb_jump provider:
+    ///
+    /// ```toml
+    /// [provider.provider-ignores.dumb_jump]
+    /// ignore-file-path-pattern = ["test"]
+    /// ```
     pub ignore_file_name_pattern: Vec<String>,
 
     /// Ignore the results from the files whose file path matches this pattern.
@@ -225,10 +244,13 @@ pub struct ProviderConfig {
     /// Whether to share the input history among providers.
     pub share_input_history: bool,
 
-    /// Specifies the maximum number of items to be displayed in the results window.
+    /// Specifies the maximum number of items to be displayed
+    /// in the results window.
     pub max_display_size: Option<usize>,
 
     /// Specify the syntax highlight engine for the provider preview.
+    ///
+    /// Possible values: `vim`, `sublime-syntax` and `tree-sitter`
     pub preview_highlight_engine: HighlightEngine,
 
     /// Specify the theme for the highlight engine.
@@ -237,25 +259,27 @@ pub struct ProviderConfig {
     /// when the engine is [`HighlightEngine::SublimeSyntax`],
     pub sublime_syntax_color_scheme: Option<String>,
 
-    /// Ignore configuration per project, with paths specified as absoluate path
-    /// or relative to the home directory.
+    /// Ignore configuration per project, with paths specified as
+    /// absoluate path or relative to the home directory.
     pub project_ignores: HashMap<AbsPathBuf, IgnoreConfig>,
 
-    /// Ignore configuration per provider, with priorities as follows:
+    /// Ignore configuration per provider.
+    ///
+    /// There are multiple ignore settings, with priorities as follows:
     /// `provider_ignores` > `provider_ignores` > `global_ignore`
     pub provider_ignores: HashMap<String, IgnoreConfig>,
 
     /// Delay in milliseconds before handling the the user query.
     ///
-    /// When enabled and not-zero, some intermediate inputs may be dropped if user types too fast.
+    /// When the delay is set not-zero, some intermediate inputs
+    /// may be dropped if user types too fast.
     ///
-    /// # Config example
+    /// By default the debounce is set to 200ms to all providers.
+    ///
+    /// # Example
     ///
     /// ```toml
     /// [provider.debounce]
-    /// # Set debounce to 200ms for all providers by default.
-    /// "*" = 200
-    ///
     /// # Set debounce to 100ms for files provider specifically.
     /// "files" = 100
     /// ```
@@ -283,7 +307,7 @@ pub struct Config {
     /// Plugin configuration.
     pub plugin: PluginConfig,
 
-    /// Provider configuration.
+    /// Provider (fuzzy picker) configuration.
     pub provider: ProviderConfig,
 
     /// Global ignore configuration.

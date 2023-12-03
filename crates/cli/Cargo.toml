@@ -17,6 +17,7 @@ num_cpus = { workspace = true }
 tokio = { workspace = true, features = ["fs", "rt", "process", "macros", "rt-multi-thread", "sync", "time"] }
 rayon = { workspace = true }
 regex = { workspace = true }
+serde = { workspace = true }
 serde_json = { workspace = true }
 subprocess = { workspace = true }
 tracing = { workspace = true }

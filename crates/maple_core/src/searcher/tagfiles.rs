@@ -1,5 +1,5 @@
 use crate::searcher::{SearchContext, SearcherMessage};
-use crate::stdio_server::VimProgressor;
+use crate::stdio_server::SearchProgressor;
 use dirs::Dirs;
 use filter::BestItems;
 use matcher::Matcher;
@@ -305,7 +305,7 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
         truncate_text: false,
     };
     let number = item_pool_size;
-    let progressor = VimProgressor::new(vim, stop_signal.clone());
+    let progressor = SearchProgressor::new(vim, stop_signal.clone());
 
     let mut best_items = BestItems::new(printer, number, progressor, Duration::from_millis(200));
 

@@ -1,9 +1,9 @@
 use crate::app::Args;
+use crate::CacheableCommand;
 use anyhow::{Context, Result};
 use clap::Parser;
 use icon::Icon;
-use maple_core::process::shell_command;
-use maple_core::process::{CacheableCommand, ShellCommand};
+use maple_core::process::{shell_command, ShellCommand};
 use maple_core::tools::rg::Match;
 use rayon::prelude::*;
 use std::convert::TryFrom;

@@ -188,10 +188,48 @@ fn pretty_print_tree_impl<W: std::fmt::Write>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*;
 
     #[test]
     fn test_parse_highlight_groups() {
-        println!("{:?}", parse_scopes(tree_sitter_rust::HIGHLIGHT_QUERY));
+        // use tree_sitter_core::{Query, QueryCursor, TextProvider};
+        // use tree_sitter_tags::{TagsConfiguration, TagsContext};
+
+        // let mut context = TagsContext::new();
+
+        // let language = tree_sitter_rust::language();
+        // let mut parser = tree_sitter_core::Parser::new();
+        // parser
+        // .set_language(language)
+        // .expect("Error loading Rust grammar");
+
+        // let tags_query = include_str!("../queries/rust/tags.scm");
+        // let query = Query::new(language, tags_query).unwrap();
+
+        // let source_code = include_bytes!("../../maple_core/src/stdio_server/service.rs");
+        // let tree = parser.parse(source_code, None).unwrap();
+
+        // for (i, name) in query.capture_names().iter().enumerate() {
+        // println!("i: {i}, name: {name}");
+        // }
+
+        // let mut cursor = QueryCursor::new();
+        // let matches = cursor.matches(&query, tree.root_node(), source_code.as_slice());
+
+        // for mat in matches {
+        // for cap in mat.captures {
+        // let index = Some(cap.index);
+        // let range = cap.node.byte_range();
+        // if capture_names[cap.index as usize].starts_with("name.definition") {
+
+        // println!(
+        // "===== index: {index:?} {}, range: {:?}, text: {}",
+        // &capture_names[cap.index as usize],
+        // &range,
+        // String::from_utf8_lossy(&source_code[range.clone()]),
+        // );
+        // }
+        // }
+        // }
     }
 }

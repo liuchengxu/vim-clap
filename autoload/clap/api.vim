@@ -40,6 +40,14 @@ endif
 let s:api = {}
 
 if s:is_nvim
+  function! clap#api#buf_set_lines(bufnr, lines) abort
+    call nvim_buf_set_lines(a:bufnr, 0, -1, 0, a:lines)
+  endfunction
+
+  function! clap#api#buf_clear(bufnr) abort
+    call nvim_buf_set_lines(a:bufnr, 0, -1, 0, [])
+  endfunction
+
   function! s:api.win_is_valid(winid) abort
     return nvim_win_is_valid(a:winid)
   endfunction
@@ -52,6 +60,22 @@ if s:is_nvim
     return nvim_get_var(a:name)
   endfunction
 else
+  function! clap#api#buf_set_lines(bufnr, lines) abort
+    " silent is required to avoid the annoying --No lines in buffer--.
+    silent call deletebufline(a:bufnr, 1, '$')
+
+    call appendbufline(a:bufnr, 0, a:lines)
+    " Delete the last possible empty line.
+    " Is there a better solution in vim?
+    if empty(getbufline(a:bufnr, '$')[0])
+      silent call deletebufline(a:bufnr, '$')
+    endif
+  endfunction
+
+  function! clap#api#buf_clear(bufnr) abort
+    silent call deletebufline(a:bufnr, 1, '$')
+  endfunction
+
   function! s:api.win_is_valid(winid) abort
     return win_screenpos(a:winid) != [0, 0]
   endfunction

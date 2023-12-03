@@ -166,18 +166,18 @@ impl PreviewConfig {
     }
 }
 
-pub struct VimProgressor {
+pub struct SearchProgressor {
     vim: Vim,
     stopped: Arc<AtomicBool>,
 }
 
-impl VimProgressor {
+impl SearchProgressor {
     pub fn new(vim: Vim, stopped: Arc<AtomicBool>) -> Self {
         Self { vim, stopped }
     }
 }
 
-impl SearchProgressUpdate<DisplayLines> for VimProgressor {
+impl SearchProgressUpdate<DisplayLines> for SearchProgressor {
     fn quick_update(&self, total_matched: usize, total_processed: usize) {
         if self.stopped.load(Ordering::Relaxed) {
             return;
