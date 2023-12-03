@@ -73,7 +73,7 @@ else
   endfunction
 
   function! clap#api#buf_clear(bufnr) abort
-    silent call deletebufline(self.bufnr, 1, '$')
+    silent call deletebufline(a:bufnr, 1, '$')
   endfunction
 
   function! s:api.win_is_valid(winid) abort
