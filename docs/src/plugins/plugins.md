@@ -56,7 +56,10 @@ enable = true
 | Features                                       | Alternatives                                                  |
 | :-------------------------------------         | :-----------------------------------------------------        |
 | Show blame info at the end of line             | [nvim-blame-line](https://github.com/tveskag/nvim-blame-line) |
+| Show git diff in sign column                   | [vim-gitgutter](https://github.com/airblade/vim-gitgutter)    |
 | Open the permalink of current line in browser  | [repolink.nvim](https://github.com/9seconds/repolink.nvim)    |
+
+The signs are rendered lazily, i.e., the signs are only displayed when they are visually in the range of screen.
 
 ## linter
 
