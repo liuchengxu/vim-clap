@@ -15,7 +15,7 @@ fn in_git_repo(filepath: &Path) -> Option<&Path> {
 type Sign = (usize, SignType);
 
 #[derive(Debug, Clone)]
-struct DiffState {
+struct ModificationState {
     modifications: Vec<Modification>,
     current_signs: Vec<Sign>,
 }
@@ -34,7 +34,7 @@ pub struct Git {
     vim: Vim,
     bufs: HashMap<usize, (PathBuf, GitRepo)>,
     git_summary: HashMap<usize, Summary>,
-    git_modifications: HashMap<usize, DiffState>,
+    git_modifications: HashMap<usize, ModificationState>,
     toggle: Toggle,
 }
 
@@ -106,40 +106,34 @@ impl Git {
         Ok(())
     }
 
-    async fn update_diff_modifications(
-        &mut self,
-        bufnr: usize,
-        update_visual_signs: bool,
-    ) -> Result<(), PluginError> {
+    async fn update_diff_modifications(&mut self, bufnr: usize) -> Result<(), PluginError> {
         if let Some((filepath, git)) = self.bufs.get(&bufnr) {
             let modifications = git.get_hunk_modifications(filepath, None)?;
 
-            if update_visual_signs {
-                let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
+            let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
 
-                let signs = modifications
-                    .iter()
-                    .flat_map(|m| m.signs_in_range(line_start..line_end + 1))
-                    .collect::<Vec<_>>();
+            let signs = modifications
+                .iter()
+                .flat_map(|m| m.signs_in_range(line_start..line_end + 1))
+                .collect::<Vec<_>>();
 
-                let current_signs = if signs.is_empty() {
-                    self.vim
-                        .exec("clap#plugin#git#clear_visual_signs", [bufnr])?;
-                    Vec::new()
-                } else {
-                    self.vim
-                        .exec("clap#plugin#git#update_visual_signs", (bufnr, &signs))?;
-                    signs
-                };
+            let current_signs = if signs.is_empty() {
+                self.vim
+                    .exec("clap#plugin#git#clear_visual_signs", [bufnr])?;
+                Vec::new()
+            } else {
+                self.vim
+                    .exec("clap#plugin#git#update_visual_signs", (bufnr, &signs))?;
+                signs
+            };
 
-                self.git_modifications.insert(
-                    bufnr,
-                    DiffState {
-                        modifications,
-                        current_signs,
-                    },
-                );
-            }
+            self.git_modifications.insert(
+                bufnr,
+                ModificationState {
+                    modifications,
+                    current_signs,
+                },
+            );
         }
 
         Ok(())
@@ -287,11 +281,11 @@ impl ClapPlugin for Git {
                 self.try_track_buffer(bufnr).await?;
                 self.on_cursor_moved(bufnr).await?;
                 self.update_diff_summary(bufnr)?;
-                self.update_diff_modifications(bufnr, true).await?;
+                self.update_diff_modifications(bufnr).await?;
             }
             BufWritePost => {
                 self.update_diff_summary(bufnr)?;
-                self.update_diff_modifications(bufnr, false).await?;
+                self.update_diff_modifications(bufnr).await?;
             }
             BufDelete => {
                 self.bufs.remove(&bufnr);
@@ -359,8 +353,8 @@ impl ClapPlugin for Git {
                 };
 
                 let git = GitRepo::init(git_root.to_path_buf())?;
-
-                self.update_diff_modifications(bufnr, true).await?;
+                self.bufs.insert(bufnr, (filepath, git));
+                self.update_diff_modifications(bufnr).await?;
             }
         }
 
