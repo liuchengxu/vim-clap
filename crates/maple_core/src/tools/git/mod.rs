@@ -1,13 +1,94 @@
+use chrono::{TimeZone, Utc};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use regex::Regex;
+use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::io::Write;
+use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
 static HUNK: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"@@ -(\d+)(,(\d+))? \+(\d+)(,(\d+))? @@").unwrap());
+
+#[derive(Debug)]
+pub struct BlameInfo {
+    author: String,
+    author_time: Option<i64>,
+    summary: Option<String>,
+}
+
+impl BlameInfo {
+    pub fn display(&self, user_name: &str) -> Option<Cow<'_, str>> {
+        let author = &self.author;
+
+        if author == "Not Committed Yet" {
+            return Some(author.into());
+        }
+
+        match (&self.author_time, &self.summary) {
+            (Some(author_time), Some(summary)) => {
+                let time = Utc.timestamp_opt(*author_time, 0).single()?;
+                let time = chrono_humanize::HumanTime::from(time);
+                let author = if user_name.eq(author) { "You" } else { author };
+
+                if let Some(fmt) = &crate::config::config().plugin.git.blame_format_string {
+                    let mut display_string = fmt.to_string();
+                    let mut replace_template_string = |to_replace: &str, replace_with: &str| {
+                        if let Some(idx) = display_string.find(to_replace) {
+                            display_string.replace_range(idx..idx + to_replace.len(), replace_with);
+                        }
+                    };
+
+                    replace_template_string("author", author);
+                    replace_template_string("time", time.to_string().as_str());
+                    replace_template_string("summary", summary);
+
+                    Some(display_string.into())
+                } else {
+                    Some(format!("({author} {time}) {summary}").into())
+                }
+            }
+            _ => Some(format!("({author})").into()),
+        }
+    }
+}
+
+pub fn parse_blame_info(stdout: Vec<u8>) -> Option<BlameInfo> {
+    let stdout = String::from_utf8_lossy(&stdout);
+
+    let mut author = None;
+    let mut author_time = None;
+    let mut summary = None;
+
+    for line in stdout.split('\n') {
+        if let Some((k, v)) = line.split_once(' ') {
+            match k {
+                "author" => {
+                    author.replace(v);
+                }
+                "author-time" => {
+                    author_time.replace(v);
+                }
+                "summary" => {
+                    summary.replace(v);
+                }
+                _ => {}
+            }
+        }
+
+        if let (Some(author), Some(author_time), Some(summary)) = (author, author_time, summary) {
+            return Some(BlameInfo {
+                author: author.to_owned(),
+                author_time: Some(author_time.parse::<i64>().expect("invalid author_time")),
+                summary: Some(summary.to_owned()),
+            });
+        }
+    }
+
+    None
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum GitError {
@@ -22,8 +103,67 @@ pub enum GitError {
 #[derive(Debug, Clone, Default, Eq, PartialEq)]
 pub struct Summary {
     pub added: usize,
-    pub removed: usize,
     pub modified: usize,
+    pub removed: usize,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum HunkSummary {
+    Added(usize),
+    Removed(usize),
+    Modified(usize),
+    ModifiedAndAdded { modified: usize, added: usize },
+    ModifiedAndRemoved { modified: usize, removed: usize },
+}
+
+impl HunkSummary {
+    pub fn added(&self) -> usize {
+        match self {
+            Self::Added(added) | Self::ModifiedAndAdded { added, .. } => *added,
+            _ => 0,
+        }
+    }
+
+    pub fn removed(&self) -> usize {
+        match self {
+            Self::Removed(removed) | Self::ModifiedAndRemoved { removed, .. } => *removed,
+            _ => 0,
+        }
+    }
+
+    pub fn modified(&self) -> usize {
+        match self {
+            Self::Modified(modified)
+            | Self::ModifiedAndAdded { modified, .. }
+            | Self::ModifiedAndRemoved { modified, .. } => *modified,
+            _ => 0,
+        }
+    }
+}
+
+/// ChangeType of a hunk.
+enum ChangeType {
+    Added,
+    Removed,
+    Modified,
+    ModifiedAndAdded,
+    ModifiedAndRemoved,
+}
+
+#[derive(Debug)]
+pub enum Modification {
+    Added(Range<usize>),
+    RemovedFirstLine,
+    Removed(usize),
+    Modified(Range<usize>),
+    ModifiedAndAdded {
+        modified: Range<usize>,
+        added: Range<usize>,
+    },
+    ModifiedAndRemoved {
+        modified: Range<usize>,
+        modified_removed: usize,
+    },
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -36,7 +176,7 @@ pub struct Hunk {
 
 impl Hunk {
     /// Returns the summary of this hunk.
-    fn summary(&self) -> Summary {
+    fn summary(&self) -> HunkSummary {
         let Self {
             old_count,
             new_count,
@@ -46,36 +186,57 @@ impl Hunk {
         let from_count = *old_count;
         let to_count = *new_count;
 
-        let hunk_type = self.hunk_type();
-
-        match hunk_type {
-            HunkType::Added => Summary {
-                added: to_count,
-                ..Default::default()
-            },
-            HunkType::Removed => Summary {
-                removed: from_count,
-                ..Default::default()
-            },
-            HunkType::Modified => Summary {
-                modified: to_count,
-                ..Default::default()
-            },
-            HunkType::ModifiedAndAdded => Summary {
-                added: to_count - from_count,
+        match self.change_type() {
+            ChangeType::Added => HunkSummary::Added(to_count),
+            ChangeType::Removed => HunkSummary::Removed(from_count),
+            ChangeType::Modified => HunkSummary::Modified(to_count),
+            ChangeType::ModifiedAndAdded => HunkSummary::ModifiedAndAdded {
                 modified: from_count,
-                ..Default::default()
+                added: to_count - from_count,
             },
-            HunkType::ModifiedAndRemoved => Summary {
+            ChangeType::ModifiedAndRemoved => HunkSummary::ModifiedAndRemoved {
                 modified: to_count,
                 removed: from_count - to_count,
-                ..Default::default()
+            },
+        }
+    }
+
+    /// Returns the modification of this hunk.
+    fn modification(&self) -> Modification {
+        let Self {
+            old_start: _,
+            old_count,
+            new_start,
+            new_count,
+        } = self;
+
+        let from_count = *old_count;
+        let to_line = *new_start;
+        let to_count = *new_count;
+
+        match self.change_type() {
+            ChangeType::Added => Modification::Added(to_line..to_line + to_count),
+            ChangeType::Removed => {
+                if to_line == 0 {
+                    Modification::RemovedFirstLine
+                } else {
+                    Modification::Removed(to_line)
+                }
+            }
+            ChangeType::Modified => Modification::Modified(to_line..to_line + to_count),
+            ChangeType::ModifiedAndAdded => Modification::ModifiedAndAdded {
+                modified: to_line..to_line + from_count,
+                added: to_line..to_line + to_count,
+            },
+            ChangeType::ModifiedAndRemoved => Modification::ModifiedAndRemoved {
+                modified: to_line..to_line + to_count,
+                modified_removed: to_line + to_count - 1,
             },
         }
     }
 
     // https://github.com/airblade/vim-gitgutter/blob/fe0e8a2630eef548e4122096e4e2241f42208fe3/autoload/gitgutter/diff.vim#L236
-    fn hunk_type(&self) -> HunkType {
+    fn change_type(&self) -> ChangeType {
         let Self {
             old_count,
             new_count,
@@ -86,27 +247,19 @@ impl Hunk {
         let to_count = *new_count;
 
         if from_count == 0 && to_count > 0 {
-            HunkType::Added
+            ChangeType::Added
         } else if from_count > 0 && to_count == 0 {
-            HunkType::Removed
+            ChangeType::Removed
         } else if from_count > 0 && to_count > 0 {
             match from_count.cmp(&to_count) {
-                Ordering::Equal => HunkType::Modified,
-                Ordering::Less => HunkType::ModifiedAndAdded,
-                Ordering::Greater => HunkType::ModifiedAndRemoved,
+                Ordering::Equal => ChangeType::Modified,
+                Ordering::Less => ChangeType::ModifiedAndAdded,
+                Ordering::Greater => ChangeType::ModifiedAndRemoved,
             }
         } else {
             unreachable!("Unknown hunk type")
         }
     }
-}
-
-enum HunkType {
-    Added,
-    Removed,
-    Modified,
-    ModifiedAndAdded,
-    ModifiedAndRemoved,
 }
 
 #[derive(Debug, Clone)]
@@ -257,7 +410,7 @@ impl GitRepo {
         }
     }
 
-    pub fn get_hunk_summary(&self, old: &Path, new: Option<&Path>) -> std::io::Result<Summary> {
+    fn get_hunks(&self, old: &Path, new: Option<&Path>) -> std::io::Result<Vec<Hunk>> {
         let mut cmd = std::process::Command::new("git");
         cmd.current_dir(&self.repo)
             .arg("--no-pager")
@@ -288,16 +441,34 @@ impl GitRepo {
             })
             .collect::<Vec<_>>();
 
+        Ok(hunks)
+    }
+
+    pub fn get_diff_summary(&self, old: &Path, new: Option<&Path>) -> std::io::Result<Summary> {
+        let hunks = self.get_hunks(old, new)?;
+
         let mut summary = Summary::default();
 
         hunks.iter().for_each(|hunk| {
             let hunk_summary = hunk.summary();
-            summary.added += hunk_summary.added;
-            summary.removed += hunk_summary.removed;
-            summary.modified += hunk_summary.modified;
+            summary.added += hunk_summary.added();
+            summary.removed += hunk_summary.removed();
+            summary.modified += hunk_summary.modified();
         });
 
         Ok(summary)
+    }
+
+    pub fn get_hunk_modifications(
+        &self,
+        old: &Path,
+        new: Option<&Path>,
+    ) -> std::io::Result<Vec<Modification>> {
+        Ok(self
+            .get_hunks(old, new)?
+            .into_iter()
+            .map(|hunk| hunk.modification())
+            .collect())
     }
 }
 

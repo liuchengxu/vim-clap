@@ -1,88 +1,9 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::vim::Vim;
-use crate::tools::git::{GitError, GitRepo, Summary};
-use chrono::{TimeZone, Utc};
-use std::borrow::Cow;
+use crate::tools::git::{parse_blame_info, GitError, GitRepo, Summary};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-
-struct BlameInfo {
-    author: String,
-    author_time: Option<i64>,
-    summary: Option<String>,
-}
-
-impl BlameInfo {
-    fn display(&self, user_name: &str) -> Option<Cow<'_, str>> {
-        let author = &self.author;
-
-        if author == "Not Committed Yet" {
-            return Some(author.into());
-        }
-
-        match (&self.author_time, &self.summary) {
-            (Some(author_time), Some(summary)) => {
-                let time = Utc.timestamp_opt(*author_time, 0).single()?;
-                let time = chrono_humanize::HumanTime::from(time);
-                let author = if user_name.eq(author) { "You" } else { author };
-
-                if let Some(fmt) = &crate::config::config().plugin.git.blame_format_string {
-                    let mut display_string = fmt.to_string();
-                    let mut replace_template_string = |to_replace: &str, replace_with: &str| {
-                        if let Some(idx) = display_string.find(to_replace) {
-                            display_string.replace_range(idx..idx + to_replace.len(), replace_with);
-                        }
-                    };
-
-                    replace_template_string("author", author);
-                    replace_template_string("time", time.to_string().as_str());
-                    replace_template_string("summary", summary);
-
-                    Some(display_string.into())
-                } else {
-                    Some(format!("({author} {time}) {summary}").into())
-                }
-            }
-            _ => Some(format!("({author})").into()),
-        }
-    }
-}
-
-fn parse_blame_info(stdout: Vec<u8>) -> Option<BlameInfo> {
-    let stdout = String::from_utf8_lossy(&stdout);
-
-    let mut author = None;
-    let mut author_time = None;
-    let mut summary = None;
-
-    for line in stdout.split('\n') {
-        if let Some((k, v)) = line.split_once(' ') {
-            match k {
-                "author" => {
-                    author.replace(v);
-                }
-                "author-time" => {
-                    author_time.replace(v);
-                }
-                "summary" => {
-                    summary.replace(v);
-                }
-                _ => {}
-            }
-        }
-
-        if let (Some(author), Some(author_time), Some(summary)) = (author, author_time, summary) {
-            return Some(BlameInfo {
-                author: author.to_owned(),
-                author_time: Some(author_time.parse::<i64>().expect("invalid author_time")),
-                summary: Some(summary.to_owned()),
-            });
-        }
-    }
-
-    None
-}
 
 fn in_git_repo(filepath: &Path) -> Option<&Path> {
     filepath
@@ -96,8 +17,9 @@ fn in_git_repo(filepath: &Path) -> Option<&Path> {
   id = "git",
   actions = [
     "blame",
+    "diff-summary",
+    "hunk-modifications",
     "open-permalink-in-browser",
-    "hunk-summary",
     "toggle",
 ])]
 pub struct Git {
@@ -152,12 +74,12 @@ impl Git {
         Ok(())
     }
 
-    fn update_summary(&mut self, bufnr: usize) -> Result<(), PluginError> {
+    fn update_diff_summary(&mut self, bufnr: usize) -> Result<(), PluginError> {
         if let Some((filepath, git)) = self.bufs.get(&bufnr) {
-            let hunk_summary = git.get_hunk_summary(filepath, None)?;
+            let diff_summary = git.get_diff_summary(filepath, None)?;
 
             if let Some(old_summary) = self.git_summary.get(&bufnr) {
-                if hunk_summary.eq(old_summary) {
+                if diff_summary.eq(old_summary) {
                     return Ok(());
                 }
             }
@@ -166,10 +88,10 @@ impl Git {
                 bufnr,
                 "clap_git",
                 serde_json::json!({
-                  "summary": [hunk_summary.added, hunk_summary.modified, hunk_summary.removed]
+                  "summary": [diff_summary.added, diff_summary.modified, diff_summary.removed]
                 }),
             )?;
-            self.git_summary.insert(bufnr, hunk_summary);
+            self.git_summary.insert(bufnr, diff_summary);
         }
         Ok(())
     }
@@ -282,20 +204,21 @@ impl ClapPlugin for Git {
             BufEnter => {
                 self.try_track_buffer(bufnr).await?;
                 self.on_cursor_moved(bufnr).await?;
-                self.update_summary(bufnr)?;
+                self.update_diff_summary(bufnr)?;
             }
             BufWritePost => {
-                self.update_summary(bufnr)?;
+                self.update_diff_summary(bufnr)?;
             }
             BufDelete => {
                 self.bufs.remove(&bufnr);
+                self.git_summary.remove(&bufnr);
             }
             InsertEnter | BufLeave => {
                 self.vim.exec("clap#plugin#git#clear_blame_info", [bufnr])?;
             }
             CursorMoved => {
                 self.on_cursor_moved(bufnr).await?;
-                self.update_summary(bufnr)?;
+                self.update_diff_summary(bufnr)?;
             }
             event => return Err(PluginError::UnhandledEvent(event)),
         }
@@ -326,7 +249,7 @@ impl ClapPlugin for Git {
                 self.open_permalink_in_browser().await?;
             }
             GitAction::Blame => self.show_blame_info().await?,
-            GitAction::HunkSummary => {
+            GitAction::DiffSummary => {
                 let buf_path = self.vim.current_buffer_path().await?;
                 let filepath = PathBuf::from(buf_path);
 
@@ -336,8 +259,21 @@ impl ClapPlugin for Git {
 
                 let git = GitRepo::init(git_root.to_path_buf())?;
 
-                let summary = git.get_hunk_summary(&filepath, None)?;
+                let summary = git.get_diff_summary(&filepath, None)?;
                 self.vim.echo_info(format!("summary: {summary:?}"))?;
+            }
+            GitAction::HunkModifications => {
+                let buf_path = self.vim.current_buffer_path().await?;
+                let filepath = PathBuf::from(buf_path);
+
+                let Some(git_root) = in_git_repo(&filepath) else {
+                    return Ok(());
+                };
+
+                let git = GitRepo::init(git_root.to_path_buf())?;
+
+                let modifications = git.get_hunk_modifications(&filepath, None)?;
+                self.vim.echo_info(format!("{modifications:?}"))?;
             }
         }
 
