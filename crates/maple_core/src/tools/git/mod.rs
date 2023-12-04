@@ -151,7 +151,7 @@ enum ChangeType {
     ModifiedAndRemoved,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub enum Modification {
     Added(Range<usize>),
     RemovedFirstLine,
@@ -166,6 +166,85 @@ pub enum Modification {
         modified: Range<usize>,
         modified_removed: usize,
     },
+}
+
+/// Sign types that will be handled on the Vim side.
+#[derive(Debug, serde::Serialize)]
+pub enum SignType {
+    Added,
+    Removed,
+    Modified,
+    ModifiedRemoved,
+    RemovedAboveAndBelow,
+}
+
+/// Returns the intersection of two ranges.
+fn intersection(one: &Range<usize>, other: &Range<usize>) -> Option<Range<usize>> {
+    let start = one.start.max(other.start);
+    let end = one.end.min(other.end);
+
+    // Check if there is a valid intersection
+    if start <= end {
+        Some(Range { start, end })
+    } else {
+        None
+    }
+}
+
+impl Modification {
+    pub fn signs_in_range(&self, visual_range: Range<usize>) -> Vec<(usize, SignType)> {
+        let mut signs = Vec::new();
+        match self {
+            Self::Added(added) => {
+                if let Some(to_add) = intersection(added, &visual_range) {
+                    to_add.for_each(|lnum| signs.push((lnum, SignType::Added)));
+                }
+            }
+            Self::RemovedFirstLine => {
+                if visual_range.contains(&1) {
+                    signs.push((1, SignType::Removed));
+                }
+            }
+            Self::RemovedAboveAndBelow(lnum) => {
+                if visual_range.contains(lnum) {
+                    signs.push((*lnum, SignType::RemovedAboveAndBelow));
+                }
+            }
+            Self::Removed(lnum) => {
+                if visual_range.contains(lnum) {
+                    signs.push((*lnum, SignType::Removed));
+                }
+            }
+            Self::Modified(modified) => {
+                if let Some(to_add) = intersection(modified, &visual_range) {
+                    to_add.for_each(|lnum| signs.push((lnum, SignType::Modified)));
+                }
+            }
+            Self::ModifiedAndAdded { modified, added } => {
+                if let Some(to_add) = intersection(modified, &visual_range) {
+                    to_add.for_each(|lnum| signs.push((lnum, SignType::Modified)));
+                }
+
+                if let Some(to_add) = intersection(added, &visual_range) {
+                    to_add.for_each(|lnum| signs.push((lnum, SignType::Added)));
+                }
+            }
+            Self::ModifiedAndRemoved {
+                modified,
+                modified_removed,
+            } => {
+                if let Some(to_add) = intersection(modified, &visual_range) {
+                    to_add.for_each(|lnum| signs.push((lnum, SignType::Modified)));
+                }
+
+                if visual_range.contains(modified_removed) {
+                    signs.push((*modified_removed, SignType::ModifiedRemoved));
+                }
+            }
+        }
+
+        signs
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

@@ -92,6 +92,31 @@ function! clap#plugin#git#clear_diff_signs(bufnr) abort
   call sign_unplace(s:sign_group_removed, {'buffer': a:bufnr })
 endfunction
 
+function! clap#plugin#git#update_visual_signs(bufnr, signs) abort
+  call sign_unplace('clap_git_visual_signs', {'buffer': a:bufnr })
+  call clap#plugin#git#add_visual_signs(a:bufnr, a:signs)
+endfunction
+
+function! clap#plugin#git#add_visual_signs(bufnr, signs) abort
+  for [lnum, sign_group] in a:signs
+    if sign_group ==# 'Added'
+      call sign_place(0, 'clap_git_visual_signs', s:sign_group_added, a:bufnr, {'lnum': lnum})
+    elseif sign_group ==# 'Modified'
+      call sign_place(0, 'clap_git_visual_signs', s:sign_group_modified, a:bufnr, {'lnum': lnum})
+    elseif sign_group ==# 'Removed'
+      call sign_place(0, 'clap_git_visual_signs', s:sign_group_removed, a:bufnr, {'lnum': lnum})
+    elseif sign_group ==# 'ModifiedRemoved'
+      call sign_place(0, 'clap_git_visual_signs', s:sign_group_modified_removed, a:bufnr, {'lnum': lnum})
+    elseif sign_group ==# 'RemovedAboveAndBelow'
+      call sign_place(0, 'clap_git_visual_signs', s:sign_group_removed_above_and_below, a:bufnr, {'lnum': lnum})
+    endif
+  endfor
+endfunction
+
+function! clap#plugin#git#clear_visual_signs(bufnr, signs) abort
+  call sign_unplace('clap_git_visual_signs', {'buffer': a:bufnr })
+endfunction
+
 if has('nvim')
   function! clap#plugin#git#clear_blame_info(bufnr) abort
     let id = getbufvar(a:bufnr, 'clap_git_blame_extmark_id')

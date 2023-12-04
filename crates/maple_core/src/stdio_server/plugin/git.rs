@@ -1,7 +1,7 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::vim::Vim;
-use crate::tools::git::{parse_blame_info, GitError, GitRepo, Summary};
+use crate::tools::git::{parse_blame_info, GitError, GitRepo, Modification, Summary};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -26,6 +26,7 @@ pub struct Git {
     vim: Vim,
     bufs: HashMap<usize, (PathBuf, GitRepo)>,
     git_summary: HashMap<usize, Summary>,
+    git_modifications: HashMap<usize, Vec<Modification>>,
     toggle: Toggle,
 }
 
@@ -35,6 +36,7 @@ impl Git {
             vim,
             bufs: HashMap::new(),
             git_summary: HashMap::new(),
+            git_modifications: HashMap::new(),
             toggle: Toggle::On,
         }
     }
@@ -92,6 +94,31 @@ impl Git {
                 }),
             )?;
             self.git_summary.insert(bufnr, diff_summary);
+        }
+        Ok(())
+    }
+
+    fn update_diff_modifications(&mut self, bufnr: usize) -> Result<(), PluginError> {
+        if let Some((filepath, git)) = self.bufs.get(&bufnr) {
+            let modifications = git.get_hunk_modifications(filepath, None)?;
+            self.git_modifications.insert(bufnr, modifications);
+        }
+        Ok(())
+    }
+
+    async fn show_gutter_signs(&self, bufnr: usize) -> Result<(), PluginError> {
+        if let Some(modifications) = self.git_modifications.get(&bufnr) {
+            let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
+
+            let signs = modifications
+                .iter()
+                .flat_map(|m| m.signs_in_range(line_start..line_end + 1))
+                .collect::<Vec<_>>();
+
+            if !signs.is_empty() {
+                self.vim
+                    .exec("clap#plugin#git#update_visual_signs", (bufnr, signs))?;
+            }
         }
         Ok(())
     }
@@ -205,13 +232,17 @@ impl ClapPlugin for Git {
                 self.try_track_buffer(bufnr).await?;
                 self.on_cursor_moved(bufnr).await?;
                 self.update_diff_summary(bufnr)?;
+                self.update_diff_modifications(bufnr)?;
+                self.show_gutter_signs(bufnr).await?;
             }
             BufWritePost => {
                 self.update_diff_summary(bufnr)?;
+                self.update_diff_modifications(bufnr)?;
             }
             BufDelete => {
                 self.bufs.remove(&bufnr);
                 self.git_summary.remove(&bufnr);
+                self.git_modifications.remove(&bufnr);
             }
             InsertEnter | BufLeave => {
                 self.vim.exec("clap#plugin#git#clear_blame_info", [bufnr])?;
@@ -219,6 +250,7 @@ impl ClapPlugin for Git {
             CursorMoved => {
                 self.on_cursor_moved(bufnr).await?;
                 self.update_diff_summary(bufnr)?;
+                self.show_gutter_signs(bufnr).await?;
             }
             event => return Err(PluginError::UnhandledEvent(event)),
         }
@@ -275,9 +307,6 @@ impl ClapPlugin for Git {
                 let git = GitRepo::init(git_root.to_path_buf())?;
 
                 let modifications = git.get_hunk_modifications(&filepath, None)?;
-                self.vim.echo_info(format!("{modifications:?}"))?;
-                self.vim
-                    .exec("clap#plugin#git#add_diff_signs", (bufnr, modifications))?;
             }
         }
 
