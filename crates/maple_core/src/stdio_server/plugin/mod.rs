@@ -63,7 +63,7 @@ pub enum PluginError {
     #[error("{0}")]
     Other(String),
     #[error(transparent)]
-    GitPlugin(#[from] self::git::GitError),
+    GitPlugin(#[from] crate::tools::git::GitError),
     #[error("tree sitter highlighting error: {0:?}")]
     Highlight(#[from] tree_sitter::HighlightError),
     #[error(transparent)]

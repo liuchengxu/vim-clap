@@ -1,166 +1,11 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::vim::Vim;
+use crate::tools::git::{GitError, GitRepo, Summary};
 use chrono::{TimeZone, Utc};
-use itertools::Itertools;
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
-
-#[derive(Debug, thiserror::Error)]
-pub enum GitError {
-    #[error(transparent)]
-    IO(#[from] std::io::Error),
-    #[error(transparent)]
-    FromUtf8(#[from] std::string::FromUtf8Error),
-}
-
-#[derive(Debug, Clone)]
-struct GitRepo {
-    repo: PathBuf,
-    user_name: String,
-}
-
-impl GitRepo {
-    fn init(git_root: PathBuf) -> Result<Self, GitError> {
-        let output = std::process::Command::new("git")
-            .current_dir(&git_root)
-            .arg("config")
-            .arg("user.name")
-            .stderr(Stdio::null())
-            .output()?;
-
-        let user_name = String::from_utf8(output.stdout)?.trim().to_string();
-
-        Ok(Self {
-            repo: git_root,
-            user_name,
-        })
-    }
-
-    fn is_tracked(&self, file: &Path) -> std::io::Result<bool> {
-        let output = std::process::Command::new("git")
-            .current_dir(&self.repo)
-            .arg("ls-files")
-            .arg("--error-unmatch")
-            .arg(file)
-            .output()?;
-        Ok(output.status.code().map(|c| c != 1).unwrap_or(false))
-    }
-
-    fn fetch_rev_parse(&self, arg: &str) -> Result<String, GitError> {
-        let output = std::process::Command::new("git")
-            .current_dir(&self.repo)
-            .arg("rev-parse")
-            .arg(arg)
-            .stderr(Stdio::null())
-            .output()?;
-
-        Ok(String::from_utf8(output.stdout)?)
-    }
-
-    #[allow(unused)]
-    fn fetch_user_name(&self) -> Result<String, GitError> {
-        let output = std::process::Command::new("git")
-            .current_dir(&self.repo)
-            .arg("config")
-            .arg("user.name")
-            .stderr(Stdio::null())
-            .output()?;
-
-        Ok(String::from_utf8(output.stdout)?)
-    }
-
-    fn fetch_origin_url(&self) -> Result<String, GitError> {
-        let output = std::process::Command::new("git")
-            .current_dir(&self.repo)
-            .arg("config")
-            .arg("--get")
-            .arg("remote.origin.url")
-            .stderr(Stdio::null())
-            .output()?;
-
-        Ok(String::from_utf8(output.stdout)?)
-    }
-
-    fn fetch_blame_output(&self, relative_path: &Path, lnum: usize) -> std::io::Result<Vec<u8>> {
-        let output = std::process::Command::new("git")
-            .current_dir(&self.repo)
-            .arg("blame")
-            .arg("--porcelain")
-            .arg("--incremental")
-            .arg(format!("-L{lnum},{lnum}"))
-            .arg("--")
-            .arg(relative_path)
-            .stdin(Stdio::null())
-            .stderr(Stdio::null())
-            .output()?;
-
-        if output.status.success() {
-            Ok(output.stdout)
-        } else {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!(
-                    "child process errors out: {}, {}, \
-                command: `git blame --porcelain --incremental -L{lnum},{lnum} -- {}`",
-                    String::from_utf8_lossy(&output.stderr),
-                    output.status,
-                    relative_path.display()
-                ),
-            ))
-        }
-    }
-
-    // git blame --contents - -L 100,+1 --line-porcelain crates/maple_core/src/stdio_server/plugin/git.rs
-    fn fetch_blame_output_with_lines(
-        &self,
-        relative_path: &Path,
-        lnum: usize,
-        lines: Vec<String>,
-    ) -> std::io::Result<Vec<u8>> {
-        let mut p = std::process::Command::new("git")
-            .current_dir(&self.repo)
-            .arg("blame")
-            .arg("--contents")
-            .arg("-")
-            .arg("-L")
-            .arg(format!("{lnum},+1"))
-            .arg("--line-porcelain")
-            .arg(relative_path)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()?;
-
-        let stdin = p
-            .stdin
-            .as_mut()
-            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "stdin unavailable"))?;
-
-        let lines = lines.into_iter().join("\n");
-        stdin.write_all(lines.as_bytes())?;
-
-        let output = p.wait_with_output()?;
-
-        if output.status.success() {
-            Ok(output.stdout)
-        } else {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!(
-                    "child process errors out: {}, {}, \
-                    command: `git blame --contents - -L {lnum},+1 --line-porcelain {}`",
-                    String::from_utf8_lossy(&output.stderr),
-                    output.status,
-                    relative_path.display()
-                ),
-            ))
-        }
-    }
-}
 
 struct BlameInfo {
     author: String,
@@ -247,10 +92,18 @@ fn in_git_repo(filepath: &Path) -> Option<&Path> {
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "git", actions = ["blame", "open-permalink-in-browser", "toggle"])]
+#[clap_plugin(
+  id = "git",
+  actions = [
+    "blame",
+    "open-permalink-in-browser",
+    "hunk-summary",
+    "toggle",
+])]
 pub struct Git {
     vim: Vim,
     bufs: HashMap<usize, (PathBuf, GitRepo)>,
+    git_summary: HashMap<usize, Summary>,
     toggle: Toggle,
 }
 
@@ -259,6 +112,7 @@ impl Git {
         Self {
             vim,
             bufs: HashMap::new(),
+            git_summary: HashMap::new(),
             toggle: Toggle::On,
         }
     }
@@ -277,6 +131,8 @@ impl Git {
             if git.is_tracked(&filepath)? {
                 self.bufs.insert(bufnr, (filepath, git));
                 return Ok(());
+            } else {
+                return Err(GitError::Untracked.into());
             }
         }
 
@@ -292,6 +148,28 @@ impl Git {
                     (bufnr, blame_info),
                 )?;
             }
+        }
+        Ok(())
+    }
+
+    fn update_summary(&mut self, bufnr: usize) -> Result<(), PluginError> {
+        if let Some((filepath, git)) = self.bufs.get(&bufnr) {
+            let hunk_summary = git.get_hunk_summary(filepath, None)?;
+
+            if let Some(old_summary) = self.git_summary.get(&bufnr) {
+                if hunk_summary.eq(old_summary) {
+                    return Ok(());
+                }
+            }
+
+            self.vim.setbufvar(
+                bufnr,
+                "clap_git",
+                serde_json::json!({
+                  "summary": [hunk_summary.added, hunk_summary.modified, hunk_summary.removed]
+                }),
+            )?;
+            self.git_summary.insert(bufnr, hunk_summary);
         }
         Ok(())
     }
@@ -389,7 +267,9 @@ impl Git {
 impl ClapPlugin for Git {
     #[maple_derive::subscriptions]
     async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<(), PluginError> {
-        use AutocmdEventType::{BufDelete, BufEnter, BufLeave, CursorMoved, InsertEnter};
+        use AutocmdEventType::{
+            BufDelete, BufEnter, BufLeave, BufWritePost, CursorMoved, InsertEnter,
+        };
 
         if self.toggle.is_off() {
             return Ok(());
@@ -402,6 +282,10 @@ impl ClapPlugin for Git {
             BufEnter => {
                 self.try_track_buffer(bufnr).await?;
                 self.on_cursor_moved(bufnr).await?;
+                self.update_summary(bufnr)?;
+            }
+            BufWritePost => {
+                self.update_summary(bufnr)?;
             }
             BufDelete => {
                 self.bufs.remove(&bufnr);
@@ -409,7 +293,10 @@ impl ClapPlugin for Git {
             InsertEnter | BufLeave => {
                 self.vim.exec("clap#plugin#git#clear_blame_info", [bufnr])?;
             }
-            CursorMoved => self.on_cursor_moved(bufnr).await?,
+            CursorMoved => {
+                self.on_cursor_moved(bufnr).await?;
+                self.update_summary(bufnr)?;
+            }
             event => return Err(PluginError::UnhandledEvent(event)),
         }
 
@@ -439,6 +326,19 @@ impl ClapPlugin for Git {
                 self.open_permalink_in_browser().await?;
             }
             GitAction::Blame => self.show_blame_info().await?,
+            GitAction::HunkSummary => {
+                let buf_path = self.vim.current_buffer_path().await?;
+                let filepath = PathBuf::from(buf_path);
+
+                let Some(git_root) = in_git_repo(&filepath) else {
+                    return Ok(());
+                };
+
+                let git = GitRepo::init(git_root.to_path_buf())?;
+
+                let summary = git.get_hunk_summary(&filepath, None)?;
+                self.vim.echo_info(format!("summary: {summary:?}"))?;
+            }
         }
 
         Ok(())
