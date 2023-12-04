@@ -97,23 +97,30 @@ function! clap#plugin#git#update_visual_signs(bufnr, signs) abort
   call clap#plugin#git#add_visual_signs(a:bufnr, a:signs)
 endfunction
 
+function! clap#plugin#git#update_visual_signs_differences(bufnr, to_delete, to_add) abort
+  for lnum in a:to_delete
+    call sign_unplace('clap_git_visual_signs', {'buffer': a:bufnr, 'id': lnum })
+  endfor
+  call clap#plugin#git#add_visual_signs(a:bufnr, a:to_add)
+endfunction
+
 function! clap#plugin#git#add_visual_signs(bufnr, signs) abort
   for [lnum, sign_group] in a:signs
     if sign_group ==# 'Added'
-      call sign_place(0, 'clap_git_visual_signs', s:sign_group_added, a:bufnr, {'lnum': lnum})
+      call sign_place(lnum, 'clap_git_visual_signs', s:sign_group_added, a:bufnr, {'lnum': lnum})
     elseif sign_group ==# 'Modified'
-      call sign_place(0, 'clap_git_visual_signs', s:sign_group_modified, a:bufnr, {'lnum': lnum})
+      call sign_place(lnum, 'clap_git_visual_signs', s:sign_group_modified, a:bufnr, {'lnum': lnum})
     elseif sign_group ==# 'Removed'
-      call sign_place(0, 'clap_git_visual_signs', s:sign_group_removed, a:bufnr, {'lnum': lnum})
+      call sign_place(lnum, 'clap_git_visual_signs', s:sign_group_removed, a:bufnr, {'lnum': lnum})
     elseif sign_group ==# 'ModifiedRemoved'
-      call sign_place(0, 'clap_git_visual_signs', s:sign_group_modified_removed, a:bufnr, {'lnum': lnum})
+      call sign_place(lnum, 'clap_git_visual_signs', s:sign_group_modified_removed, a:bufnr, {'lnum': lnum})
     elseif sign_group ==# 'RemovedAboveAndBelow'
-      call sign_place(0, 'clap_git_visual_signs', s:sign_group_removed_above_and_below, a:bufnr, {'lnum': lnum})
+      call sign_place(lnum, 'clap_git_visual_signs', s:sign_group_removed_above_and_below, a:bufnr, {'lnum': lnum})
     endif
   endfor
 endfunction
 
-function! clap#plugin#git#clear_visual_signs(bufnr, signs) abort
+function! clap#plugin#git#clear_visual_signs(bufnr) abort
   call sign_unplace('clap_git_visual_signs', {'buffer': a:bufnr })
 endfunction
 

@@ -169,7 +169,7 @@ pub enum Modification {
 }
 
 /// Sign types that will be handled on the Vim side.
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, Clone, Eq, PartialEq, serde::Serialize)]
 pub enum SignType {
     Added,
     Removed,
