@@ -266,6 +266,8 @@ impl ClapPlugin for Git {
                 let buf_path = self.vim.current_buffer_path().await?;
                 let filepath = PathBuf::from(buf_path);
 
+                let bufnr = self.vim.bufnr("").await?;
+
                 let Some(git_root) = in_git_repo(&filepath) else {
                     return Ok(());
                 };
@@ -274,6 +276,8 @@ impl ClapPlugin for Git {
 
                 let modifications = git.get_hunk_modifications(&filepath, None)?;
                 self.vim.echo_info(format!("{modifications:?}"))?;
+                self.vim
+                    .exec("clap#plugin#git#add_diff_signs", (bufnr, modifications))?;
             }
         }
 

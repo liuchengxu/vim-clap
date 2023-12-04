@@ -4,6 +4,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use std::borrow::Cow;
 use std::cmp::Ordering;
+use std::collections::VecDeque;
 use std::io::Write;
 use std::ops::Range;
 use std::path::{Path, PathBuf};
@@ -150,10 +151,11 @@ enum ChangeType {
     ModifiedAndRemoved,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 pub enum Modification {
     Added(Range<usize>),
     RemovedFirstLine,
+    RemovedAboveAndBelow(usize),
     Removed(usize),
     Modified(Range<usize>),
     ModifiedAndAdded {
@@ -177,14 +179,8 @@ pub struct Hunk {
 impl Hunk {
     /// Returns the summary of this hunk.
     fn summary(&self) -> HunkSummary {
-        let Self {
-            old_count,
-            new_count,
-            ..
-        } = self;
-
-        let from_count = *old_count;
-        let to_count = *new_count;
+        let from_count = self.old_count;
+        let to_count = self.new_count;
 
         match self.change_type() {
             ChangeType::Added => HunkSummary::Added(to_count),
@@ -203,16 +199,9 @@ impl Hunk {
 
     /// Returns the modification of this hunk.
     fn modification(&self) -> Modification {
-        let Self {
-            old_start: _,
-            old_count,
-            new_start,
-            new_count,
-        } = self;
-
-        let from_count = *old_count;
-        let to_line = *new_start;
-        let to_count = *new_count;
+        let from_count = self.old_count;
+        let to_line = self.new_start;
+        let to_count = self.new_count;
 
         match self.change_type() {
             ChangeType::Added => Modification::Added(to_line..to_line + to_count),
@@ -229,7 +218,7 @@ impl Hunk {
                 added: to_line..to_line + to_count,
             },
             ChangeType::ModifiedAndRemoved => Modification::ModifiedAndRemoved {
-                modified: to_line..to_line + to_count,
+                modified: to_line..to_line + to_count - 1,
                 modified_removed: to_line + to_count - 1,
             },
         }
@@ -237,14 +226,8 @@ impl Hunk {
 
     // https://github.com/airblade/vim-gitgutter/blob/fe0e8a2630eef548e4122096e4e2241f42208fe3/autoload/gitgutter/diff.vim#L236
     fn change_type(&self) -> ChangeType {
-        let Self {
-            old_count,
-            new_count,
-            ..
-        } = self;
-
-        let from_count = *old_count;
-        let to_count = *new_count;
+        let from_count = self.old_count;
+        let to_count = self.new_count;
 
         if from_count == 0 && to_count > 0 {
             ChangeType::Added
@@ -464,11 +447,24 @@ impl GitRepo {
         old: &Path,
         new: Option<&Path>,
     ) -> std::io::Result<Vec<Modification>> {
-        Ok(self
+        let mut modifications = self
             .get_hunks(old, new)?
             .into_iter()
             .map(|hunk| hunk.modification())
-            .collect())
+            .collect::<VecDeque<_>>();
+
+        // handle_double_hunks(), https://github.com/airblade/vim-gitgutter/blob/fe0e8a2630eef548e4122096e4e2241f42208fe3/autoload/gitgutter/sign.vim#L209C1-L218C12
+        if let (Some(Modification::RemovedFirstLine), Some(Modification::Removed(removed))) =
+            (modifications.get(0), modifications.get(1))
+        {
+            if *removed == 1 {
+                modifications.pop_front();
+                modifications.pop_front();
+                modifications.push_front(Modification::RemovedAboveAndBelow(1));
+            }
+        }
+
+        Ok(modifications.into())
     }
 }
 
