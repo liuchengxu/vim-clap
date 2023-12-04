@@ -243,6 +243,9 @@ function! s:try_register_is_ok(provider_id) abort
     catch /^Vim\%((\a\+)\)\=:E121/
       try
         let registration_info = g:clap_provider_{a:provider_id}
+      catch /^Vim\%((\a\+)\)\=:E121/
+        call clap#client#notify('__did-you-mean', [a:provider_id])
+        return v:false
       catch
         call clap#helper#echo_error('Fail to load provider: '.a:provider_id.', E:'.v:exception)
         return v:false

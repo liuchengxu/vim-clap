@@ -152,7 +152,7 @@ impl GitRepo {
                 std::io::ErrorKind::Other,
                 format!(
                     "child process errors out: {}, {}, \
-                command: `git blame --contents - -L {lnum},+1 --line-porcelain {}`",
+                    command: `git blame --contents - -L {lnum},+1 --line-porcelain {}`",
                     String::from_utf8_lossy(&output.stderr),
                     output.status,
                     relative_path.display()
@@ -247,7 +247,7 @@ fn in_git_repo(filepath: &Path) -> Option<&Path> {
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "git", actions = ["blame", "open-current-line-in-browser", "toggle"])]
+#[clap_plugin(id = "git", actions = ["blame", "open-permalink-in-browser", "toggle"])]
 pub struct Git {
     vim: Vim,
     bufs: HashMap<usize, (PathBuf, GitRepo)>,
@@ -344,7 +344,7 @@ impl Git {
         Ok(())
     }
 
-    async fn open_current_line_in_browser(&self) -> Result<(), PluginError> {
+    async fn open_permalink_in_browser(&self) -> Result<(), PluginError> {
         let buf_path = self.vim.current_buffer_path().await?;
         let filepath = PathBuf::from(buf_path);
 
@@ -435,8 +435,8 @@ impl ClapPlugin for Git {
                 }
                 self.toggle.switch();
             }
-            GitAction::OpenCurrentLineInBrowser => {
-                self.open_current_line_in_browser().await?;
+            GitAction::OpenPermalinkInBrowser => {
+                self.open_permalink_in_browser().await?;
             }
             GitAction::Blame => self.show_blame_info().await?,
         }
