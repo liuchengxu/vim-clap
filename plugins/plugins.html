@@ -205,6 +205,10 @@ enable = true
 </tbody></table>
 </div>
 <h2 id="ctags"><a class="header" href="#ctags">ctags</a></h2>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: left">Features</th><th style="text-align: left">Alternatives</th></tr></thead><tbody>
+<tr><td style="text-align: left">statusline integration(current symbol)</td><td style="text-align: left"><a href="https://github.com/liuchengxu/vista.vim">vista.vim</a></td></tr>
+</tbody></table>
+</div>
 <h2 id="cursorword"><a class="header" href="#cursorword">cursorword</a></h2>
 <pre><code class="language-toml">[plugin.cursorword]
 enable = true
@@ -220,32 +224,20 @@ enable = true
 </code></pre>
 <div class="table-wrapper"><table><thead><tr><th style="text-align: left">Features</th><th style="text-align: left">Alternatives</th></tr></thead><tbody>
 <tr><td style="text-align: left">Show blame info at the end of line</td><td style="text-align: left"><a href="https://github.com/tveskag/nvim-blame-line">nvim-blame-line</a></td></tr>
-<tr><td style="text-align: left">Open the permalink of current line in browser</td><td style="text-align: left"><em>none</em></td></tr>
+<tr><td style="text-align: left">Show git diff in sign column</td><td style="text-align: left"><a href="https://github.com/airblade/vim-gitgutter">vim-gitgutter</a></td></tr>
+<tr><td style="text-align: left">Open the permalink of current line in browser</td><td style="text-align: left"><a href="https://github.com/9seconds/repolink.nvim">repolink.nvim</a></td></tr>
 </tbody></table>
 </div>
+<p>The signs are updated when you save the buffer and are rendered lazily, i.e., the signs are only displayed when they are visually in the range of screen.</p>
 <h2 id="linter"><a class="header" href="#linter">linter</a></h2>
 <pre><code class="language-toml">[plugin.linter]
 enable = true
 </code></pre>
-<p>Although ALE has been an incredible and feature-rich linter plugin that served me well for an extended
+<p>Although <a href="https://github.com/dense-analysis/ale">ALE</a> has been an incredible and feature-rich linter plugin that served me well for an extended
 period, I began to notice a persistent lagging issue over time. There were noticeable delays in refreshing
 the latest diagnostics whenever I made changes to the source file (especially the Rust file). This prompted
 me to develop this linter plugin in Rust and the results have been remarkable. The diagnostics update is now
 considerably faster from what I see on Rust project.</p>
-<ul>
-<li>
-<p>Features</p>
-<ul>
-<li>Lint files asynchronously</li>
-</ul>
-</li>
-<li>
-<p>Alternatives</p>
-<ul>
-<li><a href="https://github.com/dense-analysis/ale">ale</a></li>
-</ul>
-</li>
-</ul>
 <h2 id="markdown"><a class="header" href="#markdown">markdown</a></h2>
 <pre><code class="language-toml">[plugin.markdown]
 enable = true
