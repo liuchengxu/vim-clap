@@ -7,12 +7,6 @@ set cpoptions&vim
 
 highlight default link ClapBlameInfo SpecialComment
 
-let s:sign_group_added = 'ClapGitAdded'
-let s:sign_group_modified = 'ClapGitModified'
-let s:sign_group_removed = 'ClapGitRemoved'
-let s:sign_group_modified_removed = 'ClapGitModifiedRemoved'
-let s:sign_group_removed_above_and_below = 'ClapGitRemovedAboveAndBelow'
-
 let s:git_signs = {
       \ 'added': { 'text': '+', 'texthl': 'DiffAdd' },
       \ 'modified': { 'text': '~', 'texthl': 'DiffChange' },
@@ -25,11 +19,17 @@ if exists('g:clap_plugin_git_signs')
   call extend(s:git_signs, g:clap_plugin_git_signs)
 endif
 
-call sign_define(s:sign_group_added, s:git_signs.added)
-call sign_define(s:sign_group_modified, s:git_signs.modified)
-call sign_define(s:sign_group_removed, s:git_signs.removed)
-call sign_define(s:sign_group_modified_removed, s:git_signs.modified_removed)
-call sign_define(s:sign_group_removed_above_and_below, s:git_signs.removed_above_and_below)
+let s:sign_name_added = 'ClapGitAdded'
+let s:sign_name_modified = 'ClapGitModified'
+let s:sign_name_removed = 'ClapGitRemoved'
+let s:sign_name_modified_removed = 'ClapGitModifiedRemoved'
+let s:sign_name_removed_above_and_below = 'ClapGitRemovedAboveAndBelow'
+
+call sign_define(s:sign_name_added, s:git_signs.added)
+call sign_define(s:sign_name_modified, s:git_signs.modified)
+call sign_define(s:sign_name_removed, s:git_signs.removed)
+call sign_define(s:sign_name_modified_removed, s:git_signs.modified_removed)
+call sign_define(s:sign_name_removed_above_and_below, s:git_signs.removed_above_and_below)
 
 function! s:place_sign_at(group, bufnr, lnum) abort
   call sign_place(0, 'clap_git_buffer_signs', a:group, a:bufnr, {'lnum': a:lnum})
@@ -38,21 +38,17 @@ endfunction
 function! s:process_signs_added(bufnr, added) abort
   let start = a:added.start
   let end = a:added.end
-  for lnum in range(start, end-1)
-    call s:place_sign_at(s:sign_group_added, a:bufnr, lnum)
-  endfor
+  call map(range(start, end-1), 's:place_sign_at(s:sign_name_added, a:bufnr, v:val)')
 endfunction
 
 function! s:process_signs_modified(bufnr, modified) abort
   let start = a:modified.start
   let end = a:modified.end
-  for lnum in range(start, end-1)
-    call s:place_sign_at(s:sign_group_modified, a:bufnr, lnum)
-  endfor
+  call map(range(start, end-1), 's:place_sign_at(s:sign_name_modified, a:bufnr, v:val)')
 endfunction
 
 function! s:process_signs_removed(bufnr, lnum) abort
-  call s:place_sign_at(s:sign_group_removed, a:bufnr, a:lnum)
+  call s:place_sign_at(s:sign_name_removed, a:bufnr, a:lnum)
 endfunction
 
 function! clap#plugin#git#add_diff_signs(bufnr, modifications) abort
@@ -71,9 +67,9 @@ function! clap#plugin#git#add_diff_signs(bufnr, modifications) abort
       call s:process_signs_added(a:bufnr, modification.ModifiedAndAdded.added)
     elseif has_key(modification, 'ModifiedAndRemoved')
       call s:process_signs_modified(a:bufnr, modification.ModifiedAndRemoved.modified)
-      call s:place_sign_at(s:sign_group_modified_removed, a:bufnr, modification.ModifiedAndRemoved.modified_removed)
+      call s:place_sign_at(s:sign_name_modified_removed, a:bufnr, modification.ModifiedAndRemoved.modified_removed)
     elseif has_key(modification, 'RemovedAboveAndBelow')
-      call s:place_sign_at(s:sign_group_removed_above_and_below, a:bufnr, 1)
+      call s:place_sign_at(s:sign_name_removed_above_and_below, a:bufnr, 1)
     endif
   endfor
 endfunction
@@ -90,15 +86,15 @@ endfunction
 function! clap#plugin#git#add_visual_signs(bufnr, signs) abort
   for [lnum, sign_type] in a:signs
     if sign_type ==# 'A'
-      call sign_place(lnum, 'clap_git_visual_signs', s:sign_group_added, a:bufnr, {'lnum': lnum})
+      call sign_place(lnum, 'clap_git_visual_signs', s:sign_name_added, a:bufnr, {'lnum': lnum})
     elseif sign_type ==# 'M'
-      call sign_place(lnum, 'clap_git_visual_signs', s:sign_group_modified, a:bufnr, {'lnum': lnum})
+      call sign_place(lnum, 'clap_git_visual_signs', s:sign_name_modified, a:bufnr, {'lnum': lnum})
     elseif sign_type ==# 'R'
-      call sign_place(lnum, 'clap_git_visual_signs', s:sign_group_removed, a:bufnr, {'lnum': lnum})
+      call sign_place(lnum, 'clap_git_visual_signs', s:sign_name_removed, a:bufnr, {'lnum': lnum})
     elseif sign_type ==# 'MR'
-      call sign_place(lnum, 'clap_git_visual_signs', s:sign_group_modified_removed, a:bufnr, {'lnum': lnum})
+      call sign_place(lnum, 'clap_git_visual_signs', s:sign_name_modified_removed, a:bufnr, {'lnum': lnum})
     elseif sign_type ==# 'RA'
-      call sign_place(lnum, 'clap_git_visual_signs', s:sign_group_removed_above_and_below, a:bufnr, {'lnum': lnum})
+      call sign_place(lnum, 'clap_git_visual_signs', s:sign_name_removed_above_and_below, a:bufnr, {'lnum': lnum})
     endif
   endfor
 endfunction
