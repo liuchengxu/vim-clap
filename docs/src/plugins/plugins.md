@@ -59,7 +59,7 @@ enable = true
 | Show git diff in sign column                   | [vim-gitgutter](https://github.com/airblade/vim-gitgutter)    |
 | Open the permalink of current line in browser  | [repolink.nvim](https://github.com/9seconds/repolink.nvim)    |
 
-The signs are rendered lazily, i.e., the signs are only displayed when they are visually in the range of screen.
+The signs are updated when you save the buffer and are rendered lazily, i.e., the signs are only displayed when they are visually in the range of screen.
 
 ## linter
 
