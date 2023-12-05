@@ -151,7 +151,7 @@ enum ChangeType {
     ModifiedAndRemoved,
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, Eq, PartialEq, serde::Serialize)]
 pub enum Modification {
     Added(Range<usize>),
     RemovedFirstLine,

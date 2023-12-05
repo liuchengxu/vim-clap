@@ -78,29 +78,31 @@ function! clap#plugin#git#clear_diff_signs(bufnr) abort
   call sign_unplace('clap_git_buffer_signs', {'buffer': a:bufnr })
 endfunction
 
+let s:visual_signs_group = 'clap_git_visual_signs'
+
 function! clap#plugin#git#refresh_visual_signs(bufnr, signs) abort
-  call sign_unplace('clap_git_visual_signs', {'buffer': a:bufnr })
+  call sign_unplace(s:visual_signs_group, {'buffer': a:bufnr })
   call clap#plugin#git#add_visual_signs(a:bufnr, a:signs)
 endfunction
 
 function! clap#plugin#git#add_visual_signs(bufnr, signs) abort
   for [lnum, sign_type] in a:signs
     if sign_type ==# 'A'
-      call sign_place(lnum, 'clap_git_visual_signs', s:sign_name_added, a:bufnr, {'lnum': lnum})
+      call sign_place(lnum, s:visual_signs_group, s:sign_name_added, a:bufnr, {'lnum': lnum})
     elseif sign_type ==# 'M'
-      call sign_place(lnum, 'clap_git_visual_signs', s:sign_name_modified, a:bufnr, {'lnum': lnum})
+      call sign_place(lnum, s:visual_signs_group, s:sign_name_modified, a:bufnr, {'lnum': lnum})
     elseif sign_type ==# 'R'
-      call sign_place(lnum, 'clap_git_visual_signs', s:sign_name_removed, a:bufnr, {'lnum': lnum})
+      call sign_place(lnum, s:visual_signs_group, s:sign_name_removed, a:bufnr, {'lnum': lnum})
     elseif sign_type ==# 'MR'
-      call sign_place(lnum, 'clap_git_visual_signs', s:sign_name_modified_removed, a:bufnr, {'lnum': lnum})
+      call sign_place(lnum, s:visual_signs_group, s:sign_name_modified_removed, a:bufnr, {'lnum': lnum})
     elseif sign_type ==# 'RA'
-      call sign_place(lnum, 'clap_git_visual_signs', s:sign_name_removed_above_and_below, a:bufnr, {'lnum': lnum})
+      call sign_place(lnum, s:visual_signs_group, s:sign_name_removed_above_and_below, a:bufnr, {'lnum': lnum})
     endif
   endfor
 endfunction
 
 function! clap#plugin#git#clear_visual_signs(bufnr) abort
-  call sign_unplace('clap_git_visual_signs', {'buffer': a:bufnr })
+  call sign_unplace(s:visual_signs_group, {'buffer': a:bufnr })
 endfunction
 
 function! clap#plugin#git#set_summary_var(bufnr, summary) abort

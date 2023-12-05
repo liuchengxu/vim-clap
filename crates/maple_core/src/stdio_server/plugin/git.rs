@@ -121,6 +121,12 @@ impl Git {
                 .flat_map(|m| m.signs_in_range(line_start..line_end + 1))
                 .collect::<Vec<_>>();
 
+            if let Some(state) = self.git_modifications.get(&bufnr) {
+                if modifications == state.modifications && signs == state.current_signs {
+                    return Ok(());
+                }
+            }
+
             let current_signs = if signs.is_empty() {
                 self.vim
                     .exec("clap#plugin#git#clear_visual_signs", [bufnr])?;
