@@ -94,12 +94,16 @@ impl Git {
                 }
             }
 
-            self.vim.setbufvar(
-                bufnr,
-                "clap_git",
-                serde_json::json!({
-                  "summary": [diff_summary.added, diff_summary.modified, diff_summary.removed]
-                }),
+            self.vim.exec(
+                "clap#plugin#git#set_summary_var",
+                (
+                    bufnr,
+                    [
+                        diff_summary.added,
+                        diff_summary.modified,
+                        diff_summary.removed,
+                    ],
+                ),
             )?;
             self.git_summary.insert(bufnr, diff_summary);
         }
@@ -123,7 +127,7 @@ impl Git {
                 Vec::new()
             } else {
                 self.vim
-                    .exec("clap#plugin#git#update_visual_signs", (bufnr, &signs))?;
+                    .exec("clap#plugin#git#refresh_visual_signs", (bufnr, &signs))?;
                 signs
             };
 
@@ -151,21 +155,20 @@ impl Git {
 
             let old_signs = &diff_state.current_signs;
 
-            let to_delete = old_signs
-                .iter()
-                .filter(|old| !new_signs.contains(old))
-                .map(|old| old.0)
-                .collect::<Vec<_>>();
+            // let to_delete = old_signs
+            // .iter()
+            // .filter(|old| !new_signs.contains(old))
+            // .map(|old| old.0)
+            // .collect::<Vec<_>>();
 
+            // Only add the new signs.
             let to_add = new_signs
                 .iter()
                 .filter(|new| !old_signs.contains(new))
                 .collect::<Vec<_>>();
 
-            self.vim.exec(
-                "clap#plugin#git#update_visual_signs_differences",
-                (bufnr, to_delete, to_add),
-            )?;
+            self.vim
+                .exec("clap#plugin#git#add_visual_signs", (bufnr, to_add))?;
 
             diff_state.current_signs = new_signs;
         }
@@ -315,6 +318,8 @@ impl ClapPlugin for Git {
                     Toggle::On => {
                         for bufnr in self.bufs.keys() {
                             self.vim.exec("clap#plugin#git#clear_blame_info", [bufnr])?;
+                            self.vim
+                                .exec("clap#plugin#git#clear_visual_signs", [bufnr])?;
                         }
                     }
                     Toggle::Off => {

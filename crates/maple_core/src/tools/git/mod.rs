@@ -171,10 +171,15 @@ pub enum Modification {
 /// Sign types that will be handled on the Vim side.
 #[derive(Debug, Clone, Eq, PartialEq, serde::Serialize)]
 pub enum SignType {
+    #[serde(rename = "A")]
     Added,
+    #[serde(rename = "R")]
     Removed,
+    #[serde(rename = "M")]
     Modified,
+    #[serde(rename = "MR")]
     ModifiedRemoved,
+    #[serde(rename = "RA")]
     RemovedAboveAndBelow,
 }
 
@@ -294,7 +299,7 @@ impl Hunk {
             ChangeType::Modified => Modification::Modified(to_line..to_line + to_count),
             ChangeType::ModifiedAndAdded => Modification::ModifiedAndAdded {
                 modified: to_line..to_line + from_count,
-                added: to_line..to_line + to_count,
+                added: to_line + from_count..to_line + to_count,
             },
             ChangeType::ModifiedAndRemoved => Modification::ModifiedAndRemoved {
                 modified: to_line..to_line + to_count - 1,
