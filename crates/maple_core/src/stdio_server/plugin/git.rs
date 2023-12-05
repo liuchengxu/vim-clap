@@ -71,41 +71,49 @@ impl Git {
         Ok(())
     }
 
-    async fn on_cursor_moved(&self, bufnr: usize) -> Result<(), PluginError> {
+    async fn update_diff_summary_and_modifications(
+        &mut self,
+        bufnr: usize,
+    ) -> Result<(), PluginError> {
         if let Some((filepath, git)) = self.bufs.get(&bufnr) {
-            let maybe_blame_info = self.cursor_line_blame_info(git, filepath).await?;
-            if let Some(blame_info) = maybe_blame_info {
-                self.vim.exec(
-                    "clap#plugin#git#show_cursor_blame_info",
-                    (bufnr, blame_info),
-                )?;
-            }
+            let (diff_summary, modifications) =
+                git.get_diff_summary_and_modifications(filepath, None)?;
+
+            self.do_update_summary_state(bufnr, diff_summary);
+            self.do_update_diff_modifications_state(bufnr, modifications)
+                .await?;
         }
+
         Ok(())
     }
 
+    fn do_update_summary_state(&mut self, bufnr: usize, diff_summary: Summary) {
+        if let Some(old_summary) = self.git_summary.get(&bufnr) {
+            if diff_summary.eq(old_summary) {
+                return;
+            }
+        }
+
+        let _ = self.vim.exec(
+            "clap#plugin#git#set_summary_var",
+            (
+                bufnr,
+                [
+                    diff_summary.added,
+                    diff_summary.modified,
+                    diff_summary.removed,
+                ],
+            ),
+        );
+
+        self.git_summary.insert(bufnr, diff_summary);
+    }
+
+    #[allow(unused)]
     fn update_diff_summary(&mut self, bufnr: usize) -> Result<(), PluginError> {
         if let Some((filepath, git)) = self.bufs.get(&bufnr) {
             let diff_summary = git.get_diff_summary(filepath, None)?;
-
-            if let Some(old_summary) = self.git_summary.get(&bufnr) {
-                if diff_summary.eq(old_summary) {
-                    return Ok(());
-                }
-            }
-
-            self.vim.exec(
-                "clap#plugin#git#set_summary_var",
-                (
-                    bufnr,
-                    [
-                        diff_summary.added,
-                        diff_summary.modified,
-                        diff_summary.removed,
-                    ],
-                ),
-            )?;
-            self.git_summary.insert(bufnr, diff_summary);
+            self.do_update_summary_state(bufnr, diff_summary);
         }
         Ok(())
     }
@@ -113,38 +121,48 @@ impl Git {
     async fn update_diff_modifications(&mut self, bufnr: usize) -> Result<(), PluginError> {
         if let Some((filepath, git)) = self.bufs.get(&bufnr) {
             let modifications = git.get_hunk_modifications(filepath, None)?;
-
-            let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
-
-            let signs = modifications
-                .iter()
-                .flat_map(|m| m.signs_in_range(line_start..line_end + 1))
-                .collect::<Vec<_>>();
-
-            if let Some(state) = self.git_modifications.get(&bufnr) {
-                if modifications == state.modifications && signs == state.current_signs {
-                    return Ok(());
-                }
-            }
-
-            let current_signs = if signs.is_empty() {
-                self.vim
-                    .exec("clap#plugin#git#clear_visual_signs", [bufnr])?;
-                Vec::new()
-            } else {
-                self.vim
-                    .exec("clap#plugin#git#refresh_visual_signs", (bufnr, &signs))?;
-                signs
-            };
-
-            self.git_modifications.insert(
-                bufnr,
-                ModificationState {
-                    modifications,
-                    current_signs,
-                },
-            );
+            self.do_update_diff_modifications_state(bufnr, modifications)
+                .await?;
         }
+
+        Ok(())
+    }
+
+    async fn do_update_diff_modifications_state(
+        &mut self,
+        bufnr: usize,
+        modifications: Vec<Modification>,
+    ) -> Result<(), PluginError> {
+        let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
+
+        let signs = modifications
+            .iter()
+            .flat_map(|m| m.signs_in_range(line_start..line_end + 1))
+            .collect::<Vec<_>>();
+
+        if let Some(old) = self.git_modifications.get(&bufnr) {
+            if modifications == old.modifications && signs == old.current_signs {
+                return Ok(());
+            }
+        }
+
+        let current_signs = if signs.is_empty() {
+            self.vim
+                .exec("clap#plugin#git#clear_visual_signs", [bufnr])?;
+            Vec::new()
+        } else {
+            self.vim
+                .exec("clap#plugin#git#refresh_visual_signs", (bufnr, &signs))?;
+            signs
+        };
+
+        self.git_modifications.insert(
+            bufnr,
+            ModificationState {
+                modifications,
+                current_signs,
+            },
+        );
 
         Ok(())
     }
@@ -209,6 +227,19 @@ impl Git {
         }
 
         Ok(None)
+    }
+
+    async fn show_curline_line_blame(&self, bufnr: usize) -> Result<(), PluginError> {
+        if let Some((filepath, git)) = self.bufs.get(&bufnr) {
+            let maybe_blame_info = self.cursor_line_blame_info(git, filepath).await?;
+            if let Some(blame_info) = maybe_blame_info {
+                self.vim.exec(
+                    "clap#plugin#git#show_cursor_blame_info",
+                    (bufnr, blame_info),
+                )?;
+            }
+        }
+        Ok(())
     }
 
     async fn show_blame_info(&self) -> Result<(), PluginError> {
@@ -288,13 +319,11 @@ impl ClapPlugin for Git {
         match autocmd_event_type {
             BufEnter => {
                 self.try_track_buffer(bufnr).await?;
-                self.on_cursor_moved(bufnr).await?;
-                self.update_diff_summary(bufnr)?;
-                self.update_diff_modifications(bufnr).await?;
+                self.show_curline_line_blame(bufnr).await?;
+                self.update_diff_summary_and_modifications(bufnr).await?;
             }
             BufWritePost => {
-                self.update_diff_summary(bufnr)?;
-                self.update_diff_modifications(bufnr).await?;
+                self.update_diff_summary_and_modifications(bufnr).await?;
             }
             BufDelete => {
                 self.bufs.remove(&bufnr);
@@ -305,8 +334,7 @@ impl ClapPlugin for Git {
                 self.vim.exec("clap#plugin#git#clear_blame_info", [bufnr])?;
             }
             CursorMoved => {
-                self.on_cursor_moved(bufnr).await?;
-                self.update_diff_summary(bufnr)?;
+                self.show_curline_line_blame(bufnr).await?;
                 self.show_gutter_signs(bufnr).await?;
             }
             event => return Err(PluginError::UnhandledEvent(event)),
@@ -331,7 +359,7 @@ impl ClapPlugin for Git {
                     Toggle::Off => {
                         let bufnr = self.vim.bufnr("").await?;
 
-                        self.on_cursor_moved(bufnr).await?;
+                        self.show_curline_line_blame(bufnr).await?;
                     }
                 }
                 self.toggle.switch();

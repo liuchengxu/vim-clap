@@ -511,6 +511,27 @@ impl GitRepo {
         Ok(hunks)
     }
 
+    pub fn get_diff_summary_and_modifications(
+        &self,
+        old: &Path,
+        new: Option<&Path>,
+    ) -> std::io::Result<(Summary, Vec<Modification>)> {
+        let hunks = self.get_hunks(old, new)?;
+
+        let mut summary = Summary::default();
+
+        hunks.iter().for_each(|hunk| {
+            let hunk_summary = hunk.summary();
+            summary.added += hunk_summary.added();
+            summary.removed += hunk_summary.removed();
+            summary.modified += hunk_summary.modified();
+        });
+
+        let modifications = hunks_to_modifications(hunks);
+
+        Ok((summary, modifications))
+    }
+
     pub fn get_diff_summary(&self, old: &Path, new: Option<&Path>) -> std::io::Result<Summary> {
         let hunks = self.get_hunks(old, new)?;
 
@@ -531,25 +552,28 @@ impl GitRepo {
         old: &Path,
         new: Option<&Path>,
     ) -> std::io::Result<Vec<Modification>> {
-        let mut modifications = self
-            .get_hunks(old, new)?
-            .into_iter()
-            .map(|hunk| hunk.modification())
-            .collect::<VecDeque<_>>();
-
-        // handle_double_hunks(), https://github.com/airblade/vim-gitgutter/blob/fe0e8a2630eef548e4122096e4e2241f42208fe3/autoload/gitgutter/sign.vim#L209C1-L218C12
-        if let (Some(Modification::RemovedFirstLine), Some(Modification::Removed(removed))) =
-            (modifications.get(0), modifications.get(1))
-        {
-            if *removed == 1 {
-                modifications.pop_front();
-                modifications.pop_front();
-                modifications.push_front(Modification::RemovedAboveAndBelow(1));
-            }
-        }
-
-        Ok(modifications.into())
+        Ok(hunks_to_modifications(self.get_hunks(old, new)?))
     }
+}
+
+fn hunks_to_modifications(hunks: Vec<Hunk>) -> Vec<Modification> {
+    let mut modifications = hunks
+        .into_iter()
+        .map(|hunk| hunk.modification())
+        .collect::<VecDeque<_>>();
+
+    // handle_double_hunks(), https://github.com/airblade/vim-gitgutter/blob/fe0e8a2630eef548e4122096e4e2241f42208fe3/autoload/gitgutter/sign.vim#L209C1-L218C12
+    if let (Some(Modification::RemovedFirstLine), Some(Modification::Removed(removed))) =
+        (modifications.get(0), modifications.get(1))
+    {
+        if *removed == 1 {
+            modifications.pop_front();
+            modifications.pop_front();
+            modifications.push_front(Modification::RemovedAboveAndBelow(1));
+        }
+    }
+
+    modifications.into()
 }
 
 fn parse_hunk(text: &str) -> Option<Hunk> {
