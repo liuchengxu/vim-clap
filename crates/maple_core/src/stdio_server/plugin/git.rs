@@ -1,243 +1,9 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::vim::Vim;
-use chrono::{TimeZone, Utc};
-use itertools::Itertools;
-use std::borrow::Cow;
+use crate::tools::git::{parse_blame_info, GitError, GitRepo, Modification, SignType, Summary};
 use std::collections::HashMap;
-use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
-
-#[derive(Debug, thiserror::Error)]
-pub enum GitError {
-    #[error(transparent)]
-    IO(#[from] std::io::Error),
-    #[error(transparent)]
-    FromUtf8(#[from] std::string::FromUtf8Error),
-}
-
-#[derive(Debug, Clone)]
-struct GitRepo {
-    repo: PathBuf,
-    user_name: String,
-}
-
-impl GitRepo {
-    fn init(git_root: PathBuf) -> Result<Self, GitError> {
-        let output = std::process::Command::new("git")
-            .current_dir(&git_root)
-            .arg("config")
-            .arg("user.name")
-            .stderr(Stdio::null())
-            .output()?;
-
-        let user_name = String::from_utf8(output.stdout)?.trim().to_string();
-
-        Ok(Self {
-            repo: git_root,
-            user_name,
-        })
-    }
-
-    fn is_tracked(&self, file: &Path) -> std::io::Result<bool> {
-        let output = std::process::Command::new("git")
-            .current_dir(&self.repo)
-            .arg("ls-files")
-            .arg("--error-unmatch")
-            .arg(file)
-            .output()?;
-        Ok(output.status.code().map(|c| c != 1).unwrap_or(false))
-    }
-
-    fn fetch_rev_parse(&self, arg: &str) -> Result<String, GitError> {
-        let output = std::process::Command::new("git")
-            .current_dir(&self.repo)
-            .arg("rev-parse")
-            .arg(arg)
-            .stderr(Stdio::null())
-            .output()?;
-
-        Ok(String::from_utf8(output.stdout)?)
-    }
-
-    #[allow(unused)]
-    fn fetch_user_name(&self) -> Result<String, GitError> {
-        let output = std::process::Command::new("git")
-            .current_dir(&self.repo)
-            .arg("config")
-            .arg("user.name")
-            .stderr(Stdio::null())
-            .output()?;
-
-        Ok(String::from_utf8(output.stdout)?)
-    }
-
-    fn fetch_origin_url(&self) -> Result<String, GitError> {
-        let output = std::process::Command::new("git")
-            .current_dir(&self.repo)
-            .arg("config")
-            .arg("--get")
-            .arg("remote.origin.url")
-            .stderr(Stdio::null())
-            .output()?;
-
-        Ok(String::from_utf8(output.stdout)?)
-    }
-
-    fn fetch_blame_output(&self, relative_path: &Path, lnum: usize) -> std::io::Result<Vec<u8>> {
-        let output = std::process::Command::new("git")
-            .current_dir(&self.repo)
-            .arg("blame")
-            .arg("--porcelain")
-            .arg("--incremental")
-            .arg(format!("-L{lnum},{lnum}"))
-            .arg("--")
-            .arg(relative_path)
-            .stdin(Stdio::null())
-            .stderr(Stdio::null())
-            .output()?;
-
-        if output.status.success() {
-            Ok(output.stdout)
-        } else {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!(
-                    "child process errors out: {}, {}, \
-                command: `git blame --porcelain --incremental -L{lnum},{lnum} -- {}`",
-                    String::from_utf8_lossy(&output.stderr),
-                    output.status,
-                    relative_path.display()
-                ),
-            ))
-        }
-    }
-
-    // git blame --contents - -L 100,+1 --line-porcelain crates/maple_core/src/stdio_server/plugin/git.rs
-    fn fetch_blame_output_with_lines(
-        &self,
-        relative_path: &Path,
-        lnum: usize,
-        lines: Vec<String>,
-    ) -> std::io::Result<Vec<u8>> {
-        let mut p = std::process::Command::new("git")
-            .current_dir(&self.repo)
-            .arg("blame")
-            .arg("--contents")
-            .arg("-")
-            .arg("-L")
-            .arg(format!("{lnum},+1"))
-            .arg("--line-porcelain")
-            .arg(relative_path)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()?;
-
-        let stdin = p
-            .stdin
-            .as_mut()
-            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "stdin unavailable"))?;
-
-        let lines = lines.into_iter().join("\n");
-        stdin.write_all(lines.as_bytes())?;
-
-        let output = p.wait_with_output()?;
-
-        if output.status.success() {
-            Ok(output.stdout)
-        } else {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!(
-                    "child process errors out: {}, {}, \
-                command: `git blame --contents - -L {lnum},+1 --line-porcelain {}`",
-                    String::from_utf8_lossy(&output.stderr),
-                    output.status,
-                    relative_path.display()
-                ),
-            ))
-        }
-    }
-}
-
-struct BlameInfo {
-    author: String,
-    author_time: Option<i64>,
-    summary: Option<String>,
-}
-
-impl BlameInfo {
-    fn display(&self, user_name: &str) -> Option<Cow<'_, str>> {
-        let author = &self.author;
-
-        if author == "Not Committed Yet" {
-            return Some(author.into());
-        }
-
-        match (&self.author_time, &self.summary) {
-            (Some(author_time), Some(summary)) => {
-                let time = Utc.timestamp_opt(*author_time, 0).single()?;
-                let time = chrono_humanize::HumanTime::from(time);
-                let author = if user_name.eq(author) { "You" } else { author };
-
-                if let Some(fmt) = &crate::config::config().plugin.git.blame_format_string {
-                    let mut display_string = fmt.to_string();
-                    let mut replace_template_string = |to_replace: &str, replace_with: &str| {
-                        if let Some(idx) = display_string.find(to_replace) {
-                            display_string.replace_range(idx..idx + to_replace.len(), replace_with);
-                        }
-                    };
-
-                    replace_template_string("author", author);
-                    replace_template_string("time", time.to_string().as_str());
-                    replace_template_string("summary", summary);
-
-                    Some(display_string.into())
-                } else {
-                    Some(format!("({author} {time}) {summary}").into())
-                }
-            }
-            _ => Some(format!("({author})").into()),
-        }
-    }
-}
-
-fn parse_blame_info(stdout: Vec<u8>) -> Option<BlameInfo> {
-    let stdout = String::from_utf8_lossy(&stdout);
-
-    let mut author = None;
-    let mut author_time = None;
-    let mut summary = None;
-
-    for line in stdout.split('\n') {
-        if let Some((k, v)) = line.split_once(' ') {
-            match k {
-                "author" => {
-                    author.replace(v);
-                }
-                "author-time" => {
-                    author_time.replace(v);
-                }
-                "summary" => {
-                    summary.replace(v);
-                }
-                _ => {}
-            }
-        }
-
-        if let (Some(author), Some(author_time), Some(summary)) = (author, author_time, summary) {
-            return Some(BlameInfo {
-                author: author.to_owned(),
-                author_time: Some(author_time.parse::<i64>().expect("invalid author_time")),
-                summary: Some(summary.to_owned()),
-            });
-        }
-    }
-
-    None
-}
 
 fn in_git_repo(filepath: &Path) -> Option<&Path> {
     filepath
@@ -246,11 +12,29 @@ fn in_git_repo(filepath: &Path) -> Option<&Path> {
         .flatten()
 }
 
+type Sign = (usize, SignType);
+
+#[derive(Debug, Clone)]
+struct ModificationState {
+    modifications: Vec<Modification>,
+    current_signs: Vec<Sign>,
+}
+
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "git", actions = ["blame", "open-current-line-in-browser", "toggle"])]
+#[clap_plugin(
+  id = "git",
+  actions = [
+    "blame",
+    "diff-summary",
+    "hunk-modifications",
+    "open-permalink-in-browser",
+    "toggle",
+])]
 pub struct Git {
     vim: Vim,
     bufs: HashMap<usize, (PathBuf, GitRepo)>,
+    git_summary: HashMap<usize, Summary>,
+    git_modifications: HashMap<usize, ModificationState>,
     toggle: Toggle,
 }
 
@@ -259,6 +43,8 @@ impl Git {
         Self {
             vim,
             bufs: HashMap::new(),
+            git_summary: HashMap::new(),
+            git_modifications: HashMap::new(),
             toggle: Toggle::On,
         }
     }
@@ -277,6 +63,8 @@ impl Git {
             if git.is_tracked(&filepath)? {
                 self.bufs.insert(bufnr, (filepath, git));
                 return Ok(());
+            } else {
+                return Err(GitError::Untracked.into());
             }
         }
 
@@ -292,6 +80,103 @@ impl Git {
                     (bufnr, blame_info),
                 )?;
             }
+        }
+        Ok(())
+    }
+
+    fn update_diff_summary(&mut self, bufnr: usize) -> Result<(), PluginError> {
+        if let Some((filepath, git)) = self.bufs.get(&bufnr) {
+            let diff_summary = git.get_diff_summary(filepath, None)?;
+
+            if let Some(old_summary) = self.git_summary.get(&bufnr) {
+                if diff_summary.eq(old_summary) {
+                    return Ok(());
+                }
+            }
+
+            self.vim.exec(
+                "clap#plugin#git#set_summary_var",
+                (
+                    bufnr,
+                    [
+                        diff_summary.added,
+                        diff_summary.modified,
+                        diff_summary.removed,
+                    ],
+                ),
+            )?;
+            self.git_summary.insert(bufnr, diff_summary);
+        }
+        Ok(())
+    }
+
+    async fn update_diff_modifications(&mut self, bufnr: usize) -> Result<(), PluginError> {
+        if let Some((filepath, git)) = self.bufs.get(&bufnr) {
+            let modifications = git.get_hunk_modifications(filepath, None)?;
+
+            let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
+
+            let signs = modifications
+                .iter()
+                .flat_map(|m| m.signs_in_range(line_start..line_end + 1))
+                .collect::<Vec<_>>();
+
+            if let Some(state) = self.git_modifications.get(&bufnr) {
+                if modifications == state.modifications && signs == state.current_signs {
+                    return Ok(());
+                }
+            }
+
+            let current_signs = if signs.is_empty() {
+                self.vim
+                    .exec("clap#plugin#git#clear_visual_signs", [bufnr])?;
+                Vec::new()
+            } else {
+                self.vim
+                    .exec("clap#plugin#git#refresh_visual_signs", (bufnr, &signs))?;
+                signs
+            };
+
+            self.git_modifications.insert(
+                bufnr,
+                ModificationState {
+                    modifications,
+                    current_signs,
+                },
+            );
+        }
+
+        Ok(())
+    }
+
+    async fn show_gutter_signs(&mut self, bufnr: usize) -> Result<(), PluginError> {
+        if let Some(diff_state) = self.git_modifications.get_mut(&bufnr) {
+            let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
+
+            let new_signs = diff_state
+                .modifications
+                .iter()
+                .flat_map(|m| m.signs_in_range(line_start..line_end + 1))
+                .collect::<Vec<_>>();
+
+            let old_signs = &diff_state.current_signs;
+
+            // let to_delete = old_signs
+            // .iter()
+            // .filter(|old| !new_signs.contains(old))
+            // .map(|old| old.0)
+            // .collect::<Vec<_>>();
+
+            // Only add the new signs.
+            let to_add = new_signs
+                .iter()
+                .filter(|new| !old_signs.contains(new))
+                .collect::<Vec<_>>();
+
+            self.vim
+                .exec("clap#plugin#git#add_visual_signs", (bufnr, to_add))?;
+
+            diff_state.current_signs = new_signs;
         }
         Ok(())
     }
@@ -344,7 +229,7 @@ impl Git {
         Ok(())
     }
 
-    async fn open_current_line_in_browser(&self) -> Result<(), PluginError> {
+    async fn open_permalink_in_browser(&self) -> Result<(), PluginError> {
         let buf_path = self.vim.current_buffer_path().await?;
         let filepath = PathBuf::from(buf_path);
 
@@ -389,7 +274,9 @@ impl Git {
 impl ClapPlugin for Git {
     #[maple_derive::subscriptions]
     async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<(), PluginError> {
-        use AutocmdEventType::{BufDelete, BufEnter, BufLeave, CursorMoved, InsertEnter};
+        use AutocmdEventType::{
+            BufDelete, BufEnter, BufLeave, BufWritePost, CursorMoved, InsertEnter,
+        };
 
         if self.toggle.is_off() {
             return Ok(());
@@ -402,14 +289,26 @@ impl ClapPlugin for Git {
             BufEnter => {
                 self.try_track_buffer(bufnr).await?;
                 self.on_cursor_moved(bufnr).await?;
+                self.update_diff_summary(bufnr)?;
+                self.update_diff_modifications(bufnr).await?;
+            }
+            BufWritePost => {
+                self.update_diff_summary(bufnr)?;
+                self.update_diff_modifications(bufnr).await?;
             }
             BufDelete => {
                 self.bufs.remove(&bufnr);
+                self.git_summary.remove(&bufnr);
+                self.git_modifications.remove(&bufnr);
             }
             InsertEnter | BufLeave => {
                 self.vim.exec("clap#plugin#git#clear_blame_info", [bufnr])?;
             }
-            CursorMoved => self.on_cursor_moved(bufnr).await?,
+            CursorMoved => {
+                self.on_cursor_moved(bufnr).await?;
+                self.update_diff_summary(bufnr)?;
+                self.show_gutter_signs(bufnr).await?;
+            }
             event => return Err(PluginError::UnhandledEvent(event)),
         }
 
@@ -425,6 +324,8 @@ impl ClapPlugin for Git {
                     Toggle::On => {
                         for bufnr in self.bufs.keys() {
                             self.vim.exec("clap#plugin#git#clear_blame_info", [bufnr])?;
+                            self.vim
+                                .exec("clap#plugin#git#clear_visual_signs", [bufnr])?;
                         }
                     }
                     Toggle::Off => {
@@ -435,10 +336,37 @@ impl ClapPlugin for Git {
                 }
                 self.toggle.switch();
             }
-            GitAction::OpenCurrentLineInBrowser => {
-                self.open_current_line_in_browser().await?;
+            GitAction::OpenPermalinkInBrowser => {
+                self.open_permalink_in_browser().await?;
             }
             GitAction::Blame => self.show_blame_info().await?,
+            GitAction::DiffSummary => {
+                let buf_path = self.vim.current_buffer_path().await?;
+                let filepath = PathBuf::from(buf_path);
+
+                let Some(git_root) = in_git_repo(&filepath) else {
+                    return Ok(());
+                };
+
+                let git = GitRepo::init(git_root.to_path_buf())?;
+
+                let summary = git.get_diff_summary(&filepath, None)?;
+                self.vim.echo_info(format!("summary: {summary:?}"))?;
+            }
+            GitAction::HunkModifications => {
+                let buf_path = self.vim.current_buffer_path().await?;
+                let filepath = PathBuf::from(buf_path);
+
+                let bufnr = self.vim.bufnr("").await?;
+
+                let Some(git_root) = in_git_repo(&filepath) else {
+                    return Ok(());
+                };
+
+                let git = GitRepo::init(git_root.to_path_buf())?;
+                self.bufs.insert(bufnr, (filepath, git));
+                self.update_diff_modifications(bufnr).await?;
+            }
         }
 
         Ok(())

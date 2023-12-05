@@ -1266,6 +1266,7 @@ dependencies = [
  "rpc",
  "serde",
  "serde_json",
+ "strsim",
  "sublime_syntax",
  "subprocess",
  "thiserror",

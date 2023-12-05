@@ -14,6 +14,7 @@ use std::collections::HashMap;
     "__note_recent_files",
     "__copy-to-clipboard",
     "__configure-vim-which-key",
+    "__did-you-mean",
     "open-config",
     "list-plugins",
   ]
@@ -84,6 +85,24 @@ fn note_recent_file(file_path: String) {
     recent_files.upsert(file_path);
 }
 
+// https://github.com/clap-rs/clap/blob/c0a1814d3c1d93c18faaedc95fd251846e47f4fe/clap_builder/src/parser/features/suggestions.rs#L11C1-L26C2
+fn did_you_mean<T, I>(v: &str, possible_values: I) -> Vec<String>
+where
+    T: AsRef<str>,
+    I: IntoIterator<Item = T>,
+{
+    let mut candidates: Vec<(f64, String)> = possible_values
+        .into_iter()
+        // GH #4660: using `jaro` because `jaro_winkler` implementation in `strsim-rs` is wrong
+        // causing strings with common prefix >=10 to be considered perfectly similar
+        .map(|pv| (strsim::jaro(v, pv.as_ref()), pv.as_ref().to_owned()))
+        // Confidence of 0.7 so that bar -> baz is suggested
+        .filter(|(confidence, _)| *confidence > 0.7)
+        .collect();
+    candidates.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+    candidates.into_iter().map(|(_, pv)| pv).collect()
+}
+
 #[async_trait::async_trait]
 impl ClapPlugin for System {
     async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
@@ -120,6 +139,23 @@ impl ClapPlugin for System {
                 let args: Vec<String> = params.parse()?;
                 self.configure_vim_which_key_map(&args[0], &args[1..])
                     .await?;
+            }
+            SystemAction::__DidYouMean => {
+                let args: Vec<String> = params.parse()?;
+                let input = &args[0];
+                let all_providers: Vec<String> = self
+                    .vim
+                    .bare_call("clap#provider#providers#get_all_provider_ids")
+                    .await?;
+                let mut candidates = did_you_mean(input, all_providers);
+                if let Some(suggestion) = candidates.pop() {
+                    self.vim.echo_message(format!(
+                        "provider `{input}` is not found, did you mean `:Clap {suggestion}`?"
+                    ))?;
+                } else {
+                    self.vim
+                        .echo_message(format!("provider {input} not found"))?;
+                }
             }
             SystemAction::OpenConfig => {
                 let config_file = crate::config::config_file();

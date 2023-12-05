@@ -29,6 +29,10 @@ enable = true
 
 ## ctags
 
+| Features                               | Alternatives                                            |
+| :------------------------------------- | :-----------------------------------------------------  |
+| statusline integration(current symbol) | [vista.vim](https://github.com/liuchengxu/vista.vim)    |
+
 ## cursorword
 
 ```toml
@@ -52,7 +56,10 @@ enable = true
 | Features                                       | Alternatives                                                  |
 | :-------------------------------------         | :-----------------------------------------------------        |
 | Show blame info at the end of line             | [nvim-blame-line](https://github.com/tveskag/nvim-blame-line) |
-| Open the permalink of current line in browser | _none_                                                        |
+| Show git diff in sign column                   | [vim-gitgutter](https://github.com/airblade/vim-gitgutter)    |
+| Open the permalink of current line in browser  | [repolink.nvim](https://github.com/9seconds/repolink.nvim)    |
+
+The signs are updated when you save the buffer and are rendered lazily, i.e., the signs are only displayed when they are visually in the range of screen.
 
 ## linter
 
@@ -61,17 +68,11 @@ enable = true
 enable = true
 ```
 
-Although ALE has been an incredible and feature-rich linter plugin that served me well for an extended
+Although [ALE](https://github.com/dense-analysis/ale) has been an incredible and feature-rich linter plugin that served me well for an extended
 period, I began to notice a persistent lagging issue over time. There were noticeable delays in refreshing
 the latest diagnostics whenever I made changes to the source file (especially the Rust file). This prompted
 me to develop this linter plugin in Rust and the results have been remarkable. The diagnostics update is now
 considerably faster from what I see on Rust project.
-
-- Features
-  - Lint files asynchronously
-
-- Alternatives
-  - [ale](https://github.com/dense-analysis/ale)
 
 ## markdown
 

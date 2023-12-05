@@ -58,6 +58,10 @@ function! s:providers.source() abort
   return s:global_source
 endfunction
 
+function! clap#provider#providers#get_all_provider_ids() abort
+  return map(copy(s:providers.source()), 'split(v:val, ":")[0]')
+endfunction
+
 let s:providers.syntax = 'clap_providers'
 let s:providers.mode = 'quick_pick'
 let g:clap#provider#providers# = s:providers

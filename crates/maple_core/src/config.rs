@@ -92,7 +92,7 @@ pub struct LogConfig {
 
     /// Specify the log target to enable more detailed logging.
     ///
-    /// Particularlly useful for the debugging purpose.
+    /// Particularly useful for the debugging purpose.
     ///
     /// ```toml
     /// [log]
