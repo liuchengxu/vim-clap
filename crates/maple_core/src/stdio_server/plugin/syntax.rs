@@ -57,6 +57,7 @@ struct SyntaxProps {
 
 type RawTsHighlights = BTreeMap<usize, Vec<tree_sitter::HighlightItem>>;
 
+/// Represents the tree-sitter highlight info of entire buffer.
 #[derive(Debug, Clone)]
 struct BufferHighlights(RawTsHighlights);
 
@@ -117,6 +118,13 @@ impl std::fmt::Display for FileSize {
             write!(f, "{}MiB", self.0 / 1024 / 1024)
         }
     }
+}
+
+enum RenderStrategy {
+    /// Render the visual lines only.
+    VisualLines,
+    /// Render the entire buffer.
+    Buffer,
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
@@ -279,7 +287,9 @@ impl Syntax {
         }
 
         let start = std::time::Instant::now();
+
         let raw_highlights = tree_sitter::highlight(language, &source_code)?;
+
         tracing::debug!(
             ?language,
             highlighted_lines = raw_highlights.len(),
@@ -288,13 +298,14 @@ impl Syntax {
             start.elapsed().as_millis()
         );
 
-        let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
-        let maybe_vim_highlights = self.apply_ts_highlights(
-            bufnr,
-            language,
-            &raw_highlights,
-            Some(line_start - 1..line_end),
-        )?;
+        let maybe_vim_highlights = self
+            .render_ts_highlights(
+                bufnr,
+                language,
+                &raw_highlights,
+                RenderStrategy::VisualLines,
+            )
+            .await?;
 
         self.ts_bufs.insert(
             bufnr,
@@ -309,13 +320,21 @@ impl Syntax {
     }
 
     /// Returns Some() if the vim highlights are changed.
-    fn apply_ts_highlights(
+    async fn render_ts_highlights(
         &self,
         bufnr: usize,
         language: Language,
         raw_ts_highlights: &RawTsHighlights,
-        lines_range: Option<Range<usize>>,
+        render_strategy: RenderStrategy,
     ) -> Result<Option<VimHighlights>, PluginError> {
+        let lines_range = match render_strategy {
+            RenderStrategy::VisualLines => {
+                let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
+                Some(line_start - 1..line_end)
+            }
+            RenderStrategy::Buffer => None,
+        };
+
         let new_vim_highlights =
             convert_raw_ts_highlights_to_vim_highlights(raw_ts_highlights, language, lines_range);
 
@@ -392,14 +411,14 @@ impl Syntax {
 
         let new_highlights = tree_sitter::highlight(language, &source_code)?;
 
-        let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
-
-        let maybe_new_vim_highlights = self.apply_ts_highlights(
-            bufnr,
-            language,
-            &new_highlights,
-            Some(line_start - 1..line_end),
-        )?;
+        let maybe_new_vim_highlights = self
+            .render_ts_highlights(
+                bufnr,
+                language,
+                &new_highlights,
+                RenderStrategy::VisualLines,
+            )
+            .await?;
 
         self.ts_bufs.entry(bufnr).and_modify(|i| {
             i.highlights = new_highlights.into();
@@ -495,15 +514,13 @@ impl ClapPlugin for Syntax {
                     } else {
                         let maybe_new_vim_highlights =
                             if let Some(ts_info) = self.ts_bufs.get(&bufnr) {
-                                let (_winid, line_start, line_end) =
-                                    self.vim.get_screen_lines_range().await?;
-
-                                self.apply_ts_highlights(
+                                self.render_ts_highlights(
                                     bufnr,
                                     ts_info.language,
                                     &ts_info.highlights.0,
-                                    Some(line_start - 1..line_end),
-                                )?
+                                    RenderStrategy::VisualLines,
+                                )
+                                .await?
                             } else {
                                 None
                             };
