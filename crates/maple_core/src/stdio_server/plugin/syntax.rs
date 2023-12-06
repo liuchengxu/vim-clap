@@ -99,6 +99,8 @@ type VimHighlights = Vec<(usize, LineHighlights)>;
 #[derive(Debug, Clone)]
 struct TreeSitterInfo {
     language: Language,
+    /// Used to infer the highlighting render strategy.
+    file_size: FileSize,
     /// Highlights of entire buffer.
     highlights: BufferHighlights,
     /// Current vim highlighting info, note that we only
@@ -106,6 +108,8 @@ struct TreeSitterInfo {
     vim_highlights: VimHighlights,
 }
 
+/// File size in bytes.
+#[derive(Debug, Clone, Copy)]
 struct FileSize(usize);
 
 impl std::fmt::Display for FileSize {
@@ -118,13 +122,6 @@ impl std::fmt::Display for FileSize {
             write!(f, "{}MiB", self.0 / 1024 / 1024)
         }
     }
-}
-
-enum RenderStrategy {
-    /// Render the visual lines only.
-    VisualLines,
-    /// Render the entire buffer.
-    Buffer,
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
@@ -290,21 +287,18 @@ impl Syntax {
 
         let raw_highlights = tree_sitter::highlight(language, &source_code)?;
 
+        let file_size = FileSize(source_code.len());
+
         tracing::debug!(
             ?language,
             highlighted_lines = raw_highlights.len(),
-            file_size = %FileSize(source_code.len()),
+            %file_size,
             "ts highlighting elapsed: {:?}ms",
             start.elapsed().as_millis()
         );
 
         let maybe_vim_highlights = self
-            .render_ts_highlights(
-                bufnr,
-                language,
-                &raw_highlights,
-                RenderStrategy::VisualLines,
-            )
+            .render_ts_highlights(bufnr, language, &raw_highlights, file_size)
             .await?;
 
         self.ts_bufs.insert(
@@ -313,6 +307,7 @@ impl Syntax {
                 language,
                 highlights: raw_highlights.into(),
                 vim_highlights: maybe_vim_highlights.unwrap_or_default(),
+                file_size,
             },
         );
 
@@ -325,14 +320,25 @@ impl Syntax {
         bufnr: usize,
         language: Language,
         raw_ts_highlights: &RawTsHighlights,
-        render_strategy: RenderStrategy,
+        file_size: FileSize,
     ) -> Result<Option<VimHighlights>, PluginError> {
+        use crate::config::RenderStrategy;
+
+        let render_strategy = &crate::config::config().plugin.syntax.render_strategy;
+
         let lines_range = match render_strategy {
             RenderStrategy::VisualLines => {
                 let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
                 Some(line_start - 1..line_end)
             }
-            RenderStrategy::Buffer => None,
+            RenderStrategy::EntireBufferUntilExceed(size_limit) => {
+                if *size_limit > file_size.0 {
+                    None
+                } else {
+                    let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
+                    Some(line_start - 1..line_end)
+                }
+            }
         };
 
         let new_vim_highlights =
@@ -411,17 +417,15 @@ impl Syntax {
 
         let new_highlights = tree_sitter::highlight(language, &source_code)?;
 
+        let file_size = FileSize(source_code.len());
+
         let maybe_new_vim_highlights = self
-            .render_ts_highlights(
-                bufnr,
-                language,
-                &new_highlights,
-                RenderStrategy::VisualLines,
-            )
+            .render_ts_highlights(bufnr, language, &new_highlights, file_size)
             .await?;
 
         self.ts_bufs.entry(bufnr).and_modify(|i| {
             i.highlights = new_highlights.into();
+            i.file_size = file_size;
             if let Some(new_vim_highlights) = maybe_new_vim_highlights {
                 i.vim_highlights = new_vim_highlights;
             }
@@ -518,7 +522,7 @@ impl ClapPlugin for Syntax {
                                     bufnr,
                                     ts_info.language,
                                     &ts_info.highlights.0,
-                                    RenderStrategy::VisualLines,
+                                    ts_info.file_size,
                                 )
                                 .await?
                             } else {

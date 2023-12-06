@@ -84,7 +84,7 @@ impl MatcherConfig {
 pub struct LogConfig {
     /// Specify the log file path.
     ///
-    /// This path must be an absoluate path.
+    /// This path must be an absolute path.
     pub log_file: Option<String>,
 
     /// Specify the max log level.
@@ -203,6 +203,47 @@ pub struct LinterPluginConfig {
     pub enable: bool,
 }
 
+/// Syntax plugin.
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct SyntaxPluginConfig {
+    /// Whether to enable this plugin.
+    pub enable: bool,
+    /// How the render the tree-sitter highlights.
+    ///
+    /// Possible values:
+    /// - `visual-lines`: Always render the visual lines only.
+    /// - `entire-buffer-until-exceed`: Render the entire buffer until
+    /// the buffer size exceeds the size limit (in bytes).
+    pub render_strategy: RenderStrategy,
+}
+
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(
+    tag = "strategy",
+    content = "file-size-limit",
+    rename_all = "kebab-case",
+    deny_unknown_fields
+)]
+pub enum RenderStrategy {
+    /// Render the visual lines only.
+    VisualLines,
+
+    /// Render the entire buffer until the file size exceeds the limit.
+    ///
+    /// It's not recommended to always render the buffer as it may hit
+    /// the performance issue when the buffer is too large. However, always
+    /// using the way of visual lines rendering is not optimal with regard to
+    /// the user experience, especially when the buffer is small.
+    EntireBufferUntilExceed(usize),
+}
+
+impl Default for RenderStrategy {
+    fn default() -> Self {
+        Self::EntireBufferUntilExceed(128 * 1024)
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct PluginConfig {
@@ -212,6 +253,7 @@ pub struct PluginConfig {
     pub git: GitPluginConfig,
     pub linter: LinterPluginConfig,
     pub markdown: MarkdownPluginConfig,
+    pub syntax: SyntaxPluginConfig,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
@@ -260,7 +302,7 @@ pub struct ProviderConfig {
     pub sublime_syntax_color_scheme: Option<String>,
 
     /// Ignore configuration per project, with paths specified as
-    /// absoluate path or relative to the home directory.
+    /// absolute path or relative to the home directory.
     pub project_ignores: HashMap<AbsPathBuf, IgnoreConfig>,
 
     /// Ignore configuration per provider.
