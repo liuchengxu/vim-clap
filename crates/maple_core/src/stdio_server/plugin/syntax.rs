@@ -105,6 +105,20 @@ struct TreeSitterInfo {
     vim_highlights: VimHighlights,
 }
 
+struct FileSize(usize);
+
+impl std::fmt::Display for FileSize {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.0 < 1024 {
+            write!(f, "{}bytes", self.0)
+        } else if self.0 < 1024 * 1024 {
+            write!(f, "{}KiB", self.0 / 1024)
+        } else {
+            write!(f, "{}MiB", self.0 / 1024 / 1024)
+        }
+    }
+}
+
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
 #[clap_plugin(
   id = "syntax",
@@ -268,9 +282,9 @@ impl Syntax {
         let raw_highlights = tree_sitter::highlight(language, &source_code)?;
         tracing::debug!(
             ?language,
-            raw_highlights_lines = raw_highlights.len(),
-            "source file size: {} byte, ts highlighting elapsed: {:?}ms",
-            source_code.len(),
+            highlighted_lines = raw_highlights.len(),
+            file_size = %FileSize(source_code.len()),
+            "ts highlighting elapsed: {:?}ms",
             start.elapsed().as_millis()
         );
 
