@@ -84,7 +84,7 @@ impl MatcherConfig {
 pub struct LogConfig {
     /// Specify the log file path.
     ///
-    /// This path must be an absoluate path.
+    /// This path must be an absolute path.
     pub log_file: Option<String>,
 
     /// Specify the max log level.
@@ -203,6 +203,56 @@ pub struct LinterPluginConfig {
     pub enable: bool,
 }
 
+/// Syntax plugin.
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct SyntaxPluginConfig {
+    /// Specify the strategy of tree-sitter rendering.
+    ///
+    /// The default strategy is to render the entire buffer until the
+    /// file size exceeds 256 KiB.
+    ///
+    ///
+    /// Possible values:
+    /// - `visual-lines`: Always render the visual lines only.
+    /// - `entire-buffer-up-to-limit`: Render the entire buffer until
+    /// the buffer size exceeds the size limit (in bytes).
+    ///
+    /// # Example
+    ///
+    /// ```toml
+    /// [plugin.syntax.render-strategy]
+    /// strategy = "visual-lines"
+    /// ```
+    pub render_strategy: RenderStrategy,
+}
+
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(
+    tag = "strategy",
+    content = "file-size-limit",
+    rename_all = "kebab-case",
+    deny_unknown_fields
+)]
+pub enum RenderStrategy {
+    /// Render only the visual lines.
+    VisualLines,
+
+    /// Render the entire buffer until the file size limit is reached.
+    ///
+    /// This strategy renders the complete buffer until the file size
+    /// exceeds the specified limit. It's not recommended to always render
+    /// large buffers directly due to potential performance issues.
+    /// For smaller buffers, this strategy enhances the user experience.
+    EntireBufferUpToLimit(usize),
+}
+
+impl Default for RenderStrategy {
+    fn default() -> Self {
+        Self::EntireBufferUpToLimit(256 * 1024)
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct PluginConfig {
@@ -212,6 +262,7 @@ pub struct PluginConfig {
     pub git: GitPluginConfig,
     pub linter: LinterPluginConfig,
     pub markdown: MarkdownPluginConfig,
+    pub syntax: SyntaxPluginConfig,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
@@ -260,7 +311,7 @@ pub struct ProviderConfig {
     pub sublime_syntax_color_scheme: Option<String>,
 
     /// Ignore configuration per project, with paths specified as
-    /// absoluate path or relative to the home directory.
+    /// absolute path or relative to the home directory.
     pub project_ignores: HashMap<AbsPathBuf, IgnoreConfig>,
 
     /// Ignore configuration per provider.

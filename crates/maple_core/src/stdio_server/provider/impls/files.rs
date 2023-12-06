@@ -135,11 +135,7 @@ impl ClapProvider for FilesProvider {
 
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.input_get().await?;
-        if query.is_empty() {
-            ctx.update_on_empty_query().await?;
-        } else {
-            self.process_query(query, ctx);
-        }
+        self.process_query(query, ctx);
         Ok(())
     }
 

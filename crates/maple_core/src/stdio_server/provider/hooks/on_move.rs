@@ -815,7 +815,7 @@ fn fetch_syntax_highlights(
                     let ts_highlights = convert_raw_ts_highlights_to_vim_highlights(
                         &raw_highlights,
                         language,
-                        Some(range),
+                        range.into(),
                     );
 
                     Some(

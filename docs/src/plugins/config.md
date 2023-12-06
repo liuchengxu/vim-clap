@@ -59,6 +59,27 @@ enable = false
 # Whether to enable this plugin.
 enable = false
 
+# Specify the strategy of tree-sitter rendering.
+#
+# The default strategy is to render the entire buffer until the
+# file size exceeds 256 KiB.
+#
+#
+# Possible values:
+# - `visual-lines`: Always render the visual lines only.
+# - `entire-buffer-up-to-limit`: Render the entire buffer until
+# the buffer size exceeds the size limit (in bytes).
+#
+# # Example
+#
+# ```toml
+# [plugin.syntax.render-strategy]
+# strategy = "visual-lines"
+# ```
+[plugin.syntax.render-strategy]
+strategy = "entire-buffer-up-to-limit"
+file-size-limit = 262144
+
 ## Provider (fuzzy picker) configuration.
 [provider]
 # Whether to share the input history among providers.
@@ -69,7 +90,7 @@ share-input-history = false
 preview-highlight-engine = "vim"
 
 # Ignore configuration per project, with paths specified as
-# absoluate path or relative to the home directory.
+# absolute path or relative to the home directory.
 [provider.project-ignores]
 
 # Ignore configuration per provider.

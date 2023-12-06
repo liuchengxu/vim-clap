@@ -91,7 +91,7 @@ function! s:provider_sink() abort
   endtry
 endfunction
 
-" Similiar to s:provider_sink() but using a custom Sink function and without
+" Similar to s:provider_sink() but using a custom Sink function and without
 " handling the no matches case.
 function! clap#handler#sink_with(SinkFn, ...) abort
   call s:internal_exit()

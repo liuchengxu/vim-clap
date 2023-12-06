@@ -57,6 +57,7 @@ struct SyntaxProps {
 
 type RawTsHighlights = BTreeMap<usize, Vec<tree_sitter::HighlightItem>>;
 
+/// Represents the tree-sitter highlight info of entire buffer.
 #[derive(Debug, Clone)]
 struct BufferHighlights(RawTsHighlights);
 
@@ -98,11 +99,29 @@ type VimHighlights = Vec<(usize, LineHighlights)>;
 #[derive(Debug, Clone)]
 struct TreeSitterInfo {
     language: Language,
+    /// Used to infer the highlighting render strategy.
+    file_size: FileSize,
     /// Highlights of entire buffer.
     highlights: BufferHighlights,
     /// Current vim highlighting info, note that we only
     /// highlight the visual lines on the vim side.
     vim_highlights: VimHighlights,
+}
+
+/// File size in bytes.
+#[derive(Debug, Clone, Copy)]
+struct FileSize(usize);
+
+impl std::fmt::Display for FileSize {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.0 < 1024 {
+            write!(f, "{}bytes", self.0)
+        } else if self.0 < 1024 * 1024 {
+            write!(f, "{}KiB", self.0 / 1024)
+        } else {
+            write!(f, "{}MiB", self.0 / 1024 / 1024)
+        }
+    }
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
@@ -265,22 +284,22 @@ impl Syntax {
         }
 
         let start = std::time::Instant::now();
+
         let raw_highlights = tree_sitter::highlight(language, &source_code)?;
+
+        let file_size = FileSize(source_code.len());
+
         tracing::debug!(
             ?language,
-            raw_highlights_lines = raw_highlights.len(),
-            "source file size: {} byte, ts highlighting elapsed: {:?}ms",
-            source_code.len(),
+            highlighted_lines = raw_highlights.len(),
+            %file_size,
+            "fetching tree-sitter highlighting info elapsed: {:?}ms",
             start.elapsed().as_millis()
         );
 
-        let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
-        let maybe_vim_highlights = self.apply_ts_highlights(
-            bufnr,
-            language,
-            &raw_highlights,
-            Some(line_start - 1..line_end),
-        )?;
+        let maybe_vim_highlights = self
+            .render_ts_highlights(bufnr, language, &raw_highlights, file_size)
+            .await?;
 
         self.ts_bufs.insert(
             bufnr,
@@ -288,6 +307,7 @@ impl Syntax {
                 language,
                 highlights: raw_highlights.into(),
                 vim_highlights: maybe_vim_highlights.unwrap_or_default(),
+                file_size,
             },
         );
 
@@ -295,15 +315,37 @@ impl Syntax {
     }
 
     /// Returns Some() if the vim highlights are changed.
-    fn apply_ts_highlights(
+    async fn render_ts_highlights(
         &self,
         bufnr: usize,
         language: Language,
         raw_ts_highlights: &RawTsHighlights,
-        lines_range: Option<Range<usize>>,
+        file_size: FileSize,
     ) -> Result<Option<VimHighlights>, PluginError> {
-        let new_vim_highlights =
-            convert_raw_ts_highlights_to_vim_highlights(raw_ts_highlights, language, lines_range);
+        use crate::config::RenderStrategy;
+
+        let render_strategy = &crate::config::config().plugin.syntax.render_strategy;
+
+        let highlight_range = match render_strategy {
+            RenderStrategy::VisualLines => {
+                let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
+                HighlightRange::Lines(line_start - 1..line_end)
+            }
+            RenderStrategy::EntireBufferUpToLimit(size_limit) => {
+                if file_size.0 <= *size_limit {
+                    HighlightRange::EveryLine
+                } else {
+                    let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
+                    HighlightRange::Lines(line_start - 1..line_end)
+                }
+            }
+        };
+
+        let new_vim_highlights = convert_raw_ts_highlights_to_vim_highlights(
+            raw_ts_highlights,
+            language,
+            highlight_range,
+        );
 
         if let Some(old) = self.ts_bufs.get(&bufnr) {
             let old_vim_highlights = &old.vim_highlights;
@@ -378,17 +420,15 @@ impl Syntax {
 
         let new_highlights = tree_sitter::highlight(language, &source_code)?;
 
-        let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
+        let file_size = FileSize(source_code.len());
 
-        let maybe_new_vim_highlights = self.apply_ts_highlights(
-            bufnr,
-            language,
-            &new_highlights,
-            Some(line_start - 1..line_end),
-        )?;
+        let maybe_new_vim_highlights = self
+            .render_ts_highlights(bufnr, language, &new_highlights, file_size)
+            .await?;
 
         self.ts_bufs.entry(bufnr).and_modify(|i| {
             i.highlights = new_highlights.into();
+            i.file_size = file_size;
             if let Some(new_vim_highlights) = maybe_new_vim_highlights {
                 i.vim_highlights = new_vim_highlights;
             }
@@ -416,20 +456,37 @@ impl Syntax {
     }
 }
 
+pub enum HighlightRange {
+    /// Only highlight the lines in the specified range.
+    Lines(Range<usize>),
+    /// All lines will be highlighted.
+    EveryLine,
+}
+
+impl From<Range<usize>> for HighlightRange {
+    fn from(range: Range<usize>) -> Self {
+        Self::Lines(range)
+    }
+}
+
+impl HighlightRange {
+    fn should_highlight(&self, line_number: usize) -> bool {
+        match self {
+            Self::Lines(range) => range.contains(&line_number),
+            Self::EveryLine => true,
+        }
+    }
+}
+
 /// Convert the raw highlight info to something that is directly applied by Vim.
 pub fn convert_raw_ts_highlights_to_vim_highlights(
     raw_ts_highlights: &RawTsHighlights,
     language: Language,
-    lines_range: Option<Range<usize>>,
+    highlight_range: HighlightRange,
 ) -> VimHighlights {
     raw_ts_highlights
         .iter()
-        .filter(|(line_number, _)| {
-            lines_range
-                .as_ref()
-                .map(|range| range.contains(line_number))
-                .unwrap_or(true)
-        })
+        .filter(|(line_number, _)| highlight_range.should_highlight(**line_number))
         .map(|(line_number, highlight_items)| {
             let line_highlights: Vec<(usize, usize, &str)> = highlight_items
                 .iter()
@@ -481,15 +538,13 @@ impl ClapPlugin for Syntax {
                     } else {
                         let maybe_new_vim_highlights =
                             if let Some(ts_info) = self.ts_bufs.get(&bufnr) {
-                                let (_winid, line_start, line_end) =
-                                    self.vim.get_screen_lines_range().await?;
-
-                                self.apply_ts_highlights(
+                                self.render_ts_highlights(
                                     bufnr,
                                     ts_info.language,
                                     &ts_info.highlights.0,
-                                    Some(line_start - 1..line_end),
-                                )?
+                                    ts_info.file_size,
+                                )
+                                .await?
                             } else {
                                 None
                             };

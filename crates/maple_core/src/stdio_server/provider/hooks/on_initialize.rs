@@ -96,6 +96,8 @@ async fn initialize_provider_source(ctx: &Context) -> Result<ProviderSource> {
                 let shell_cmd = ShellCommand::new(command, ctx.cwd.to_path_buf());
                 let cache_file = shell_cmd.cache_file_path()?;
 
+                // Deprecated as now files provider has no `source` property, which is
+                // handled by vim-clap internally.
                 const DIRECT_CREATE_NEW_SOURCE: &[&str] = &["files"];
 
                 let create_new_source_directly =

@@ -5,6 +5,7 @@ pub mod substring;
 use crate::MatchResult;
 use types::{CaseMatching, FuzzyText};
 
+// TODO: Integrate https://github.com/nomad/norm for fzf algo.
 #[derive(Debug, Clone, Copy, Default)]
 pub enum FuzzyAlgorithm {
     Skim,
