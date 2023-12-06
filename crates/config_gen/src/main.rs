@@ -3,7 +3,9 @@ use itertools::Itertools;
 use maple_core::config::Config;
 use quote::ToTokens;
 use std::{collections::BTreeMap, str::FromStr};
-use syn::{Attribute, Field, Fields, ItemStruct, Lit, Meta, MetaNameValue, PathSegment, Type};
+use syn::{
+    Attribute, Field, Fields, ItemEnum, ItemStruct, Lit, Meta, MetaNameValue, PathSegment, Type,
+};
 use toml_edit::Document;
 
 fn main() {
@@ -147,6 +149,29 @@ fn parse_struct(s: &ItemStruct) -> BTreeMap<String, FieldInfo> {
     struct_docs
 }
 
+/// Returns a map of (field, field_info) in an enum.
+#[allow(unused)]
+fn parse_enum(e: &ItemEnum) -> BTreeMap<String, FieldInfo> {
+    e.variants
+        .iter()
+        .map(|variant| {
+            let docs = variant
+                .attrs
+                .iter()
+                .filter_map(|attr| extract_doc_comment(attr))
+                .collect();
+            let variant_name = &variant.ident;
+            (
+                variant_name.to_string(),
+                FieldInfo {
+                    struct_type: None,
+                    docs,
+                },
+            )
+        })
+        .collect()
+}
+
 /// Process `config.rs` to generate `default_config.toml`
 ///
 /// Conventions:
@@ -209,13 +234,21 @@ fn process_ast(ast: &syn::File) -> Document {
                 if let Some(inner_struct_type) = &struct_field.struct_type {
                     if let Some(struct_docs) = all_struct_docs.get(inner_struct_type) {
                         if let Some(t) = t_item.as_table_mut() {
-                            for (mut t_key, _) in t.iter_mut() {
+                            for (mut t_key, item) in t.iter_mut() {
                                 let comments = struct_docs
                                     .get(&to_snake_case(t_key.get()))
                                     .unwrap()
                                     .as_toml_comments();
 
-                                t_key.decor_mut().set_prefix(format!("{comments}\n"));
+                                // Ugly workaround to handle the special case `SyntaxPluginConfig
+                                // { render_strategy }`.
+                                if t_key.get() == "render-strategy" {
+                                    if let Some(t) = item.as_table_mut() {
+                                        t.decor_mut().set_prefix(format!("\n{comments}\n"));
+                                    }
+                                } else {
+                                    t_key.decor_mut().set_prefix(format!("{comments}\n"));
+                                }
                             }
                         }
                     }

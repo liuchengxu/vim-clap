@@ -207,14 +207,23 @@ pub struct LinterPluginConfig {
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct SyntaxPluginConfig {
-    /// Whether to enable this plugin.
-    pub enable: bool,
     /// How the render the tree-sitter highlights.
+    ///
+    /// The default strategy is to render the entire buffer until the
+    /// file size exceeds 256 KiB.
+    ///
     ///
     /// Possible values:
     /// - `visual-lines`: Always render the visual lines only.
     /// - `entire-buffer-until-exceed`: Render the entire buffer until
     /// the buffer size exceeds the size limit (in bytes).
+    ///
+    /// # Example
+    ///
+    /// ```toml
+    /// [plugin.syntax.render-strategy]
+    /// strategy = "visual-lines"
+    /// ```
     pub render_strategy: RenderStrategy,
 }
 
@@ -231,8 +240,8 @@ pub enum RenderStrategy {
 
     /// Render the entire buffer until the file size exceeds the limit.
     ///
-    /// It's not recommended to always render the buffer as it may hit
-    /// the performance issue when the buffer is too large. However, always
+    /// It's not recommended to always render the whole buffer as it may cause
+    /// the performance issue in case of a large buffer. However, always
     /// using the way of visual lines rendering is not optimal with regard to
     /// the user experience, especially when the buffer is small.
     EntireBufferUntilExceed(usize),
@@ -240,7 +249,7 @@ pub enum RenderStrategy {
 
 impl Default for RenderStrategy {
     fn default() -> Self {
-        Self::EntireBufferUntilExceed(128 * 1024)
+        Self::EntireBufferUntilExceed(256 * 1024)
     }
 }
 
