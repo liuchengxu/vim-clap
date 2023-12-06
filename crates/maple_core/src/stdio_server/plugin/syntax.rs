@@ -331,7 +331,7 @@ impl Syntax {
                 let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
                 HighlightRange::Lines(line_start - 1..line_end)
             }
-            RenderStrategy::EntireBufferUnlessExceeding(size_limit) => {
+            RenderStrategy::EntireBufferUpToLimit(size_limit) => {
                 if file_size.0 <= *size_limit {
                     HighlightRange::EveryLine
                 } else {
