@@ -207,7 +207,7 @@ pub struct LinterPluginConfig {
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct SyntaxPluginConfig {
-    /// How the render the tree-sitter highlights.
+    /// Specify the strategy of tree-sitter rendering.
     ///
     /// The default strategy is to render the entire buffer until the
     /// file size exceeds 256 KiB.

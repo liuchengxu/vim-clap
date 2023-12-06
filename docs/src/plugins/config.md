@@ -59,7 +59,7 @@ enable = false
 # Whether to enable this plugin.
 enable = false
 
-# How the render the tree-sitter highlights.
+# Specify the strategy of tree-sitter rendering.
 #
 # The default strategy is to render the entire buffer until the
 # file size exceeds 256 KiB.
