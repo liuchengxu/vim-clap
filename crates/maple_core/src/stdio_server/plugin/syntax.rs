@@ -293,7 +293,7 @@ impl Syntax {
             ?language,
             highlighted_lines = raw_highlights.len(),
             %file_size,
-            "ts highlighting elapsed: {:?}ms",
+            "fetching tree-sitter highlighting info elapsed: {:?}ms",
             start.elapsed().as_millis()
         );
 
