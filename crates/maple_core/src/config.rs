@@ -215,7 +215,7 @@ pub struct SyntaxPluginConfig {
     ///
     /// Possible values:
     /// - `visual-lines`: Always render the visual lines only.
-    /// - `entire-buffer-until-exceed`: Render the entire buffer until
+    /// - `entire-buffer-unless-exceeding`: Render the entire buffer until
     /// the buffer size exceeds the size limit (in bytes).
     ///
     /// # Example
@@ -244,12 +244,12 @@ pub enum RenderStrategy {
     /// the performance issue in case of a large buffer. However, always
     /// using the way of visual lines rendering is not optimal with regard to
     /// the user experience, especially when the buffer is small.
-    EntireBufferUntilExceed(usize),
+    EntireBufferUnlessExceeding(usize),
 }
 
 impl Default for RenderStrategy {
     fn default() -> Self {
-        Self::EntireBufferUntilExceed(256 * 1024)
+        Self::EntireBufferUnlessExceeding(256 * 1024)
     }
 }
 

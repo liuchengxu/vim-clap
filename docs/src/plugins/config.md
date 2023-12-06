@@ -67,7 +67,7 @@ enable = false
 #
 # Possible values:
 # - `visual-lines`: Always render the visual lines only.
-# - `entire-buffer-until-exceed`: Render the entire buffer until
+# - `entire-buffer-unless-exceeding`: Render the entire buffer until
 # the buffer size exceeds the size limit (in bytes).
 #
 # # Example
@@ -77,7 +77,7 @@ enable = false
 # strategy = "visual-lines"
 # ```
 [plugin.syntax.render-strategy]
-strategy = "entire-buffer-until-exceed"
+strategy = "entire-buffer-unless-exceeding"
 file-size-limit = 262144
 
 ## Provider (fuzzy picker) configuration.
