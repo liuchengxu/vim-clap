@@ -326,23 +326,26 @@ impl Syntax {
 
         let render_strategy = &crate::config::config().plugin.syntax.render_strategy;
 
-        let lines_range = match render_strategy {
+        let highlight_range = match render_strategy {
             RenderStrategy::VisualLines => {
                 let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
-                Some(line_start - 1..line_end)
+                HighlightRange::Lines(line_start - 1..line_end)
             }
             RenderStrategy::EntireBufferUntilExceed(size_limit) => {
-                if *size_limit > file_size.0 {
-                    None
+                if file_size.0 <= *size_limit {
+                    HighlightRange::EveryLine
                 } else {
                     let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
-                    Some(line_start - 1..line_end)
+                    HighlightRange::Lines(line_start - 1..line_end)
                 }
             }
         };
 
-        let new_vim_highlights =
-            convert_raw_ts_highlights_to_vim_highlights(raw_ts_highlights, language, lines_range);
+        let new_vim_highlights = convert_raw_ts_highlights_to_vim_highlights(
+            raw_ts_highlights,
+            language,
+            highlight_range,
+        );
 
         if let Some(old) = self.ts_bufs.get(&bufnr) {
             let old_vim_highlights = &old.vim_highlights;
@@ -453,20 +456,37 @@ impl Syntax {
     }
 }
 
+pub enum HighlightRange {
+    /// Only highlight the lines in the specified range.
+    Lines(Range<usize>),
+    /// All lines will be highlighted.
+    EveryLine,
+}
+
+impl From<Range<usize>> for HighlightRange {
+    fn from(range: Range<usize>) -> Self {
+        Self::Lines(range)
+    }
+}
+
+impl HighlightRange {
+    fn should_highlight(&self, line_number: usize) -> bool {
+        match self {
+            Self::Lines(range) => range.contains(&line_number),
+            Self::EveryLine => true,
+        }
+    }
+}
+
 /// Convert the raw highlight info to something that is directly applied by Vim.
 pub fn convert_raw_ts_highlights_to_vim_highlights(
     raw_ts_highlights: &RawTsHighlights,
     language: Language,
-    lines_range: Option<Range<usize>>,
+    highlight_range: HighlightRange,
 ) -> VimHighlights {
     raw_ts_highlights
         .iter()
-        .filter(|(line_number, _)| {
-            lines_range
-                .as_ref()
-                .map(|range| range.contains(line_number))
-                .unwrap_or(true)
-        })
+        .filter(|(line_number, _)| highlight_range.should_highlight(**line_number))
         .map(|(line_number, highlight_items)| {
             let line_highlights: Vec<(usize, usize, &str)> = highlight_items
                 .iter()
