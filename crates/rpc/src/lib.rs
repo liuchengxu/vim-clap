@@ -108,7 +108,8 @@ impl RpcClient {
         };
         let (request_result_tx, request_result_rx) = oneshot::channel();
         // Request result will be sent back in a RpcResponse message.
-        self.response_sender_tx.send((Id::Num(id), request_result_tx))?;
+        self.response_sender_tx
+            .send((Id::Num(id), request_result_tx))?;
         self.writer_sender.send(RpcMessage::Request(rpc_request))?;
         match request_result_rx.await? {
             RpcResponse::Success(ok) => Ok(serde_json::from_value(ok.result)?),
@@ -141,10 +142,12 @@ impl RpcClient {
     ) -> Result<(), RpcError> {
         let rpc_response = match output_result {
             Ok(ok) => RpcResponse::Success(Success {
+                jsonrpc: None,
                 id,
                 result: serde_json::to_value(ok)?,
             }),
             Err(err) => RpcResponse::Failure(Failure {
+                jsonrpc: None,
                 id,
                 error: Error {
                     code: ErrorCode::InternalError,
