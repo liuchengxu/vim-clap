@@ -13,6 +13,7 @@ function! s:OnExit(status, bufnr, success_info, ErrorCallback) abort
   else
     call a:ErrorCallback()
   endif
+  call clap#maple#reload()
   call clap#job#daemon#start()
 endfunction
 
