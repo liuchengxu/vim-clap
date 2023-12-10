@@ -72,6 +72,7 @@ impl<'de> Deserialize<'de> for Version {
 pub struct RpcRequest {
     pub id: Id,
     pub method: String,
+    #[serde(default = "default_params", skip_serializing_if = "Params::is_none")]
     pub params: Params,
 }
 
@@ -79,6 +80,7 @@ pub struct RpcRequest {
 #[serde(deny_unknown_fields)]
 pub struct RpcNotification {
     pub method: String,
+    #[serde(default = "default_params", skip_serializing_if = "Params::is_none")]
     pub params: Params,
 }
 
@@ -89,6 +91,10 @@ impl RpcNotification {
             Params::Map(ref map) => map.get("session_id").and_then(|v| v.as_u64()),
         }
     }
+}
+
+fn default_params() -> Params {
+    Params::None
 }
 
 /// RPC message originated from Vim.
