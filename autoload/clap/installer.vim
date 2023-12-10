@@ -13,9 +13,8 @@ function! s:OnExit(status, bufnr, success_info, ErrorCallback) abort
   else
     call a:ErrorCallback()
   endif
-  if clap#maple#is_available()
-    call clap#job#daemon#start()
-  endif
+  call clap#maple#reload()
+  call clap#job#daemon#start()
 endfunction
 
 function! s:run_term(cmd, cwd, success_info, ErrorCallback) abort

@@ -1,5 +1,5 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
-" Description: Dispatch the job via maple.
+" Description: Locate and invoke maple binary.
 
 let s:save_cpo = &cpoptions
 set cpoptions&vim
@@ -9,26 +9,33 @@ let s:bin_suffix = has('win32') ? '.exe' : ''
 let s:maple_bin_localbuilt = fnamemodify(g:clap#autoload_dir, ':h').'/target/release/maple'.s:bin_suffix
 let s:maple_bin_prebuilt = fnamemodify(g:clap#autoload_dir, ':h').'/bin/maple'.s:bin_suffix
 
-" Check the local built.
-if executable(s:maple_bin_localbuilt)
-  let s:maple_bin = s:maple_bin_localbuilt
-" Check the prebuilt binary.
-elseif executable(s:maple_bin_prebuilt)
-  let s:maple_bin = s:maple_bin_prebuilt
-elseif executable('maple')
-  let s:maple_bin = 'maple'
-else
-  let s:maple_bin = v:null
-endif
+function! s:find_executable() abort
+  " Check the locally built binary.
+  if executable(s:maple_bin_localbuilt)
+    let s:maple_bin = s:maple_bin_localbuilt
+  " Check the prebuilt binary.
+  elseif executable(s:maple_bin_prebuilt)
+    let s:maple_bin = s:maple_bin_prebuilt
+  " Check the binary in PATH.
+  elseif executable('maple')
+    let s:maple_bin = 'maple'
+  " Binary not found
+  else
+    let s:maple_bin = v:null
+  endif
+endfunction
 
-if s:maple_bin isnot v:null
-  function! clap#maple#clean_up() abort
+call s:find_executable()
+
+function! clap#maple#reload() abort
+  call s:find_executable()
+endfunction
+
+function! clap#maple#notify_exit_provider() abort
+  if s:maple_bin isnot v:null
     call clap#client#notify_provider('exit_provider')
-  endfunction
-else
-  function! clap#maple#clean_up() abort
-  endfunction
-endif
+  endif
+endfunction
 
 function! clap#maple#binary() abort
   return s:maple_bin

@@ -134,6 +134,9 @@ function! clap#job#daemon#is_running() abort
 endfunction
 
 function! clap#job#daemon#start() abort
+  if !clap#maple#is_available()
+    return
+  endif
   let s:MessageHandler = function('clap#client#handle')
   call s:start_service_job(clap#maple#build_cmd('rpc'))
 endfunction
