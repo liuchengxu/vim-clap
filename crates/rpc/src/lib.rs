@@ -1,3 +1,4 @@
+pub mod lsp;
 mod types;
 pub mod vim;
 
@@ -30,4 +31,12 @@ pub enum RpcError {
     Request(String),
     #[error("invalid server message: {0}")]
     ServerMessage(String),
+    #[error("stream closed")]
+    StreamClosed,
+    #[error("{0}")]
+    DeserializeFailure(String),
+    #[error("Unhandled message")]
+    Unhandled,
+    #[error(transparent)]
+    JsonRpc(#[from] Error),
 }
