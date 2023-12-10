@@ -70,6 +70,7 @@ impl<'de> Deserialize<'de> for Version {
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct RpcRequest {
+    pub jsonrpc: Option<Version>,
     pub id: Id,
     pub method: String,
     #[serde(default = "default_params", skip_serializing_if = "Params::is_none")]
@@ -79,6 +80,7 @@ pub struct RpcRequest {
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct RpcNotification {
+    pub jsonrpc: Option<Version>,
     pub method: String,
     #[serde(default = "default_params", skip_serializing_if = "Params::is_none")]
     pub params: Params,

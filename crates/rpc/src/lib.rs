@@ -1,3 +1,4 @@
+mod lsp;
 mod types;
 
 use serde::{de::DeserializeOwned, Serialize};
@@ -33,6 +34,8 @@ pub enum RpcError {
     IO(#[from] std::io::Error),
     #[error("request failure: {0}")]
     Request(String),
+    #[error("invalid server message: {0}")]
+    ServerMessage(String),
 }
 
 #[derive(Serialize, Debug)]
@@ -100,6 +103,7 @@ impl RpcClient {
     ) -> Result<R, RpcError> {
         let id = self.next_request_id();
         let rpc_request = RpcRequest {
+            jsonrpc: None,
             id: Id::Num(id),
             method: method.as_ref().to_owned(),
             // call(method, args) where args expects a List in Vim, hence convert the params
@@ -122,6 +126,7 @@ impl RpcClient {
     /// Sends a notification message to Vim.
     pub fn notify(&self, method: impl AsRef<str>, params: impl Serialize) -> Result<(), RpcError> {
         let notification = RpcNotification {
+            jsonrpc: None,
             method: method.as_ref().to_owned(),
             // call(method, args) where args expects a List in Vim, hence convert the params
             // to List unconditionally.
