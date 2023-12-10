@@ -14,7 +14,7 @@ use self::service::ServiceManager;
 use self::vim::{initialize_filetype_map, VimError, VimResult};
 pub use self::vim::{SearchProgressor, Vim};
 use parking_lot::Mutex;
-use rpc::{RpcClient, RpcNotification, RpcRequest, ClientMessage};
+use rpc::{ClientMessage, RpcNotification, RpcRequest};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::io::{BufReader, BufWriter};
@@ -174,7 +174,7 @@ pub async fn start(config_err: ConfigError) {
     // TODO: setup test framework using vim_message_sender.
     let (vim_message_sender, vim_message_receiver) = tokio::sync::mpsc::unbounded_channel();
 
-    let rpc_client = Arc::new(RpcClient::new(
+    let rpc_client = Arc::new(rpc::vim::RpcClient::new(
         BufReader::new(std::io::stdin()),
         BufWriter::new(std::io::stdout()),
         vim_message_sender.clone(),
