@@ -157,7 +157,7 @@ endfunction
 
 function! clap#_exit() abort
   call g:clap.provider.jobstop()
-  call clap#maple#clean_up()
+  call clap#maple#notify_exit_provider()
 
   noautocmd call g:clap.close_win()
   call g:clap.preview.clear()
