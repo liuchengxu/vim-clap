@@ -2,10 +2,29 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
+/// Request ID
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum Id {
+    Null,
+    Num(u64),
+    Str(String),
+}
+
+impl std::fmt::Display for Id {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Id::Null => f.write_str("null"),
+            Id::Num(num) => write!(f, "{}", num),
+            Id::Str(string) => f.write_str(string),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct RpcRequest {
-    pub id: u64,
+    pub id: Id,
     pub method: String,
     pub params: Params,
 }
@@ -31,7 +50,7 @@ impl RpcNotification {
 /// Message sent via `clap#client#notify` or `clap#client#request_async`.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]
-pub enum VimMessage {
+pub enum ClientMessage {
     Request(RpcRequest),
     Notification(RpcNotification),
 }
@@ -47,8 +66,6 @@ pub enum RpcMessage {
     /// Response of a request initiated from Rust.
     Response(RpcResponse),
 }
-
-type Id = u64;
 
 /// Successful response
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
@@ -297,6 +314,10 @@ impl Params {
                 p,
             )),
         }
+    }
+
+    pub fn is_none(&self) -> bool {
+        matches!(self, Self::None)
     }
 }
 

@@ -2,7 +2,7 @@ use crate::stdio_server::provider::ProviderId;
 use once_cell::sync::{Lazy, OnceCell};
 use paths::AbsPathBuf;
 use printer::DisplayLines;
-use rpc::RpcClient;
+use rpc::{Id, RpcClient};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -303,7 +303,7 @@ impl Vim {
     /// Send back the result with specified id.
     pub fn send_response(
         &self,
-        id: u64,
+        id: Id,
         output_result: Result<impl Serialize, rpc::RpcError>,
     ) -> VimResult<()> {
         self.rpc_client

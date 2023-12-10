@@ -14,7 +14,7 @@ use self::service::ServiceManager;
 use self::vim::{initialize_filetype_map, VimError, VimResult};
 pub use self::vim::{SearchProgressor, Vim};
 use parking_lot::Mutex;
-use rpc::{RpcClient, RpcNotification, RpcRequest, VimMessage};
+use rpc::{RpcClient, RpcNotification, RpcRequest, ClientMessage};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::io::{BufReader, BufWriter};
@@ -222,7 +222,7 @@ impl Backend {
     /// Entry of the bridge between Vim and Rust.
     ///
     /// Handle the messages actively initiated from Vim.
-    async fn run(self, mut rx: UnboundedReceiver<VimMessage>) {
+    async fn run(self, mut rx: UnboundedReceiver<ClientMessage>) {
         // If the debounce timer isn't active, it will be set to expire "never",
         // which is actually just 1 year in the future.
         const NEVER: Duration = Duration::from_secs(365 * 24 * 60 * 60);
@@ -239,8 +239,8 @@ impl Backend {
                     match maybe_call {
                         Some(call) => {
                             match call {
-                                VimMessage::Request(rpc_request) => self.process_request(rpc_request),
-                                VimMessage::Notification(notification) => {
+                                ClientMessage::Request(rpc_request) => self.process_request(rpc_request),
+                                ClientMessage::Notification(notification) => {
                                     // Avoid spawn too frequently if user opens and
                                     // closes the provider frequently in a very short time.
                                     if notification.method == "new_provider" {
@@ -369,18 +369,18 @@ impl Backend {
         let client = self.clone();
 
         tokio::spawn(async move {
-            let id = rpc_request.id;
+            let id = rpc_request.id.clone();
 
             match client.do_process_request(rpc_request).await {
                 Ok(Some(result)) => {
                     // Send back the result of method call.
-                    if let Err(err) = client.vim.send_response(id, Ok(result)) {
-                        tracing::debug!(id, ?err, "Failed to send the output result");
+                    if let Err(err) = client.vim.send_response(id.clone(), Ok(result)) {
+                        tracing::debug!(%id, ?err, "Failed to send the output result");
                     }
                 }
                 Ok(None) => {}
                 Err(err) => {
-                    tracing::error!(id, ?err, "Error at processing Vim RpcRequest");
+                    tracing::error!(%id, ?err, "Error at processing Vim RpcRequest");
                 }
             }
         });
