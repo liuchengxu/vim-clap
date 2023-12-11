@@ -360,6 +360,9 @@ function! clap#(bang, ...) abort
 endfunction
 
 function! clap#run(provider) abort
+  if !exists('g:clap')
+    call clap#init#()
+  endif
   let id = has_key(a:provider, 'id') ? a:provider['id'] : 'run'
   let g:clap_provider_{id} = a:provider
   if s:inject_default_impl_is_ok(g:clap_provider_{id})

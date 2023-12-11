@@ -6,12 +6,13 @@ use serde_json::Value;
 
 #[derive(Debug)]
 pub struct LanguageServerMessageHandler {
+    name: String,
     vim: Vim,
 }
 
 impl LanguageServerMessageHandler {
-    pub fn new(vim: Vim) -> Self {
-        Self { vim }
+    pub fn new(name: String, vim: Vim) -> Self {
+        Self { name, vim }
     }
 }
 
@@ -21,11 +22,13 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
         id: rpc::Id,
         request: LanguageServerRequest,
     ) -> Result<Value, rpc::Error> {
-        tracing::debug!("================ handle_request: {request:?}");
+        tracing::debug!(%id, "Processing language server request: {request:?}");
+
         match request {
             LanguageServerRequest::WorkDoneProgressCreate(params) => {}
             _ => {}
         }
+
         Ok(Value::Null)
     }
 
@@ -33,7 +36,8 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
         &mut self,
         notification: LanguageServerNotification,
     ) -> Result<(), maple_lsp::Error> {
-        tracing::debug!("================ handle_notification: {notification:?}");
+        tracing::debug!("Processing language server notification: {notification:?}");
+
         match notification {
             LanguageServerNotification::ProgressMessage(params) => {
                 use lsp::{
@@ -67,8 +71,8 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
                             // }
                             // self.editor.clear_status();
 
-                            let _ = self.vim.set_var("g:clap_lsp_status", "rust-analyzer");
-                            let _ = self.vim.exec("execute", ["redrawstatus"]);
+                            let _ = self.vim.set_var("g:clap_lsp_status", &self.name);
+                            let _ = self.vim.redrawstatus();
 
                             // we want to render to clear any leftover spinners or messages
                             return Ok(());
@@ -107,8 +111,8 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
                 };
 
                 if let WorkDoneProgress::End(_) = work {
-                    let _ = self.vim.set_var("g:clap_lsp_status", "rust-analyzer");
-                    let _ = self.vim.exec("execute", ["redrawstatus"]);
+                    let _ = self.vim.set_var("g:clap_lsp_status", &self.name);
+                    let _ = self.vim.redrawstatus();
                 } else {
                     // Update LSP progress.
                     let _ = self.vim.set_var("g:clap_lsp_status", status);

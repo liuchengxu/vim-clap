@@ -8,11 +8,11 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-type BufferInfo = Vec<u8>;
 type LanguageId = String;
 
 #[derive(serde::Serialize)]
 struct FileLocation {
+    /// Absolute file path.
     path: String,
     /// 1-based.
     row: u32,
@@ -21,7 +21,7 @@ struct FileLocation {
 }
 
 impl FileLocation {
-    fn from_lsp_location(loc: &lsp::Location) -> Self {
+    fn from_lsp_location(loc: lsp::Location) -> Self {
         Self {
             path: loc.uri.path().to_string(),
             row: loc.range.start.line + 1,
@@ -32,8 +32,6 @@ impl FileLocation {
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("{0}")]
-    Other(String),
     #[error("lsp client not found")]
     ClientNotFound,
     #[error("invalid Url: {0}")]
@@ -71,6 +69,24 @@ enum Goto {
     Reference,
 }
 
+impl Goto {
+    fn name(&self) -> &'static str {
+        match self {
+            Self::Definition => "definition",
+            Self::Declaration => "declaration",
+            Self::TypeDefinition => "typeDefinition",
+            Self::Implementation => "implementation",
+            Self::Reference => "reference",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct GotoRequest {
+    bufnr: usize,
+    cursor_pos: (usize, usize),
+}
+
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
 #[clap_plugin(
   id = "lsp",
@@ -86,9 +102,9 @@ enum Goto {
 )]
 pub struct LspPlugin {
     vim: Vim,
-    bufs: HashMap<usize, BufferInfo>,
     clients: HashMap<LanguageId, Arc<Client>>,
     capabilities: HashMap<LanguageId, ServerCapabilities>,
+    goto_request: Option<GotoRequest>,
     toggle: Toggle,
 }
 
@@ -96,9 +112,9 @@ impl LspPlugin {
     pub fn new(vim: Vim) -> Self {
         Self {
             vim,
-            bufs: HashMap::new(),
             clients: HashMap::new(),
             capabilities: HashMap::new(),
+            goto_request: None,
             toggle: Toggle::On,
         }
     }
@@ -124,7 +140,7 @@ impl LspPlugin {
                 server_binary,
                 &args,
                 project_root,
-                LanguageServerMessageHandler::new(self.vim.clone()),
+                LanguageServerMessageHandler::new(server_binary.to_string(), self.vim.clone()),
             )?);
 
             let now = std::time::Instant::now();
@@ -134,7 +150,7 @@ impl LspPlugin {
             client.notify::<lsp::notification::Initialized>(lsp::InitializedParams {})?;
 
             tracing::debug!(
-                "Client initialized, elapsed: {}ms",
+                "LSP Client initialized, elapsed: {}ms",
                 now.elapsed().as_millis()
             );
 
@@ -147,18 +163,28 @@ impl LspPlugin {
         Ok(())
     }
 
-    async fn on_cursor_moved(&self, bufnr: usize) -> VimResult<()> {
+    async fn on_cursor_moved(&mut self, bufnr: usize) -> VimResult<()> {
+        if let Some(request_in_fly) = self.goto_request.take() {
+            let (_bufnr, row, column) = self.vim.get_cursor_pos().await?;
+            if request_in_fly.bufnr == bufnr && request_in_fly.cursor_pos != (row, column) {
+                self.vim
+                    .set_var("g:clap_lsp_status", "cancelling request")?;
+                self.vim.redrawstatus()?;
+                return Ok(());
+            }
+        }
+
         Ok(())
     }
 
-    async fn goto_impl(&self, goto: Goto) -> Result<(), Error> {
+    async fn goto_impl(&mut self, goto: Goto) -> Result<(), Error> {
         let bufnr = self.vim.bufnr("").await?;
 
         let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
         let client = self.clients.get(&filetype).ok_or(Error::ClientNotFound)?;
 
         let path = self.vim.bufabspath(bufnr).await?;
-        let (_bufnr, row, column) = self.vim.get_cursor_pos().await?;
+        let (bufnr, row, column) = self.vim.get_cursor_pos().await?;
         let position = lsp::Position {
             line: row as u32 - 1,
             character: column as u32 - 1,
@@ -168,7 +194,17 @@ impl LspPlugin {
         };
 
         tracing::debug!("starting goto");
+
         let now = std::time::Instant::now();
+
+        self.vim
+            .set_var("g:clap_lsp_status", format!("requesting {}", goto.name()))?;
+        self.vim.redrawstatus()?;
+        self.goto_request.replace(GotoRequest {
+            bufnr,
+            cursor_pos: (row, column),
+        });
+
         let locations = match goto {
             Goto::Definition => {
                 client
@@ -202,32 +238,26 @@ impl LspPlugin {
         tracing::debug!("goto-definition , elapsed: {}ms", now.elapsed().as_millis());
 
         let (_bufnr, new_row, new_column) = self.vim.get_cursor_pos().await?;
-
-        if new_row != row && new_column != column {
-            tracing::debug!("============= Cursor Pos changed! Cancel request");
+        if (new_row, new_column) != (row, column) {
+            self.vim
+                .set_var("g:clap_lsp_status", "cancelling request")?;
+            self.vim.redrawstatus()?;
+            return Ok(());
         }
 
-        match locations.len() {
-            0 => {
-                self.vim.echo_message("Definition not found")?;
-            }
-            1 => {
-                self.vim.exec(
-                    "clap#plugin#lsp#jump_to",
-                    [FileLocation::from_lsp_location(&locations[0])],
-                )?;
-            }
-            _ => {
-                let file_locations = locations
-                    .iter()
-                    .map(FileLocation::from_lsp_location)
-                    .collect::<Vec<_>>();
-                self.vim.exec(
-                    "clap#plugin#lsp#open_picker",
-                    ("definitions", file_locations),
-                )?;
-            }
+        if locations.is_empty() {
+            self.vim
+                .echo_message(format!("{} not found", goto.name()))?;
+            return Ok(());
         }
+
+        let locations = locations
+            .into_iter()
+            .map(FileLocation::from_lsp_location)
+            .collect::<Vec<_>>();
+
+        self.vim
+            .exec("clap#plugin#lsp#handle_locations", (goto.name(), locations))?;
 
         Ok(())
     }

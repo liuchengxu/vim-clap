@@ -334,9 +334,7 @@ fn process_server_messages<T: BufRead>(
     let mut pending_response_senders = HashMap::new();
 
     loop {
-        tracing::debug!("=========== [process_server_messages]");
         let line = recv_message_from_server(&mut reader)?;
-        tracing::debug!("=========== [process_server_messages] recv line: {line}");
 
         if line.is_empty() {
             continue;
@@ -734,7 +732,7 @@ impl Client {
             },
             trace: None,
             client_info: Some(lsp::ClientInfo {
-                name: String::from("xlc"),
+                name: String::from("vim-clap"),
                 version: Some(String::from("v0.0.1")),
             }),
             locale: None, // TODO

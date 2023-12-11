@@ -394,6 +394,10 @@ impl Vim {
         self.call("matchdelete", (id, win)).await
     }
 
+    pub fn redrawstatus(&self) -> VimResult<()> {
+        self.exec("execute", ["redrawstatus"])
+    }
+
     pub fn setbufvar(&self, bufnr: usize, varname: &str, val: impl Serialize) -> VimResult<()> {
         self.exec("setbufvar", (bufnr, varname, val))
     }
