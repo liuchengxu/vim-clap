@@ -1,12 +1,13 @@
 [package]
-name = "rpc"
+name = "lsp"
 version = "0.1.0"
-authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
 edition = "2021"
 
 [dependencies]
+lsp-types = "0.94"
+rpc = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true, features = ["rt", "sync"] }
+tokio = { workspace = true, features = ["rt", "process", "macros", "sync", "time"] }
 tracing = { workspace = true }

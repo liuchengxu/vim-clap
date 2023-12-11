@@ -1,6 +1,5 @@
 use crate::stdio_server::Vim;
-use rpc::lsp::lsp_types;
-use rpc::lsp::{HandleLanguageServerMessage, LanguageServerNotification, LanguageServerRequest};
+use lsp::{HandleLanguageServerMessage, LanguageServerNotification, LanguageServerRequest};
 use serde_json::Value;
 
 #[derive(Debug)]
@@ -31,11 +30,11 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
     fn handle_notification(
         &mut self,
         notification: LanguageServerNotification,
-    ) -> Result<(), rpc::lsp::Error> {
+    ) -> Result<(), lsp::Error> {
         tracing::debug!("================ handle_notification: {notification:?}");
         match notification {
             LanguageServerNotification::ProgressMessage(params) => {
-                use lsp_types::{
+                use lsp::types::{
                     NumberOrString, ProgressParams, ProgressParamsValue, WorkDoneProgress,
                     WorkDoneProgressBegin, WorkDoneProgressEnd, WorkDoneProgressReport,
                 };

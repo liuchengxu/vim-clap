@@ -2,12 +2,11 @@ use crate::lsp::LanguageServerMessageHandler;
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::vim::{Vim, VimResult};
-use rpc::lsp::Client;
+use lsp::types::ServerCapabilities;
+use lsp::Client;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-
-use rpc::lsp::lsp_types::ServerCapabilities;
 
 type BufferInfo = Vec<u8>;
 type LanguageId = String;
@@ -75,8 +74,8 @@ impl LspPlugin {
             let enable_snippets = false;
             let initialize_result = client.initialize(enable_snippets).await?;
 
-            client.notify::<rpc::lsp::lsp_types::notification::Initialized>(
-                rpc::lsp::lsp_types::InitializedParams {},
+            client.notify::<lsp::types::notification::Initialized>(
+                lsp::types::InitializedParams {},
             )?;
 
             self.clients.insert(language_id.clone(), client.clone());

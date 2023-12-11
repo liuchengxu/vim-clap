@@ -1,8 +1,8 @@
-use crate::jsonrpc::{
-    Failure, Id, Params, RpcMessage, RpcNotification, RpcRequest, RpcResponse, Success, Version,
+use lsp_types::Url;
+use rpc::{
+    Failure, Id, Params, RpcError, RpcMessage, RpcNotification, RpcRequest, RpcResponse, Success,
+    Version,
 };
-use crate::RpcError;
-use lsp::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -14,7 +14,7 @@ use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::sync::oneshot;
 
-pub use lsp as lsp_types;
+pub use lsp_types as types;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -37,7 +37,7 @@ pub enum Error {
     #[error("Unhandled message")]
     Unhandled,
     #[error(transparent)]
-    JsonRpc(#[from] crate::Error),
+    JsonRpc(#[from] rpc::Error),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -84,41 +84,42 @@ enum ServerMessage {
 /// Requests from language server.
 #[derive(Debug, PartialEq, Clone)]
 pub enum LanguageServerRequest {
-    WorkDoneProgressCreate(lsp::WorkDoneProgressCreateParams),
-    ApplyWorkspaceEdit(lsp::ApplyWorkspaceEditParams),
+    WorkDoneProgressCreate(lsp_types::WorkDoneProgressCreateParams),
+    ApplyWorkspaceEdit(lsp_types::ApplyWorkspaceEditParams),
     WorkspaceFolders,
-    WorkspaceConfiguration(lsp::ConfigurationParams),
-    RegisterCapability(lsp::RegistrationParams),
-    UnregisterCapability(lsp::UnregistrationParams),
+    WorkspaceConfiguration(lsp_types::ConfigurationParams),
+    RegisterCapability(lsp_types::RegistrationParams),
+    UnregisterCapability(lsp_types::UnregistrationParams),
 }
 
 impl LanguageServerRequest {
-    pub fn parse(method: &str, params: Params) -> Result<LanguageServerRequest, RpcError> {
-        use lsp::request::Request;
+    pub fn parse(method: &str, params: Params) -> Result<LanguageServerRequest, Error> {
+        use lsp_types::request::Request;
+
         let request = match method {
-            lsp::request::WorkDoneProgressCreate::METHOD => {
-                let params: lsp::WorkDoneProgressCreateParams = params.parse()?;
+            lsp_types::request::WorkDoneProgressCreate::METHOD => {
+                let params: lsp_types::WorkDoneProgressCreateParams = params.parse()?;
                 Self::WorkDoneProgressCreate(params)
             }
-            lsp::request::ApplyWorkspaceEdit::METHOD => {
-                let params: lsp::ApplyWorkspaceEditParams = params.parse()?;
+            lsp_types::request::ApplyWorkspaceEdit::METHOD => {
+                let params: lsp_types::ApplyWorkspaceEditParams = params.parse()?;
                 Self::ApplyWorkspaceEdit(params)
             }
-            lsp::request::WorkspaceFoldersRequest::METHOD => Self::WorkspaceFolders,
-            lsp::request::WorkspaceConfiguration::METHOD => {
-                let params: lsp::ConfigurationParams = params.parse()?;
+            lsp_types::request::WorkspaceFoldersRequest::METHOD => Self::WorkspaceFolders,
+            lsp_types::request::WorkspaceConfiguration::METHOD => {
+                let params: lsp_types::ConfigurationParams = params.parse()?;
                 Self::WorkspaceConfiguration(params)
             }
-            lsp::request::RegisterCapability::METHOD => {
-                let params: lsp::RegistrationParams = params.parse()?;
+            lsp_types::request::RegisterCapability::METHOD => {
+                let params: lsp_types::RegistrationParams = params.parse()?;
                 Self::RegisterCapability(params)
             }
-            lsp::request::UnregisterCapability::METHOD => {
-                let params: lsp::UnregistrationParams = params.parse()?;
+            lsp_types::request::UnregisterCapability::METHOD => {
+                let params: lsp_types::UnregistrationParams = params.parse()?;
                 Self::UnregisterCapability(params)
             }
             _ => {
-                return Err(RpcError::Unhandled);
+                return Err(Error::Unhandled);
             }
         };
         Ok(request)
@@ -132,39 +133,39 @@ pub enum LanguageServerNotification {
     Initialized,
     // and this notification to signal that the LSP exited
     Exit,
-    PublishDiagnostics(lsp::PublishDiagnosticsParams),
-    ShowMessage(lsp::ShowMessageParams),
-    LogMessage(lsp::LogMessageParams),
-    ProgressMessage(lsp::ProgressParams),
+    PublishDiagnostics(lsp_types::PublishDiagnosticsParams),
+    ShowMessage(lsp_types::ShowMessageParams),
+    LogMessage(lsp_types::LogMessageParams),
+    ProgressMessage(lsp_types::ProgressParams),
 }
 
 impl LanguageServerNotification {
-    pub fn parse(method: &str, params: Params) -> Result<LanguageServerNotification, RpcError> {
-        use lsp::notification::Notification as _;
+    pub fn parse(method: &str, params: Params) -> Result<LanguageServerNotification, Error> {
+        use lsp_types::notification::Notification as _;
 
         let notification = match method {
-            lsp::notification::Initialized::METHOD => Self::Initialized,
-            lsp::notification::Exit::METHOD => Self::Exit,
-            lsp::notification::PublishDiagnostics::METHOD => {
-                let params: lsp::PublishDiagnosticsParams = params.parse()?;
+            lsp_types::notification::Initialized::METHOD => Self::Initialized,
+            lsp_types::notification::Exit::METHOD => Self::Exit,
+            lsp_types::notification::PublishDiagnostics::METHOD => {
+                let params: lsp_types::PublishDiagnosticsParams = params.parse()?;
                 Self::PublishDiagnostics(params)
             }
 
-            lsp::notification::ShowMessage::METHOD => {
-                let params: lsp::ShowMessageParams = params.parse()?;
+            lsp_types::notification::ShowMessage::METHOD => {
+                let params: lsp_types::ShowMessageParams = params.parse()?;
                 Self::ShowMessage(params)
             }
-            lsp::notification::LogMessage::METHOD => {
-                let params: lsp::LogMessageParams = params.parse()?;
+            lsp_types::notification::LogMessage::METHOD => {
+                let params: lsp_types::LogMessageParams = params.parse()?;
                 Self::LogMessage(params)
             }
-            lsp::notification::Progress::METHOD => {
-                let params: lsp::ProgressParams = params.parse()?;
+            lsp_types::notification::Progress::METHOD => {
+                let params: lsp_types::ProgressParams = params.parse()?;
                 Self::ProgressMessage(params)
             }
             _ => {
                 // Unhandled notification
-                return Err(RpcError::Unhandled);
+                return Err(Error::Unhandled);
             }
         };
 
@@ -183,7 +184,7 @@ pub trait HandleLanguageServerMessage {
         &mut self,
         id: Id,
         request: LanguageServerRequest,
-    ) -> Result<Value, crate::Error>;
+    ) -> Result<Value, rpc::Error>;
 
     fn handle_notification(
         &mut self,
@@ -196,7 +197,7 @@ impl HandleLanguageServerMessage for () {
         &mut self,
         _id: Id,
         _request: LanguageServerRequest,
-    ) -> Result<Value, crate::Error> {
+    ) -> Result<Value, rpc::Error> {
         Ok(Value::Null)
     }
 
@@ -214,7 +215,7 @@ async fn handle_language_server_message<T: HandleLanguageServerMessage>(
     mut language_server_message_handler: T,
 ) {
     // Reply a response to a language server RPC call.
-    let reply_to_server = |id, result: Result<Value, crate::Error>| {
+    let reply_to_server = |id, result: Result<Value, rpc::Error>| {
         let output = match result {
             Ok(value) => RpcResponse::Success(Success {
                 jsonrpc: Some(Version::V2),
@@ -364,8 +365,8 @@ fn process_server_messages<T: BufRead>(
                                 request.method
                             );
 
-                            return Err(crate::Error {
-                                code: crate::ErrorCode::ParseError,
+                            return Err(rpc::Error {
+                                code: rpc::ErrorCode::ParseError,
                                 message: format!("Malformed server request: {}", request.method),
                                 data: None,
                             }
@@ -531,7 +532,7 @@ impl Client {
         Ok(client)
     }
 
-    pub async fn request<T: lsp::request::Request>(
+    pub async fn request<T: lsp_types::request::Request>(
         &self,
         params: T::Params,
     ) -> Result<T::Result, RpcError> {
@@ -560,7 +561,7 @@ impl Client {
     }
 
     /// Send a RPC notification to the language server.
-    pub fn notify<R: lsp::notification::Notification>(
+    pub fn notify<R: lsp_types::notification::Notification>(
         &self,
         params: R::Params,
     ) -> Result<(), RpcError>
@@ -584,9 +585,9 @@ impl Client {
     pub async fn initialize(
         &self,
         enable_snippets: bool,
-    ) -> Result<lsp::InitializeResult, RpcError> {
+    ) -> Result<lsp_types::InitializeResult, RpcError> {
         #[allow(deprecated)]
-        let params = lsp::InitializeParams {
+        let params = lsp_types::InitializeParams {
             process_id: Some(std::process::id()),
             workspace_folders: None,
             // root_path is obsolete, but some clients like pyright still use it so we specify both.
@@ -594,104 +595,110 @@ impl Client {
             root_path: self.root_path.to_str().map(|s| s.to_string()),
             root_uri: Url::from_file_path(&self.root_path).ok(),
             initialization_options: None,
-            capabilities: lsp::ClientCapabilities {
-                workspace: Some(lsp::WorkspaceClientCapabilities {
+            capabilities: lsp_types::ClientCapabilities {
+                workspace: Some(lsp_types::WorkspaceClientCapabilities {
                     configuration: Some(true),
-                    did_change_configuration: Some(lsp::DynamicRegistrationClientCapabilities {
-                        dynamic_registration: Some(false),
-                    }),
+                    did_change_configuration: Some(
+                        lsp_types::DynamicRegistrationClientCapabilities {
+                            dynamic_registration: Some(false),
+                        },
+                    ),
                     workspace_folders: Some(true),
                     apply_edit: Some(true),
-                    symbol: Some(lsp::WorkspaceSymbolClientCapabilities {
+                    symbol: Some(lsp_types::WorkspaceSymbolClientCapabilities {
                         dynamic_registration: Some(false),
                         ..Default::default()
                     }),
-                    execute_command: Some(lsp::DynamicRegistrationClientCapabilities {
+                    execute_command: Some(lsp_types::DynamicRegistrationClientCapabilities {
                         dynamic_registration: Some(false),
                     }),
-                    inlay_hint: Some(lsp::InlayHintWorkspaceClientCapabilities {
+                    inlay_hint: Some(lsp_types::InlayHintWorkspaceClientCapabilities {
                         refresh_support: Some(false),
                     }),
-                    workspace_edit: Some(lsp::WorkspaceEditClientCapabilities {
+                    workspace_edit: Some(lsp_types::WorkspaceEditClientCapabilities {
                         document_changes: Some(true),
                         resource_operations: Some(vec![
-                            lsp::ResourceOperationKind::Create,
-                            lsp::ResourceOperationKind::Rename,
-                            lsp::ResourceOperationKind::Delete,
+                            lsp_types::ResourceOperationKind::Create,
+                            lsp_types::ResourceOperationKind::Rename,
+                            lsp_types::ResourceOperationKind::Delete,
                         ]),
-                        failure_handling: Some(lsp::FailureHandlingKind::Abort),
+                        failure_handling: Some(lsp_types::FailureHandlingKind::Abort),
                         normalizes_line_endings: Some(false),
                         change_annotation_support: None,
                     }),
-                    did_change_watched_files: Some(lsp::DidChangeWatchedFilesClientCapabilities {
-                        dynamic_registration: Some(true),
-                        relative_pattern_support: Some(false),
-                    }),
-                    file_operations: Some(lsp::WorkspaceFileOperationsClientCapabilities {
+                    did_change_watched_files: Some(
+                        lsp_types::DidChangeWatchedFilesClientCapabilities {
+                            dynamic_registration: Some(true),
+                            relative_pattern_support: Some(false),
+                        },
+                    ),
+                    file_operations: Some(lsp_types::WorkspaceFileOperationsClientCapabilities {
                         will_rename: Some(true),
                         did_rename: Some(true),
                         ..Default::default()
                     }),
                     ..Default::default()
                 }),
-                text_document: Some(lsp::TextDocumentClientCapabilities {
-                    completion: Some(lsp::CompletionClientCapabilities {
-                        completion_item: Some(lsp::CompletionItemCapability {
+                text_document: Some(lsp_types::TextDocumentClientCapabilities {
+                    completion: Some(lsp_types::CompletionClientCapabilities {
+                        completion_item: Some(lsp_types::CompletionItemCapability {
                             snippet_support: Some(enable_snippets),
-                            resolve_support: Some(lsp::CompletionItemCapabilityResolveSupport {
-                                properties: vec![
-                                    String::from("documentation"),
-                                    String::from("detail"),
-                                    String::from("additionalTextEdits"),
-                                ],
-                            }),
+                            resolve_support: Some(
+                                lsp_types::CompletionItemCapabilityResolveSupport {
+                                    properties: vec![
+                                        String::from("documentation"),
+                                        String::from("detail"),
+                                        String::from("additionalTextEdits"),
+                                    ],
+                                },
+                            ),
                             insert_replace_support: Some(true),
                             deprecated_support: Some(true),
-                            tag_support: Some(lsp::TagSupport {
-                                value_set: vec![lsp::CompletionItemTag::DEPRECATED],
+                            tag_support: Some(lsp_types::TagSupport {
+                                value_set: vec![lsp_types::CompletionItemTag::DEPRECATED],
                             }),
                             ..Default::default()
                         }),
-                        completion_item_kind: Some(lsp::CompletionItemKindCapability {
+                        completion_item_kind: Some(lsp_types::CompletionItemKindCapability {
                             ..Default::default()
                         }),
                         context_support: None, // additional context information Some(true)
                         ..Default::default()
                     }),
-                    hover: Some(lsp::HoverClientCapabilities {
+                    hover: Some(lsp_types::HoverClientCapabilities {
                         // if not specified, rust-analyzer returns plaintext marked as markdown but
                         // badly formatted.
-                        content_format: Some(vec![lsp::MarkupKind::Markdown]),
+                        content_format: Some(vec![lsp_types::MarkupKind::Markdown]),
                         ..Default::default()
                     }),
-                    signature_help: Some(lsp::SignatureHelpClientCapabilities {
-                        signature_information: Some(lsp::SignatureInformationSettings {
-                            documentation_format: Some(vec![lsp::MarkupKind::Markdown]),
-                            parameter_information: Some(lsp::ParameterInformationSettings {
+                    signature_help: Some(lsp_types::SignatureHelpClientCapabilities {
+                        signature_information: Some(lsp_types::SignatureInformationSettings {
+                            documentation_format: Some(vec![lsp_types::MarkupKind::Markdown]),
+                            parameter_information: Some(lsp_types::ParameterInformationSettings {
                                 label_offset_support: Some(true),
                             }),
                             active_parameter_support: Some(true),
                         }),
                         ..Default::default()
                     }),
-                    rename: Some(lsp::RenameClientCapabilities {
+                    rename: Some(lsp_types::RenameClientCapabilities {
                         dynamic_registration: Some(false),
                         prepare_support: Some(true),
                         prepare_support_default_behavior: None,
                         honors_change_annotations: Some(false),
                     }),
-                    code_action: Some(lsp::CodeActionClientCapabilities {
-                        code_action_literal_support: Some(lsp::CodeActionLiteralSupport {
-                            code_action_kind: lsp::CodeActionKindLiteralSupport {
+                    code_action: Some(lsp_types::CodeActionClientCapabilities {
+                        code_action_literal_support: Some(lsp_types::CodeActionLiteralSupport {
+                            code_action_kind: lsp_types::CodeActionKindLiteralSupport {
                                 value_set: [
-                                    lsp::CodeActionKind::EMPTY,
-                                    lsp::CodeActionKind::QUICKFIX,
-                                    lsp::CodeActionKind::REFACTOR,
-                                    lsp::CodeActionKind::REFACTOR_EXTRACT,
-                                    lsp::CodeActionKind::REFACTOR_INLINE,
-                                    lsp::CodeActionKind::REFACTOR_REWRITE,
-                                    lsp::CodeActionKind::SOURCE,
-                                    lsp::CodeActionKind::SOURCE_ORGANIZE_IMPORTS,
+                                    lsp_types::CodeActionKind::EMPTY,
+                                    lsp_types::CodeActionKind::QUICKFIX,
+                                    lsp_types::CodeActionKind::REFACTOR,
+                                    lsp_types::CodeActionKind::REFACTOR_EXTRACT,
+                                    lsp_types::CodeActionKind::REFACTOR_INLINE,
+                                    lsp_types::CodeActionKind::REFACTOR_REWRITE,
+                                    lsp_types::CodeActionKind::SOURCE,
+                                    lsp_types::CodeActionKind::SOURCE_ORGANIZE_IMPORTS,
                                 ]
                                 .iter()
                                 .map(|kind| kind.as_str().to_string())
@@ -701,44 +708,44 @@ impl Client {
                         is_preferred_support: Some(true),
                         disabled_support: Some(true),
                         data_support: Some(true),
-                        resolve_support: Some(lsp::CodeActionCapabilityResolveSupport {
+                        resolve_support: Some(lsp_types::CodeActionCapabilityResolveSupport {
                             properties: vec!["edit".to_owned(), "command".to_owned()],
                         }),
                         ..Default::default()
                     }),
-                    publish_diagnostics: Some(lsp::PublishDiagnosticsClientCapabilities {
+                    publish_diagnostics: Some(lsp_types::PublishDiagnosticsClientCapabilities {
                         version_support: Some(true),
                         ..Default::default()
                     }),
-                    inlay_hint: Some(lsp::InlayHintClientCapabilities {
+                    inlay_hint: Some(lsp_types::InlayHintClientCapabilities {
                         dynamic_registration: Some(false),
                         resolve_support: None,
                     }),
                     ..Default::default()
                 }),
-                window: Some(lsp::WindowClientCapabilities {
+                window: Some(lsp_types::WindowClientCapabilities {
                     work_done_progress: Some(true),
                     ..Default::default()
                 }),
-                general: Some(lsp::GeneralClientCapabilities {
+                general: Some(lsp_types::GeneralClientCapabilities {
                     position_encodings: Some(vec![
-                        lsp::PositionEncodingKind::UTF8,
-                        lsp::PositionEncodingKind::UTF32,
-                        lsp::PositionEncodingKind::UTF16,
+                        lsp_types::PositionEncodingKind::UTF8,
+                        lsp_types::PositionEncodingKind::UTF32,
+                        lsp_types::PositionEncodingKind::UTF16,
                     ]),
                     ..Default::default()
                 }),
                 ..Default::default()
             },
             trace: None,
-            client_info: Some(lsp::ClientInfo {
+            client_info: Some(lsp_types::ClientInfo {
                 name: String::from("xlc"),
                 version: Some(String::from("v0.0.1")),
             }),
             locale: None, // TODO
         };
 
-        self.request::<lsp::request::Initialize>(params).await
+        self.request::<lsp_types::request::Initialize>(params).await
     }
 }
 
@@ -764,7 +771,7 @@ mod tests {
         let res = client.initialize(false).await.unwrap();
 
         client
-            .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
+            .notify::<lsp_types::notification::Initialized>(lsp_types::InitializedParams {})
             .unwrap();
 
         println!("========== res: {res:?}");

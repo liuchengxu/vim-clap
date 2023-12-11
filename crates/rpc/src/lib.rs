@@ -1,5 +1,4 @@
 mod jsonrpc;
-pub mod lsp;
 pub mod vim;
 
 use thiserror::Error;
@@ -8,7 +7,7 @@ use tokio::sync::oneshot;
 
 pub use self::jsonrpc::{
     Error, ErrorCode, Failure, Id, Params, RpcMessage, RpcNotification, RpcRequest, RpcResponse,
-    Success,
+    Success, Version,
 };
 
 #[derive(Debug, Error)]
@@ -35,8 +34,6 @@ pub enum RpcError {
     StreamClosed,
     #[error("{0}")]
     DeserializeFailure(String),
-    #[error("Unhandled message")]
-    Unhandled,
     #[error(transparent)]
     JsonRpc(#[from] Error),
 }

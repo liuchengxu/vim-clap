@@ -1210,6 +1210,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
 
 [[package]]
+name = "lsp"
+version = "0.1.0"
+dependencies = [
+ "lsp-types",
+ "rpc",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "lsp-types"
 version = "0.94.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1265,6 +1278,7 @@ dependencies = [
  "ide",
  "ignore",
  "itertools",
+ "lsp",
  "maple_derive",
  "matcher",
  "once_cell",
@@ -1804,7 +1818,6 @@ dependencies = [
 name = "rpc"
 version = "0.1.0"
 dependencies = [
- "lsp-types",
  "serde",
  "serde_json",
  "thiserror",
