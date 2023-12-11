@@ -1,5 +1,5 @@
-use crate::lsp::LanguageServerMessageHandler;
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
+use crate::stdio_server::lsp_handler::LanguageServerMessageHandler;
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::vim::{Vim, VimResult};
 use lsp::types::ServerCapabilities;

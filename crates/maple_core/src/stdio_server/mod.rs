@@ -1,5 +1,6 @@
 mod input;
 mod job;
+mod lsp_handler;
 mod plugin;
 mod provider;
 mod request_handler;
