@@ -99,16 +99,6 @@ fn default_params() -> Params {
     Params::None
 }
 
-/// RPC message originated from Vim.
-///
-/// Message sent via `clap#client#notify` or `clap#client#request_async`.
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(untagged)]
-pub enum ClientMessage {
-    Request(RpcRequest),
-    Notification(RpcNotification),
-}
-
 /// Message type through the stdio channel.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]

@@ -1,3 +1,7 @@
+use crate::jsonrpc::{
+    Failure, Id, Params, RpcMessage, RpcNotification, RpcRequest, RpcResponse, Success, Version,
+};
+use crate::RpcError;
 use lsp::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -9,11 +13,6 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::sync::oneshot;
-
-use crate::types::{
-    Failure, Id, Params, RpcMessage, RpcNotification, RpcRequest, RpcResponse, Success, Version,
-};
-use crate::RpcError;
 
 pub use lsp as lsp_types;
 
@@ -195,15 +194,15 @@ pub trait HandleLanguageServerMessage {
 impl HandleLanguageServerMessage for () {
     fn handle_request(
         &mut self,
-        id: Id,
-        request: LanguageServerRequest,
+        _id: Id,
+        _request: LanguageServerRequest,
     ) -> Result<Value, crate::Error> {
         Ok(Value::Null)
     }
 
     fn handle_notification(
         &mut self,
-        notification: LanguageServerNotification,
+        _notification: LanguageServerNotification,
     ) -> Result<(), Error> {
         Ok(())
     }

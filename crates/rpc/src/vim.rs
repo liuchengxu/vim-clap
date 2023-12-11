@@ -1,14 +1,24 @@
 use crate::{
-    ClientMessage, Error, ErrorCode, Failure, Id, Params, RpcError, RpcMessage, RpcNotification,
-    RpcRequest, RpcResponse, Success,
+    Error, ErrorCode, Failure, Id, Params, RpcError, RpcMessage, RpcNotification, RpcRequest,
+    RpcResponse, Success,
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::io::{BufRead, Write};
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::sync::oneshot;
+
+/// RPC message originated from Vim.
+///
+/// Message sent via `clap#client#notify` or `clap#client#request_async`.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum VimMessage {
+    Request(RpcRequest),
+    Notification(RpcNotification),
+}
 
 /// RPC Client talking to Vim.
 #[derive(Serialize, Debug)]
@@ -34,7 +44,7 @@ impl RpcClient {
     pub fn new(
         reader: impl BufRead + Send + 'static,
         writer: impl Write + Send + 'static,
-        sink: UnboundedSender<ClientMessage>,
+        sink: UnboundedSender<VimMessage>,
     ) -> Self {
         // Channel for passing through the response from Vim to Rust.
         let (response_sender_tx, response_sender_rx): (
@@ -146,7 +156,7 @@ impl RpcClient {
 fn loop_read(
     mut reader: impl BufRead,
     mut response_sender_rx: UnboundedReceiver<(Id, oneshot::Sender<RpcResponse>)>,
-    sink: &UnboundedSender<ClientMessage>,
+    sink: &UnboundedSender<VimMessage>,
 ) -> Result<(), RpcError> {
     let mut pending_response_senders = HashMap::new();
 
@@ -158,10 +168,10 @@ fn loop_read(
                     match serde_json::from_str::<RpcMessage>(line.trim()) {
                         Ok(rpc_message) => match rpc_message {
                             RpcMessage::Request(rpc_request) => {
-                                sink.send(ClientMessage::Request(rpc_request))?;
+                                sink.send(VimMessage::Request(rpc_request))?;
                             }
                             RpcMessage::Notification(notification) => {
-                                sink.send(ClientMessage::Notification(notification))?;
+                                sink.send(VimMessage::Notification(notification))?;
                             }
                             RpcMessage::Response(response) => {
                                 while let Ok((id, response_sender)) = response_sender_rx.try_recv()

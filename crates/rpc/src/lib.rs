@@ -1,14 +1,14 @@
+mod jsonrpc;
 pub mod lsp;
-mod types;
 pub mod vim;
 
 use thiserror::Error;
 use tokio::sync::mpsc::error::SendError;
 use tokio::sync::oneshot;
 
-pub use self::types::{
-    ClientMessage, Error, ErrorCode, Failure, Id, Params, RpcMessage, RpcNotification, RpcRequest,
-    RpcResponse, Success,
+pub use self::jsonrpc::{
+    Error, ErrorCode, Failure, Id, Params, RpcMessage, RpcNotification, RpcRequest, RpcResponse,
+    Success,
 };
 
 #[derive(Debug, Error)]
@@ -16,7 +16,7 @@ pub enum RpcError {
     #[error("failed to send raw message: {0}")]
     SendRawMessage(#[from] SendError<RpcMessage>),
     #[error("failed to send call: {0}")]
-    SendCall(#[from] SendError<ClientMessage>),
+    SendCall(#[from] SendError<vim::VimMessage>),
     #[error("failed to send request: {0}")]
     SendRequest(#[from] SendError<(Id, oneshot::Sender<RpcResponse>)>),
     #[error("failed to send response: {0:?}")]

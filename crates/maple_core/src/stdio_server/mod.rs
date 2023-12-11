@@ -14,7 +14,7 @@ use self::service::ServiceManager;
 use self::vim::{initialize_filetype_map, VimError, VimResult};
 pub use self::vim::{SearchProgressor, Vim};
 use parking_lot::Mutex;
-use rpc::{ClientMessage, RpcNotification, RpcRequest};
+use rpc::{vim::VimMessage, RpcNotification, RpcRequest};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::io::{BufReader, BufWriter};
@@ -224,7 +224,7 @@ impl Backend {
     /// Entry of the bridge between Vim and Rust.
     ///
     /// Handle the messages actively initiated from Vim.
-    async fn run(self, mut rx: UnboundedReceiver<ClientMessage>) {
+    async fn run(self, mut rx: UnboundedReceiver<VimMessage>) {
         // If the debounce timer isn't active, it will be set to expire "never",
         // which is actually just 1 year in the future.
         const NEVER: Duration = Duration::from_secs(365 * 24 * 60 * 60);
@@ -241,8 +241,8 @@ impl Backend {
                     match maybe_call {
                         Some(call) => {
                             match call {
-                                ClientMessage::Request(rpc_request) => self.process_request(rpc_request),
-                                ClientMessage::Notification(notification) => {
+                                VimMessage::Request(rpc_request) => self.process_request(rpc_request),
+                                VimMessage::Notification(notification) => {
                                     // Avoid spawn too frequently if user opens and
                                     // closes the provider frequently in a very short time.
                                     if notification.method == "new_provider" {
