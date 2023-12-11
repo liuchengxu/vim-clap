@@ -8,9 +8,9 @@ mod markdown;
 pub mod syntax;
 mod system;
 
+use self::lsp::Error as LspError;
 use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::vim::VimError;
-use self::lsp::Error as LspError;
 use std::fmt::Debug;
 
 pub use self::colorizer::ColorizerPlugin;

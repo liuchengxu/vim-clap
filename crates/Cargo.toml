@@ -8,9 +8,9 @@ members = [
     "icon",
     "cli",
     "ide",
-    "lsp",
     "maple_core",
     "maple_derive",
+    "maple_lsp",
     "matcher",
     "matcher/extracted_fzy",
     "paths",
@@ -75,9 +75,9 @@ dumb_analyzer = { path = "./dumb_analyzer" }
 filter = { path = "./filter" }
 icon = { path = "./icon" }
 ide = { path = "./ide" }
-lsp = { path = "./lsp" }
 maple_core = { path = "./maple_core" }
 maple_derive = { path = "./maple_derive" }
+maple_lsp = { path = "./maple_lsp" }
 matcher = { path = "./matcher" }
 paths = { path = "./paths" }
 pattern = { path = "./pattern" }

@@ -2,14 +2,33 @@ use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::lsp_handler::LanguageServerMessageHandler;
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::vim::{Vim, VimError, VimResult};
-use lsp::types::{ServerCapabilities, Url};
-use lsp::Client;
+use lsp::{ServerCapabilities, Url};
+use maple_lsp::{lsp, Client};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 type BufferInfo = Vec<u8>;
 type LanguageId = String;
+
+#[derive(serde::Serialize)]
+struct FileLocation {
+    path: String,
+    /// 1-based.
+    row: u32,
+    /// 1-based
+    column: u32,
+}
+
+impl FileLocation {
+    fn from_lsp_location(loc: &lsp::Location) -> Self {
+        Self {
+            path: loc.uri.path().to_string(),
+            row: loc.range.start.line + 1,
+            column: loc.range.start.character + 1,
+        }
+    }
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -22,7 +41,7 @@ pub enum Error {
     #[error(transparent)]
     Vim(#[from] VimError),
     #[error(transparent)]
-    Lsp(#[from] lsp::Error),
+    Lsp(#[from] maple_lsp::Error),
     #[error(transparent)]
     JsonRpc(#[from] rpc::Error),
     #[error(transparent)]
@@ -44,12 +63,24 @@ fn find_project_root<'a>(filetype: &str, path: &'a Path) -> Option<&'a Path> {
     paths::find_project_root(path, root_markers)
 }
 
+enum Goto {
+    Definition,
+    Declaration,
+    TypeDefinition,
+    Implementation,
+    Reference,
+}
+
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
 #[clap_plugin(
   id = "lsp",
   actions = [
     "debug",
     "goto-definition",
+    "goto-declaration",
+    "goto-type-definition",
+    "goto-implementation",
+    "goto-reference",
     "toggle",
   ]
 )]
@@ -96,12 +127,16 @@ impl LspPlugin {
                 LanguageServerMessageHandler::new(self.vim.clone()),
             )?);
 
+            let now = std::time::Instant::now();
             let enable_snippets = false;
             let initialize_result = client.initialize(enable_snippets).await?;
 
-            client.notify::<lsp::types::notification::Initialized>(
-                lsp::types::InitializedParams {},
-            )?;
+            client.notify::<lsp::notification::Initialized>(lsp::InitializedParams {})?;
+
+            tracing::debug!(
+                "Client initialized, elapsed: {}ms",
+                now.elapsed().as_millis()
+            );
 
             self.clients.insert(language_id.clone(), client.clone());
 
@@ -116,7 +151,7 @@ impl LspPlugin {
         Ok(())
     }
 
-    async fn goto_definition(&self) -> Result<(), Error> {
+    async fn goto_impl(&self, goto: Goto) -> Result<(), Error> {
         let bufnr = self.vim.bufnr("").await?;
 
         let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
@@ -124,32 +159,73 @@ impl LspPlugin {
 
         let path = self.vim.bufabspath(bufnr).await?;
         let (_bufnr, row, column) = self.vim.get_cursor_pos().await?;
-        let position = lsp::types::Position {
+        let position = lsp::Position {
             line: row as u32 - 1,
             character: column as u32 - 1,
         };
-        let text_document = lsp::types::TextDocumentIdentifier {
+        let text_document = lsp::TextDocumentIdentifier {
             uri: Url::from_file_path(&path).map_err(|_| Error::InvalidUrl(path))?,
         };
 
-        let locations = client
-            .goto_definition(text_document, position, None)
-            .await?;
+        tracing::debug!("starting goto");
+        let now = std::time::Instant::now();
+        let locations = match goto {
+            Goto::Definition => {
+                client
+                    .goto_definition(text_document, position, None)
+                    .await?
+            }
+            Goto::Declaration => {
+                client
+                    .goto_declaration(text_document, position, None)
+                    .await?
+            }
+            Goto::TypeDefinition => {
+                client
+                    .goto_type_definition(text_document, position, None)
+                    .await?
+            }
+            Goto::Implementation => {
+                client
+                    .goto_implementation(text_document, position, None)
+                    .await?
+            }
+            Goto::Reference => {
+                let include_declaration = false;
+                client
+                    .goto_reference(text_document, position, include_declaration, None)
+                    .await?
+                    .unwrap_or_default()
+            }
+        };
+
+        tracing::debug!("goto-definition , elapsed: {}ms", now.elapsed().as_millis());
+
+        let (_bufnr, new_row, new_column) = self.vim.get_cursor_pos().await?;
+
+        if new_row != row && new_column != column {
+            tracing::debug!("============= Cursor Pos changed! Cancel request");
+        }
 
         match locations.len() {
             0 => {
                 self.vim.echo_message("Definition not found")?;
             }
             1 => {
-                let loc = &locations[0];
-                let path = loc.uri.path();
-                let row = loc.range.start.line + 1;
-                let column = loc.range.start.character + 1;
-                self.vim
-                    .exec("clap#plugin#lsp#jump_to", (path, row, column))?;
+                self.vim.exec(
+                    "clap#plugin#lsp#jump_to",
+                    [FileLocation::from_lsp_location(&locations[0])],
+                )?;
             }
             _ => {
-                tracing::debug!("======== multiple locations: {locations:?}");
+                let file_locations = locations
+                    .iter()
+                    .map(FileLocation::from_lsp_location)
+                    .collect::<Vec<_>>();
+                self.vim.exec(
+                    "clap#plugin#lsp#open_picker",
+                    ("definitions", file_locations),
+                )?;
             }
         }
 
@@ -202,7 +278,19 @@ impl ClapPlugin for LspPlugin {
             }
             LspAction::Debug => {}
             LspAction::GotoDefinition => {
-                self.goto_definition().await?;
+                self.goto_impl(Goto::Definition).await?;
+            }
+            LspAction::GotoDeclaration => {
+                self.goto_impl(Goto::Declaration).await?;
+            }
+            LspAction::GotoTypeDefinition => {
+                self.goto_impl(Goto::TypeDefinition).await?;
+            }
+            LspAction::GotoImplementation => {
+                self.goto_impl(Goto::Implementation).await?;
+            }
+            LspAction::GotoReference => {
+                self.goto_impl(Goto::Reference).await?;
             }
         }
 

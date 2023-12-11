@@ -1,10 +1,10 @@
 [package]
-name = "lsp"
+name = "maple_lsp"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-lsp-types = "0.94"
+lsp = { package = "lsp-types", version = "0.94" }
 rpc = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
