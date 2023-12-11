@@ -28,6 +28,8 @@ pub enum Error {
     OneshotRecv(#[from] tokio::sync::oneshot::error::RecvError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
+    #[error("request failure: {0}")]
+    Request(String),
     #[error(transparent)]
     IO(#[from] std::io::Error),
     #[error("stream closed")]
@@ -535,7 +537,7 @@ impl Client {
     pub async fn request<T: lsp_types::request::Request>(
         &self,
         params: T::Params,
-    ) -> Result<T::Result, RpcError> {
+    ) -> Result<T::Result, Error> {
         let params = serde_json::to_value(params)?;
 
         let id = self.id.fetch_add(1, Ordering::SeqCst);
@@ -554,9 +556,9 @@ impl Client {
         self.server_tx.send(RpcMessage::Request(rpc_request))?;
         match request_result_rx.await? {
             RpcResponse::Success(ok) => Ok(serde_json::from_value(ok.result)?),
-            RpcResponse::Failure(err) => Err(RpcError::Request(format!(
-                "RpcClient request error: {err:?}"
-            ))),
+            RpcResponse::Failure(err) => {
+                Err(Error::Request(format!("RpcClient request error: {err:?}")))
+            }
         }
     }
 
@@ -585,7 +587,7 @@ impl Client {
     pub async fn initialize(
         &self,
         enable_snippets: bool,
-    ) -> Result<lsp_types::InitializeResult, RpcError> {
+    ) -> Result<lsp_types::InitializeResult, Error> {
         #[allow(deprecated)]
         let params = lsp_types::InitializeParams {
             process_id: Some(std::process::id()),
@@ -746,6 +748,47 @@ impl Client {
         };
 
         self.request::<lsp_types::request::Initialize>(params).await
+    }
+
+    pub async fn goto_definition(
+        &self,
+        text_document: lsp_types::TextDocumentIdentifier,
+        position: lsp_types::Position,
+        work_done_token: Option<lsp_types::ProgressToken>,
+    ) -> Result<Vec<lsp_types::Location>, Error> {
+        let params = lsp_types::GotoDefinitionParams {
+            text_document_position_params: lsp_types::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            work_done_progress_params: lsp_types::WorkDoneProgressParams { work_done_token },
+            partial_result_params: lsp_types::PartialResultParams {
+                partial_result_token: None,
+            },
+        };
+
+        let definitions = self
+            .request::<lsp_types::request::GotoDefinition>(params)
+            .await?;
+
+        Ok(to_locations(definitions))
+    }
+}
+
+fn to_locations(
+    definitions: Option<lsp_types::GotoDefinitionResponse>,
+) -> Vec<lsp_types::Location> {
+    match definitions {
+        Some(lsp_types::GotoDefinitionResponse::Scalar(location)) => vec![location],
+        Some(lsp_types::GotoDefinitionResponse::Array(locations)) => locations,
+        Some(lsp_types::GotoDefinitionResponse::Link(locations)) => locations
+            .into_iter()
+            .map(|location_link| lsp_types::Location {
+                uri: location_link.target_uri,
+                range: location_link.target_range,
+            })
+            .collect(),
+        None => Vec::new(),
     }
 }
 

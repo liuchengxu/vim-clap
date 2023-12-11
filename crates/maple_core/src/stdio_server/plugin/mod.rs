@@ -10,6 +10,7 @@ mod system;
 
 use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::vim::VimError;
+use self::lsp::Error as LspError;
 use std::fmt::Debug;
 
 pub use self::colorizer::ColorizerPlugin;
@@ -70,6 +71,8 @@ pub enum PluginError {
     Highlight(#[from] tree_sitter::HighlightError),
     #[error(transparent)]
     Vim(#[from] VimError),
+    #[error(transparent)]
+    Lsp(#[from] LspError),
     #[error(transparent)]
     Rpc(#[from] rpc::Error),
     #[error(transparent)]
