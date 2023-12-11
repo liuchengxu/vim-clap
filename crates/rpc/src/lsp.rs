@@ -3,16 +3,43 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, BufWriter, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
+use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::sync::oneshot;
 
 use crate::types::{
     Failure, Id, Params, RpcMessage, RpcNotification, RpcRequest, RpcResponse, Success, Version,
 };
-use crate::{Error, RpcError};
+use crate::RpcError;
+
+pub use lsp as lsp_types;
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("failed to send raw message: {0}")]
+    SendRawMessage(#[from] SendError<RpcMessage>),
+    #[error("failed to send request: {0}")]
+    SendRequest(#[from] SendError<(Id, oneshot::Sender<RpcResponse>)>),
+    #[error("failed to send response: {0:?}")]
+    SendResponse(RpcResponse),
+    #[error("sender is dropped: {0}")]
+    OneshotRecv(#[from] tokio::sync::oneshot::error::RecvError),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+    #[error(transparent)]
+    IO(#[from] std::io::Error),
+    #[error("stream closed")]
+    StreamClosed,
+    #[error("{0}")]
+    DeserializeFailure(String),
+    #[error("Unhandled message")]
+    Unhandled,
+    #[error(transparent)]
+    JsonRpc(#[from] crate::Error),
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -146,17 +173,49 @@ impl LanguageServerNotification {
     }
 }
 
-enum LanguageServerMessage {
+#[derive(Debug)]
+pub enum LanguageServerMessage {
     Request((Id, LanguageServerRequest)),
     Notification(LanguageServerNotification),
 }
 
-async fn handle_language_server_message(
+pub trait HandleLanguageServerMessage {
+    fn handle_request(
+        &mut self,
+        id: Id,
+        request: LanguageServerRequest,
+    ) -> Result<Value, crate::Error>;
+
+    fn handle_notification(
+        &mut self,
+        notification: LanguageServerNotification,
+    ) -> Result<(), Error>;
+}
+
+impl HandleLanguageServerMessage for () {
+    fn handle_request(
+        &mut self,
+        id: Id,
+        request: LanguageServerRequest,
+    ) -> Result<Value, crate::Error> {
+        Ok(Value::Null)
+    }
+
+    fn handle_notification(
+        &mut self,
+        notification: LanguageServerNotification,
+    ) -> Result<(), Error> {
+        Ok(())
+    }
+}
+
+async fn handle_language_server_message<T: HandleLanguageServerMessage>(
     mut server_message_rx: UnboundedReceiver<LanguageServerMessage>,
     server_tx: UnboundedSender<RpcMessage>,
+    mut language_server_message_handler: T,
 ) {
     // Reply a response to a language server RPC call.
-    let reply_to_server = |id, result| {
+    let reply_to_server = |id, result: Result<Value, crate::Error>| {
         let output = match result {
             Ok(value) => RpcResponse::Success(Success {
                 jsonrpc: Some(Version::V2),
@@ -172,16 +231,14 @@ async fn handle_language_server_message(
 
         server_tx.send(RpcMessage::Response(output))?;
 
-        Ok::<_, RpcError>(())
+        Ok::<_, Error>(())
     };
 
     while let Some(lsp_server_msg) = server_message_rx.recv().await {
         match lsp_server_msg {
             LanguageServerMessage::Request((id, request)) => {
-                let result = {
-                    println!("========== [handle_language_server_message] TODO handle LSP request: {request:?}");
-                    Ok(Value::Null)
-                };
+                tracing::debug!("request => {request:?}");
+                let result = language_server_message_handler.handle_request(id.clone(), request);
 
                 if let Err(err) = reply_to_server(id, result) {
                     tracing::error!("Failed to send response to server: {err:?}");
@@ -189,7 +246,12 @@ async fn handle_language_server_message(
                 }
             }
             LanguageServerMessage::Notification(notification) => {
-                println!("========== [handle_language_server_message] TODO handle LSP notification: {notification:?}");
+                tracing::debug!("notification => {notification:?}");
+                if let Err(err) = language_server_message_handler.handle_notification(notification)
+                {
+                    tracing::error!(?err, "Failed to handle LanguageServerNotification");
+                    return;
+                }
             }
         }
     }
@@ -223,7 +285,7 @@ fn parse_header(s: &str) -> std::io::Result<LspHeader> {
     }
 }
 
-fn recv_message_from_server<T: BufRead>(reader: &mut T) -> Result<String, RpcError> {
+fn recv_message_from_server<T: BufRead>(reader: &mut T) -> Result<String, Error> {
     let mut buffer = String::new();
     let mut content_length: Option<usize> = None;
 
@@ -231,7 +293,7 @@ fn recv_message_from_server<T: BufRead>(reader: &mut T) -> Result<String, RpcErr
         buffer.clear();
 
         if reader.read_line(&mut buffer)? == 0 {
-            return Err(RpcError::StreamClosed);
+            return Err(Error::StreamClosed);
         }
 
         match &buffer {
@@ -267,7 +329,7 @@ fn process_server_messages<T: BufRead>(
     mut reader: T,
     mut response_sender_rx: UnboundedReceiver<(Id, oneshot::Sender<RpcResponse>)>,
     server_message_tx: UnboundedSender<LanguageServerMessage>,
-) -> Result<(), RpcError> {
+) -> Result<(), Error> {
     let mut pending_response_senders = HashMap::new();
 
     loop {
@@ -285,7 +347,7 @@ fn process_server_messages<T: BufRead>(
                             tracing::debug!(
                                 "Failed to send response from language server: {response:?}"
                             );
-                            RpcError::SendResponse(response)
+                            Error::SendResponse(response)
                         })?;
                     }
                 }
@@ -303,7 +365,7 @@ fn process_server_messages<T: BufRead>(
                                 request.method
                             );
 
-                            return Err(Error {
+                            return Err(crate::Error {
                                 code: crate::ErrorCode::ParseError,
                                 message: format!("Malformed server request: {}", request.method),
                                 data: None,
@@ -335,7 +397,7 @@ fn process_server_messages<T: BufRead>(
                 }
             },
             Err(err) => {
-                return Err(RpcError::DeserializeFailure(format!(
+                return Err(Error::DeserializeFailure(format!(
                     "Failed to deserialize ServerMessage: {err:?}"
                 )));
             }
@@ -369,18 +431,21 @@ fn start_server_program(cmd: &str, args: &[String], workspace: &Path) -> std::io
     Ok(child)
 }
 
+#[derive(Debug)]
 pub struct Client {
     id: AtomicU64,
+    root_path: PathBuf,
     server_tx: UnboundedSender<RpcMessage>,
     response_sender_tx: UnboundedSender<(Id, oneshot::Sender<RpcResponse>)>,
 }
 
 impl Client {
     /// Constructs a new instance of LSP [`Client`].
-    pub fn new(
+    pub fn new<T: HandleLanguageServerMessage + Send + Sync + 'static>(
         server_executable: &str,
         args: &[String],
         workspace: &Path,
+        language_server_message_handler: T,
     ) -> std::io::Result<Self> {
         let mut process = start_server_program(server_executable, args, workspace)?;
 
@@ -425,7 +490,12 @@ impl Client {
         tokio::spawn({
             let server_tx = payload_sender.clone();
             async move {
-                handle_language_server_message(server_message_rx, server_tx).await;
+                handle_language_server_message(
+                    server_message_rx,
+                    server_tx,
+                    language_server_message_handler,
+                )
+                .await;
             }
         });
 
@@ -454,7 +524,10 @@ impl Client {
             id: AtomicU64::new(0),
             server_tx: payload_sender,
             response_sender_tx,
+            root_path: workspace.to_path_buf(),
         };
+
+        tracing::debug!(server_executable, "LSP Client started");
 
         Ok(client)
     }
@@ -511,8 +584,6 @@ impl Client {
 
     pub async fn initialize(
         &self,
-        root_path: Option<String>,
-        root_uri: Option<Url>,
         enable_snippets: bool,
     ) -> Result<lsp::InitializeResult, RpcError> {
         #[allow(deprecated)]
@@ -521,8 +592,8 @@ impl Client {
             workspace_folders: None,
             // root_path is obsolete, but some clients like pyright still use it so we specify both.
             // clients will prefer _uri if possible
-            root_path: root_path.clone(),
-            root_uri: root_uri.clone(),
+            root_path: self.root_path.to_str().map(|s| s.to_string()),
+            root_uri: Url::from_file_path(&self.root_path).ok(),
             initialization_options: None,
             capabilities: lsp::ClientCapabilities {
                 workspace: Some(lsp::WorkspaceClientCapabilities {
@@ -687,18 +758,15 @@ mod tests {
             "/home/xlc/.cargo/bin/rust-analyzer",
             &[],
             Path::new(root_path),
+            (),
         )
         .unwrap();
 
-        let res = client
-            .initialize(Some(root_path.to_string()), None, false)
-            .await;
+        let res = client.initialize(false).await.unwrap();
 
-        if res.is_ok() {
-            client
-                .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
-                .unwrap();
-        }
+        client
+            .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
+            .unwrap();
 
         println!("========== res: {res:?}");
 

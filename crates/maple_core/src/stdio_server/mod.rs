@@ -85,7 +85,7 @@ struct InitializedService {
 fn initialize_service(vim: Vim) -> InitializedService {
     use self::plugin::{
         ActionType, ClapPlugin, ColorizerPlugin, CtagsPlugin, CursorwordPlugin, GitPlugin,
-        LinterPlugin, MarkdownPlugin, SyntaxPlugin, SystemPlugin,
+        LinterPlugin, LspPlugin, MarkdownPlugin, SyntaxPlugin, SystemPlugin,
     };
 
     let mut callable_actions = Vec::new();
@@ -107,6 +107,8 @@ fn initialize_service(vim: Vim) -> InitializedService {
 
     register_plugin(Box::new(SystemPlugin::new(vim.clone())), None);
     register_plugin(Box::new(SyntaxPlugin::new(vim.clone())), None);
+
+    register_plugin(Box::new(LspPlugin::new(vim.clone())), None);
 
     let plugin_config = &crate::config::config().plugin;
 
