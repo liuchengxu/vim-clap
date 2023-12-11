@@ -2,8 +2,8 @@ use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::lsp_handler::LanguageServerMessageHandler;
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::vim::{Vim, VimError, VimResult};
-use lsp::{ServerCapabilities, Url};
-use maple_lsp::{lsp, Client};
+use lsp::Url;
+use maple_lsp::{lsp, start_client, Client};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -103,7 +103,6 @@ struct GotoRequest {
 pub struct LspPlugin {
     vim: Vim,
     clients: HashMap<LanguageId, Arc<Client>>,
-    capabilities: HashMap<LanguageId, ServerCapabilities>,
     goto_request: Option<GotoRequest>,
     toggle: Toggle,
 }
@@ -113,7 +112,6 @@ impl LspPlugin {
         Self {
             vim,
             clients: HashMap::new(),
-            capabilities: HashMap::new(),
             goto_request: None,
             toggle: Toggle::On,
         }
@@ -136,28 +134,14 @@ impl LspPlugin {
         let language_id = filetype;
 
         if !self.clients.contains_key(&language_id) {
-            let client = Arc::new(Client::new(
+            let client = start_client(
                 server_binary,
                 &args,
                 project_root,
                 LanguageServerMessageHandler::new(server_binary.to_string(), self.vim.clone()),
-            )?);
-
-            let now = std::time::Instant::now();
-            let enable_snippets = false;
-            let initialize_result = client.initialize(enable_snippets).await?;
-
-            client.notify::<lsp::notification::Initialized>(lsp::InitializedParams {})?;
-
-            tracing::debug!(
-                "LSP Client initialized, elapsed: {}ms",
-                now.elapsed().as_millis()
-            );
-
+                false,
+            )?;
             self.clients.insert(language_id.clone(), client.clone());
-
-            self.capabilities
-                .insert(language_id.clone(), initialize_result.capabilities);
         }
 
         Ok(())
@@ -182,6 +166,12 @@ impl LspPlugin {
 
         let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
         let client = self.clients.get(&filetype).ok_or(Error::ClientNotFound)?;
+
+        if !client.is_initialized() {
+            self.vim
+                .echo_message("language server not yet initialized")?;
+            return Ok(());
+        }
 
         let path = self.vim.bufabspath(bufnr).await?;
         let (bufnr, row, column) = self.vim.get_cursor_pos().await?;
@@ -239,9 +229,8 @@ impl LspPlugin {
 
         let (_bufnr, new_row, new_column) = self.vim.get_cursor_pos().await?;
         if (new_row, new_column) != (row, column) {
-            self.vim
-                .set_var("g:clap_lsp_status", "cancelling request")?;
-            self.vim.redrawstatus()?;
+            self.goto_request.take();
+            self.vim.update_lsp_status("cancelling request")?;
             return Ok(());
         }
 
@@ -258,6 +247,8 @@ impl LspPlugin {
 
         self.vim
             .exec("clap#plugin#lsp#handle_locations", (goto.name(), locations))?;
+        self.vim.update_lsp_status("rust-analyzer")?;
+        self.goto_request.take();
 
         Ok(())
     }

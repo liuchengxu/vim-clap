@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+futures-util = "0.3.29"
 lsp = { package = "lsp-types", version = "0.94" }
 rpc = { workspace = true }
 serde = { workspace = true }

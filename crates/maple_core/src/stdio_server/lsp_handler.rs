@@ -71,8 +71,7 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
                             // }
                             // self.editor.clear_status();
 
-                            let _ = self.vim.set_var("g:clap_lsp_status", &self.name);
-                            let _ = self.vim.redrawstatus();
+                            let _ = self.vim.update_lsp_status(&self.name);
 
                             // we want to render to clear any leftover spinners or messages
                             return Ok(());
@@ -111,12 +110,10 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
                 };
 
                 if let WorkDoneProgress::End(_) = work {
-                    let _ = self.vim.set_var("g:clap_lsp_status", &self.name);
-                    let _ = self.vim.redrawstatus();
+                    let _ = self.vim.update_lsp_status(&self.name);
                 } else {
                     // Update LSP progress.
-                    let _ = self.vim.set_var("g:clap_lsp_status", status);
-                    let _ = self.vim.exec("execute", ["redrawstatus"]);
+                    let _ = self.vim.update_lsp_status(status);
                 }
             }
             _ => {}

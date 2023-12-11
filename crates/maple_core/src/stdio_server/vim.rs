@@ -558,6 +558,11 @@ impl Vim {
         }
     }
 
+    pub fn update_lsp_status(&self, new_status: impl AsRef<str>) -> VimResult<()> {
+        self.set_var("g:clap_lsp_status", new_status.as_ref())?;
+        self.redrawstatus()
+    }
+
     pub async fn win_is_valid(&self, winid: usize) -> VimResult<bool> {
         let value: Value = self.call("win_is_valid", [winid]).await?;
         Ok(from_vim_bool(value))

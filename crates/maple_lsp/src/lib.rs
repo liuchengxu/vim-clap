@@ -1,4 +1,7 @@
-use lsp::{Position, ProgressToken, TextDocumentIdentifier, Url};
+use futures_util::TryFutureExt;
+use lsp::{
+    GotoDefinitionParams, Position, ProgressToken, ServerCapabilities, TextDocumentIdentifier, Url,
+};
 use rpc::{
     Failure, Id, Params, RpcMessage, RpcNotification, RpcRequest, RpcResponse, Success, Version,
 };
@@ -7,11 +10,12 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, ChildStderr, ChildStdout, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
-use tokio::sync::oneshot;
+use tokio::sync::{oneshot, OnceCell};
 
 pub use lsp;
 
@@ -33,8 +37,8 @@ pub enum Error {
     IO(#[from] std::io::Error),
     #[error("stream closed")]
     StreamClosed,
-    #[error("{0}")]
-    DeserializeFailure(String),
+    #[error("failed to parse server message: {0}")]
+    BadServerMessage(String),
     #[error("Unhandled message")]
     Unhandled,
     #[error(transparent)]
@@ -211,7 +215,7 @@ impl HandleLanguageServerMessage for () {
 }
 
 async fn handle_language_server_message<T: HandleLanguageServerMessage>(
-    mut server_message_rx: UnboundedReceiver<LanguageServerMessage>,
+    mut language_server_message_rx: UnboundedReceiver<LanguageServerMessage>,
     server_tx: UnboundedSender<RpcMessage>,
     mut language_server_message_handler: T,
 ) {
@@ -235,7 +239,7 @@ async fn handle_language_server_message<T: HandleLanguageServerMessage>(
         Ok::<_, Error>(())
     };
 
-    while let Some(lsp_server_msg) = server_message_rx.recv().await {
+    while let Some(lsp_server_msg) = language_server_message_rx.recv().await {
         match lsp_server_msg {
             LanguageServerMessage::Request((id, request)) => {
                 tracing::debug!("request => {request:?}");
@@ -326,12 +330,14 @@ fn recv_message_from_server<T: BufRead>(reader: &mut T) -> Result<String, Error>
 }
 
 /// Process the messages from language server.
-fn process_server_messages<T: BufRead>(
-    mut reader: T,
+fn process_server_stdout(
+    stdout: ChildStdout,
     mut response_sender_rx: UnboundedReceiver<(Id, oneshot::Sender<RpcResponse>)>,
-    server_message_tx: UnboundedSender<LanguageServerMessage>,
+    language_server_message_tx: UnboundedSender<LanguageServerMessage>,
 ) -> Result<(), Error> {
-    let mut pending_response_senders = HashMap::new();
+    let mut reader = Box::new(BufReader::new(stdout));
+
+    let mut pending_requests = HashMap::new();
 
     loop {
         let line = recv_message_from_server(&mut reader)?;
@@ -344,35 +350,32 @@ fn process_server_messages<T: BufRead>(
             Ok(rpc_message) => match rpc_message {
                 ServerMessage::Response(output) => {
                     while let Ok((id, response_sender)) = response_sender_rx.try_recv() {
-                        pending_response_senders.insert(id, response_sender);
+                        pending_requests.insert(id, response_sender);
                     }
 
-                    if let Some(response_sender) = pending_response_senders.remove(output.id()) {
-                        response_sender.send(output).map_err(|response| {
-                            tracing::debug!(
-                                "Failed to send response from language server: {response:?}"
-                            );
-                            Error::SendResponse(response)
-                        })?;
+                    if let Some(response_sender) = pending_requests.remove(output.id()) {
+                        response_sender.send(output).map_err(Error::SendResponse)?;
                     }
                 }
                 ServerMessage::Call(Call::Request(request)) => {
-                    let id = request.id.clone();
-                    match LanguageServerRequest::parse(&request.method, request.params) {
+                    let RpcRequest {
+                        id, method, params, ..
+                    } = request;
+                    match LanguageServerRequest::parse(&method, params) {
                         Ok(request) => {
-                            let _ = server_message_tx
+                            let _ = language_server_message_tx
                                 .send(LanguageServerMessage::Request((id, request)));
                         }
                         Err(err) => {
                             tracing::error!(
                                 ?err,
-                                "Language Server: Received malformed LSP request: {}",
-                                request.method
+                                %method,
+                                "Recv malformed server request",
                             );
 
                             return Err(rpc::Error {
                                 code: rpc::ErrorCode::ParseError,
-                                message: format!("Malformed server request: {}", request.method),
+                                message: format!("Malformed server request: {method}"),
                                 data: None,
                             }
                             .into());
@@ -380,19 +383,17 @@ fn process_server_messages<T: BufRead>(
                     };
                 }
                 ServerMessage::Call(Call::Notification(notification)) => {
-                    match LanguageServerNotification::parse(
-                        &notification.method,
-                        notification.params,
-                    ) {
+                    let RpcNotification { method, params, .. } = notification;
+                    match LanguageServerNotification::parse(&method, params) {
                         Ok(notification) => {
-                            let _ = server_message_tx
+                            let _ = language_server_message_tx
                                 .send(LanguageServerMessage::Notification(notification));
                         }
                         Err(err) => {
                             tracing::error!(
                                 ?err,
-                                "Language Server: Received malformed LSP notification: {}",
-                                notification.method
+                                %method,
+                                "Recv malformed server notification",
                             );
                         }
                     }
@@ -402,9 +403,7 @@ fn process_server_messages<T: BufRead>(
                 }
             },
             Err(err) => {
-                return Err(Error::DeserializeFailure(format!(
-                    "Failed to deserialize ServerMessage: {err:?}"
-                )));
+                return Err(Error::BadServerMessage(err.to_string()));
             }
         }
     }
@@ -439,9 +438,79 @@ fn start_server_program(cmd: &str, args: &[String], workspace: &Path) -> std::io
 #[derive(Debug)]
 pub struct Client {
     id: AtomicU64,
+    capabilities: OnceCell<ServerCapabilities>,
     root_path: PathBuf,
     server_tx: UnboundedSender<RpcMessage>,
     response_sender_tx: UnboundedSender<(Id, oneshot::Sender<RpcResponse>)>,
+    _server_process: Child,
+}
+
+fn process_server_stderr(stderr: ChildStderr) {
+    let mut reader = Box::new(BufReader::new(stderr));
+
+    loop {
+        let mut line = String::new();
+        match reader.read_line(&mut line) {
+            Ok(n) => {
+                if n == 0 {
+                    // Stream closed.
+                    return;
+                }
+                tracing::error!("lsp server error: {}", line.trim_end());
+            }
+            Err(err) => {
+                tracing::error!("Error occurred at reading child stderr: {err:?}");
+                return;
+            }
+        }
+    }
+}
+
+pub fn start_client<T: HandleLanguageServerMessage + Send + Sync + 'static>(
+    server_executable: &str,
+    args: &[String],
+    workspace: &Path,
+    language_server_message_handler: T,
+    enable_snippets: bool,
+) -> std::io::Result<Arc<Client>> {
+    let client = Client::new(
+        server_executable,
+        args,
+        workspace,
+        language_server_message_handler,
+    )?;
+
+    tracing::debug!(server_executable, "A new LSP Client created");
+
+    let client = Arc::new(client);
+
+    // Initialize the client asynchronously.
+    tokio::spawn({
+        let client = client.clone();
+        async move {
+            let value = client
+                .capabilities
+                .get_or_try_init(|| {
+                    client
+                        .initialize(enable_snippets)
+                        .map_ok(|response| response.capabilities)
+                })
+                .await;
+
+            if let Err(e) = value {
+                tracing::error!("failed to initialize language server: {}", e);
+                return;
+            }
+
+            client
+                .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
+                .expect("Failed to notify Initialized");
+
+            tracing::debug!("LSP client initialized");
+        }
+    });
+
+    Ok(client)
 }
 
 impl Client {
@@ -478,14 +547,12 @@ impl Client {
             _,
         ) = unbounded_channel();
 
-        let (server_message_tx, server_message_rx) = unbounded_channel();
+        let (language_server_message_tx, language_server_message_rx) = unbounded_channel();
 
         std::thread::spawn({
-            let reader = Box::new(BufReader::new(stdout));
-
             move || {
                 if let Err(err) =
-                    process_server_messages(reader, response_sender_rx, server_message_tx)
+                    process_server_stdout(stdout, response_sender_rx, language_server_message_tx)
                 {
                     tracing::error!(?err, "Failed to process server messages, exiting...");
                 }
@@ -496,7 +563,7 @@ impl Client {
             let server_tx = payload_sender.clone();
             async move {
                 handle_language_server_message(
-                    server_message_rx,
+                    language_server_message_rx,
                     server_tx,
                     language_server_message_handler,
                 )
@@ -505,24 +572,7 @@ impl Client {
         });
 
         tokio::task::spawn_blocking(move || {
-            let mut reader = Box::new(BufReader::new(stderr));
-
-            loop {
-                let mut line = String::new();
-                match reader.read_line(&mut line) {
-                    Ok(n) => {
-                        if n == 0 {
-                            // Stream closed.
-                            return;
-                        }
-                        tracing::error!("lsp server error: {}", line.trim_end());
-                    }
-                    Err(err) => {
-                        tracing::error!("Error occurred at reading child stderr: {err:?}");
-                        return;
-                    }
-                }
-            }
+            process_server_stderr(stderr);
         });
 
         let client = Self {
@@ -530,11 +580,21 @@ impl Client {
             server_tx: payload_sender,
             response_sender_tx,
             root_path: workspace.to_path_buf(),
+            capabilities: OnceCell::new(),
+            _server_process: process,
         };
 
-        tracing::debug!(server_executable, "LSP Client started");
-
         Ok(client)
+    }
+
+    pub fn is_initialized(&self) -> bool {
+        self.capabilities.get().is_some()
+    }
+
+    pub fn capabilities(&self) -> &ServerCapabilities {
+        self.capabilities
+            .get()
+            .expect("language server not yet initialized!")
     }
 
     pub async fn request<T: lsp::request::Request>(
@@ -741,17 +801,41 @@ impl Client {
         self.request::<lsp::request::Initialize>(params).await
     }
 
+    async fn goto_request<
+        T: lsp::request::Request<
+            Params = GotoDefinitionParams,
+            Result = Option<lsp::GotoDefinitionResponse>,
+        >,
+    >(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
+    ) -> Result<Vec<lsp::Location>, Error> {
+        let params = lsp::GotoDefinitionParams {
+            text_document_position_params: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
+            partial_result_params: lsp::PartialResultParams {
+                partial_result_token: None,
+            },
+        };
+
+        let definitions = self.request::<T>(params).await?;
+
+        Ok(to_locations(definitions))
+    }
+
     pub async fn goto_definition(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
     ) -> Result<Vec<lsp::Location>, Error> {
-        let params = goto_definition_params(text_document, position, work_done_token);
-
-        let definitions = self.request::<lsp::request::GotoDefinition>(params).await?;
-
-        Ok(to_locations(definitions))
+        self.goto_request::<lsp::request::GotoDefinition>(text_document, position, work_done_token)
+            .await
     }
 
     pub async fn goto_declaration(
@@ -760,13 +844,8 @@ impl Client {
         position: Position,
         work_done_token: Option<ProgressToken>,
     ) -> Result<Vec<lsp::Location>, Error> {
-        let params = goto_definition_params(text_document, position, work_done_token);
-
-        let definitions = self
-            .request::<lsp::request::GotoDeclaration>(params)
-            .await?;
-
-        Ok(to_locations(definitions))
+        self.goto_request::<lsp::request::GotoDeclaration>(text_document, position, work_done_token)
+            .await
     }
 
     pub async fn goto_type_definition(
@@ -775,13 +854,12 @@ impl Client {
         position: Position,
         work_done_token: Option<ProgressToken>,
     ) -> Result<Vec<lsp::Location>, Error> {
-        let params = goto_definition_params(text_document, position, work_done_token);
-
-        let definitions = self
-            .request::<lsp::request::GotoTypeDefinition>(params)
-            .await?;
-
-        Ok(to_locations(definitions))
+        self.goto_request::<lsp::request::GotoTypeDefinition>(
+            text_document,
+            position,
+            work_done_token,
+        )
+        .await
     }
 
     pub async fn goto_implementation(
@@ -790,13 +868,12 @@ impl Client {
         position: Position,
         work_done_token: Option<ProgressToken>,
     ) -> Result<Vec<lsp::Location>, Error> {
-        let params = goto_definition_params(text_document, position, work_done_token);
-
-        let definitions = self
-            .request::<lsp::request::GotoImplementation>(params)
-            .await?;
-
-        Ok(to_locations(definitions))
+        self.goto_request::<lsp::request::GotoImplementation>(
+            text_document,
+            position,
+            work_done_token,
+        )
+        .await
     }
 
     pub async fn goto_reference(
@@ -829,23 +906,6 @@ impl Client {
 
     pub async fn exit(&self) -> Result<(), Error> {
         self.notify::<lsp::notification::Exit>(())
-    }
-}
-
-fn goto_definition_params(
-    text_document: TextDocumentIdentifier,
-    position: Position,
-    work_done_token: Option<ProgressToken>,
-) -> lsp::GotoDefinitionParams {
-    lsp::GotoDefinitionParams {
-        text_document_position_params: lsp::TextDocumentPositionParams {
-            text_document,
-            position,
-        },
-        work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
-        partial_result_params: lsp::PartialResultParams {
-            partial_result_token: None,
-        },
     }
 }
 
