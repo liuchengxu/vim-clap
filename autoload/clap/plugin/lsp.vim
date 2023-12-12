@@ -10,18 +10,30 @@ function! s:jump_to(location) abort
   noautocmd call setpos('.', [bufnr(''), a:location.row, a:location.column, 0])
 endfunction
 
+function! s:to_quickfix_entry(location) abort
+  return { 'filename': a:location.path, 'lnum': a:location.row, 'col': a:location.column, 'text': a:location.text }
+endfunction
+
 function! clap#plugin#lsp#handle_locations(id, locations) abort
   if len(a:locations) == 1
     call s:jump_to(a:locations[0])
     return
   endif
 
-  let provider = {
-        \ 'id': a:id,
-        \ 'source': map(a:locations, 'printf("%s:%s:%s", v:val["path"], v:val["row"], v:val["column"])'),
-        \ 'sink': 'e',
-        \ }
-  call clap#run(provider)
+  let mode = 'quickfix'
+
+  if mode ==# 'quickfix'
+    let entries = map(a:locations, 's:to_quickfix_entry(v:val)')
+    call clap#sink#open_quickfix(entries)
+  else
+    let provider = {
+          \ 'id': a:id,
+          \ 'source': map(a:locations, 'printf("%s:%s:%s", v:val["path"], v:val["row"], v:val["column"])'),
+          \ 'sink': 'e',
+          \ }
+
+    call clap#run(provider)
+  endif
 endfunction
 
 let &cpoptions = s:save_cpo

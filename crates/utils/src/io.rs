@@ -106,6 +106,18 @@ where
     Ok(BufReader::new(file).lines())
 }
 
+/// Returns the line at given line number.
+pub fn read_line_at<P>(path: P, line_number: usize) -> Result<Option<String>>
+where
+    P: AsRef<Path>,
+{
+    Ok(BufReader::new(File::open(path)?)
+        .lines()
+        .skip(line_number.saturating_sub(1))
+        .next()
+        .and_then(Result::ok))
+}
+
 /// Returns the first number lines given the file path.
 pub fn read_first_lines<P: AsRef<Path>>(
     path: P,

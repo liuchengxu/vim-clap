@@ -242,7 +242,6 @@ async fn handle_language_server_message<T: HandleLanguageServerMessage>(
     while let Some(lsp_server_msg) = language_server_message_rx.recv().await {
         match lsp_server_msg {
             LanguageServerMessage::Request((id, request)) => {
-                tracing::debug!("request => {request:?}");
                 let result = language_server_message_handler.handle_request(id.clone(), request);
 
                 if let Err(err) = reply_to_server(id, result) {
@@ -251,7 +250,6 @@ async fn handle_language_server_message<T: HandleLanguageServerMessage>(
                 }
             }
             LanguageServerMessage::Notification(notification) => {
-                tracing::debug!("notification => {notification:?}");
                 if let Err(err) = language_server_message_handler.handle_notification(notification)
                 {
                     tracing::error!(?err, "Failed to handle LanguageServerNotification");

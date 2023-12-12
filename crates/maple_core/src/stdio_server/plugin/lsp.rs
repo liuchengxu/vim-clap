@@ -18,16 +18,7 @@ struct FileLocation {
     row: u32,
     /// 1-based
     column: u32,
-}
-
-impl FileLocation {
-    fn from_lsp_location(loc: lsp::Location) -> Self {
-        Self {
-            path: loc.uri.path().to_string(),
-            row: loc.range.start.line + 1,
-            column: loc.range.start.character + 1,
-        }
-    }
+    text: String,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -103,7 +94,7 @@ struct GotoRequest {
 pub struct LspPlugin {
     vim: Vim,
     clients: HashMap<LanguageId, Arc<Client>>,
-    goto_request: Option<GotoRequest>,
+    current_goto_request: Option<GotoRequest>,
     toggle: Toggle,
 }
 
@@ -112,7 +103,7 @@ impl LspPlugin {
         Self {
             vim,
             clients: HashMap::new(),
-            goto_request: None,
+            current_goto_request: None,
             toggle: Toggle::On,
         }
     }
@@ -148,7 +139,7 @@ impl LspPlugin {
     }
 
     async fn on_cursor_moved(&mut self, bufnr: usize) -> VimResult<()> {
-        if let Some(request_in_fly) = self.goto_request.take() {
+        if let Some(request_in_fly) = self.current_goto_request.take() {
             let (_bufnr, row, column) = self.vim.get_cursor_pos().await?;
             if request_in_fly.bufnr == bufnr && request_in_fly.cursor_pos != (row, column) {
                 self.vim
@@ -190,7 +181,7 @@ impl LspPlugin {
         self.vim
             .set_var("g:clap_lsp_status", format!("requesting {}", goto.name()))?;
         self.vim.redrawstatus()?;
-        self.goto_request.replace(GotoRequest {
+        self.current_goto_request.replace(GotoRequest {
             bufnr,
             cursor_pos: (row, column),
         });
@@ -229,7 +220,7 @@ impl LspPlugin {
 
         let (_bufnr, new_row, new_column) = self.vim.get_cursor_pos().await?;
         if (new_row, new_column) != (row, column) {
-            self.goto_request.take();
+            self.current_goto_request.take();
             self.vim.update_lsp_status("cancelling request")?;
             return Ok(());
         }
@@ -242,13 +233,28 @@ impl LspPlugin {
 
         let locations = locations
             .into_iter()
-            .map(FileLocation::from_lsp_location)
+            .map(|loc| {
+                let path = loc.uri.path();
+                let row = loc.range.start.line + 1;
+                let column = loc.range.start.character + 1;
+                let text = utils::read_line_at(path, row as usize)
+                    .ok()
+                    .flatten()
+                    .unwrap_or_default();
+
+                FileLocation {
+                    path: path.to_string(),
+                    row,
+                    column,
+                    text,
+                }
+            })
             .collect::<Vec<_>>();
 
         self.vim
             .exec("clap#plugin#lsp#handle_locations", (goto.name(), locations))?;
         self.vim.update_lsp_status("rust-analyzer")?;
-        self.goto_request.take();
+        self.current_goto_request.take();
 
         Ok(())
     }
