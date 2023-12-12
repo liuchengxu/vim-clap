@@ -155,7 +155,7 @@ function! clap#_init() abort
   call g:clap.display.setbufvar('&filetype', '')
 endfunction
 
-function! clap#_exit() abort
+function! clap#_exit_provider() abort
   call g:clap.provider.jobstop()
   call clap#maple#notify_exit_provider()
 
@@ -182,10 +182,10 @@ function! clap#_for(provider_id_or_alias) abort
   call clap#for(a:provider_id_or_alias)
 endfunction
 
-" Sometimes we don't need to go back to the start window, hence clap#_exit() is extracted.
-function! clap#exit() abort
+" Sometimes we don't need to go back to the start window, hence clap#_exit_provider() is extracted.
+function! clap#exit_provider() abort
   call g:clap.start.goto_win()
-  call clap#_exit()
+  call clap#_exit_provider()
 endfunction
 
 function! clap#should_use_raw_cwd() abort

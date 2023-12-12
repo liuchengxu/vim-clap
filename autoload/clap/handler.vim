@@ -107,7 +107,7 @@ endfunction
 
 function! s:internal_exit() abort
   call clap#selection#reset()
-  call clap#exit()
+  call clap#exit_provider()
 endfunction
 
 " clap#handler#exit() = s:internal_exit() + external on_exit hook

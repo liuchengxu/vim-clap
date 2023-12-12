@@ -283,7 +283,7 @@ function! clap#state#clear_pre() abort
   call clap#indicator#reset()
 endfunction
 
-" Clear temp state on clap#_exit()
+" Clear temp state on clap#_exit_provider()
 function! clap#state#clear_post() abort
   call s:remove_provider_tmp_vars([
         \ 'args',
