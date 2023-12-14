@@ -48,7 +48,7 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
         tracing::debug!(%id, "Processing language server request: {request:?}");
 
         match request {
-            LanguageServerRequest::WorkDoneProgressCreate(params) => {}
+            LanguageServerRequest::WorkDoneProgressCreate(_params) => {}
             _ => {}
         }
 

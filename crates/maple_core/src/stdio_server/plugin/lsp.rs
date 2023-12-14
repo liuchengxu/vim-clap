@@ -221,12 +221,12 @@ impl LspPlugin {
         let document = self
             .documents
             .get_mut(&bufnr)
-            .ok_or(Error::ClientNotFound)?;
+            .ok_or(Error::DocumentNotFound(bufnr))?;
 
         let client = self
             .clients
             .get(&document.language_id)
-            .ok_or(Error::DocumentNotFound(bufnr))?;
+            .ok_or(Error::ClientNotFound)?;
 
         let path = self.vim.bufabspath(bufnr).await?;
 
