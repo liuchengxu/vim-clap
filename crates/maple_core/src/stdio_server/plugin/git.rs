@@ -1,7 +1,7 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::vim::Vim;
-use crate::tools::git::{parse_blame_info, GitError, GitRepo, Modification, SignType, Summary};
+use crate::tools::git::{parse_blame_info, GitRepo, Modification, SignType, Summary};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -49,9 +49,10 @@ impl Git {
         }
     }
 
-    async fn try_track_buffer(&mut self, bufnr: usize) -> Result<(), PluginError> {
+    /// Returns `true` if buffer is being tracked.
+    async fn try_track_buffer(&mut self, bufnr: usize) -> Result<bool, PluginError> {
         if self.bufs.contains_key(&bufnr) {
-            return Ok(());
+            return Ok(true);
         }
 
         let buf_path = self.vim.current_buffer_path().await?;
@@ -62,13 +63,13 @@ impl Git {
             let git = GitRepo::init(git_root.to_path_buf())?;
             if git.is_tracked(&filepath)? {
                 self.bufs.insert(bufnr, (filepath, git));
-                return Ok(());
+                return Ok(true);
             } else {
-                return Err(GitError::Untracked.into());
+                return Ok(false);
             }
         }
 
-        Ok(())
+        Ok(false)
     }
 
     async fn update_diff_summary_and_modifications(
@@ -318,9 +319,10 @@ impl ClapPlugin for Git {
 
         match autocmd_event_type {
             BufEnter => {
-                self.try_track_buffer(bufnr).await?;
-                self.show_curline_line_blame(bufnr).await?;
-                self.update_diff_summary_and_modifications(bufnr).await?;
+                if self.try_track_buffer(bufnr).await? {
+                    self.show_curline_line_blame(bufnr).await?;
+                    self.update_diff_summary_and_modifications(bufnr).await?;
+                }
             }
             BufWritePost => {
                 self.update_diff_summary_and_modifications(bufnr).await?;

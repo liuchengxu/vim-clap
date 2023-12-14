@@ -10,6 +10,7 @@ members = [
     "ide",
     "maple_core",
     "maple_derive",
+    "maple_lsp",
     "matcher",
     "matcher/extracted_fzy",
     "paths",
@@ -76,6 +77,7 @@ icon = { path = "./icon" }
 ide = { path = "./ide" }
 maple_core = { path = "./maple_core" }
 maple_derive = { path = "./maple_derive" }
+maple_lsp = { path = "./maple_lsp" }
 matcher = { path = "./matcher" }
 paths = { path = "./paths" }
 pattern = { path = "./pattern" }

@@ -3,10 +3,12 @@ mod ctags;
 mod cursorword;
 mod git;
 mod linter;
+mod lsp;
 mod markdown;
 pub mod syntax;
 mod system;
 
+use self::lsp::Error as LspError;
 use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::vim::VimError;
 use std::fmt::Debug;
@@ -16,6 +18,7 @@ pub use self::ctags::CtagsPlugin;
 pub use self::cursorword::Cursorword as CursorwordPlugin;
 pub use self::git::Git as GitPlugin;
 pub use self::linter::Linter as LinterPlugin;
+pub use self::lsp::LspPlugin;
 pub use self::markdown::Markdown as MarkdownPlugin;
 pub use self::syntax::Syntax as SyntaxPlugin;
 pub use self::system::System as SystemPlugin;
@@ -68,6 +71,8 @@ pub enum PluginError {
     Highlight(#[from] tree_sitter::HighlightError),
     #[error(transparent)]
     Vim(#[from] VimError),
+    #[error(transparent)]
+    Lsp(#[from] LspError),
     #[error(transparent)]
     Rpc(#[from] rpc::Error),
     #[error(transparent)]

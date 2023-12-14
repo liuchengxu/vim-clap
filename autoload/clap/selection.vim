@@ -86,7 +86,7 @@ function! clap#selection#try_open(action) abort
     for line in s:get_opaque_lines()
       execute open_cmd line
     endfor
-    call clap#_exit()
+    call clap#_exit_provider()
 
   elseif g:clap.provider.support_open_action()
 
@@ -96,7 +96,7 @@ function! clap#selection#try_open(action) abort
       call g:clap.provider.sink(line)
     endfor
     call remove(g:clap, 'open_action')
-    call clap#_exit()
+    call clap#_exit_provider()
 
   endif
   silent doautocmd <nomodeline> User ClapOnExit

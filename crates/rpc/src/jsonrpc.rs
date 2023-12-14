@@ -2,18 +2,87 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
+/// Request ID
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum Id {
+    Null,
+    Num(u64),
+    Str(String),
+}
+
+impl std::fmt::Display for Id {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Id::Null => f.write_str("null"),
+            Id::Num(num) => write!(f, "{}", num),
+            Id::Str(string) => f.write_str(string),
+        }
+    }
+}
+
+/// Protocol Version
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub enum Version {
+    V2,
+}
+
+impl Serialize for Version {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match *self {
+            Version::V2 => serializer.serialize_str("2.0"),
+        }
+    }
+}
+
+struct VersionVisitor;
+
+impl<'v> serde::de::Visitor<'v> for VersionVisitor {
+    type Value = Version;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a string")
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        match value {
+            "2.0" => Ok(Version::V2),
+            _ => Err(serde::de::Error::custom("invalid version")),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Version {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_identifier(VersionVisitor)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct RpcRequest {
-    pub id: u64,
+    pub jsonrpc: Option<Version>,
+    pub id: Id,
     pub method: String,
+    #[serde(default = "default_params", skip_serializing_if = "Params::is_none")]
     pub params: Params,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct RpcNotification {
+    pub jsonrpc: Option<Version>,
     pub method: String,
+    #[serde(default = "default_params", skip_serializing_if = "Params::is_none")]
     pub params: Params,
 }
 
@@ -26,14 +95,8 @@ impl RpcNotification {
     }
 }
 
-/// RPC message originated from Vim.
-///
-/// Message sent via `clap#client#notify` or `clap#client#request_async`.
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(untagged)]
-pub enum VimMessage {
-    Request(RpcRequest),
-    Notification(RpcNotification),
+fn default_params() -> Params {
+    Params::None
 }
 
 /// Message type through the stdio channel.
@@ -48,12 +111,12 @@ pub enum RpcMessage {
     Response(RpcResponse),
 }
 
-type Id = u64;
-
 /// Successful response
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Success {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub jsonrpc: Option<Version>,
     /// Result
     pub result: Value,
     /// Correlation id
@@ -64,6 +127,8 @@ pub struct Success {
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Failure {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub jsonrpc: Option<Version>,
     /// Error
     pub error: Error,
     /// Correlation id
@@ -297,6 +362,10 @@ impl Params {
                 p,
             )),
         }
+    }
+
+    pub fn is_none(&self) -> bool {
+        matches!(self, Self::None)
     }
 }
 

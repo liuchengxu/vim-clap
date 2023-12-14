@@ -57,6 +57,7 @@ augroup VimClap
   if get(g:, 'clap_plugin_experimental', 0)
     autocmd InsertEnter  * call clap#client#notify('InsertEnter',  [+expand('<abuf>')])
     autocmd CursorMoved  * call clap#client#notify('CursorMoved',  [+expand('<abuf>')])
+    autocmd BufNewFile   * call clap#client#notify('BufNewFile',   [+expand('<abuf>')])
     autocmd BufEnter     * call clap#client#notify('BufEnter',     [+expand('<abuf>')])
     autocmd BufLeave     * call clap#client#notify('BufLeave',     [+expand('<abuf>')])
     autocmd BufDelete    * call clap#client#notify('BufDelete',    [+expand('<abuf>')])

@@ -5,14 +5,22 @@ scriptencoding utf-8
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+highlight ClapSignAdd    ctermfg=70  guifg=#67b11d
+highlight ClapSignDelete ctermfg=196 guifg=#f2241f
+highlight ClapSignChange ctermfg=173 guifg=#e18254
+
+highlight default link ClapGitSignAdd    ClapSignAdd
+highlight default link ClapGitSignDelete ClapSignDelete
+highlight default link ClapGitSignChange ClapSignChange
+
 highlight default link ClapBlameInfo SpecialComment
 
 let s:git_signs = {
-      \ 'added': { 'text': '+', 'texthl': 'DiffAdd' },
-      \ 'modified': { 'text': '~', 'texthl': 'DiffChange' },
-      \ 'removed': { 'text': '_', 'texthl': 'DiffDelete' },
-      \ 'modified_removed': { 'text': '~_', 'texthl': 'DiffDelete' },
-      \ 'removed_above_and_below': { 'text': '_-', 'texthl': 'DiffDelete' },
+      \ 'added': { 'text': '+', 'texthl': 'ClapGitSignAdd' },
+      \ 'modified': { 'text': '~', 'texthl': 'ClapGitSignChange' },
+      \ 'removed': { 'text': '_', 'texthl': 'ClapGitSignDelete' },
+      \ 'modified_removed': { 'text': '~_', 'texthl': 'ClapGitSignDelete' },
+      \ 'removed_above_and_below': { 'text': '_-', 'texthl': 'ClapGitSignDelete' },
       \ }
 
 if exists('g:clap_plugin_git_signs')

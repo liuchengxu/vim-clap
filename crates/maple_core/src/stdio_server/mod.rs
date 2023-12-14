@@ -1,5 +1,6 @@
 mod input;
 mod job;
+mod lsp_handler;
 mod plugin;
 mod provider;
 mod request_handler;
@@ -14,7 +15,7 @@ use self::service::ServiceManager;
 use self::vim::{initialize_filetype_map, VimError, VimResult};
 pub use self::vim::{SearchProgressor, Vim};
 use parking_lot::Mutex;
-use rpc::{RpcClient, RpcNotification, RpcRequest, VimMessage};
+use rpc::{vim::VimMessage, RpcNotification, RpcRequest};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::io::{BufReader, BufWriter};
@@ -85,7 +86,7 @@ struct InitializedService {
 fn initialize_service(vim: Vim) -> InitializedService {
     use self::plugin::{
         ActionType, ClapPlugin, ColorizerPlugin, CtagsPlugin, CursorwordPlugin, GitPlugin,
-        LinterPlugin, MarkdownPlugin, SyntaxPlugin, SystemPlugin,
+        LinterPlugin, LspPlugin, MarkdownPlugin, SyntaxPlugin, SystemPlugin,
     };
 
     let mut callable_actions = Vec::new();
@@ -107,6 +108,8 @@ fn initialize_service(vim: Vim) -> InitializedService {
 
     register_plugin(Box::new(SystemPlugin::new(vim.clone())), None);
     register_plugin(Box::new(SyntaxPlugin::new(vim.clone())), None);
+
+    register_plugin(Box::new(LspPlugin::new(vim.clone())), None);
 
     let plugin_config = &crate::config::config().plugin;
 
@@ -174,7 +177,7 @@ pub async fn start(config_err: ConfigError) {
     // TODO: setup test framework using vim_message_sender.
     let (vim_message_sender, vim_message_receiver) = tokio::sync::mpsc::unbounded_channel();
 
-    let rpc_client = Arc::new(RpcClient::new(
+    let rpc_client = Arc::new(rpc::vim::RpcClient::new(
         BufReader::new(std::io::stdin()),
         BufWriter::new(std::io::stdout()),
         vim_message_sender.clone(),
@@ -369,18 +372,18 @@ impl Backend {
         let client = self.clone();
 
         tokio::spawn(async move {
-            let id = rpc_request.id;
+            let id = rpc_request.id.clone();
 
             match client.do_process_request(rpc_request).await {
                 Ok(Some(result)) => {
                     // Send back the result of method call.
-                    if let Err(err) = client.vim.send_response(id, Ok(result)) {
-                        tracing::debug!(id, ?err, "Failed to send the output result");
+                    if let Err(err) = client.vim.send_response(id.clone(), Ok(result)) {
+                        tracing::debug!(%id, ?err, "Failed to send the output result");
                     }
                 }
                 Ok(None) => {}
                 Err(err) => {
-                    tracing::error!(id, ?err, "Error at processing Vim RpcRequest");
+                    tracing::error!(%id, ?err, "Error at processing Vim RpcRequest");
                 }
             }
         });

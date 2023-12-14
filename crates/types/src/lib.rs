@@ -141,6 +141,7 @@ macro_rules! event_enum_with_variants {
 event_enum_with_variants!(AutocmdEventType {
     CursorMoved,
     InsertEnter,
+    BufNewFile,
     BufEnter,
     BufLeave,
     BufDelete,

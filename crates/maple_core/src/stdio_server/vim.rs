@@ -2,7 +2,8 @@ use crate::stdio_server::provider::ProviderId;
 use once_cell::sync::{Lazy, OnceCell};
 use paths::AbsPathBuf;
 use printer::DisplayLines;
-use rpc::RpcClient;
+use rpc::vim::RpcClient;
+use rpc::Id;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -303,7 +304,7 @@ impl Vim {
     /// Send back the result with specified id.
     pub fn send_response(
         &self,
-        id: u64,
+        id: Id,
         output_result: Result<impl Serialize, rpc::RpcError>,
     ) -> VimResult<()> {
         self.rpc_client
@@ -391,6 +392,10 @@ impl Vim {
 
     pub async fn matchdelete(&self, id: i32, win: usize) -> VimResult<i32> {
         self.call("matchdelete", (id, win)).await
+    }
+
+    pub fn redrawstatus(&self) -> VimResult<()> {
+        self.exec("execute", ["redrawstatus"])
     }
 
     pub fn setbufvar(&self, bufnr: usize, varname: &str, val: impl Serialize) -> VimResult<()> {
@@ -551,6 +556,11 @@ impl Vim {
         } else {
             Err(VimError::InvalidVariableScope)
         }
+    }
+
+    pub fn update_lsp_status(&self, new_status: impl AsRef<str>) -> VimResult<()> {
+        self.set_var("g:clap_lsp_status", new_status.as_ref())?;
+        self.redrawstatus()
     }
 
     pub async fn win_is_valid(&self, winid: usize) -> VimResult<bool> {

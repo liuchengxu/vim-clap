@@ -45,6 +45,7 @@ maple_derive = { workspace = true }
 filter = { workspace = true }
 icon = { workspace = true }
 ide = { workspace = true }
+maple_lsp = { workspace = true }
 matcher = { workspace = true }
 paths = { workspace = true }
 pattern = { workspace = true }
