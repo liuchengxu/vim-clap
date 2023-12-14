@@ -605,14 +605,12 @@ impl Client {
 
         match &capabilities.text_document_sync {
             Some(lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
-                save: Some(options),
+                save:
+                    Some(lsp::TextDocumentSyncSaveOptions::SaveOptions(lsp::SaveOptions {
+                        include_text,
+                    })),
                 ..
-            })) => match options {
-                lsp::TextDocumentSyncSaveOptions::SaveOptions(lsp::SaveOptions {
-                    include_text,
-                }) => include_text.unwrap_or(false),
-                _ => false,
-            },
+            })) => include_text.unwrap_or(false),
             _ => false,
         }
     }
@@ -1053,6 +1051,35 @@ impl Client {
             .await
     }
 
+    pub async fn code_actions(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        range: lsp::Range,
+        context: lsp::CodeActionContext,
+    ) -> Result<Option<lsp::CodeActionResponse>, Error> {
+        let capabilities = self.capabilities.get().ok_or(Error::Uninitialized)?;
+
+        // Return early if the server does not support code actions.
+        match capabilities.code_action_provider {
+            Some(
+                lsp::CodeActionProviderCapability::Simple(true)
+                | lsp::CodeActionProviderCapability::Options(_),
+            ) => (),
+            _ => return Ok(None),
+        }
+
+        let params = lsp::CodeActionParams {
+            text_document,
+            range,
+            context,
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        self.request::<lsp::request::CodeActionRequest>(params)
+            .await
+    }
+
     pub async fn shutdown(&self) -> Result<(), Error> {
         self.request::<lsp::request::Shutdown>(()).await
     }
@@ -1074,36 +1101,5 @@ fn to_locations(definitions: Option<lsp::GotoDefinitionResponse>) -> Vec<lsp::Lo
             })
             .collect(),
         None => Vec::new(),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn lsp_works() {
-        let line = r#"{"jsonrpc":"2.0","id":0,"method":"window/workDoneProgress/create","params":{"token":"rustAnalyzer/Fetching"}}"#;
-        let msg: ServerMessage = serde_json::from_str(line).unwrap();
-        println!("msg: {msg:?}");
-
-        let root_path = "/home/xlc/.vim/plugged/vim-clap/crates/rpc";
-        let client = Client::new(
-            "/home/xlc/.cargo/bin/rust-analyzer",
-            &[],
-            Path::new(root_path),
-            (),
-        )
-        .unwrap();
-
-        let res = client.initialize(false).await.unwrap();
-
-        client
-            .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
-            .unwrap();
-
-        println!("========== res: {res:?}");
-
-        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     }
 }

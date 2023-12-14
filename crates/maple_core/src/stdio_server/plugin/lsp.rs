@@ -106,7 +106,7 @@ impl Document {
         };
 
         let text = if include_text {
-            std::fs::read_to_string(&path)?
+            std::fs::read_to_string(path)?
         } else {
             String::default()
         };
@@ -178,7 +178,7 @@ impl LspPlugin {
 
         let language_id = filetype;
 
-        if !self.documents.contains_key(&bufnr) {
+        if let std::collections::hash_map::Entry::Vacant(e) = self.documents.entry(bufnr) {
             if !self.clients.contains_key(&language_id) {
                 let client = maple_lsp::start_client(
                     server_binary,
@@ -197,7 +197,8 @@ impl LspPlugin {
                 bufname,
                 doc_id: lsp::TextDocumentIdentifier { uri: to_url(path)? },
             };
-            self.documents.insert(bufnr, doc);
+
+            e.insert(doc);
         }
 
         Ok(())

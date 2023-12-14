@@ -47,10 +47,10 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
     ) -> Result<Value, rpc::Error> {
         tracing::debug!(%id, "Processing language server request: {request:?}");
 
-        match request {
-            LanguageServerRequest::WorkDoneProgressCreate(_params) => {}
-            _ => {}
-        }
+        // match request {
+        // LanguageServerRequest::WorkDoneProgressCreate(_params) => {}
+        // _ => {}
+        // }
 
         Ok(Value::Null)
     }
@@ -133,7 +133,9 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
                     self.update_lsp_status_gentlely(Some(status));
                 }
             }
-            _ => {}
+            _ => {
+                tracing::debug!("TODO: handle language server notification");
+            }
         }
 
         Ok(())

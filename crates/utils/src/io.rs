@@ -113,8 +113,7 @@ where
 {
     Ok(BufReader::new(File::open(path)?)
         .lines()
-        .skip(line_number.saturating_sub(1))
-        .next()
+        .nth(line_number.saturating_sub(1))
         .and_then(Result::ok))
 }
 
