@@ -1,4 +1,5 @@
 use futures_util::TryFutureExt;
+use lsp::request::Request as RequestT;
 use lsp::{
     GotoDefinitionParams, Position, ProgressToken, ServerCapabilities, TextDocumentIdentifier, Url,
 };
@@ -21,28 +22,32 @@ pub use lsp;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("client is not yet initialized")]
+    Uninitialized,
+    #[error("method {0} is unsupported by language server")]
+    Unsupported(&'static str),
+    #[error("client request returns a failure response: {0:?}")]
+    RequestFailure(rpc::Failure),
+    #[error("stream closed")]
+    StreamClosed,
+    #[error("Unhandled message")]
+    Unhandled,
+    #[error("failed to send response: {0:?}")]
+    SendResponse(RpcResponse),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+    #[error(transparent)]
+    JsonRpc(#[from] rpc::Error),
     #[error("failed to send raw message: {0}")]
     SendRawMessage(#[from] SendError<RpcMessage>),
     #[error("failed to send request: {0}")]
     SendRequest(#[from] SendError<(Id, oneshot::Sender<RpcResponse>)>),
-    #[error("failed to send response: {0:?}")]
-    SendResponse(RpcResponse),
     #[error("sender is dropped: {0}")]
     OneshotRecv(#[from] tokio::sync::oneshot::error::RecvError),
     #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("request failure: {0}")]
-    Request(String),
-    #[error(transparent)]
     IO(#[from] std::io::Error),
-    #[error("stream closed")]
-    StreamClosed,
     #[error("failed to parse server message: {0}")]
     BadServerMessage(String),
-    #[error("Unhandled message")]
-    Unhandled,
-    #[error(transparent)]
-    JsonRpc(#[from] rpc::Error),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -595,6 +600,23 @@ impl Client {
             .expect("language server not yet initialized!")
     }
 
+    pub fn include_text_on_save(&self) -> bool {
+        let capabilities = self.capabilities();
+
+        match &capabilities.text_document_sync {
+            Some(lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
+                save: Some(options),
+                ..
+            })) => match options {
+                lsp::TextDocumentSyncSaveOptions::SaveOptions(lsp::SaveOptions {
+                    include_text,
+                }) => include_text.unwrap_or(false),
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
     pub async fn request<T: lsp::request::Request>(
         &self,
         params: T::Params,
@@ -617,9 +639,7 @@ impl Client {
         self.server_tx.send(RpcMessage::Request(rpc_request))?;
         match request_result_rx.await? {
             RpcResponse::Success(ok) => Ok(serde_json::from_value(ok.result)?),
-            RpcResponse::Failure(err) => {
-                Err(Error::Request(format!("RpcClient request error: {err:?}")))
-            }
+            RpcResponse::Failure(err) => Err(Error::RequestFailure(err)),
         }
     }
 
@@ -642,7 +662,7 @@ impl Client {
         Ok(())
     }
 
-    pub async fn initialize(&self, enable_snippets: bool) -> Result<lsp::InitializeResult, Error> {
+    async fn initialize(&self, enable_snippets: bool) -> Result<lsp::InitializeResult, Error> {
         #[allow(deprecated)]
         let params = lsp::InitializeParams {
             process_id: Some(std::process::id()),
@@ -799,6 +819,45 @@ impl Client {
         self.request::<lsp::request::Initialize>(params).await
     }
 
+    pub fn text_document_did_open(
+        &self,
+        uri: lsp::Url,
+        version: i32,
+        text: String,
+        language_id: String,
+    ) -> Result<(), Error> {
+        self.notify::<lsp::notification::DidOpenTextDocument>(lsp::DidOpenTextDocumentParams {
+            text_document: lsp::TextDocumentItem {
+                uri,
+                language_id,
+                version,
+                text,
+            },
+        })
+    }
+
+    pub fn text_document_did_close(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+    ) -> Result<(), Error> {
+        self.notify::<lsp::notification::DidCloseTextDocument>(lsp::DidCloseTextDocumentParams {
+            text_document,
+        })
+    }
+
+    // will_save / will_save_wait_until
+
+    pub fn text_document_did_save(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        text: Option<String>,
+    ) -> Result<(), Error> {
+        self.notify::<lsp::notification::DidSaveTextDocument>(lsp::DidSaveTextDocumentParams {
+            text_document,
+            text,
+        })
+    }
+
     async fn goto_request<
         T: lsp::request::Request<
             Params = GotoDefinitionParams,
@@ -832,6 +891,13 @@ impl Client {
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
     ) -> Result<Vec<lsp::Location>, Error> {
+        let capabilities = self.capabilities.get().ok_or(Error::Uninitialized)?;
+
+        match capabilities.definition_provider {
+            Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_)) => (),
+            _ => return Err(Error::Unsupported(lsp::request::GotoDefinition::METHOD)),
+        }
+
         self.goto_request::<lsp::request::GotoDefinition>(text_document, position, work_done_token)
             .await
     }
@@ -842,6 +908,17 @@ impl Client {
         position: Position,
         work_done_token: Option<ProgressToken>,
     ) -> Result<Vec<lsp::Location>, Error> {
+        let capabilities = self.capabilities.get().ok_or(Error::Uninitialized)?;
+
+        match capabilities.declaration_provider {
+            Some(
+                lsp::DeclarationCapability::Simple(true)
+                | lsp::DeclarationCapability::RegistrationOptions(_)
+                | lsp::DeclarationCapability::Options(_),
+            ) => (),
+            _ => return Err(Error::Unsupported(lsp::request::GotoDeclaration::METHOD)),
+        }
+
         self.goto_request::<lsp::request::GotoDeclaration>(text_document, position, work_done_token)
             .await
     }
@@ -852,6 +929,16 @@ impl Client {
         position: Position,
         work_done_token: Option<ProgressToken>,
     ) -> Result<Vec<lsp::Location>, Error> {
+        let capabilities = self.capabilities.get().ok_or(Error::Uninitialized)?;
+
+        match capabilities.type_definition_provider {
+            Some(
+                lsp::TypeDefinitionProviderCapability::Simple(true)
+                | lsp::TypeDefinitionProviderCapability::Options(_),
+            ) => (),
+            _ => return Err(Error::Unsupported(lsp::request::GotoTypeDefinition::METHOD)),
+        }
+
         self.goto_request::<lsp::request::GotoTypeDefinition>(
             text_document,
             position,
@@ -866,6 +953,16 @@ impl Client {
         position: Position,
         work_done_token: Option<ProgressToken>,
     ) -> Result<Vec<lsp::Location>, Error> {
+        let capabilities = self.capabilities.get().ok_or(Error::Uninitialized)?;
+
+        match capabilities.type_definition_provider {
+            Some(
+                lsp::TypeDefinitionProviderCapability::Simple(true)
+                | lsp::TypeDefinitionProviderCapability::Options(_),
+            ) => (),
+            _ => return Err(Error::Unsupported(lsp::request::GotoImplementation::METHOD)),
+        }
+
         self.goto_request::<lsp::request::GotoImplementation>(
             text_document,
             position,
@@ -881,6 +978,13 @@ impl Client {
         include_declaration: bool,
         work_done_token: Option<ProgressToken>,
     ) -> Result<Option<Vec<lsp::Location>>, Error> {
+        let capabilities = self.capabilities.get().ok_or(Error::Uninitialized)?;
+
+        match capabilities.references_provider {
+            Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_)) => (),
+            _ => return Err(Error::Unsupported(lsp::request::References::METHOD)),
+        }
+
         let params = lsp::ReferenceParams {
             text_document_position: lsp::TextDocumentPositionParams {
                 text_document,
@@ -896,6 +1000,57 @@ impl Client {
         };
 
         self.request::<lsp::request::References>(params).await
+    }
+
+    pub async fn document_symbols(
+        &self,
+        text_document: TextDocumentIdentifier,
+    ) -> Result<Option<lsp::DocumentSymbolResponse>, Error> {
+        let capabilities = self.capabilities.get().ok_or(Error::Uninitialized)?;
+
+        match capabilities.document_symbol_provider {
+            Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_)) => (),
+            _ => {
+                return Err(Error::Unsupported(
+                    lsp::request::DocumentSymbolRequest::METHOD,
+                ))
+            }
+        }
+
+        let params = lsp::DocumentSymbolParams {
+            text_document,
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        self.request::<lsp::request::DocumentSymbolRequest>(params)
+            .await
+    }
+
+    // empty string to get all symbols
+    pub async fn workspace_symbols(
+        &self,
+        query: String,
+    ) -> Result<Option<lsp::WorkspaceSymbolResponse>, Error> {
+        let capabilities = self.capabilities.get().ok_or(Error::Uninitialized)?;
+
+        match capabilities.workspace_symbol_provider {
+            Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_)) => (),
+            _ => {
+                return Err(Error::Unsupported(
+                    lsp::request::WorkspaceSymbolRequest::METHOD,
+                ))
+            }
+        }
+
+        let params = lsp::WorkspaceSymbolParams {
+            query,
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        self.request::<lsp::request::WorkspaceSymbolRequest>(params)
+            .await
     }
 
     pub async fn shutdown(&self) -> Result<(), Error> {

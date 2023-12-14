@@ -3,16 +3,39 @@ use maple_lsp::{
     lsp, HandleLanguageServerMessage, LanguageServerNotification, LanguageServerRequest,
 };
 use serde_json::Value;
+use std::time::Instant;
 
 #[derive(Debug)]
 pub struct LanguageServerMessageHandler {
     name: String,
+    last_lsp_update: Option<Instant>,
     vim: Vim,
 }
 
 impl LanguageServerMessageHandler {
+    const LSP_UPDATE_DELAY: u128 = 50;
+
     pub fn new(name: String, vim: Vim) -> Self {
-        Self { name, vim }
+        Self {
+            name,
+            vim,
+            last_lsp_update: None,
+        }
+    }
+
+    /// Update the lsp status if a certain time delay has passed since the last update.
+    fn update_lsp_status_gentlely(&mut self, new: Option<String>) {
+        let should_update = match self.last_lsp_update {
+            Some(last_update) => last_update.elapsed().as_millis() > Self::LSP_UPDATE_DELAY,
+            None => true,
+        };
+
+        if should_update {
+            let _ = self
+                .vim
+                .update_lsp_status(new.as_ref().unwrap_or(&self.name));
+            self.last_lsp_update.replace(Instant::now());
+        }
     }
 }
 
@@ -65,12 +88,7 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
                         if message.is_some() {
                             (None, message, &None)
                         } else {
-                            // self.lsp_progress.end_progress(server_id, &token);
-                            // if !self.lsp_progress.is_progressing(server_id) {
-                            // editor_view.spinners_mut().get_or_create(server_id).stop();
-                            // }
-                            // self.editor.clear_status();
-
+                            // End progress.
                             let _ = self.vim.update_lsp_status(&self.name);
 
                             // we want to render to clear any leftover spinners or messages
@@ -112,8 +130,7 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
                 if let WorkDoneProgress::End(_) = work {
                     let _ = self.vim.update_lsp_status(&self.name);
                 } else {
-                    // Update LSP progress.
-                    let _ = self.vim.update_lsp_status(status);
+                    self.update_lsp_status_gentlely(Some(status));
                 }
             }
             _ => {}
