@@ -43,7 +43,20 @@ function! clap#plugin#lsp#open_picker() abort
           \ 'on_typed': { -> clap#client#notify_provider('on_typed') },
           \ 'sink': 'e',
           \ }
-    call clap#run(provider)
+
+  let g:clap.registrar['lsp'] = provider
+  let g:clap.provider.id = 'lsp'
+  let g:clap.display.cache = []
+
+  call clap#state#clear_pre()
+
+  call clap#selection#init()
+
+  let g:__clap_open_win_pre = v:true
+  call g:clap.open_win()
+  let g:__clap_open_win_pre = v:false
+
+  call clap#indicator#render()
 endfunction
 
 function! clap#plugin#lsp#provider_context() abort

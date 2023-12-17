@@ -67,6 +67,7 @@ enum Goto {
 #[derive(Debug, Clone)]
 struct GotoRequest {
     bufnr: usize,
+    language_id: String,
     cursor_pos: (usize, usize),
 }
 
@@ -112,6 +113,25 @@ pub struct LanguageConfig {
     /// these indicate project roots <.git, Cargo.toml>
     #[serde(default)]
     pub root_markers: Vec<String>,
+}
+
+fn nested_to_flat(
+    list: &mut Vec<lsp::SymbolInformation>,
+    file: &lsp::TextDocumentIdentifier,
+    symbol: lsp::DocumentSymbol,
+) {
+    #[allow(deprecated)]
+    list.push(lsp::SymbolInformation {
+        name: symbol.name,
+        kind: symbol.kind,
+        tags: symbol.tags,
+        deprecated: symbol.deprecated,
+        location: lsp::Location::new(file.uri.clone(), symbol.selection_range),
+        container_name: None,
+    });
+    for child in symbol.children.into_iter().flatten() {
+        nested_to_flat(list, file, child);
+    }
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
@@ -246,6 +266,15 @@ impl LspPlugin {
                 self.vim
                     .set_var("g:clap_lsp_status", "cancelling request")?;
                 self.vim.redrawstatus()?;
+                tokio::spawn({
+                    let vim = self.vim.clone();
+                    let language_id = request_in_fly.language_id.clone();
+                    async move {
+                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                        let _ = vim.set_var("g:clap_lsp_status", language_id);
+                        let _ = vim.redrawstatus();
+                    }
+                });
                 return Ok(());
             }
         }
@@ -319,6 +348,7 @@ impl LspPlugin {
         self.vim.redrawstatus()?;
         self.current_goto_request.replace(GotoRequest {
             bufnr,
+            language_id: document.language_id.clone(),
             cursor_pos: (row, column),
         });
 
@@ -422,25 +452,6 @@ impl LspPlugin {
             None => return Ok(()),
         };
 
-        fn nested_to_flat(
-            list: &mut Vec<lsp::SymbolInformation>,
-            file: &lsp::TextDocumentIdentifier,
-            symbol: lsp::DocumentSymbol,
-        ) {
-            #[allow(deprecated)]
-            list.push(lsp::SymbolInformation {
-                name: symbol.name,
-                kind: symbol.kind,
-                tags: symbol.tags,
-                deprecated: symbol.deprecated,
-                location: lsp::Location::new(file.uri.clone(), symbol.selection_range),
-                container_name: None,
-            });
-            for child in symbol.children.into_iter().flatten() {
-                nested_to_flat(list, file, child);
-            }
-        }
-
         // lsp has two ways to represent symbols (flat/nested)
         // convert the nested variant to flat, so that we have a homogeneous list
         let symbols = match symbols {
@@ -519,7 +530,16 @@ impl ClapPlugin for LspPlugin {
                 self.on_buf_write_post(bufnr).await?;
             }
             BufDelete => {
-                self.documents.remove(&bufnr);
+                if let Some(doc) = self.documents.remove(&bufnr) {
+                    let client = self
+                        .servers
+                        .get(&doc.language_id)
+                        .ok_or(Error::ClientNotFound)?;
+
+                    client
+                        .text_document_did_close(doc.doc_id)
+                        .map_err(Error::Lsp)?;
+                }
             }
             CursorMoved => {
                 self.on_cursor_moved(bufnr).await?;
