@@ -5,7 +5,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::fs::canonicalize;
-use std::path::{Display, Path, PathBuf, MAIN_SEPARATOR};
+use std::path::{Component, Display, Path, PathBuf, MAIN_SEPARATOR};
 use std::sync::OnceLock;
 
 /// Unit type wrapper of [`PathBuf`] that is absolute path.
@@ -182,6 +182,70 @@ pub fn truncate_absolute_path(abs_path: &str, max_len: usize) -> Cow<'_, str> {
     abs_path.into()
 }
 
+// Get the current working directory.
+// This information is managed internally as the call to std::env::current_dir
+// might fail if the cwd has been deleted.
+pub fn current_working_dir() -> &'static PathBuf {
+    static CWD: OnceLock<PathBuf> = OnceLock::new();
+
+    CWD.get_or_init(|| {
+        std::env::current_dir()
+            .and_then(dunce::canonicalize)
+            .expect("Couldn't determine current working directory")
+    })
+}
+
+/// Normalize a path, removing things like `.` and `..`.
+///
+/// CAUTION: This does not resolve symlinks (unlike
+/// [`std::fs::canonicalize`]). This may cause incorrect or surprising
+/// behavior at times. This should be used carefully. Unfortunately,
+/// [`std::fs::canonicalize`] can be hard to use correctly, since it can often
+/// fail, or on Windows returns annoying device paths. This is a problem Cargo
+/// needs to improve on.
+/// Copied from cargo: <https://github.com/rust-lang/cargo/blob/070e459c2d8b79c5b2ac5218064e7603329c92ae/crates/cargo-util/src/paths.rs#L81>
+pub fn get_normalized_path(path: &Path) -> PathBuf {
+    // normalization strategy is to canonicalize first ancestor path that exists (i.e., canonicalize as much as possible),
+    // then run handrolled normalization on the non-existent remainder
+    let (base, path) = path
+        .ancestors()
+        .find_map(|base| {
+            let canonicalized_base = dunce::canonicalize(base).ok()?;
+            let remainder = path.strip_prefix(base).ok()?.into();
+            Some((canonicalized_base, remainder))
+        })
+        .unwrap_or_else(|| (PathBuf::new(), PathBuf::from(path)));
+
+    if path.as_os_str().is_empty() {
+        return base;
+    }
+
+    let mut components = path.components().peekable();
+    let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
+        components.next();
+        PathBuf::from(c.as_os_str())
+    } else {
+        PathBuf::new()
+    };
+
+    for component in components {
+        match component {
+            Component::Prefix(..) => unreachable!(),
+            Component::RootDir => {
+                ret.push(component.as_os_str());
+            }
+            Component::CurDir => {}
+            Component::ParentDir => {
+                ret.pop();
+            }
+            Component::Normal(c) => {
+                ret.push(c);
+            }
+        }
+    }
+    base.join(ret)
+}
+
 pub fn find_project_root<'a, P: AsRef<Path>>(
     start_dir: &'a Path,
     root_markers: &[P],
@@ -223,7 +287,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[ignore = "Not sure why the behavior is differnt in CI"]
+    #[ignore = "Not sure why the behavior is different in CI"]
     fn test_truncate_absolute_path() {
         #[cfg(not(target_os = "windows"))]
         let p = ".rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs";
