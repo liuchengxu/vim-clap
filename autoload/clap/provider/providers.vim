@@ -9,7 +9,7 @@ let s:providers = {}
 function! s:providers.sink(selected) abort
   let provider = a:selected[: stridx(a:selected, ':') - 1]
   " a sink for "Clap providers" (dispatch to other builtin clap providers).
-  call timer_start(0, {-> clap#_for(provider)})
+  call timer_start(0, {-> clap#_open_provider(provider)})
 endfunction
 
 function! clap#provider#providers#get_user_defined() abort

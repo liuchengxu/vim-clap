@@ -9,7 +9,7 @@ let s:old_input = ''
 
 function! s:relaunch_providers() abort
   call clap#handler#exit()
-  call timer_start(10, { -> clap#for('providers') })
+  call timer_start(10, { -> clap#open_provider('providers') })
   call g:clap.input.set('')
 endfunction
 
