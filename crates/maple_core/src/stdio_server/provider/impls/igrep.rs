@@ -268,7 +268,7 @@ impl Explorer {
 
         match preview_impl.get_preview().await {
             Ok((_preview_target, preview)) => {
-                ctx.render_preview(preview)?;
+                ctx.update_picker_preview(preview)?;
 
                 let maybe_syntax = preview_impl.preview_target.path().and_then(|path| {
                     if path.is_dir() {
@@ -285,7 +285,7 @@ impl Explorer {
                 }
             }
             Err(err) => {
-                ctx.render_preview(Preview::new(vec![err.to_string()]))?;
+                ctx.update_picker_preview(Preview::new(vec![err.to_string()]))?;
             }
         }
         Ok(())

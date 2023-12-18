@@ -272,8 +272,7 @@ impl DumbJumpProvider {
 
         let response = json!({ "lines": lines, "indices": indices, "matched": matched });
 
-        ctx.vim
-            .exec("clap#state#process_response_on_typed", response)?;
+        ctx.vim.exec("clap#state#update_picker", response)?;
 
         self.cached_results = search_results;
         self.current_usages.take();
@@ -345,7 +344,7 @@ impl ClapProvider for DumbJumpProvider {
         // Only send back the result if the request is not out-dated.
         if input == current_input && lnum == current_lnum {
             ctx.preview_manager.reset_scroll();
-            ctx.render_preview(preview)?;
+            ctx.update_picker_preview(preview)?;
             ctx.preview_manager.set_preview_target(preview_target);
         }
 
@@ -376,8 +375,7 @@ impl ClapProvider for DumbJumpProvider {
                 .map(|Usage { line, indices }| (line.as_str(), indices.as_slice()))
                 .unzip();
             let response = json!({ "lines": lines, "indices": indices, "matched": matched });
-            ctx.vim
-                .exec("clap#state#process_response_on_typed", response)?;
+            ctx.vim.exec("clap#state#update_picker", response)?;
             self.current_usages.replace(refiltered.into());
             return Ok(());
         }

@@ -102,7 +102,49 @@ function! clap#state#process_progress_full(display_lines, matched, processed) ab
   endif
 endfunction
 
-function! clap#state#render_preview(preview) abort
+function! clap#state#update_picker(result) abort
+  if !g:clap.display.win_is_valid()
+    return
+  endif
+  if has_key(a:result, 'matched')
+    if has_key(a:result, 'processed')
+      call clap#indicator#update(a:result.matched, a:result.processed)
+      if a:result.processed == 0
+        call clap#state#clear_screen()
+        return
+      endif
+    else
+      call clap#indicator#update_matched_only(a:result.matched)
+    endif
+  else
+    " Should be unreachable.
+    return
+  endif
+
+  if has_key(a:result, 'truncated_map')
+    let g:__clap_lines_truncated_map = a:result.truncated_map
+  elseif exists('g:__clap_lines_truncated_map')
+    unlet g:__clap_lines_truncated_map
+  endif
+
+  if has_key(a:result, 'icon_added')
+    let g:__clap_icon_added_by_maple = a:result.icon_added
+  endif
+
+  call g:clap.display.set_lines(a:result.lines)
+  call clap#highlighter#add_highlights(a:result.indices)
+  call clap#sign#ensure_exists()
+
+  if has_key(a:result, 'preview')
+    if !empty(a:result.preview)
+      call clap#state#update_picker_preview(a:result.preview)
+    endif
+  else
+    call clap#preview#update_with_delay()
+  endif
+endfunction
+
+function! clap#state#update_picker_preview(preview) abort
   if !g:clap.display.win_is_valid()
     return
   endif
@@ -145,47 +187,22 @@ function! clap#state#render_preview(preview) abort
   endif
 endfunction
 
-function! clap#state#process_response_on_typed(result) abort
+function! clap#state#update_picker_on_empty_query(lines, truncated_map, icon_added) abort
   if !g:clap.display.win_is_valid()
     return
   endif
-  if has_key(a:result, 'matched')
-    if has_key(a:result, 'processed')
-      call clap#indicator#update(a:result.matched, a:result.processed)
-      if a:result.processed == 0
-        call clap#state#clear_screen()
-        return
-      endif
-    else
-      call clap#indicator#update_matched_only(a:result.matched)
-    endif
-  else
-    " Should be unreachable.
-    return
-  endif
-
-  if has_key(a:result, 'truncated_map')
-    let g:__clap_lines_truncated_map = a:result.truncated_map
+  call g:clap.display.set_lines_lazy(a:lines)
+  call g:clap#display_win.shrink_if_undersize()
+  if !empty(a:truncated_map)
+    let g:__clap_lines_truncated_map = a:truncated_map
   elseif exists('g:__clap_lines_truncated_map')
     unlet g:__clap_lines_truncated_map
   endif
-
-  if has_key(a:result, 'icon_added')
-    let g:__clap_icon_added_by_maple = a:result.icon_added
-  endif
-
-  call g:clap.display.set_lines(a:result.lines)
-  call clap#highlighter#add_highlights(a:result.indices)
+  let g:__clap_icon_added_by_maple = a:icon_added
   call clap#sign#ensure_exists()
+  call g:clap.display.clear_highlight()
+  call clap#indicator#update_matched(0)
   call clap#preview#update_with_delay()
-
-  if has_key(a:result, 'preview')
-    if !empty(a:result.preview)
-      call clap#state#render_preview(a:result.preview)
-    endif
-  else
-    call clap#preview#update_with_delay()
-  endif
 endfunction
 
 function! clap#state#clear_screen() abort
@@ -226,24 +243,6 @@ function! clap#state#init_display(lines, truncated_map, icon_added, using_cache)
   call clap#indicator#update_processed(g:clap.display.initial_size)
   call clap#sign#ensure_exists()
   call clap#spinner#refresh()
-  call clap#preview#update_with_delay()
-endfunction
-
-function! clap#state#update_on_empty_query(lines, truncated_map, icon_added) abort
-  if !g:clap.display.win_is_valid()
-    return
-  endif
-  call g:clap.display.set_lines_lazy(a:lines)
-  call g:clap#display_win.shrink_if_undersize()
-  if !empty(a:truncated_map)
-    let g:__clap_lines_truncated_map = a:truncated_map
-  elseif exists('g:__clap_lines_truncated_map')
-    unlet g:__clap_lines_truncated_map
-  endif
-  let g:__clap_icon_added_by_maple = a:icon_added
-  call clap#sign#ensure_exists()
-  call g:clap.display.clear_highlight()
-  call clap#indicator#update_matched(0)
   call clap#preview#update_with_delay()
 endfunction
 

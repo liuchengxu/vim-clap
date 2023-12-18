@@ -194,7 +194,7 @@ impl ClapProvider for GenericProvider {
         // Ensure the preview result is not out-dated.
         let curlnum = ctx.vim.display_getcurlnum().await?;
         if curlnum == lnum {
-            ctx.render_preview(preview)?;
+            ctx.update_picker_preview(preview)?;
         }
 
         ctx.preview_manager.set_preview_target(preview_target);

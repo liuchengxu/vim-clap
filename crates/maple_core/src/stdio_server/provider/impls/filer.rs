@@ -281,7 +281,7 @@ impl FilerProvider {
         match preview_impl.get_preview().await {
             Ok((preview_target, preview)) => {
                 ctx.preview_manager.reset_scroll();
-                ctx.render_preview(preview)?;
+                ctx.update_picker_preview(preview)?;
 
                 let maybe_syntax = preview_target.path().and_then(|path| {
                     if path.is_dir() {
@@ -302,7 +302,7 @@ impl FilerProvider {
                 Ok(())
             }
             Err(err) => ctx
-                .render_preview(Preview::new(vec![err.to_string()]))
+                .update_picker_preview(Preview::new(vec![err.to_string()]))
                 .map_err(Into::into),
         }
     }

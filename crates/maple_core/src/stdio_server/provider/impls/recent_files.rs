@@ -151,8 +151,7 @@ impl ClapProvider for RecentFilesProvider {
                 self.clone()
                     .process_query(ctx.cwd.clone(), "".into(), preview_size, 1)?;
 
-            ctx.vim
-                .exec("clap#state#process_response_on_typed", response)?;
+            ctx.vim.exec("clap#state#update_picker", response)?;
         } else {
             ctx.handle_base_args(&self.args).await?;
         }
@@ -175,7 +174,7 @@ impl ClapProvider for RecentFilesProvider {
                 .get_preview()
                 .await?;
             ctx.preview_manager.reset_scroll();
-            ctx.render_preview(preview)?;
+            ctx.update_picker_preview(preview)?;
             ctx.preview_manager.set_preview_target(preview_target);
         }
 
@@ -203,8 +202,7 @@ impl ClapProvider for RecentFilesProvider {
 
         let current_query = ctx.vim.input_get().await?;
         if current_query == query {
-            ctx.vim
-                .exec("clap#state#process_response_on_typed", response)?;
+            ctx.vim.exec("clap#state#update_picker", response)?;
         }
 
         Ok(())

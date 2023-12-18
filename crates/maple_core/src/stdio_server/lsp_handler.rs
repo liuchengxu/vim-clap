@@ -146,6 +146,91 @@ impl LanguageServerMessageHandler {
             self.last_lsp_update.replace(Instant::now());
         }
     }
+
+    fn handle_progress_message(
+        &mut self,
+        params: lsp::ProgressParams,
+    ) -> Result<(), maple_lsp::Error> {
+        use lsp::{
+            NumberOrString, ProgressParams, ProgressParamsValue, WorkDoneProgress,
+            WorkDoneProgressBegin, WorkDoneProgressEnd, WorkDoneProgressReport,
+        };
+
+        let ProgressParams { token, value } = params;
+
+        let ProgressParamsValue::WorkDone(work) = value;
+
+        let parts = match &work {
+            WorkDoneProgress::Begin(WorkDoneProgressBegin {
+                title,
+                message,
+                percentage,
+                ..
+            }) => (Some(title), message, percentage),
+            WorkDoneProgress::Report(WorkDoneProgressReport {
+                message,
+                percentage,
+                ..
+            }) => (None, message, percentage),
+            WorkDoneProgress::End(WorkDoneProgressEnd { message }) => {
+                if message.is_some() {
+                    (None, message, &None)
+                } else {
+                    // End progress.
+                    let _ = self.vim.update_lsp_status(&self.server_name);
+
+                    // we want to render to clear any leftover spinners or messages
+                    return Ok(());
+                }
+            }
+        };
+
+        let token_d: &dyn std::fmt::Display = match &token {
+            NumberOrString::Number(n) => n,
+            NumberOrString::String(s) => s,
+        };
+
+        let status = match parts {
+            (Some(title), Some(message), Some(percentage)) => {
+                format!("[{}] {}% {} - {}", token_d, percentage, title, message)
+            }
+            (Some(title), None, Some(percentage)) => {
+                format!("[{}] {}% {}", token_d, percentage, title)
+            }
+            (Some(title), Some(message), None) => {
+                format!("[{}] {} - {}", token_d, title, message)
+            }
+            (None, Some(message), Some(percentage)) => {
+                format!("[{}] {}% {}", token_d, percentage, message)
+            }
+            (Some(title), None, None) => {
+                format!("[{}] {}", token_d, title)
+            }
+            (None, Some(message), None) => {
+                format!("[{}] {}", token_d, message)
+            }
+            (None, None, Some(percentage)) => {
+                format!("[{}] {}%", token_d, percentage)
+            }
+            (None, None, None) => format!("[{}]", token_d),
+        };
+
+        if let WorkDoneProgress::End(_) = work {
+            let _ = self.vim.update_lsp_status(&self.server_name);
+        } else {
+            self.update_lsp_status_gentlely(Some(status));
+        }
+
+        Ok(())
+    }
+
+    fn handle_publish_diagnostics(
+        &mut self,
+        params: lsp::PublishDiagnosticsParams,
+    ) -> Result<(), maple_lsp::Error> {
+        let filename = params.uri.path();
+        Ok(())
+    }
 }
 
 impl HandleLanguageServerMessage for LanguageServerMessageHandler {
@@ -172,75 +257,10 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
 
         match notification {
             LanguageServerNotification::ProgressMessage(params) => {
-                use lsp::{
-                    NumberOrString, ProgressParams, ProgressParamsValue, WorkDoneProgress,
-                    WorkDoneProgressBegin, WorkDoneProgressEnd, WorkDoneProgressReport,
-                };
-
-                let ProgressParams { token, value } = params;
-
-                let ProgressParamsValue::WorkDone(work) = value;
-
-                let parts = match &work {
-                    WorkDoneProgress::Begin(WorkDoneProgressBegin {
-                        title,
-                        message,
-                        percentage,
-                        ..
-                    }) => (Some(title), message, percentage),
-                    WorkDoneProgress::Report(WorkDoneProgressReport {
-                        message,
-                        percentage,
-                        ..
-                    }) => (None, message, percentage),
-                    WorkDoneProgress::End(WorkDoneProgressEnd { message }) => {
-                        if message.is_some() {
-                            (None, message, &None)
-                        } else {
-                            // End progress.
-                            let _ = self.vim.update_lsp_status(&self.server_name);
-
-                            // we want to render to clear any leftover spinners or messages
-                            return Ok(());
-                        }
-                    }
-                };
-
-                let token_d: &dyn std::fmt::Display = match &token {
-                    NumberOrString::Number(n) => n,
-                    NumberOrString::String(s) => s,
-                };
-
-                let status = match parts {
-                    (Some(title), Some(message), Some(percentage)) => {
-                        format!("[{}] {}% {} - {}", token_d, percentage, title, message)
-                    }
-                    (Some(title), None, Some(percentage)) => {
-                        format!("[{}] {}% {}", token_d, percentage, title)
-                    }
-                    (Some(title), Some(message), None) => {
-                        format!("[{}] {} - {}", token_d, title, message)
-                    }
-                    (None, Some(message), Some(percentage)) => {
-                        format!("[{}] {}% {}", token_d, percentage, message)
-                    }
-                    (Some(title), None, None) => {
-                        format!("[{}] {}", token_d, title)
-                    }
-                    (None, Some(message), None) => {
-                        format!("[{}] {}", token_d, message)
-                    }
-                    (None, None, Some(percentage)) => {
-                        format!("[{}] {}%", token_d, percentage)
-                    }
-                    (None, None, None) => format!("[{}]", token_d),
-                };
-
-                if let WorkDoneProgress::End(_) = work {
-                    let _ = self.vim.update_lsp_status(&self.server_name);
-                } else {
-                    self.update_lsp_status_gentlely(Some(status));
-                }
+                self.handle_progress_message(params)?;
+            }
+            LanguageServerNotification::PublishDiagnostics(params) => {
+                self.handle_publish_diagnostics(params)?;
             }
             _ => {
                 tracing::debug!("TODO: handle language server notification");
