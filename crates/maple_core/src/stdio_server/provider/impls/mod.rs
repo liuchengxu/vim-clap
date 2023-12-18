@@ -5,6 +5,7 @@ mod files;
 mod generic_provider;
 mod grep;
 mod igrep;
+pub mod lsp;
 mod recent_files;
 mod tagfiles;
 
@@ -20,6 +21,7 @@ pub async fn create_provider(ctx: &Context) -> ProviderResult<Box<dyn ClapProvid
         "igrep" => Box::new(igrep::IgrepProvider::new(ctx).await?),
         "recent_files" => Box::new(recent_files::RecentFilesProvider::new(ctx).await?),
         "tagfiles" => Box::new(tagfiles::TagfilesProvider::new(ctx).await?),
+        "lsp" => Box::new(lsp::LspProvider::new(ctx)),
         _ => Box::new(generic_provider::GenericProvider::new(ctx).await?),
     };
     Ok(provider)

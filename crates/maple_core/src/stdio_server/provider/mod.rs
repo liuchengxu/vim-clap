@@ -27,8 +27,8 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use types::{ClapItem, MatchedItem};
 
-pub use self::impls::create_provider;
 pub use self::impls::filer::read_dir_entries;
+pub use self::impls::{create_provider, lsp};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProviderError {

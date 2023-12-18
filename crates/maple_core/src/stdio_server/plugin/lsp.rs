@@ -1,6 +1,7 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::lsp_handler::LanguageServerMessageHandler;
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
+use crate::stdio_server::provider::lsp::{set_lsp_source, LspSource};
 use crate::stdio_server::vim::{Vim, VimError, VimResult};
 use lsp::Url;
 use maple_lsp::lsp;
@@ -80,13 +81,14 @@ struct Document {
     doc_id: lsp::TextDocumentIdentifier,
 }
 
-impl Document {
-    fn open_new_doc(&self, client: &Arc<maple_lsp::Client>, path: &str) -> Result<(), Error> {
-        let text = std::fs::read_to_string(path)?;
-        let language_id = self.language_id.clone();
-        client.text_document_did_open(to_url(path)?, 0, text, language_id)?;
-        Ok(())
-    }
+fn open_new_doc(
+    client: &Arc<maple_lsp::Client>,
+    language_id: LanguageId,
+    path: &str,
+) -> Result<(), Error> {
+    let text = std::fs::read_to_string(path)?;
+    client.text_document_did_open(to_url(path)?, 0, text, language_id)?;
+    Ok(())
 }
 
 fn to_url(path: impl AsRef<Path>) -> Result<Url, Error> {
@@ -131,6 +133,24 @@ fn nested_to_flat(
     });
     for child in symbol.children.into_iter().flatten() {
         nested_to_flat(list, file, child);
+    }
+}
+
+#[allow(deprecated)]
+fn into_symbol_information(symbol: lsp::WorkspaceSymbol) -> lsp::SymbolInformation {
+    lsp::SymbolInformation {
+        name: symbol.name,
+        kind: symbol.kind,
+        tags: symbol.tags,
+        deprecated: None,
+        location: match symbol.location {
+            lsp::OneOf::Left(location) => location,
+            lsp::OneOf::Right(workspace_location) => lsp::Location {
+                uri: workspace_location.uri,
+                range: Default::default(),
+            },
+        },
+        container_name: symbol.container_name,
     }
 }
 
@@ -200,31 +220,9 @@ impl LspPlugin {
                 Entry::Occupied(e) => {
                     let root_uri = find_lsp_root(&language_id, path.as_ref())
                         .and_then(|p| Url::from_file_path(p).ok());
-
                     let client = e.get();
-                    let workspace_exists = root_uri
-                        .clone()
-                        .map(|uri| client.workspace_exists(uri))
-                        .unwrap_or(false);
-
-                    if !workspace_exists {
-                        if let Some(workspace_folders_caps) = client
-                            .capabilities()
-                            .workspace
-                            .as_ref()
-                            .and_then(|cap| cap.workspace_folders.as_ref())
-                            .filter(|cap| cap.supported.unwrap_or(false))
-                        {
-                            client.add_workspace_folder(
-                                root_uri,
-                                &workspace_folders_caps.change_notifications,
-                            )?;
-                        } else {
-                            // TODO: the server doesn't support multi workspaces, we need a new client
-                        }
-                    }
-
-                    document.open_new_doc(client, &path)?;
+                    client.try_add_workspace(root_uri)?;
+                    open_new_doc(client, document.language_id.clone(), &path)?;
                 }
                 Entry::Vacant(e) => {
                     let name = String::from(
@@ -247,7 +245,7 @@ impl LspPlugin {
                     )
                     .await?;
 
-                    document.open_new_doc(&client, &path)?;
+                    open_new_doc(&client, document.language_id.clone(), &path)?;
 
                     e.insert(client);
                 }
@@ -263,16 +261,13 @@ impl LspPlugin {
         if let Some(request_in_fly) = self.current_goto_request.take() {
             let (_bufnr, row, column) = self.vim.get_cursor_pos().await?;
             if request_in_fly.bufnr == bufnr && request_in_fly.cursor_pos != (row, column) {
-                self.vim
-                    .set_var("g:clap_lsp_status", "cancelling request")?;
-                self.vim.redrawstatus()?;
+                self.vim.update_lsp_status("cancelling request")?;
                 tokio::spawn({
                     let vim = self.vim.clone();
                     let language_id = request_in_fly.language_id.clone();
                     async move {
                         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                        let _ = vim.set_var("g:clap_lsp_status", language_id);
-                        let _ = vim.redrawstatus();
+                        let _ = vim.update_lsp_status(language_id);
                     }
                 });
                 return Ok(());
@@ -304,7 +299,7 @@ impl LspPlugin {
 
             // open new doc
             let new_doc = doc_id(&path)?;
-            document.open_new_doc(client, &path)?;
+            open_new_doc(client, document.language_id.clone(), &path)?;
             document.bufname = new_name;
             document.doc_id = new_doc;
         }
@@ -335,17 +330,11 @@ impl LspPlugin {
             line: row as u32 - 1,
             character: column as u32 - 1,
         };
-        let text_document = lsp::TextDocumentIdentifier {
-            uri: Url::from_file_path(&path).map_err(|_| Error::InvalidUrl(path))?,
-        };
+        let text_document = doc_id(&path)?;
 
         tracing::debug!(bufnr, doc = ?text_document, "Calling goto, position: {position:?}");
 
-        let now = std::time::Instant::now();
-
-        self.vim
-            .set_var("g:clap_lsp_status", format!("requesting {goto:?}"))?;
-        self.vim.redrawstatus()?;
+        self.vim.update_lsp_status(format!("requesting {goto:?}"))?;
         self.current_goto_request.replace(GotoRequest {
             bufnr,
             language_id: document.language_id.clone(),
@@ -383,8 +372,6 @@ impl LspPlugin {
             }
             Err(err) => return Err(err.into()),
         };
-
-        tracing::debug!("goto-definition , elapsed: {}ms", now.elapsed().as_millis());
 
         let (_bufnr, new_row, new_column) = self.vim.get_cursor_pos().await?;
         if (new_row, new_column) != (row, column) {
@@ -428,6 +415,16 @@ impl LspPlugin {
         Ok(())
     }
 
+    fn open_picker(&self, lsp_source: LspSource) -> VimResult<()> {
+        let title = match lsp_source {
+            LspSource::DocumentSymbols(_) => "documentSymbols",
+            LspSource::WorkspaceSymbols(_) => "workspaceSymbols",
+            LspSource::Empty => unreachable!("source must not be empty to open"),
+        };
+        set_lsp_source(lsp_source);
+        self.vim.exec("clap#plugin#lsp#open_picker", [title])
+    }
+
     async fn document_symbols(&mut self) -> Result<(), Error> {
         let bufnr = self.vim.bufnr("").await?;
         let document = self.get_doc(bufnr)?;
@@ -436,12 +433,6 @@ impl LspPlugin {
             .servers
             .get(&document.language_id)
             .ok_or(Error::ClientNotFound)?;
-
-        if !client.is_initialized() {
-            self.vim
-                .echo_message("language server not yet initialized")?;
-            return Ok(());
-        }
 
         let doc_id = document.doc_id.clone();
 
@@ -465,15 +456,7 @@ impl LspPlugin {
             }
         };
 
-        let symbols = symbols
-            .into_iter()
-            .map(|symbol| format!("{} {:?}", symbol.name, symbol.kind))
-            .collect::<Vec<_>>();
-
-        tracing::debug!("symbols: {symbols:?}");
-
-        // use crate::stdio_server::provider::lsp::{LspProvider, LspSource};
-        // let _provider = LspProvider::new(true, 75, LspSource::DocumentSymbols(symbols));
+        self.open_picker(LspSource::DocumentSymbols(symbols))?;
 
         Ok(())
     }
@@ -487,12 +470,6 @@ impl LspPlugin {
             .get(&document.language_id)
             .ok_or(Error::ClientNotFound)?;
 
-        if !client.is_initialized() {
-            self.vim
-                .echo_message("language server not yet initialized")?;
-            return Ok(());
-        }
-
         // Use empty query to fetch all workspace symbols.
         let workspace_symbol_response = client.workspace_symbols("".to_string()).await?;
 
@@ -501,7 +478,14 @@ impl LspPlugin {
             None => return Ok(()),
         };
 
-        tracing::debug!("workspace symbols: {symbols:?}");
+        let symbols = match symbols {
+            lsp::WorkspaceSymbolResponse::Flat(symbols) => symbols,
+            lsp::WorkspaceSymbolResponse::Nested(symbols) => {
+                symbols.into_iter().map(into_symbol_information).collect()
+            }
+        };
+
+        self.open_picker(LspSource::WorkspaceSymbols(symbols))?;
 
         Ok(())
     }

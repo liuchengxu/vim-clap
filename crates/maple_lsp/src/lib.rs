@@ -559,6 +559,29 @@ impl Client {
         Ok(client)
     }
 
+    pub fn try_add_workspace(&self, root_uri: Option<lsp::Url>) -> Result<(), Error> {
+        let workspace_exists = root_uri
+            .clone()
+            .map(|uri| self.workspace_exists(uri))
+            .unwrap_or(false);
+
+        if !workspace_exists {
+            if let Some(workspace_folders_caps) = self
+                .capabilities()
+                .workspace
+                .as_ref()
+                .and_then(|cap| cap.workspace_folders.as_ref())
+                .filter(|cap| cap.supported.unwrap_or(false))
+            {
+                self.add_workspace_folder(root_uri, &workspace_folders_caps.change_notifications)?;
+            } else {
+                // TODO: the server doesn't support multi workspaces, we need a new client
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn add_workspace_folder(
         &self,
         root_uri: Option<lsp::Url>,

@@ -5,6 +5,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::path::Path;
+use std::sync::Arc;
 
 // 3600 seconds
 const HOUR: i64 = 3600;
@@ -180,10 +181,13 @@ impl SortedRecentFiles {
             .bonuses(vec![Bonus::Cwd(cwd.into()), Bonus::FileName])
             .build(query.into());
 
-        let source_items = self
-            .entries
-            .par_iter()
-            .map(|entry| entry.fpath.replacen(&cwd_with_separator, "", 1).into());
+        let source_items = self.entries.par_iter().map(|entry| {
+            Arc::new(types::SourceItem::new(
+                entry.fpath.replacen(&cwd_with_separator, "", 1),
+                None,
+                None,
+            )) as Arc<dyn types::ClapItem>
+        });
 
         filter::par_filter(source_items, &matcher)
     }
