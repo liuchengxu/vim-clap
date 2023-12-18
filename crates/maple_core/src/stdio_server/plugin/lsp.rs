@@ -1,5 +1,5 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::lsp_handler::LanguageServerMessageHandler;
+use crate::stdio_server::lsp_handler::{self, find_lsp_root, LanguageServerMessageHandler};
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::provider::lsp::{set_lsp_source, LspSource};
 use crate::stdio_server::vim::{Vim, VimError, VimResult};
@@ -10,23 +10,12 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
-type LanguageId = String;
-
-#[derive(serde::Serialize)]
-struct FileLocation {
-    /// Absolute file path.
-    path: String,
-    /// 1-based.
-    row: u32,
-    /// 1-based
-    column: u32,
-    text: String,
-}
-
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("lsp client not found")]
     ClientNotFound,
+    #[error("language id not found for buffer {0}")]
+    LanguageIdNotFound(usize),
     #[error("document not found")]
     DocumentNotFound(usize),
     #[error("invalid Url: {0}")]
@@ -47,13 +36,15 @@ pub enum Error {
     FromUtf8(#[from] std::string::FromUtf8Error),
 }
 
-fn find_lsp_root<'a>(filetype: &str, path: &'a Path) -> Option<&'a Path> {
-    let root_markers = match filetype {
-        "rust" => &["Cargo.toml"],
-        _ => return None,
-    };
-
-    paths::find_project_root(path, root_markers)
+#[derive(serde::Serialize)]
+struct FileLocation {
+    /// Absolute file path.
+    path: String,
+    /// 1-based.
+    row: u32,
+    /// 1-based
+    column: u32,
+    text: String,
 }
 
 #[derive(Debug)]
@@ -68,15 +59,16 @@ enum Goto {
 #[derive(Debug, Clone)]
 struct GotoRequest {
     bufnr: usize,
-    language_id: String,
+    language_id: LanguageId,
     cursor_pos: (usize, usize),
 }
+
+type LanguageId = &'static str;
 
 /// Document associated to a buffer.
 #[derive(Debug, Clone)]
 struct Document {
-    /// LanguageId is represented by the filetype.
-    language_id: String,
+    language_id: LanguageId,
     bufname: String,
     doc_id: lsp::TextDocumentIdentifier,
 }
@@ -192,60 +184,53 @@ impl LspPlugin {
     }
 
     async fn on_buf_enter(&mut self, bufnr: usize) -> Result<(), Error> {
-        let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+        let path = self.vim.bufabspath(bufnr).await?;
 
-        let language_id = filetype;
+        let language_id =
+            lsp_handler::language_id_from_path(&path).ok_or(Error::LanguageIdNotFound(bufnr))?;
 
         // TODO: language server config.
-        // server_executable, args
-        let (cmd, args, root_markers) = match language_id.as_str() {
-            "rust" => (
-                String::from("rust-analyzer"),
-                vec![],
-                vec![String::from("Cargo.toml")],
-            ),
+        let language_config = match language_id {
+            "rust" => maple_lsp::LanguageConfig {
+                cmd: String::from("rust-analyzer"),
+                args: vec![],
+                root_markers: vec![String::from("Cargo.toml")],
+            },
             _ => return Ok(()),
         };
 
         if let std::collections::hash_map::Entry::Vacant(e) = self.documents.entry(bufnr) {
             let bufname = self.vim.bufname(bufnr).await?;
-            let path = self.vim.bufabspath(bufnr).await?;
             let document = Document {
-                language_id: language_id.clone(),
+                language_id,
                 bufname,
                 doc_id: doc_id(&path)?,
             };
 
-            match self.servers.entry(language_id.clone()) {
+            match self.servers.entry(language_id) {
                 Entry::Occupied(e) => {
-                    let root_uri = find_lsp_root(&language_id, path.as_ref())
+                    let root_uri = find_lsp_root(language_id, path.as_ref())
                         .and_then(|p| Url::from_file_path(p).ok());
                     let client = e.get();
                     client.try_add_workspace(root_uri)?;
-                    open_new_doc(client, document.language_id.clone(), &path)?;
+                    open_new_doc(client, document.language_id, &path)?;
                 }
                 Entry::Vacant(e) => {
-                    let name = String::from(
-                        cmd.rsplit_once(std::path::MAIN_SEPARATOR)
-                            .map(|(_, binary)| binary)
-                            .unwrap_or(&cmd),
-                    );
                     let enable_snippets = false;
+                    let name = language_config.server_name();
                     let client = maple_lsp::start_client(
                         maple_lsp::ClientParams {
-                            cmd,
-                            args,
-                            name: name.clone(),
-                            root_markers,
+                            language_config,
                             manual_roots: vec![],
                             enable_snippets,
                         },
+                        name.clone(),
                         Some(std::path::PathBuf::from(path.clone())),
                         LanguageServerMessageHandler::new(name, self.vim.clone()),
                     )
                     .await?;
 
-                    open_new_doc(&client, document.language_id.clone(), &path)?;
+                    open_new_doc(&client, document.language_id, &path)?;
 
                     e.insert(client);
                 }
@@ -264,7 +249,7 @@ impl LspPlugin {
                 self.vim.update_lsp_status("cancelling request")?;
                 tokio::spawn({
                     let vim = self.vim.clone();
-                    let language_id = request_in_fly.language_id.clone();
+                    let language_id = request_in_fly.language_id;
                     async move {
                         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
                         let _ = vim.update_lsp_status(language_id);
@@ -299,7 +284,7 @@ impl LspPlugin {
 
             // open new doc
             let new_doc = doc_id(&path)?;
-            open_new_doc(client, document.language_id.clone(), &path)?;
+            open_new_doc(client, document.language_id, &path)?;
             document.bufname = new_name;
             document.doc_id = new_doc;
         }
@@ -337,7 +322,7 @@ impl LspPlugin {
         self.vim.update_lsp_status(format!("requesting {goto:?}"))?;
         self.current_goto_request.replace(GotoRequest {
             bufnr,
-            language_id: document.language_id.clone(),
+            language_id: document.language_id,
             cursor_pos: (row, column),
         });
 
@@ -436,9 +421,7 @@ impl LspPlugin {
 
         let doc_id = document.doc_id.clone();
 
-        let document_symbol_response = client.document_symbols(doc_id.clone()).await?;
-
-        let symbols = match document_symbol_response {
+        let symbols = match client.document_symbols(doc_id.clone()).await? {
             Some(symbols) => symbols,
             None => return Ok(()),
         };
@@ -471,9 +454,7 @@ impl LspPlugin {
             .ok_or(Error::ClientNotFound)?;
 
         // Use empty query to fetch all workspace symbols.
-        let workspace_symbol_response = client.workspace_symbols("".to_string()).await?;
-
-        let symbols = match workspace_symbol_response {
+        let symbols = match client.workspace_symbols("".to_string()).await? {
             Some(symbols) => symbols,
             None => return Ok(()),
         };

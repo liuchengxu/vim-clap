@@ -257,14 +257,16 @@ fn value_to_params(value: Value) -> Params {
 }
 
 /// Find an LSP workspace of a file using the following mechanism:
-/// * if the file is outside `workspace` return `None`
-/// * start at `file` and search the file tree upward
-/// * stop the search at the first `root_dirs` entry that contains `file`
-/// * if no `root_dirs` matches `file` stop at workspace
-/// * Returns the top most directory that contains a `root_marker`
-/// * If no root marker and we stopped at a `root_dirs` entry, return the directory we stopped at
-/// * If we stopped at `workspace` instead and `workspace_is_cwd == false` return `None`
-/// * If we stopped at `workspace` instead and `workspace_is_cwd == true` return `workspace`
+/// * if the file is outside `workspace` return `None`.
+/// * start at `file` and search the file tree upward, stop the search
+///   at the first `root_dirs` entry that contains `file`.
+/// * if no `root_dirs` matches `file` stop at workspace,
+///   - returns the top most directory that contains a `root_marker`.
+/// * If no root marker and we stopped at a `root_dirs` entry,
+///   - return the directory we stopped at.
+/// * If we stopped at `workspace` instead:
+///   - `workspace_is_cwd == false` return `None`
+///   - `workspace_is_cwd == true` return `workspace`
 pub fn find_lsp_workspace(
     file: &str,
     root_markers: &[String],
@@ -317,28 +319,49 @@ pub fn find_lsp_workspace(
 }
 
 #[derive(Debug, Clone)]
-pub struct ClientParams {
+pub struct LanguageConfig {
+    /// Language server executable, e.g., `rust-analyzer`.
     pub cmd: String,
+    /// Arguments passed to the language server executable.
     pub args: Vec<String>,
-    pub name: String,
+    /// Project root pattern for this language, e.g., `Cargo.toml` for rust.
     pub root_markers: Vec<String>,
+}
+
+impl LanguageConfig {
+    pub fn server_name(&self) -> String {
+        self.cmd
+            .rsplit_once(std::path::MAIN_SEPARATOR)
+            .map(|(_, binary)| binary)
+            .unwrap_or(&self.cmd)
+            .to_owned()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ClientParams {
+    pub language_config: LanguageConfig,
     pub manual_roots: Vec<PathBuf>,
     pub enable_snippets: bool,
 }
 
 pub async fn start_client<T: HandleLanguageServerMessage + Send + Sync + 'static>(
     client_params: ClientParams,
+    name: String,
     doc_path: Option<PathBuf>,
     language_server_message_handler: T,
 ) -> Result<Arc<Client>, Error> {
     let ClientParams {
-        cmd,
-        args,
-        name,
-        root_markers,
+        language_config,
         manual_roots,
         enable_snippets,
     } = client_params;
+
+    let LanguageConfig {
+        cmd,
+        args,
+        root_markers,
+    } = language_config;
 
     let client = Client::new(
         &cmd,
@@ -836,12 +859,12 @@ impl Client {
         uri: lsp::Url,
         version: i32,
         text: String,
-        language_id: String,
+        language_id: &'static str,
     ) -> Result<(), Error> {
         self.notify::<lsp::notification::DidOpenTextDocument>(lsp::DidOpenTextDocumentParams {
             text_document: lsp::TextDocumentItem {
                 uri,
-                language_id,
+                language_id: language_id.to_owned(),
                 version,
                 text,
             },
