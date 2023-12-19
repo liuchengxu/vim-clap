@@ -2,9 +2,9 @@ use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
 use crate::previewer::{get_file_preview, FilePreview};
 use crate::stdio_server::job;
-use crate::stdio_server::plugin::syntax::{
-    convert_raw_ts_highlights_to_vim_highlights, sublime_syntax_by_extension,
-    sublime_syntax_highlight, sublime_theme_exists,
+use crate::stdio_server::plugin::syntax::convert_raw_ts_highlights_to_vim_highlights;
+use crate::stdio_server::plugin::syntax::sublime::{
+    sublime_syntax_by_extension, sublime_syntax_highlight, sublime_theme_exists,
 };
 use crate::stdio_server::provider::{read_dir_entries, Context, ProviderSource};
 use crate::stdio_server::vim::{preview_syntax, VimResult};

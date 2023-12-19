@@ -1,49 +1,13 @@
-use std::collections::{BTreeMap, HashMap};
-use std::ops::Range;
-use std::path::Path;
+pub mod sublime;
 
+use self::sublime::SublimeSyntaxImpl;
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::vim::Vim;
-use itertools::Itertools;
-use once_cell::sync::Lazy;
-use sublime_syntax::{SyntaxReference, TokenHighlight};
+use std::collections::{BTreeMap, HashMap};
+use std::ops::Range;
+use std::path::Path;
 use tree_sitter::Language;
-
-static SUBLIME_SYNTAX_HIGHLIGHTER: Lazy<sublime_syntax::SyntaxHighlighter> =
-    Lazy::new(sublime_syntax::SyntaxHighlighter::new);
-
-pub fn sublime_theme_exists(theme: &str) -> bool {
-    SUBLIME_SYNTAX_HIGHLIGHTER.theme_exists(theme)
-}
-
-pub fn sublime_syntax_by_extension(extension: &str) -> Option<&SyntaxReference> {
-    SUBLIME_SYNTAX_HIGHLIGHTER
-        .syntax_set
-        .find_syntax_by_extension(extension)
-}
-
-pub fn sublime_syntax_highlight<T: AsRef<str>>(
-    syntax: &SyntaxReference,
-    lines: impl Iterator<Item = T>,
-    line_start_number: usize,
-    theme: &str,
-) -> Vec<(usize, Vec<TokenHighlight>)> {
-    let highlighter = &SUBLIME_SYNTAX_HIGHLIGHTER;
-
-    lines
-        .enumerate()
-        .filter_map(|(index, line)| {
-            match highlighter.get_token_highlights_in_line(syntax, line.as_ref(), theme) {
-                Ok(token_highlights) => Some((line_start_number + index, token_highlights)),
-                Err(err) => {
-                    tracing::error!(line = ?line.as_ref(), ?err, "Error at fetching line highlight");
-                    None
-                }
-            }
-        })
-        .collect::<Vec<_>>()
-}
 
 #[allow(unused)]
 #[derive(Debug)]
@@ -142,17 +106,20 @@ pub struct Syntax {
     toggle: Toggle,
     ts_bufs: HashMap<usize, TreeSitterInfo>,
     sublime_bufs: HashMap<usize, String>,
+    sublime_impl: SublimeSyntaxImpl,
     tree_sitter_enabled: bool,
     sublime_syntax_enabled: bool,
 }
 
 impl Syntax {
     pub fn new(vim: Vim) -> Self {
+        let sublime_impl = SublimeSyntaxImpl::new(vim.clone());
         Self {
             vim,
             toggle: Toggle::Off,
             ts_bufs: HashMap::new(),
             sublime_bufs: HashMap::new(),
+            sublime_impl,
             tree_sitter_enabled: false,
             sublime_syntax_enabled: false,
         }
@@ -185,49 +152,6 @@ impl Syntax {
                 }
             }
         }
-
-        Ok(())
-    }
-
-    /// Highlight the visual lines of specified buffer.
-    // TODO: this may be inaccurate, e.g., the highlighted lines are part of a bigger block of comments.
-    async fn sublime_syntax_highlight(&mut self, bufnr: usize) -> Result<(), PluginError> {
-        let Some(extension) = self.sublime_bufs.get(&bufnr) else {
-            return Ok(());
-        };
-
-        let highlighter = &SUBLIME_SYNTAX_HIGHLIGHTER;
-        let Some(syntax) = highlighter.syntax_set.find_syntax_by_extension(extension) else {
-            tracing::debug!("Can not find syntax for extension {extension}");
-            return Ok(());
-        };
-
-        let line_start = self.vim.line("w0").await?;
-        let end = self.vim.line("w$").await?;
-        let lines = self.vim.getbufline(bufnr, line_start, end).await?;
-
-        // const THEME: &str = "Coldark-Dark";
-        const THEME: &str = "Visual Studio Dark+";
-
-        // TODO: This influences the Normal highlight of vim syntax theme that is different from
-        // the sublime text syntax theme here.
-        if let Some((guifg, ctermfg)) = highlighter.get_normal_highlight(THEME) {
-            self.vim.exec(
-                "execute",
-                format!("hi! Normal guifg={guifg} ctermfg={ctermfg}"),
-            )?;
-        }
-
-        let now = std::time::Instant::now();
-
-        let line_highlights = sublime_syntax_highlight(syntax, lines.iter(), line_start, THEME);
-
-        self.vim.exec(
-            "clap#highlighter#add_sublime_highlights",
-            (bufnr, &line_highlights),
-        )?;
-
-        tracing::debug!("Lines highlight elapsed: {:?}ms", now.elapsed().as_millis());
 
         Ok(())
     }
@@ -555,7 +479,10 @@ impl ClapPlugin for Syntax {
                         }
                     }
                 } else if self.sublime_syntax_enabled {
-                    self.sublime_syntax_highlight(bufnr).await?;
+                    if let Some(extension) = self.sublime_bufs.get(&bufnr) {
+                        self.sublime_impl.do_highlight(bufnr, extension).await?;
+                        return Ok(());
+                    };
                 }
             }
             event => return Err(PluginError::UnhandledEvent(event)),
@@ -593,13 +520,13 @@ impl ClapPlugin for Syntax {
             SyntaxAction::SublimeSyntaxHighlight => {
                 let bufnr = self.vim.bufnr("").await?;
                 self.on_buf_enter(bufnr).await?;
-                self.sublime_syntax_highlight(bufnr).await?;
+                if let Some(extension) = self.sublime_bufs.get(&bufnr) {
+                    self.sublime_impl.do_highlight(bufnr, extension).await?;
+                }
                 self.sublime_syntax_enabled = true;
             }
             SyntaxAction::SublimeSyntaxListThemes => {
-                let highlighter = &SUBLIME_SYNTAX_HIGHLIGHTER;
-                let theme_list = highlighter.get_theme_list();
-                self.vim.echo_info(theme_list.into_iter().join(","))?;
+                self.sublime_impl.list_themes()?;
             }
             SyntaxAction::Toggle => {
                 match self.toggle {
