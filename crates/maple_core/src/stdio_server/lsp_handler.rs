@@ -228,7 +228,7 @@ impl LanguageServerMessageHandler {
         &mut self,
         params: lsp::PublishDiagnosticsParams,
     ) -> Result<(), maple_lsp::Error> {
-        let filename = params.uri.path();
+        let _filename = params.uri.path();
         Ok(())
     }
 }
