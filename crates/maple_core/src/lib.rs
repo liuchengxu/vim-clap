@@ -3,6 +3,7 @@ pub mod config;
 pub mod datastore;
 pub mod find_usages;
 pub mod helptags;
+mod lsp;
 mod previewer;
 pub mod process;
 mod recent_files;

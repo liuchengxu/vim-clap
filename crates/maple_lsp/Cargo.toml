@@ -12,3 +12,7 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt", "process", "macros", "sync", "time"] }
 tracing = { workspace = true }
+which = "5.0.0"
+parking_lot = { workspace = true }
+
+paths = { workspace = true }

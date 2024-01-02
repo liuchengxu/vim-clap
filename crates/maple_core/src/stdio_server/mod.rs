@@ -1,6 +1,5 @@
 mod input;
 mod job;
-mod lsp_handler;
 mod plugin;
 mod provider;
 mod request_handler;
@@ -109,9 +108,11 @@ fn initialize_service(vim: Vim) -> InitializedService {
     register_plugin(Box::new(SystemPlugin::new(vim.clone())), None);
     register_plugin(Box::new(SyntaxPlugin::new(vim.clone())), None);
 
-    register_plugin(Box::new(LspPlugin::new(vim.clone())), None);
-
     let plugin_config = &crate::config::config().plugin;
+
+    if plugin_config.lsp.enable {
+        register_plugin(Box::new(LspPlugin::new(vim.clone())), None);
+    }
 
     if plugin_config.colorizer.enable {
         register_plugin(

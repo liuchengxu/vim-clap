@@ -37,27 +37,15 @@ function! clap#plugin#lsp#handle_locations(id, locations) abort
   endif
 endfunction
 
-function! clap#plugin#lsp#open_picker() abort
-    let provider = {
-          \ 'id': 'lsp',
-          \ 'on_typed': { -> clap#client#notify_provider('on_typed') },
-          \ 'sink': 'e',
-          \ }
-    call clap#run(provider)
-endfunction
-
-function! clap#plugin#lsp#provider_context() abort
-  let params = {
-        \   'provider_id': 'lsp',
-        \   'input': { 'bufnr': g:clap.input.bufnr, 'winid': g:clap.input.winid },
-        \   'start': { 'bufnr': g:clap.start.bufnr, 'winid': g:clap.start.winid },
-        \   'display': { 'bufnr': g:clap.display.bufnr, 'winid': g:clap.display.winid },
-        \   'cwd': clap#rooter#working_dir(),
-        \   'icon': g:clap_enable_icon ? get(g:clap.provider._(), 'icon', 'Null') : 'Null',
-        \   'no_cache': has_key(g:clap.context, 'no-cache') ? v:true : v:false,
-        \   'start_buffer_path': expand('#'.g:clap.start.bufnr.':p'),
-        \   'source_is_list': v:false,
+function! clap#plugin#lsp#open_picker(title) abort
+  let provider = {
+        \ 'id': 'lsp',
+        \ 'title': a:title,
+        \ 'on_typed': { -> clap#client#notify_provider('on_typed') },
+        \ 'on_move': { -> clap#client#notify_provider('on_move') },
+        \ 'sink': 'e',
         \ }
+  call clap#run(provider)
 endfunction
 
 let &cpoptions = s:save_cpo

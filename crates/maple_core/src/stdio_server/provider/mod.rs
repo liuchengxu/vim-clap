@@ -27,8 +27,8 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use types::{ClapItem, MatchedItem};
 
-pub use self::impls::create_provider;
 pub use self::impls::filer::read_dir_entries;
+pub use self::impls::{create_provider, lsp};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProviderError {
@@ -593,8 +593,8 @@ impl Context {
         self.preview_size().await.map(|x| 2 * x)
     }
 
-    pub fn render_preview(&self, preview: Preview) -> VimResult<()> {
-        self.vim.exec("clap#state#render_preview", preview)
+    pub fn update_picker_preview(&self, preview: Preview) -> VimResult<()> {
+        self.vim.exec("clap#state#update_picker_preview", preview)
     }
 
     async fn update_preview(
@@ -624,7 +624,7 @@ impl Context {
         // Ensure the preview result is not out-dated.
         let cur_lnum = self.vim.display_getcurlnum().await?;
         if cur_lnum == lnum {
-            self.render_preview(preview)?;
+            self.update_picker_preview(preview)?;
         }
 
         self.preview_manager
@@ -656,7 +656,7 @@ impl Context {
             } = printer.to_display_lines(items);
 
             self.vim.exec(
-                "clap#state#update_on_empty_query",
+                "clap#state#update_picker_on_empty_query",
                 json!([lines, truncated_map, icon_added]),
             )
         } else {

@@ -20,7 +20,7 @@ if clap#maple#is_available()
     if a:error isnot v:null
       return
     endif
-    call clap#state#render_preview(has_key(a:result, 'result') ? a:result.result : a:result)
+    call clap#state#update_picker_preview(has_key(a:result, 'result') ? a:result.result : a:result)
   endfunction
 
   function! s:dispatch_on_move_impl() abort

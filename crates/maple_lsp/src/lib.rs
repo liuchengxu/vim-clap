@@ -1,29 +1,36 @@
+mod language_server_message;
+
 use futures_util::TryFutureExt;
 use lsp::request::Request as RequestT;
 use lsp::{
     GotoDefinitionParams, Position, ProgressToken, ServerCapabilities, TextDocumentIdentifier, Url,
 };
-use rpc::{
-    Failure, Id, Params, RpcMessage, RpcNotification, RpcRequest, RpcResponse, Success, Version,
-};
+use parking_lot::Mutex;
+use rpc::{Id, Params, RpcMessage, RpcNotification, RpcRequest, RpcResponse, Version};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Child, ChildStderr, ChildStdout, Command, Stdio};
+use std::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::sync::{oneshot, OnceCell};
 
+pub use self::language_server_message::{
+    HandleLanguageServerMessage, LanguageServerMessage, LanguageServerNotification,
+    LanguageServerRequest,
+};
 pub use lsp;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("client is not yet initialized")]
     Uninitialized,
+    #[error("failed to initialize language server")]
+    FailedToInitServer,
     #[error("method {0} is unsupported by language server")]
     Unsupported(&'static str),
     #[error("client request returns a failure response: {0:?}")]
@@ -32,6 +39,8 @@ pub enum Error {
     StreamClosed,
     #[error("Unhandled message")]
     Unhandled,
+    #[error("language server executable not found: {0}")]
+    ServerExecutableNotFound(String),
     #[error("failed to send response: {0:?}")]
     SendResponse(RpcResponse),
     #[error(transparent)]
@@ -89,180 +98,6 @@ enum ServerMessage {
     Response(RpcResponse),
     /// A JSON-RPC request or notification.
     Call(Call),
-}
-
-/// Requests from language server.
-#[derive(Debug, PartialEq, Clone)]
-pub enum LanguageServerRequest {
-    WorkDoneProgressCreate(lsp::WorkDoneProgressCreateParams),
-    ApplyWorkspaceEdit(lsp::ApplyWorkspaceEditParams),
-    WorkspaceFolders,
-    WorkspaceConfiguration(lsp::ConfigurationParams),
-    RegisterCapability(lsp::RegistrationParams),
-    UnregisterCapability(lsp::UnregistrationParams),
-}
-
-impl LanguageServerRequest {
-    pub fn parse(method: &str, params: Params) -> Result<LanguageServerRequest, Error> {
-        use lsp::request::Request;
-
-        let request = match method {
-            lsp::request::WorkDoneProgressCreate::METHOD => {
-                let params: lsp::WorkDoneProgressCreateParams = params.parse()?;
-                Self::WorkDoneProgressCreate(params)
-            }
-            lsp::request::ApplyWorkspaceEdit::METHOD => {
-                let params: lsp::ApplyWorkspaceEditParams = params.parse()?;
-                Self::ApplyWorkspaceEdit(params)
-            }
-            lsp::request::WorkspaceFoldersRequest::METHOD => Self::WorkspaceFolders,
-            lsp::request::WorkspaceConfiguration::METHOD => {
-                let params: lsp::ConfigurationParams = params.parse()?;
-                Self::WorkspaceConfiguration(params)
-            }
-            lsp::request::RegisterCapability::METHOD => {
-                let params: lsp::RegistrationParams = params.parse()?;
-                Self::RegisterCapability(params)
-            }
-            lsp::request::UnregisterCapability::METHOD => {
-                let params: lsp::UnregistrationParams = params.parse()?;
-                Self::UnregisterCapability(params)
-            }
-            _ => {
-                return Err(Error::Unhandled);
-            }
-        };
-        Ok(request)
-    }
-}
-
-/// Notifications from language server.
-#[derive(Debug, PartialEq, Clone)]
-pub enum LanguageServerNotification {
-    // we inject this notification to signal the LSP is ready
-    Initialized,
-    // and this notification to signal that the LSP exited
-    Exit,
-    PublishDiagnostics(lsp::PublishDiagnosticsParams),
-    ShowMessage(lsp::ShowMessageParams),
-    LogMessage(lsp::LogMessageParams),
-    ProgressMessage(lsp::ProgressParams),
-}
-
-impl LanguageServerNotification {
-    pub fn parse(method: &str, params: Params) -> Result<LanguageServerNotification, Error> {
-        use lsp::notification::Notification as _;
-
-        let notification = match method {
-            lsp::notification::Initialized::METHOD => Self::Initialized,
-            lsp::notification::Exit::METHOD => Self::Exit,
-            lsp::notification::PublishDiagnostics::METHOD => {
-                let params: lsp::PublishDiagnosticsParams = params.parse()?;
-                Self::PublishDiagnostics(params)
-            }
-
-            lsp::notification::ShowMessage::METHOD => {
-                let params: lsp::ShowMessageParams = params.parse()?;
-                Self::ShowMessage(params)
-            }
-            lsp::notification::LogMessage::METHOD => {
-                let params: lsp::LogMessageParams = params.parse()?;
-                Self::LogMessage(params)
-            }
-            lsp::notification::Progress::METHOD => {
-                let params: lsp::ProgressParams = params.parse()?;
-                Self::ProgressMessage(params)
-            }
-            _ => {
-                // Unhandled notification
-                return Err(Error::Unhandled);
-            }
-        };
-
-        Ok(notification)
-    }
-}
-
-#[derive(Debug)]
-pub enum LanguageServerMessage {
-    Request((Id, LanguageServerRequest)),
-    Notification(LanguageServerNotification),
-}
-
-pub trait HandleLanguageServerMessage {
-    fn handle_request(
-        &mut self,
-        id: Id,
-        request: LanguageServerRequest,
-    ) -> Result<Value, rpc::Error>;
-
-    fn handle_notification(
-        &mut self,
-        notification: LanguageServerNotification,
-    ) -> Result<(), Error>;
-}
-
-impl HandleLanguageServerMessage for () {
-    fn handle_request(
-        &mut self,
-        _id: Id,
-        _request: LanguageServerRequest,
-    ) -> Result<Value, rpc::Error> {
-        Ok(Value::Null)
-    }
-
-    fn handle_notification(
-        &mut self,
-        _notification: LanguageServerNotification,
-    ) -> Result<(), Error> {
-        Ok(())
-    }
-}
-
-async fn handle_language_server_message<T: HandleLanguageServerMessage>(
-    mut language_server_message_rx: UnboundedReceiver<LanguageServerMessage>,
-    server_tx: UnboundedSender<RpcMessage>,
-    mut language_server_message_handler: T,
-) {
-    // Reply a response to a language server RPC call.
-    let reply_to_server = |id, result: Result<Value, rpc::Error>| {
-        let output = match result {
-            Ok(value) => RpcResponse::Success(Success {
-                jsonrpc: Some(Version::V2),
-                id,
-                result: value,
-            }),
-            Err(error) => RpcResponse::Failure(Failure {
-                jsonrpc: Some(Version::V2),
-                id,
-                error,
-            }),
-        };
-
-        server_tx.send(RpcMessage::Response(output))?;
-
-        Ok::<_, Error>(())
-    };
-
-    while let Some(lsp_server_msg) = language_server_message_rx.recv().await {
-        match lsp_server_msg {
-            LanguageServerMessage::Request((id, request)) => {
-                let result = language_server_message_handler.handle_request(id.clone(), request);
-
-                if let Err(err) = reply_to_server(id, result) {
-                    tracing::error!("Failed to send response to server: {err:?}");
-                    return;
-                }
-            }
-            LanguageServerMessage::Notification(notification) => {
-                if let Err(err) = language_server_message_handler.handle_notification(notification)
-                {
-                    tracing::error!(?err, "Failed to handle LanguageServerNotification");
-                    return;
-                }
-            }
-        }
-    }
 }
 
 enum LspHeader {
@@ -421,129 +256,264 @@ fn value_to_params(value: Value) -> Params {
     }
 }
 
-fn start_server_program(cmd: &str, args: &[String], workspace: &Path) -> std::io::Result<Child> {
-    let mut process = Command::new(cmd);
+/// Find an LSP workspace of a file using the following mechanism:
+/// * if the file is outside `workspace` return `None`.
+/// * start at `file` and search the file tree upward, stop the search
+///   at the first `root_dirs` entry that contains `file`.
+/// * if no `root_dirs` matches `file` stop at workspace,
+///   - returns the top most directory that contains a `root_marker`.
+/// * If no root marker and we stopped at a `root_dirs` entry,
+///   - return the directory we stopped at.
+/// * If we stopped at `workspace` instead:
+///   - `workspace_is_cwd == false` return `None`
+///   - `workspace_is_cwd == true` return `workspace`
+pub fn find_lsp_workspace(
+    file: &str,
+    root_markers: &[String],
+    root_dirs: &[PathBuf],
+    workspace: &Path,
+    workspace_is_cwd: bool,
+) -> Option<PathBuf> {
+    let file = std::path::Path::new(file);
+    let mut file = if file.is_absolute() {
+        file.to_path_buf()
+    } else {
+        let current_dir = paths::current_working_dir();
+        current_dir.join(file)
+    };
+    file = paths::get_normalized_path(&file);
 
-    process.current_dir(workspace);
-    process.args(args);
+    if !file.starts_with(workspace) {
+        return None;
+    }
 
-    let child = process
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        // Make sure the process is reaped on drop.
-        // .kill_on_drop(true)
-        .spawn()?;
+    let mut top_marker = None;
+    for ancestor in file.ancestors() {
+        if root_markers
+            .iter()
+            .any(|marker| ancestor.join(marker).exists())
+        {
+            top_marker = Some(ancestor);
+        }
 
-    Ok(child)
+        if root_dirs
+            .iter()
+            .any(|root_dir| paths::get_normalized_path(&workspace.join(root_dir)) == ancestor)
+        {
+            // if the worskapce is the cwd do not search any higher for workspaces
+            // but specify
+            return Some(top_marker.unwrap_or(workspace).to_owned());
+        }
+        if ancestor == workspace {
+            // if the workspace is the CWD, let the LSP decide what the workspace
+            // is
+            return top_marker
+                .or_else(|| (!workspace_is_cwd).then_some(workspace))
+                .map(Path::to_owned);
+        }
+    }
+
+    debug_assert!(false, "workspace must be an ancestor of <file>");
+
+    None
+}
+
+#[derive(Debug, Clone)]
+pub struct LanguageConfig {
+    /// Language server executable, e.g., `rust-analyzer`.
+    pub cmd: String,
+    /// Arguments passed to the language server executable.
+    pub args: Vec<String>,
+    /// Project root pattern for this language, e.g., `Cargo.toml` for rust.
+    pub root_markers: Vec<String>,
+}
+
+impl LanguageConfig {
+    pub fn server_name(&self) -> String {
+        self.cmd
+            .rsplit_once(std::path::MAIN_SEPARATOR)
+            .map(|(_, binary)| binary)
+            .unwrap_or(&self.cmd)
+            .to_owned()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ClientParams {
+    pub language_config: LanguageConfig,
+    pub manual_roots: Vec<PathBuf>,
+    pub enable_snippets: bool,
+}
+
+pub async fn start_client<T: HandleLanguageServerMessage + Send + Sync + 'static>(
+    client_params: ClientParams,
+    name: String,
+    doc_path: Option<PathBuf>,
+    language_server_message_handler: T,
+) -> Result<Arc<Client>, Error> {
+    let ClientParams {
+        language_config,
+        manual_roots,
+        enable_snippets,
+    } = client_params;
+
+    let LanguageConfig {
+        cmd,
+        args,
+        root_markers,
+    } = language_config;
+
+    let client = Client::new(
+        &cmd,
+        &args,
+        name,
+        &root_markers,
+        &manual_roots,
+        doc_path,
+        language_server_message_handler,
+    )?;
+
+    tracing::debug!(?cmd, "A new LSP Client created: {client:?}");
+
+    let client = Arc::new(client);
+
+    let value = client
+        .capabilities
+        .get_or_try_init(|| {
+            client
+                .initialize(enable_snippets)
+                .map_ok(|response| response.capabilities)
+        })
+        .await;
+
+    if let Err(e) = value {
+        tracing::error!("failed to initialize language server: {e:?}");
+        return Err(Error::FailedToInitServer);
+    }
+
+    client
+        .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
+        .expect("Failed to notify Initialized");
+
+    tracing::debug!("LSP client initialized");
+
+    Ok(client)
+}
+
+/// Finds the current workspace folder.
+/// Used as a ceiling dir for LSP root resolution, the filepicker and potentially as a future filewatching root
+///
+/// This function starts searching the FS upward from the CWD
+/// and returns the first directory that contains either `.git` or `.helix`.
+/// If no workspace was found returns (CWD, true).
+/// Otherwise (workspace, false) is returned
+pub fn find_workspace() -> (PathBuf, bool) {
+    let current_dir = paths::current_working_dir();
+    for ancestor in current_dir.ancestors() {
+        if ancestor.join(".git").exists() {
+            return (ancestor.to_owned(), false);
+        }
+    }
+
+    (current_dir.clone(), true)
+}
+
+pub fn workspace_for_uri(uri: lsp::Url) -> lsp::WorkspaceFolder {
+    lsp::WorkspaceFolder {
+        name: uri
+            .path_segments()
+            .and_then(|segments| segments.last())
+            .map(|basename| basename.to_string())
+            .unwrap_or_default(),
+        uri,
+    }
+}
+
+fn spawn_task_stdin(stdin: ChildStdin) -> UnboundedSender<RpcMessage> {
+    let (payload_sender, mut payload_receiver) = unbounded_channel();
+
+    // Send requests to language server.
+    tokio::spawn(async move {
+        let mut writer = Box::new(BufWriter::new(stdin));
+
+        while let Some(msg) = payload_receiver.recv().await {
+            if let Ok(msg) = serde_json::to_string(&msg) {
+                let msg = format!("Content-Length: {}\r\n\r\n{}", msg.len(), msg);
+                let _ = writer.write(msg.as_bytes());
+                let _ = writer.flush();
+            }
+        }
+    });
+
+    payload_sender
+}
+
+fn spawn_task_stderr(stderr: ChildStderr, server_name: String) {
+    tokio::task::spawn_blocking(move || {
+        let mut reader = Box::new(BufReader::new(stderr));
+
+        loop {
+            let mut line = String::new();
+            match reader.read_line(&mut line) {
+                Ok(n) => {
+                    if n == 0 {
+                        // Stream closed.
+                        return;
+                    }
+                    tracing::error!("[{server_name}] error: {}", line.trim_end());
+                }
+                Err(err) => {
+                    tracing::error!("Error occurred at reading child stderr: {err:?}");
+                    return;
+                }
+            }
+        }
+    });
 }
 
 #[derive(Debug)]
 pub struct Client {
     id: AtomicU64,
-    capabilities: OnceCell<ServerCapabilities>,
+    _name: String,
     root_path: PathBuf,
+    root_uri: Option<Url>,
+    workspace_folders: Mutex<Vec<lsp::WorkspaceFolder>>,
+    capabilities: OnceCell<ServerCapabilities>,
     server_tx: UnboundedSender<RpcMessage>,
     response_sender_tx: UnboundedSender<(Id, oneshot::Sender<RpcResponse>)>,
     _server_process: Child,
 }
 
-fn process_server_stderr(stderr: ChildStderr) {
-    let mut reader = Box::new(BufReader::new(stderr));
-
-    loop {
-        let mut line = String::new();
-        match reader.read_line(&mut line) {
-            Ok(n) => {
-                if n == 0 {
-                    // Stream closed.
-                    return;
-                }
-                tracing::error!("lsp server error: {}", line.trim_end());
-            }
-            Err(err) => {
-                tracing::error!("Error occurred at reading child stderr: {err:?}");
-                return;
-            }
-        }
-    }
-}
-
-pub fn start_client<T: HandleLanguageServerMessage + Send + Sync + 'static>(
-    server_executable: &str,
-    args: &[String],
-    workspace: &Path,
-    language_server_message_handler: T,
-    enable_snippets: bool,
-) -> std::io::Result<Arc<Client>> {
-    let client = Client::new(
-        server_executable,
-        args,
-        workspace,
-        language_server_message_handler,
-    )?;
-
-    tracing::debug!(server_executable, "A new LSP Client created");
-
-    let client = Arc::new(client);
-
-    // Initialize the client asynchronously.
-    tokio::spawn({
-        let client = client.clone();
-        async move {
-            let value = client
-                .capabilities
-                .get_or_try_init(|| {
-                    client
-                        .initialize(enable_snippets)
-                        .map_ok(|response| response.capabilities)
-                })
-                .await;
-
-            if let Err(e) = value {
-                tracing::error!("failed to initialize language server: {}", e);
-                return;
-            }
-
-            client
-                .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
-                .expect("Failed to notify Initialized");
-
-            tracing::debug!("LSP client initialized");
-        }
-    });
-
-    Ok(client)
-}
-
 impl Client {
     /// Constructs a new instance of LSP [`Client`].
     pub fn new<T: HandleLanguageServerMessage + Send + Sync + 'static>(
-        server_executable: &str,
+        cmd: &str,
         args: &[String],
-        workspace: &Path,
+        name: String,
+        root_markers: &[String],
+        manual_roots: &[PathBuf],
+        doc_path: Option<PathBuf>,
         language_server_message_handler: T,
-    ) -> std::io::Result<Self> {
-        let mut process = start_server_program(server_executable, args, workspace)?;
+    ) -> Result<Self, Error> {
+        let cmd =
+            which::which(cmd).map_err(|_| Error::ServerExecutableNotFound(cmd.to_string()))?;
+
+        let mut process = Command::new(cmd)
+            .args(args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            // Make sure the process is reaped on drop.
+            // .kill_on_drop(true)
+            .spawn()?;
 
         let stdin = process.stdin.take().expect("Failed to open stdin");
         let stdout = process.stdout.take().expect("Failed to open stdout");
         let stderr = process.stderr.take().expect("Failed to open stderr");
 
-        let (payload_sender, mut payload_receiver) = unbounded_channel();
+        let payload_sender = spawn_task_stdin(stdin);
 
-        // Send requests to language server.
-        tokio::spawn(async move {
-            let mut writer = Box::new(BufWriter::new(stdin));
-
-            while let Some(msg) = payload_receiver.recv().await {
-                if let Ok(msg) = serde_json::to_string(&msg) {
-                    let msg = format!("Content-Length: {}\r\n\r\n{}", msg.len(), msg);
-                    let _ = writer.write(msg.as_bytes());
-                    let _ = writer.flush();
-                }
-            }
-        });
+        spawn_task_stderr(stderr, name.clone());
 
         let (response_sender_tx, response_sender_rx): (
             UnboundedSender<(Id, oneshot::Sender<RpcResponse>)>,
@@ -551,6 +521,18 @@ impl Client {
         ) = unbounded_channel();
 
         let (language_server_message_tx, language_server_message_rx) = unbounded_channel();
+
+        tokio::spawn({
+            let server_tx = payload_sender.clone();
+            async move {
+                language_server_message::handle_language_server_message(
+                    language_server_message_rx,
+                    server_tx,
+                    language_server_message_handler,
+                )
+                .await;
+            }
+        });
 
         std::thread::spawn({
             move || {
@@ -562,32 +544,100 @@ impl Client {
             }
         });
 
-        tokio::spawn({
-            let server_tx = payload_sender.clone();
-            async move {
-                handle_language_server_message(
-                    language_server_message_rx,
-                    server_tx,
-                    language_server_message_handler,
-                )
-                .await;
-            }
-        });
+        let (workspace, workspace_is_cwd) = find_workspace();
+        let workspace = paths::get_normalized_path(&workspace);
+        let root = find_lsp_workspace(
+            doc_path
+                .as_ref()
+                .and_then(|x| x.parent().and_then(|x| x.to_str()))
+                .unwrap_or("."),
+            root_markers,
+            manual_roots,
+            &workspace,
+            workspace_is_cwd,
+        );
 
-        tokio::task::spawn_blocking(move || {
-            process_server_stderr(stderr);
-        });
+        // `root_uri` and `workspace_folder` can be empty in case there is no workspace
+        // `root_url` can not, use `workspace` as a fallback
+        let root_path = root.clone().unwrap_or_else(|| workspace.clone());
+        let root_uri = root.and_then(|root| lsp::Url::from_file_path(root).ok());
+
+        let workspace_folders = root_uri
+            .clone()
+            .map(|root| vec![workspace_for_uri(root)])
+            .unwrap_or_default();
 
         let client = Self {
             id: AtomicU64::new(0),
+            _name: name,
             server_tx: payload_sender,
             response_sender_tx,
-            root_path: workspace.to_path_buf(),
+            root_path,
+            root_uri,
+            workspace_folders: Mutex::new(workspace_folders),
             capabilities: OnceCell::new(),
             _server_process: process,
         };
 
         Ok(client)
+    }
+
+    pub fn try_add_workspace(&self, root_uri: Option<lsp::Url>) -> Result<(), Error> {
+        let workspace_exists = root_uri
+            .clone()
+            .map(|uri| self.workspace_exists(uri))
+            .unwrap_or(false);
+
+        if !workspace_exists {
+            if let Some(workspace_folders_caps) = self
+                .capabilities()
+                .workspace
+                .as_ref()
+                .and_then(|cap| cap.workspace_folders.as_ref())
+                .filter(|cap| cap.supported.unwrap_or(false))
+            {
+                self.add_workspace_folder(root_uri, &workspace_folders_caps.change_notifications)?;
+            } else {
+                // TODO: the server doesn't support multi workspaces, we need a new client
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn add_workspace_folder(
+        &self,
+        root_uri: Option<lsp::Url>,
+        change_notifications: &Option<lsp::OneOf<bool, String>>,
+    ) -> Result<(), Error> {
+        // root_uri is None just means that there isn't really any LSP workspace
+        // associated with this file. For servers that support multiple workspaces
+        // there is just one server so we can always just use that shared instance.
+        // No need to add a new workspace root here as there is no logical root for this file
+        // let the server deal with this
+        let Some(root_uri) = root_uri else {
+            return Ok(());
+        };
+
+        // server supports workspace folders, let's add the new root to the list
+        self.workspace_folders
+            .lock()
+            .push(workspace_for_uri(root_uri.clone()));
+
+        if &Some(lsp::OneOf::Left(false)) == change_notifications {
+            // server specifically opted out of DidWorkspaceChange notifications
+            // let's assume the server will request the workspace folders itself
+            // and that we can therefore reuse the client (but are done now)
+            return Ok(());
+        }
+
+        self.did_change_workspace(vec![workspace_for_uri(root_uri)], Vec::new())
+    }
+
+    pub fn workspace_exists(&self, root_uri: lsp::Url) -> bool {
+        self.workspace_folders
+            .lock()
+            .contains(&workspace_for_uri(root_uri))
     }
 
     pub fn is_initialized(&self) -> bool {
@@ -598,21 +648,6 @@ impl Client {
         self.capabilities
             .get()
             .expect("language server not yet initialized!")
-    }
-
-    pub fn include_text_on_save(&self) -> bool {
-        let capabilities = self.capabilities();
-
-        match &capabilities.text_document_sync {
-            Some(lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
-                save:
-                    Some(lsp::TextDocumentSyncSaveOptions::SaveOptions(lsp::SaveOptions {
-                        include_text,
-                    })),
-                ..
-            })) => include_text.unwrap_or(false),
-            _ => false,
-        }
     }
 
     pub async fn request<T: lsp::request::Request>(
@@ -630,6 +665,7 @@ impl Client {
             params: value_to_params(params),
         };
 
+        tracing::trace!(request = ?rpc_request, "Sending request");
         let (request_result_tx, request_result_rx) = tokio::sync::oneshot::channel();
         // Request result will be sent back in a RpcResponse message.
         self.response_sender_tx
@@ -654,6 +690,7 @@ impl Client {
             params: value_to_params(params),
         };
 
+        tracing::trace!(?notification, "Sending notification");
         self.server_tx
             .send(RpcMessage::Notification(notification))?;
 
@@ -668,7 +705,7 @@ impl Client {
             // root_path is obsolete, but some clients like pyright still use it so we specify both.
             // clients will prefer _uri if possible
             root_path: self.root_path.to_str().map(|s| s.to_string()),
-            root_uri: Url::from_file_path(&self.root_path).ok(),
+            root_uri: self.root_uri.clone(),
             initialization_options: None,
             capabilities: lsp::ClientCapabilities {
                 workspace: Some(lsp::WorkspaceClientCapabilities {
@@ -822,12 +859,12 @@ impl Client {
         uri: lsp::Url,
         version: i32,
         text: String,
-        language_id: String,
+        language_id: &'static str,
     ) -> Result<(), Error> {
         self.notify::<lsp::notification::DidOpenTextDocument>(lsp::DidOpenTextDocumentParams {
             text_document: lsp::TextDocumentItem {
                 uri,
-                language_id,
+                language_id: language_id.to_owned(),
                 version,
                 text,
             },
@@ -848,12 +885,48 @@ impl Client {
     pub fn text_document_did_save(
         &self,
         text_document: lsp::TextDocumentIdentifier,
-        text: Option<String>,
     ) -> Result<(), Error> {
+        let capabilities = self.capabilities.get().ok_or(Error::Uninitialized)?;
+
+        let include_text = match &capabilities.text_document_sync {
+            Some(lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
+                save:
+                    Some(lsp::TextDocumentSyncSaveOptions::SaveOptions(lsp::SaveOptions {
+                        include_text,
+                    })),
+                ..
+            })) => include_text.unwrap_or(false),
+            _ => false,
+        };
+
+        let text = if include_text {
+            Some(std::fs::read_to_string(text_document.uri.path())?)
+        } else {
+            None
+        };
+
         self.notify::<lsp::notification::DidSaveTextDocument>(lsp::DidSaveTextDocumentParams {
             text_document,
             text,
         })
+    }
+
+    pub fn did_change_configuration(&self, settings: Value) -> Result<(), Error> {
+        self.notify::<lsp::notification::DidChangeConfiguration>(
+            lsp::DidChangeConfigurationParams { settings },
+        )
+    }
+
+    pub fn did_change_workspace(
+        &self,
+        added: Vec<lsp::WorkspaceFolder>,
+        removed: Vec<lsp::WorkspaceFolder>,
+    ) -> Result<(), Error> {
+        self.notify::<lsp::notification::DidChangeWorkspaceFolders>(
+            lsp::DidChangeWorkspaceFoldersParams {
+                event: lsp::WorkspaceFoldersChangeEvent { added, removed },
+            },
+        )
     }
 
     async fn goto_request<

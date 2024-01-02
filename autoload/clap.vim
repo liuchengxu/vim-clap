@@ -177,9 +177,9 @@ function! clap#_exit_provider() abort
   call clap#state#clear_post()
 endfunction
 
-function! clap#_for(provider_id_or_alias) abort
+function! clap#_open_provider(provider_id_or_alias) abort
   let g:clap.provider.args = []
-  call clap#for(a:provider_id_or_alias)
+  call clap#open_provider(a:provider_id_or_alias)
 endfunction
 
 " Sometimes we don't need to go back to the start window, hence clap#_exit_provider() is extracted.
@@ -263,7 +263,7 @@ function! s:try_register_is_ok(provider_id) abort
   return s:validate_provider(registration_info)
 endfunction
 
-function! clap#for(provider_id_or_alias) abort
+function! clap#open_provider(provider_id_or_alias) abort
   if has_key(s:provider_alias, a:provider_id_or_alias)
     let provider_id = s:provider_alias[a:provider_id_or_alias]
   else
@@ -356,7 +356,7 @@ function! clap#(bang, ...) abort
     endif
   endif
 
-  call clap#for(provider_id_or_alias)
+  call clap#open_provider(provider_id_or_alias)
 endfunction
 
 function! clap#run(provider) abort

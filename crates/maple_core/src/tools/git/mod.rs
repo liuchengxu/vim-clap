@@ -564,7 +564,7 @@ fn hunks_to_modifications(hunks: Vec<Hunk>) -> Vec<Modification> {
 
     // handle_double_hunks(), https://github.com/airblade/vim-gitgutter/blob/fe0e8a2630eef548e4122096e4e2241f42208fe3/autoload/gitgutter/sign.vim#L209C1-L218C12
     if let (Some(Modification::RemovedFirstLine), Some(Modification::Removed(removed))) =
-        (modifications.get(0), modifications.get(1))
+        (modifications.front(), modifications.get(1))
     {
         if *removed == 1 {
             modifications.pop_front();
