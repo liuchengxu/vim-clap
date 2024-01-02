@@ -150,6 +150,7 @@ fn into_symbol_information(symbol: lsp::WorkspaceSymbol) -> lsp::SymbolInformati
 #[clap_plugin(
   id = "lsp",
   actions = [
+    "format",
     "document-symbols",
     "workspace-symbols",
     "goto-definition",
@@ -443,6 +444,39 @@ impl LspPlugin {
         Ok(())
     }
 
+    async fn format(&mut self) -> Result<(), Error> {
+        let bufnr = self.vim.bufnr("").await?;
+        let document = self.get_doc(bufnr)?;
+
+        let client = self
+            .servers
+            .get(&document.language_id)
+            .ok_or(Error::ClientNotFound)?;
+
+        let doc_id = document.doc_id.clone();
+
+        let text_edits = client
+            .text_document_formatting(
+                doc_id.clone(),
+                lsp::FormattingOptions {
+                    tab_size: self.vim.getbufvar::<u32>(bufnr, "&shiftwidth").await?,
+                    insert_spaces: self.vim.getbufvar::<usize>(bufnr, "&expandtab").await? == 1,
+                    ..Default::default()
+                },
+                None,
+            )
+            .await?;
+
+        if !text_edits.is_empty() {
+            self.vim.exec(
+                "clap#lsp#text_edit#apply_text_edits",
+                (doc_id.uri, text_edits),
+            )?;
+        }
+
+        Ok(())
+    }
+
     async fn workspace_symbols(&mut self) -> Result<(), Error> {
         let bufnr = self.vim.bufnr("").await?;
         let document = self.get_doc(bufnr)?;
@@ -526,6 +560,9 @@ impl ClapPlugin for LspPlugin {
                     }
                 }
                 self.toggle.switch();
+            }
+            LspAction::Format => {
+                self.format().await?;
             }
             LspAction::GotoDefinition => {
                 self.goto_impl(Goto::Definition).await?;
