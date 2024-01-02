@@ -3,6 +3,8 @@
 ## [unreleased]
 
 
+## [0.50] 2024-01-02
+
 ## [0.49] 2023-11-19
 
 - Added `quick_pick` to provider, which is suitable for the providers like `:Clap clap_actions` without a preview.
