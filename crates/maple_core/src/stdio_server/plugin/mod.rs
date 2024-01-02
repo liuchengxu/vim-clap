@@ -22,7 +22,7 @@ pub use self::lsp::LspPlugin;
 pub use self::markdown::Markdown as MarkdownPlugin;
 pub use self::syntax::Syntax as SyntaxPlugin;
 pub use self::system::System as SystemPlugin;
-pub use types::{Action, ActionType, ClapAction};
+pub use types::{ActionType, ClapAction};
 
 pub type PluginId = &'static str;
 

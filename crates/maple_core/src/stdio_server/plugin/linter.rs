@@ -89,13 +89,13 @@ impl BufferDiagnostics {
         let errors = || {
             diagnostics
                 .iter()
-                .filter_map(|d| if d.is_error() { d.spans.get(0) } else { None })
+                .filter_map(|d| if d.is_error() { d.spans.first() } else { None })
         };
 
         let warnings = || {
             diagnostics
                 .iter()
-                .filter_map(|d| if d.is_warn() { d.spans.get(0) } else { None })
+                .filter_map(|d| if d.is_warn() { d.spans.first() } else { None })
         };
 
         let check_span = |span: &DiagnosticSpan, ordering: CmpOrdering| {

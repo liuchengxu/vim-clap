@@ -373,7 +373,7 @@ pub async fn start_client<T: HandleLanguageServerMessage + Send + Sync + 'static
         language_server_message_handler,
     )?;
 
-    tracing::debug!(cmd, "A new LSP Client created: {client:?}");
+    tracing::debug!(?cmd, "A new LSP Client created: {client:?}");
 
     let client = Arc::new(client);
 

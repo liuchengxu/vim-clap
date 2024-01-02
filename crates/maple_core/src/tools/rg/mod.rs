@@ -121,7 +121,7 @@ impl Match {
     }
 
     pub fn column(&self) -> usize {
-        self.submatches.get(0).map(|x| x.start).unwrap_or_default()
+        self.submatches.first().map(|x| x.start).unwrap_or_default()
     }
 
     /// Returns true if the text line starts with `pat`.
