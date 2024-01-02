@@ -1,5 +1,5 @@
+use crate::lsp::{find_lsp_root, language_id_from_path, LanguageServerMessageHandler};
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::lsp_handler::{self, find_lsp_root, LanguageServerMessageHandler};
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::provider::lsp::{set_lsp_source, LspSource};
 use crate::stdio_server::vim::{Vim, VimError, VimResult};
@@ -186,8 +186,7 @@ impl LspPlugin {
     async fn on_buf_enter(&mut self, bufnr: usize) -> Result<(), Error> {
         let path = self.vim.bufabspath(bufnr).await?;
 
-        let language_id =
-            lsp_handler::language_id_from_path(&path).ok_or(Error::LanguageIdNotFound(bufnr))?;
+        let language_id = language_id_from_path(&path).ok_or(Error::LanguageIdNotFound(bufnr))?;
 
         // TODO: language server config.
         let language_config = match language_id {
@@ -439,7 +438,7 @@ impl LspPlugin {
             }
         };
 
-        self.open_picker(LspSource::DocumentSymbols(symbols))?;
+        self.open_picker(LspSource::DocumentSymbols((doc_id.uri.clone(), symbols)))?;
 
         Ok(())
     }

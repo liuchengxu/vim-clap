@@ -4,6 +4,7 @@ pub mod datastore;
 pub mod find_usages;
 pub mod helptags;
 mod previewer;
+mod lsp;
 pub mod process;
 mod recent_files;
 pub mod searcher;

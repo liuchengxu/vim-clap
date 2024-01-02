@@ -1,17 +1,19 @@
-use crate::stdio_server::provider::{ClapProvider, Context, ProviderResult as Result};
+use crate::stdio_server::provider::{
+    hooks::PreviewTarget, ClapProvider, Context, ProviderResult as Result,
+};
 use maple_lsp::lsp;
 use matcher::MatchScope;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use printer::Printer;
 use serde_json::json;
-use std::borrow::Cow;
 use std::sync::Arc;
+use std::{borrow::Cow, path::PathBuf};
 use types::{ClapItem, FuzzyText, Query};
 
 #[derive(Debug)]
 pub enum LspSource {
-    DocumentSymbols(Vec<lsp::SymbolInformation>),
+    DocumentSymbols((lsp::Url, Vec<lsp::SymbolInformation>)),
     WorkspaceSymbols(Vec<lsp::SymbolInformation>),
     Empty,
 }
@@ -22,11 +24,6 @@ static LSP_SOURCE: Lazy<Arc<Mutex<LspSource>>> =
 pub fn set_lsp_source(new: LspSource) {
     let mut source = LSP_SOURCE.lock();
     *source = new;
-}
-
-#[derive(Debug)]
-pub struct LspProvider {
-    printer: Printer,
 }
 
 const SYMBOL_KINDS: &[&str] = &[
@@ -101,14 +98,11 @@ pub struct DocumentItem {
 }
 
 impl DocumentItem {
-    fn new(symbol: &lsp::SymbolInformation) -> Self {
+    fn new(symbol: &lsp::SymbolInformation, name_width: usize) -> Self {
         let kind = to_kind_str(symbol.kind);
-        let line = symbol.location.range.start.line;
-        let output_text = format!(
-            "{name:<name_width$} [{kind}] {line}",
-            name = symbol.name,
-            name_width = 10,
-        );
+        // Convert 0-based to 1-based.
+        let line = symbol.location.range.start.line + 1;
+        let output_text = format!("{name:<name_width$} [{kind}] {line}", name = symbol.name,);
 
         Self {
             name: symbol.name.to_owned(),
@@ -152,7 +146,8 @@ impl WorkspaceItem {
     fn new(symbol: &lsp::SymbolInformation) -> Self {
         let kind = to_kind_str(symbol.kind);
         let path = symbol.location.uri.path().to_owned();
-        let line = symbol.location.range.start.line;
+        // Convert 0-based to 1-based.
+        let line = symbol.location.range.start.line + 1;
         let output_text = format!(
             "{name:<name_width$} [{kind}] {path}:{line}",
             name = symbol.name,
@@ -188,6 +183,19 @@ impl ClapItem for WorkspaceItem {
     }
 }
 
+#[derive(Debug)]
+enum SourceType {
+    DocumentSymbols(lsp::Url),
+    WorkspaceSymbols,
+    Empty,
+}
+
+#[derive(Debug)]
+pub struct LspProvider {
+    printer: Printer,
+    source_type: SourceType,
+}
+
 impl LspProvider {
     pub fn new(ctx: &Context) -> Self {
         let icon = if ctx.env.icon.enabled() {
@@ -196,18 +204,31 @@ impl LspProvider {
             icon::Icon::Null
         };
         let printer = Printer::new(ctx.env.display_winwidth, icon);
+        let source_type = match *LSP_SOURCE.lock() {
+            LspSource::DocumentSymbols((ref uri, _)) => SourceType::DocumentSymbols(uri.clone()),
+            LspSource::WorkspaceSymbols(_) => SourceType::WorkspaceSymbols,
+            LspSource::Empty => SourceType::Empty,
+        };
 
-        Self { printer }
+        Self {
+            printer,
+            source_type,
+        }
     }
 
     fn process_query(&mut self, query: String, ctx: &Context) -> Result<()> {
         let matcher = ctx.matcher_builder().build(Query::from(&query));
 
         let source_items = match *LSP_SOURCE.lock() {
-            LspSource::DocumentSymbols(ref symbols) => symbols
-                .iter()
-                .map(|symbol| Arc::new(DocumentItem::new(symbol)) as Arc<dyn ClapItem>)
-                .collect::<Vec<_>>(),
+            LspSource::DocumentSymbols((_, ref symbols)) => {
+                let max_length = symbols.iter().map(|s| s.name.len()).max().unwrap_or(20);
+                symbols
+                    .iter()
+                    .map(|symbol| {
+                        Arc::new(DocumentItem::new(symbol, max_length)) as Arc<dyn ClapItem>
+                    })
+                    .collect::<Vec<_>>()
+            }
             LspSource::WorkspaceSymbols(ref symbols) => symbols
                 .iter()
                 .map(|symbol| Arc::new(WorkspaceItem::new(symbol)) as Arc<dyn ClapItem>)
@@ -265,6 +286,34 @@ impl ClapProvider for LspProvider {
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.input_get().await?;
         self.process_query(query, ctx)
+    }
+
+    async fn on_move(&mut self, ctx: &mut Context) -> Result<()> {
+        if !ctx.env.preview_enabled {
+            return Ok(());
+        }
+        ctx.preview_manager.reset_scroll();
+        let preview_target = match &self.source_type {
+            SourceType::DocumentSymbols(uri) => {
+                let filepath = uri.path();
+                let curline = ctx.vim.display_getcurline().await?;
+                let Some(line_number) = curline
+                    .split_whitespace()
+                    .last()
+                    .and_then(|n| n.parse::<usize>().ok())
+                else {
+                    return Ok(());
+                };
+
+                Some(PreviewTarget::LineInFile {
+                    path: PathBuf::from(filepath),
+                    line_number,
+                })
+            }
+            SourceType::WorkspaceSymbols => None,
+            SourceType::Empty => return Ok(()),
+        };
+        ctx.update_preview(preview_target).await
     }
 
     fn on_terminate(&mut self, ctx: &mut Context, session_id: u64) {
