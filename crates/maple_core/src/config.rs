@@ -203,6 +203,14 @@ pub struct LinterPluginConfig {
     pub enable: bool,
 }
 
+/// LSP plugin.
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct LspPluginConfig {
+    /// Whether to enable this plugin.
+    pub enable: bool,
+}
+
 /// Syntax plugin.
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
@@ -261,6 +269,7 @@ pub struct PluginConfig {
     pub ctags: CtagsPluginConfig,
     pub git: GitPluginConfig,
     pub linter: LinterPluginConfig,
+    pub lsp: LspPluginConfig,
     pub markdown: MarkdownPluginConfig,
     pub syntax: SyntaxPluginConfig,
 }
