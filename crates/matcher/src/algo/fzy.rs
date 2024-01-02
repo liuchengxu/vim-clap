@@ -1,5 +1,5 @@
 // Re-export the fzy algorithm
-pub use extracted_fzy::{match_and_score_with_positions, MatchWithPositions};
+pub use extracted_fzy::match_and_score_with_positions;
 
 use crate::{MatchResult, Score};
 use extracted_fzy::CaseMatching;
