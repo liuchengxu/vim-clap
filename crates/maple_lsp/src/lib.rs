@@ -391,9 +391,7 @@ pub async fn start_client<T: HandleLanguageServerMessage + Send + Sync + 'static
         return Err(Error::FailedToInitServer);
     }
 
-    client
-        .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
-        .expect("Failed to notify Initialized");
+    client.notify::<lsp::notification::Initialized>(lsp::InitializedParams {})?;
 
     tracing::debug!("LSP client initialized");
 

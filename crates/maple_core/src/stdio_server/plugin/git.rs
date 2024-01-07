@@ -27,6 +27,7 @@ struct ModificationState {
     "blame",
     "diff-summary",
     "hunk-modifications",
+    "permalink",
     "open-permalink-in-browser",
     "toggle",
 ])]
@@ -261,12 +262,12 @@ impl Git {
         Ok(())
     }
 
-    async fn open_permalink_in_browser(&self) -> Result<(), PluginError> {
+    async fn fetch_permalink(&self) -> Result<Option<String>, PluginError> {
         let buf_path = self.vim.current_buffer_path().await?;
         let filepath = PathBuf::from(buf_path);
 
         let Some(git_root) = in_git_repo(&filepath) else {
-            return Ok(());
+            return Ok(None);
         };
 
         let git = GitRepo::init(git_root.to_path_buf())?;
@@ -280,11 +281,11 @@ impl Git {
         let remote_url = remote_url.strip_suffix(".git").unwrap_or(remote_url);
 
         let Ok(stdout) = git.fetch_rev_parse("HEAD") else {
-            return Ok(());
+            return Ok(None);
         };
 
         let Some(rev) = stdout.split('\n').next() else {
-            return Ok(());
+            return Ok(None);
         };
 
         let lnum = self.vim.line(".").await?;
@@ -293,12 +294,7 @@ impl Git {
             relative_path.display()
         );
 
-        if let Err(e) = webbrowser::open(&commit_url) {
-            self.vim
-                .echo_warn(format!("Failed to open {commit_url}: {e:?}"))?;
-        }
-
-        Ok(())
+        Ok(Some(commit_url))
     }
 }
 
@@ -366,8 +362,19 @@ impl ClapPlugin for Git {
                 }
                 self.toggle.switch();
             }
+            GitAction::Permalink => {
+                if let Some(permalink) = self.fetch_permalink().await? {
+                    self.vim
+                        .echo_info(format!("permalink copied to clipboard: {permalink}"))?;
+                }
+            }
             GitAction::OpenPermalinkInBrowser => {
-                self.open_permalink_in_browser().await?;
+                if let Some(permalink) = self.fetch_permalink().await? {
+                    if let Err(e) = webbrowser::open(&permalink) {
+                        self.vim
+                            .echo_warn(format!("Failed to open {permalink}: {e:?}"))?;
+                    }
+                }
             }
             GitAction::Blame => self.show_blame_info().await?,
             GitAction::DiffSummary => {

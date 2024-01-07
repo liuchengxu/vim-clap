@@ -253,7 +253,7 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
         &mut self,
         notification: LanguageServerNotification,
     ) -> Result<(), maple_lsp::Error> {
-        tracing::debug!("Processing language server notification: {notification:?}");
+        tracing::trace!("Processing language server notification: {notification:?}");
 
         match notification {
             LanguageServerNotification::ProgressMessage(params) => {

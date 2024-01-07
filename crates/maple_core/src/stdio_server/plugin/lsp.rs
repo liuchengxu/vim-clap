@@ -196,6 +196,11 @@ impl LspPlugin {
                 args: vec![],
                 root_markers: vec![String::from("Cargo.toml")],
             },
+            "go" => maple_lsp::LanguageConfig {
+                cmd: String::from("gopls"),
+                args: vec![],
+                root_markers: vec![String::from("go.mod")],
+            },
             _ => return Ok(()),
         };
 
@@ -444,7 +449,7 @@ impl LspPlugin {
         Ok(())
     }
 
-    async fn format(&mut self) -> Result<(), Error> {
+    async fn text_document_format(&mut self) -> Result<(), Error> {
         let bufnr = self.vim.bufnr("").await?;
         let document = self.get_doc(bufnr)?;
 
@@ -459,7 +464,10 @@ impl LspPlugin {
             .text_document_formatting(
                 doc_id.clone(),
                 lsp::FormattingOptions {
-                    tab_size: self.vim.getbufvar::<u32>(bufnr, "&shiftwidth").await?,
+                    tab_size: self
+                        .vim
+                        .call::<u32>("clap#plugin#lsp#tab_size", bufnr)
+                        .await?,
                     insert_spaces: self.vim.getbufvar::<usize>(bufnr, "&expandtab").await? == 1,
                     ..Default::default()
                 },
@@ -562,7 +570,7 @@ impl ClapPlugin for LspPlugin {
                 self.toggle.switch();
             }
             LspAction::Format => {
-                self.format().await?;
+                self.text_document_format().await?;
             }
             LspAction::GotoDefinition => {
                 self.goto_impl(Goto::Definition).await?;

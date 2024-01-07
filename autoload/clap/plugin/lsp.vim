@@ -48,5 +48,13 @@ function! clap#plugin#lsp#open_picker(title) abort
   call clap#run(provider)
 endfunction
 
+function! clap#plugin#lsp#tab_size(bufnr) abort
+    let l:shiftwidth = getbufvar(a:bufnr, '&shiftwidth')
+    if getbufvar(a:bufnr, '&shiftwidth')
+        return l:shiftwidth
+    endif
+    return getbufvar(a:bufnr, '&tabstop')
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
