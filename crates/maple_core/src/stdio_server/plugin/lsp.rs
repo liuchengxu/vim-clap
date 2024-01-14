@@ -315,6 +315,7 @@ impl LspPlugin {
                     .await
             }
             Goto::Reference => {
+                // TODO: configurable include_declaration flag.
                 let include_declaration = false;
                 client
                     .goto_reference(text_document, position, include_declaration, None)
@@ -449,7 +450,7 @@ impl LspPlugin {
 
         let doc_id = document.doc_id.clone();
 
-        let text_edits = client
+        let mut text_edits = client
             .text_document_formatting(
                 doc_id.clone(),
                 lsp::FormattingOptions {
@@ -463,6 +464,27 @@ impl LspPlugin {
                 None,
             )
             .await?;
+
+        // Simply follows the logic in
+        // https://github.com/prabirshrestha/vim-lsp/blob/d36f381dc8f39a9b86d66ef84c2ebbb7516d91d6/autoload/lsp/utils/text_edit.vim#L160
+        text_edits.iter_mut().for_each(|text_edit| {
+            let start = text_edit.range.start;
+            let end = text_edit.range.end;
+
+            if start.line > end.line || (start.line == end.line && start.character > end.character)
+            {
+                text_edit.range = lsp::Range {
+                    start: end,
+                    end: start,
+                };
+            }
+        });
+
+        // Sort edits by start range, since some LSPs (Omnisharp) send them
+        // in reverse order.
+        text_edits.sort_unstable_by_key(|edit| edit.range.start);
+
+        text_edits.reverse();
 
         if !text_edits.is_empty() {
             self.vim.exec(

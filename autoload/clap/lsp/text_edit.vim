@@ -37,7 +37,8 @@ function! clap#lsp#text_edit#apply_text_edits(uri, text_edits) abort
     let l:cursor_position = s:get_position()
 
     call s:_switch(l:target_bufname)
-    for l:text_edit in s:_normalize(a:text_edits)
+    " for l:text_edit in s:_normalize(a:text_edits)
+    for l:text_edit in a:text_edits
         call s:_apply(bufnr(l:target_bufname), l:text_edit, l:cursor_position)
     endfor
     call s:_switch(l:current_bufname)
@@ -250,33 +251,6 @@ function! s:_apply(bufnr, text_edit, cursor_position) abort
 endfunction
 
 "
-" _normalize
-"
-function! s:_normalize(text_edits) abort
-  let l:text_edits = type(a:text_edits) == type([]) ? a:text_edits : [a:text_edits]
-  let l:text_edits = filter(copy(l:text_edits), { _, text_edit -> type(text_edit) == type({}) })
-  let l:text_edits = s:_range(l:text_edits)
-  let l:text_edits = sort(copy(l:text_edits), function('s:_compare', [], {}))
-  let l:text_edits = s:_check(l:text_edits)
-  return reverse(l:text_edits)
-endfunction
-
-"
-" _range
-"
-function! s:_range(text_edits) abort
-  for l:text_edit in a:text_edits
-    if l:text_edit.range.start.line > l:text_edit.range.end.line || (
-          \   l:text_edit.range.start.line == l:text_edit.range.end.line &&
-          \   l:text_edit.range.start.character > l:text_edit.range.end.character
-          \ )
-      let l:text_edit.range = { 'start': l:text_edit.range.end, 'end': l:text_edit.range.start }
-    endif
-  endfor
-  return a:text_edits
-endfunction
-
-"
 " _check
 "
 " LSP Spec says `multiple text edits can not overlap those ranges`.
@@ -296,17 +270,6 @@ function! s:_check(text_edits) abort
     endfor
   endif
   return a:text_edits
-endfunction
-
-"
-" _compare
-"
-function! s:_compare(text_edit1, text_edit2) abort
-  let l:diff = a:text_edit1.range.start.line - a:text_edit2.range.start.line
-  if l:diff == 0
-    return a:text_edit1.range.start.character - a:text_edit2.range.start.character
-  endif
-  return l:diff
 endfunction
 
 "
