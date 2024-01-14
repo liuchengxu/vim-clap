@@ -31,9 +31,9 @@ function! s:get_position(...) abort
     return { 'line': l:line - 1, 'character': l:char }
 endfunction
 
-function! clap#lsp#text_edit#apply_text_edits(uri, text_edits) abort
+function! clap#lsp#text_edit#apply_text_edits(filepath, text_edits) abort
     let l:current_bufname = bufname('%')
-    let l:target_bufname = s:uri_to_path(a:uri)
+    let l:target_bufname = a:filepath
     let l:cursor_position = s:get_position()
 
     call s:_switch(l:target_bufname)
@@ -51,45 +51,6 @@ endfunction
 function! s:decode_uri(uri) abort
     let l:ret = substitute(a:uri, '[?#].*', '', '')
     return substitute(l:ret, '%\(\x\x\)', '\=printf("%c", str2nr(submatch(1), 16))', 'g')
-endfunction
-
-let s:uri_to_path_cache = {}
-if has('win32') || has('win64') || has('win32unix')
-    function! s:uri_to_path(uri) abort
-        if has_key(s:uri_to_path_cache, a:uri)
-            return s:uri_to_path_cache[a:uri]
-        endif
-
-        let l:path = substitute(s:decode_uri(a:uri[len('file:///'):]), '/', '\\', 'g')
-
-        " Transform windows paths to cygwin paths
-        if has('win32unix')
-            let l:path = substitute(l:path, '\c^\([A-Z]\):\\', '/\l\1/', '')
-            let l:path = substitute(l:path, '\\', '/', 'g')
-        endif
-
-        let s:uri_to_path_cache[a:uri] = l:path
-        return s:uri_to_path_cache[a:uri]
-    endfunction
-else
-    function! s:uri_to_path(uri) abort
-        if has_key(s:uri_to_path_cache, a:uri)
-            return s:uri_to_path_cache[a:uri]
-        endif
-
-        let s:uri_to_path_cache[a:uri] = s:decode_uri(a:uri[len('file://'):])
-        return s:uri_to_path_cache[a:uri]
-    endfunction
-endif
-
-function! s:lsp_line_to_vim(expr, position) abort
-    return a:position['line'] + 1
-endfunction
-
-function! s:lsp_character_to_vim(expr, position) abort
-    let l:line = a:position['line'] + 1 " optimize function overhead by not calling lsp_line_to_vim
-    let l:char = a:position['character']
-    return s:to_col(a:expr, l:line, l:char)
 endfunction
 
 " This function can be error prone if the caller forgets to use +1 to vim line
@@ -119,44 +80,14 @@ function! s:is_file_uri(uri) abort
     return stridx(a:uri, 'file:///') == 0
 endfunction
 
-" @param uri = DocumentUri
-" @param text_edit = TextEdit
-" @param cache = {} empty dict
-" @returns {
-"   'filename',
-"   'lnum',
-"   'col',
-"   'text',
-" }
-function! s:lsp_text_edit_item_to_vim(uri, text_edit, cache) abort
-    if !s:is_file_uri(a:uri)
-        return v:null
-    endif
+function! s:lsp_line_to_vim(expr, position) abort
+    return a:position['line'] + 1
+endfunction
 
-    let l:path = s:uri_to_path(a:uri)
-    let l:range = a:text_edit['range']
-    let [l:line, l:col] = s:lsp_to_vim(l:path, l:range['start'])
-
-    let l:index = l:line - 1
-    if has_key(a:cache, l:path)
-        let l:text = a:cache[l:path][l:index]
-    else
-        let l:contents = getbufline(l:path, 1, '$')
-        if !empty(l:contents)
-            let l:text = get(l:contents, l:index, '')
-        else
-            let l:contents = readfile(l:path)
-            let a:cache[l:path] = l:contents
-            let l:text = get(l:contents, l:index, '')
-        endif
-    endif
-
-    return {
-        \ 'filename': l:path,
-        \ 'lnum': l:line,
-        \ 'col': l:col,
-        \ 'text': l:text
-        \ }
+function! s:lsp_character_to_vim(expr, position) abort
+    let l:line = a:position['line'] + 1 " optimize function overhead by not calling lsp_line_to_vim
+    let l:char = a:position['character']
+    return s:to_col(a:expr, l:line, l:char)
 endfunction
 
 function! s:lsp_to_vim(expr, position) abort

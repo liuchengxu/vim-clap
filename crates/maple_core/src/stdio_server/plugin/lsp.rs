@@ -450,6 +450,8 @@ impl LspPlugin {
 
         let doc_id = document.doc_id.clone();
 
+        // TODO: sync the document?
+
         let mut text_edits = client
             .text_document_formatting(
                 doc_id.clone(),
@@ -489,7 +491,12 @@ impl LspPlugin {
         if !text_edits.is_empty() {
             self.vim.exec(
                 "clap#lsp#text_edit#apply_text_edits",
-                (doc_id.uri, text_edits),
+                (
+                    doc_id.uri.to_file_path().map_err(|()| {
+                        Error::InvalidUrl(format!("uri: {} is not a path", doc_id.uri))
+                    })?,
+                    text_edits,
+                ),
             )?;
         }
 
