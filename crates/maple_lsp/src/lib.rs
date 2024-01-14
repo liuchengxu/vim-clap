@@ -1143,7 +1143,7 @@ impl Client {
     // empty string to get all symbols
     pub async fn workspace_symbols(
         &self,
-        query: String,
+        query: impl Into<String>,
     ) -> Result<Option<lsp::WorkspaceSymbolResponse>, Error> {
         let capabilities = self.capabilities.get().ok_or(Error::Uninitialized)?;
 
@@ -1157,7 +1157,7 @@ impl Client {
         }
 
         let params = lsp::WorkspaceSymbolParams {
-            query,
+            query: query.into(),
             work_done_progress_params: lsp::WorkDoneProgressParams::default(),
             partial_result_params: lsp::PartialResultParams::default(),
         };
