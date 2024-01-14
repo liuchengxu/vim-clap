@@ -1,12 +1,18 @@
-function! clap#lsp#text_edit#get_range(text_edit) abort
-  if type(a:text_edit) != v:t_dict
-    return v:null
-  endif
-  let l:insert = get(a:text_edit, 'insert', v:null)
-  if type(l:insert) == v:t_dict
-    return l:insert
-  endif
-  return get(a:text_edit, 'range', v:null)
+function! clap#lsp#text_edit#apply_text_edits(filepath, text_edits) abort
+    let l:current_bufname = bufname('%')
+    let l:target_bufname = a:filepath
+    let l:cursor_position = s:get_position()
+
+    call s:_switch(l:target_bufname)
+    " for l:text_edit in s:_normalize(a:text_edits)
+    for l:text_edit in a:text_edits
+        call s:_apply(bufnr(l:target_bufname), l:text_edit, l:cursor_position)
+    endfor
+    call s:_switch(l:current_bufname)
+
+    if bufnr(l:current_bufname) == bufnr(l:target_bufname)
+        call cursor(s:lsp_to_vim('%', l:cursor_position))
+    endif
 endfunction
 
 " The inverse version of `s:to_col`.
@@ -31,28 +37,6 @@ function! s:get_position(...) abort
     return { 'line': l:line - 1, 'character': l:char }
 endfunction
 
-function! clap#lsp#text_edit#apply_text_edits(filepath, text_edits) abort
-    let l:current_bufname = bufname('%')
-    let l:target_bufname = a:filepath
-    let l:cursor_position = s:get_position()
-
-    call s:_switch(l:target_bufname)
-    " for l:text_edit in s:_normalize(a:text_edits)
-    for l:text_edit in a:text_edits
-        call s:_apply(bufnr(l:target_bufname), l:text_edit, l:cursor_position)
-    endfor
-    call s:_switch(l:current_bufname)
-
-    if bufnr(l:current_bufname) == bufnr(l:target_bufname)
-        call cursor(s:lsp_to_vim('%', l:cursor_position))
-    endif
-endfunction
-
-function! s:decode_uri(uri) abort
-    let l:ret = substitute(a:uri, '[?#].*', '', '')
-    return substitute(l:ret, '%\(\x\x\)', '\=printf("%c", str2nr(submatch(1), 16))', 'g')
-endfunction
-
 " This function can be error prone if the caller forgets to use +1 to vim line
 " so use lsp#utils#position#lsp_to_vim instead
 " Convert a character-index (0-based) to byte-index (1-based)
@@ -74,10 +58,6 @@ function! s:to_col(expr, lnum, char) abort
     endif
     let l:linestr = l:lines[-1]
     return strlen(strcharpart(l:linestr, 0, a:char)) + 1
-endfunction
-
-function! s:is_file_uri(uri) abort
-    return stridx(a:uri, 'file:///') == 0
 endfunction
 
 function! s:lsp_line_to_vim(expr, position) abort
