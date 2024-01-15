@@ -3,10 +3,8 @@ mod linters;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::future::Future;
 use std::path::{Path, PathBuf};
 use tokio::sync::mpsc::UnboundedSender;
-use tokio::task::JoinHandle;
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone, Eq, PartialEq)]
 pub struct Code {
@@ -150,7 +148,18 @@ pub fn find_workspace(filetype: impl AsRef<str>, source_file: &Path) -> Option<&
 
 // source_file => Available Linters => Enabled Linters => Run
 
-pub async fn start_linting_in_background(
+pub fn start_linting_in_background(
+    filetype: String,
+    source_file: PathBuf,
+    workspace_root: PathBuf,
+    diagnostics_sender: UnboundedSender<LinterDiagnostics>,
+) {
+    tokio::spawn(async move {
+        start_linting(&filetype, source_file, &workspace_root, diagnostics_sender).await;
+    });
+}
+
+async fn start_linting(
     filetype: &str,
     source_file: PathBuf,
     workspace_root: &Path,

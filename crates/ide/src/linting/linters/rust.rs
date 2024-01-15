@@ -4,7 +4,6 @@ use crate::linting::{
 use serde::Deserialize;
 use std::path::PathBuf;
 use std::process::Stdio;
-use tokio::task::JoinHandle;
 
 #[derive(Clone)]
 pub struct RustLinter {

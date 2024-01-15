@@ -1,25 +1,23 @@
+use crate::stdio_server::plugin::PluginResult;
 use crate::stdio_server::vim::{Vim, VimResult};
-use ide::linting::LinterDiagnostics;
-use ide::linting::{Diagnostic, DiagnosticSpan};
-use parking_lot::{Mutex, RwLock};
+use ide::linting::{Diagnostic, DiagnosticSpan, LinterDiagnostics};
+use parking_lot::RwLock;
 use serde::Serialize;
 use std::cmp::Ordering as CmpOrdering;
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
-use tokio::task::JoinHandle;
 
 use super::{Count, DiagnosticKind, Direction};
 
 #[derive(Debug, Clone)]
-pub struct BufferDiagnostics {
+struct BufferDiagnostics {
     /// Whether the diagnostics have been refreshed.
-    pub refreshed: Arc<AtomicBool>,
+    refreshed: Arc<AtomicBool>,
 
     /// List of sorted diagnostics.
-    pub inner: Arc<RwLock<Vec<Diagnostic>>>,
+    inner: Arc<RwLock<Vec<Diagnostic>>>,
 }
 
 impl Serialize for BufferDiagnostics {
@@ -33,7 +31,7 @@ impl Serialize for BufferDiagnostics {
 
 impl BufferDiagnostics {
     /// Append new diagnostics and returns the count of latest diagnostics.
-    pub fn append(&self, new_diagnostics: Vec<Diagnostic>) -> Count {
+    fn append(&self, new_diagnostics: Vec<Diagnostic>) -> Count {
         let mut diagnostics = self.inner.write();
         diagnostics.extend(new_diagnostics);
 
@@ -52,14 +50,14 @@ impl BufferDiagnostics {
     }
 
     /// Clear the diagnostics list.
-    pub fn reset(&self) {
+    fn reset(&self) {
         self.refreshed.store(false, Ordering::SeqCst);
         let mut diagnostics = self.inner.write();
         diagnostics.clear();
     }
 
     /// Returns a tuple of (line_number, column_start) of the sibling diagnostic.
-    pub fn find_sibling(
+    fn find_sibling(
         &self,
         from_line_number: usize,
         kind: DiagnosticKind,
@@ -103,7 +101,7 @@ impl BufferDiagnostics {
         }
     }
 
-    pub async fn display_diagnostics_at_cursor(&self, vim: &Vim) -> VimResult<()> {
+    async fn display_diagnostics_at_cursor(&self, vim: &Vim) -> VimResult<()> {
         let lnum = vim.line(".").await?;
         let col = vim.col(".").await?;
 
@@ -145,117 +143,167 @@ impl BufferDiagnostics {
     }
 }
 
-#[derive(Clone)]
-pub struct BufferDiagnosticsHandler {
+fn update_buffer_diagnostics(
     bufnr: usize,
-    vim: Vim,
+    vim: &Vim,
     buffer_diagnostics: BufferDiagnostics,
-}
+    linter_diagnostics: ide::linting::LinterDiagnostics,
+) -> std::io::Result<()> {
+    let mut new_diagnostics = linter_diagnostics.diagnostics;
+    new_diagnostics.sort_by(|a, b| a.spans[0].line_start.cmp(&b.spans[0].line_start));
+    new_diagnostics.dedup();
 
-impl BufferDiagnosticsHandler {
-    pub fn new(bufnr: usize, vim: Vim, buffer_diagnostics: BufferDiagnostics) -> Self {
-        Self {
-            bufnr,
-            vim,
-            buffer_diagnostics,
-        }
-    }
+    let first_lint_result_arrives = buffer_diagnostics
+        .refreshed
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_ok();
 
-    pub fn process_diagnostics(
-        &self,
-        linter_diagnostics: ide::linting::LinterDiagnostics,
-    ) -> std::io::Result<()> {
-        let mut new_diagnostics = linter_diagnostics.diagnostics;
-        new_diagnostics.sort_by(|a, b| a.spans[0].line_start.cmp(&b.spans[0].line_start));
-        new_diagnostics.dedup();
+    let new_count = if first_lint_result_arrives {
+        let _ = vim.exec(
+            "clap#plugin#linter#refresh_highlights",
+            (bufnr, &new_diagnostics),
+        );
 
-        let first_lint_result_arrives = self
-            .buffer_diagnostics
-            .refreshed
-            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-            .is_ok();
+        buffer_diagnostics.append(new_diagnostics)
+    } else {
+        // Remove the potential duplicated results from multiple linters.
+        let existing = buffer_diagnostics.inner.read();
+        let mut followup_diagnostics = new_diagnostics
+            .into_iter()
+            .filter(|d| !existing.contains(d))
+            .collect::<Vec<_>>();
 
-        let new_count = if first_lint_result_arrives {
-            let _ = self.vim.exec(
-                "clap#plugin#linter#refresh_highlights",
-                (self.bufnr, &new_diagnostics),
+        followup_diagnostics.dedup();
+
+        // Must drop the lock otherwise the deadlock occurs as
+        // the write lock will be acquired later.
+        drop(existing);
+
+        if !followup_diagnostics.is_empty() {
+            let _ = vim.exec(
+                "clap#plugin#linter#add_highlights",
+                (bufnr, &followup_diagnostics),
             );
+        }
 
-            self.buffer_diagnostics.append(new_diagnostics)
-        } else {
-            // Remove the potential duplicated results from multiple linters.
-            let existing = self.buffer_diagnostics.inner.read();
-            let mut followup_diagnostics = new_diagnostics
-                .into_iter()
-                .filter(|d| !existing.contains(d))
-                .collect::<Vec<_>>();
+        buffer_diagnostics.append(followup_diagnostics)
+    };
 
-            followup_diagnostics.dedup();
+    let _ = vim.setbufvar(bufnr, "clap_diagnostics", new_count);
 
-            // Must drop the lock otherwise the deadlock occurs as
-            // the write lock will be acquired later.
-            drop(existing);
+    let buffer_diagnostics = buffer_diagnostics.clone();
+    let vim = vim.clone();
+    tokio::spawn(async move {
+        let _ = buffer_diagnostics.display_diagnostics_at_cursor(&vim).await;
+    });
 
-            if !followup_diagnostics.is_empty() {
-                let _ = self.vim.exec(
-                    "clap#plugin#linter#add_highlights",
-                    (self.bufnr, &followup_diagnostics),
-                );
-            }
-
-            self.buffer_diagnostics.append(followup_diagnostics)
-        };
-
-        let _ = self
-            .vim
-            .setbufvar(self.bufnr, "clap_diagnostics", new_count);
-
-        let buffer_diagnostics = self.buffer_diagnostics.clone();
-        let vim = self.vim.clone();
-        tokio::spawn(async move {
-            let _ = buffer_diagnostics.display_diagnostics_at_cursor(&vim).await;
-        });
-
-        Ok(())
-    }
+    Ok(())
 }
 
-/*
-enum WorkerMessage {
-    StartBufferLinting,
-    PublishLinterDiagnostics(LinterDiagnostics),
-    PublishLspDiagnostics,
+pub enum WorkerMessage {
+    ResetBufferDiagnostics(usize),
+    DisplayDiagnosticsAtCursor(usize),
+    EchoDiagnosticsAtCursor(usize),
+    NavigateDiagnostics((usize, DiagnosticKind, Direction)),
+    LinterDiagnostics((usize, LinterDiagnostics)),
+    LspDiagnostics,
 }
 
-pub fn start_buffer_diagnostics_worker() -> UnboundedSender<WorkerMessage> {
+// pub struct BufferDiagnosticsWorkerHandle {
+// sender: UnboundedSender<WorkerMessage>,
+// }
+
+// impl BufferDiagnosticsWorkerHandle {
+// fn notify(&self, )
+// }
+
+pub fn start_buffer_diagnostics_worker(vim: Vim) -> UnboundedSender<WorkerMessage> {
     let (worker_msg_sender, worker_msg_receiver) = unbounded_channel();
 
     tokio::spawn(async move {
         let worker = BufferDiagnosticsWorker {
+            vim,
             worker_msg_receiver,
+            buffer_diagnostics: HashMap::new(),
         };
 
-        worker.run().await;
+        if let Err(e) = worker.run().await {
+            tracing::error!(error = ?e, "buffer diagnostics worker exited");
+        }
     });
 
     worker_msg_sender
 }
 
-// Merge the diagnostics reported from LSP and other external tools.
-struct BufferDiagnosticsWorker {
+pub struct BufferDiagnosticsWorker {
+    vim: Vim,
     worker_msg_receiver: UnboundedReceiver<WorkerMessage>,
+    /// State of each buffer's diagnostics.
+    ///
+    /// The diagnostics may be reported from LSP and other external tools.
     buffer_diagnostics: HashMap<usize, BufferDiagnostics>,
 }
 
 impl BufferDiagnosticsWorker {
-    async fn run(mut self) {
+    async fn run(mut self) -> PluginResult<()> {
         while let Some(worker_msg) = self.worker_msg_receiver.recv().await {
             match worker_msg {
-                WorkerMessage::StartBufferLinting => {}
-                WorkerMessage::PublishLinterDiagnostics(linter_diagnostics) => {}
-                WorkerMessage::PublishLspDiagnostics => {}
+                WorkerMessage::ResetBufferDiagnostics(bufnr) => {
+                    self.buffer_diagnostics
+                        .entry(bufnr)
+                        .and_modify(|v| v.reset())
+                        .or_insert_with(|| BufferDiagnostics {
+                            refreshed: Arc::new(false.into()),
+                            inner: Arc::new(RwLock::new(Vec::new())),
+                        });
+                }
+                WorkerMessage::DisplayDiagnosticsAtCursor(bufnr) => {
+                    if let Some(diagnostics) = self.buffer_diagnostics.get(&bufnr) {
+                        diagnostics.display_diagnostics_at_cursor(&self.vim).await?;
+                    }
+                }
+                WorkerMessage::EchoDiagnosticsAtCursor(bufnr) => {
+                    if let Some(diagnostics) = self.buffer_diagnostics.get(&bufnr) {
+                        let Ok(lnum) = self.vim.line(".").await else {
+                            continue;
+                        };
+
+                        let diagnostics = diagnostics.inner.read();
+                        let current_diagnostics = diagnostics
+                            .iter()
+                            .filter(|d| d.spans.iter().any(|span| span.line_start == lnum))
+                            .collect::<Vec<_>>();
+
+                        for diagnostic in current_diagnostics {
+                            let _ = self.vim.echo_info(diagnostic.human_message());
+                        }
+                    }
+                }
+                WorkerMessage::NavigateDiagnostics((bufnr, kind, direction)) => {
+                    if let Some(diagnostics) = self.buffer_diagnostics.get(&bufnr) {
+                        let lnum = self.vim.line(".").await?;
+                        if let Some((lnum, col)) = diagnostics.find_sibling(lnum, kind, direction) {
+                            self.vim.exec("cursor", [lnum, col])?;
+                            self.vim.exec("execute", "normal! zz")?;
+                        }
+                    }
+                }
+                WorkerMessage::LinterDiagnostics((bufnr, linter_diagnostics)) => {
+                    if let Some(buffer_diagnostics) = self.buffer_diagnostics.get(&bufnr) {
+                        update_buffer_diagnostics(
+                            bufnr,
+                            &self.vim,
+                            buffer_diagnostics.clone(),
+                            linter_diagnostics,
+                        )?;
+                    }
+                }
+                WorkerMessage::LspDiagnostics => {
+                    // TODO: handle diagnostics from LSP.
+                }
             }
         }
+
+        Ok(())
     }
 }
-*/

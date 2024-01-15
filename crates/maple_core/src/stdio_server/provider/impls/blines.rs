@@ -4,6 +4,8 @@ use crate::stdio_server::provider::{
 };
 use crate::stdio_server::vim::VimResult;
 use matcher::{Bonus, MatchScope};
+use rayon::iter::IntoParallelIterator;
+use rayon::iter::ParallelIterator;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use types::Query;
@@ -77,16 +79,46 @@ impl ClapProvider for BlinesProvider {
 
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.input_get().await?;
-        // TODO:
-        // if &modified {
-        //      get buf content
-        // } else {
-        //      read from file
-        // }
+
         if query.is_empty() {
             ctx.update_on_empty_query().await?;
         } else {
-            self.process_query(query, ctx);
+            let bufnr = ctx.vim.eval::<usize>("g:clap.start.bufnr").await?;
+
+            // TODO: cache the latest buffer content.
+            if ctx.vim.bufmodified(bufnr).await? {
+                let lines = ctx.vim.getbufline(bufnr, 1, "$").await?;
+
+                let source_items = lines.into_par_iter().map(|line| {
+                    Arc::new(types::SourceItem::new(line, None, None)) as Arc<dyn types::ClapItem>
+                });
+
+                let matched_items = filter::par_filter(source_items, &ctx.matcher(&query));
+
+                let printer = printer::Printer::new(ctx.env.display_winwidth, ctx.env.icon);
+
+                let printer::DisplayLines {
+                    lines,
+                    indices,
+                    truncated_map,
+                    icon_added,
+                } = printer.to_display_lines(matched_items.iter().take(200).cloned().collect());
+
+                let msg = serde_json::json!({
+                    "total": matched_items.len(),
+                    "lines": lines,
+                    "indices": indices,
+                    "icon_added": icon_added,
+                    "truncated_map": truncated_map,
+                });
+
+                ctx.vim.exec(
+                    "clap#state#process_filter_message",
+                    serde_json::json!([msg, true]),
+                )?;
+            } else {
+                self.process_query(query, ctx);
+            };
         }
         Ok(())
     }
