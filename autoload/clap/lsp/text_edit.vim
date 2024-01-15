@@ -1,17 +1,19 @@
+" NOTE: text_edits are not the original list of text edits sent from the server,
+" they are pre-processed already on the Rust side.
 function! clap#lsp#text_edit#apply_text_edits(filepath, text_edits) abort
     let l:current_bufname = bufname('%')
     let l:target_bufname = a:filepath
-    let l:cursor_position = s:get_position()
+    let l:cursor_position = s:get_lsp_position()
 
     call s:_switch(l:target_bufname)
-    " for l:text_edit in s:_normalize(a:text_edits)
+    let l:target_bufnr = bufnr(l:target_bufname)
     for l:text_edit in a:text_edits
-        call s:_apply(bufnr(l:target_bufname), l:text_edit, l:cursor_position)
+      call s:_apply(l:target_bufnr, l:text_edit, l:cursor_position)
     endfor
     call s:_switch(l:current_bufname)
 
     if bufnr(l:current_bufname) == bufnr(l:target_bufname)
-        call cursor(s:lsp_to_vim('%', l:cursor_position))
+      call cursor(s:lsp_position_to_vim_position('%', l:cursor_position))
     endif
 endfunction
 
@@ -31,7 +33,7 @@ function! s:to_char(expr, lnum, col) abort
     return strchars(strpart(l:linestr, 0, a:col - 1))
 endfunction
 
-function! s:get_position(...) abort
+function! s:get_lsp_position(...) abort
     let l:line = line('.')
     let l:char = s:to_char('%', l:line, col('.'))
     return { 'line': l:line - 1, 'character': l:char }
@@ -70,7 +72,7 @@ function! s:lsp_character_to_vim(expr, position) abort
     return s:to_col(a:expr, l:line, l:char)
 endfunction
 
-function! s:lsp_to_vim(expr, position) abort
+function! s:lsp_position_to_vim_position(expr, position) abort
     let l:line = s:lsp_line_to_vim(a:expr, a:position)
     let l:col = s:lsp_character_to_vim(a:expr, a:position)
     return [l:line, l:col]
