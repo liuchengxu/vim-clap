@@ -146,13 +146,13 @@ impl BufferDiagnostics {
 }
 
 #[derive(Clone)]
-pub struct LinterDiagnosticsHandler {
+pub struct BufferDiagnosticsHandler {
     bufnr: usize,
     vim: Vim,
     buffer_diagnostics: BufferDiagnostics,
 }
 
-impl LinterDiagnosticsHandler {
+impl BufferDiagnosticsHandler {
     pub fn new(bufnr: usize, vim: Vim, buffer_diagnostics: BufferDiagnostics) -> Self {
         Self {
             bufnr,
@@ -161,7 +161,7 @@ impl LinterDiagnosticsHandler {
         }
     }
 
-    pub fn on_linter_diagnostics(
+    pub fn process_diagnostics(
         &self,
         linter_diagnostics: ide::linting::LinterDiagnostics,
     ) -> std::io::Result<()> {

@@ -1,6 +1,5 @@
 use crate::linting::{
-    Code, Diagnostic, DiagnosticSpan, HandleLinterDiagnostics, LintEngine, LinterDiagnostics,
-    RustLintEngine, Severity,
+    Code, Diagnostic, DiagnosticSpan, LintEngine, LinterDiagnostics, RustLintEngine, Severity,
 };
 use serde::Deserialize;
 use std::path::PathBuf;
@@ -19,37 +18,6 @@ impl RustLinter {
             source_file,
             workspace_root,
         }
-    }
-
-    pub fn run<Handler: HandleLinterDiagnostics + Send + Sync + Clone + 'static>(
-        self,
-        handler: Handler,
-    ) -> Vec<JoinHandle<()>> {
-        let mut handles = Vec::with_capacity(2);
-        let worker = tokio::task::spawn_blocking({
-            let handler = handler.clone();
-            let linter = self.clone();
-
-            move || {
-                if let Ok(linter_result) = linter.cargo_check() {
-                    let _ = handler.handle_linter_result(linter_result);
-                }
-            }
-        });
-        handles.push(worker);
-
-        let worker = tokio::task::spawn_blocking({
-            let linter = self;
-
-            move || {
-                if let Ok(linter_result) = linter.cargo_clippy() {
-                    let _ = handler.handle_linter_result(linter_result);
-                }
-            }
-        });
-        handles.push(worker);
-
-        handles
     }
 
     pub fn start(self, diagnostics_sender: tokio::sync::mpsc::UnboundedSender<LinterDiagnostics>) {

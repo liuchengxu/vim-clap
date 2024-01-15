@@ -11,7 +11,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use tokio::task::JoinHandle;
 
-use self::buffer_diagnostics::{BufferDiagnostics, LinterDiagnosticsHandler};
+use self::buffer_diagnostics::{BufferDiagnostics, BufferDiagnosticsHandler};
 
 #[derive(Debug, Default, Clone, Serialize)]
 struct Count {
@@ -31,24 +31,12 @@ enum DiagnosticKind {
     Warn,
 }
 
-impl ide::linting::HandleLinterDiagnostics for LinterDiagnosticsHandler {
-    fn handle_linter_result(
-        &self,
-        linter_diagnostics: ide::linting::LinterDiagnostics,
-    ) -> std::io::Result<()> {
-        self.on_linter_diagnostics(linter_diagnostics)
-    }
-}
-
-type LinterJob = JoinHandle<()>;
-
 #[derive(Debug, Clone)]
 struct BufferLinterInfo {
     filetype: String,
     workspace: PathBuf,
     source_file: PathBuf,
     diagnostics: BufferDiagnostics,
-    current_jobs: Arc<Mutex<Vec<LinterJob>>>,
 }
 
 impl BufferLinterInfo {
@@ -61,7 +49,6 @@ impl BufferLinterInfo {
                 refreshed: Arc::new(AtomicBool::new(false)),
                 inner: Arc::new(RwLock::new(Vec::new())),
             },
-            current_jobs: Arc::new(Mutex::new(Vec::new())),
         }
     }
 }
@@ -119,28 +106,32 @@ impl Linter {
     fn lint_buffer(&self, bufnr: usize, buf_linter_info: &BufferLinterInfo) {
         buf_linter_info.diagnostics.reset();
 
-        let mut current_jobs = buf_linter_info.current_jobs.lock();
+        let (diagnostics_sender, mut diagnostics_receiver) = tokio::sync::mpsc::unbounded_channel();
 
-        if !current_jobs.is_empty() {
-            for job in current_jobs.drain(..) {
-                job.abort();
-            }
-        }
+        let buf_linter_info = buf_linter_info.clone();
+        tokio::spawn(async move {
+            ide::linting::start_linting_in_background(
+                &buf_linter_info.filetype,
+                buf_linter_info.source_file.clone(),
+                &buf_linter_info.workspace,
+                diagnostics_sender,
+            )
+            .await;
+        });
 
-        let new_jobs = ide::linting::lint_in_background(
-            &buf_linter_info.filetype,
-            buf_linter_info.source_file.clone(),
-            &buf_linter_info.workspace,
-            LinterDiagnosticsHandler::new(
+        tokio::spawn({
+            let buffer_diagnostics_handler = BufferDiagnosticsHandler::new(
                 bufnr,
                 self.vim.clone(),
                 buf_linter_info.diagnostics.clone(),
-            ),
-        );
+            );
 
-        if !new_jobs.is_empty() {
-            *current_jobs = new_jobs;
-        }
+            async move {
+                while let Some(linter_diagnostics) = diagnostics_receiver.recv().await {
+                    let _ = buffer_diagnostics_handler.process_diagnostics(linter_diagnostics);
+                }
+            }
+        });
     }
 
     async fn format_buffer(&self, bufnr: usize) -> VimResult<()> {

@@ -113,11 +113,6 @@ pub struct LinterDiagnostics {
     pub diagnostics: Vec<Diagnostic>,
 }
 
-/// A hook invoked when a linter finishes its job.
-pub trait HandleLinterDiagnostics {
-    fn handle_linter_result(&self, linter_result: LinterDiagnostics) -> std::io::Result<()>;
-}
-
 #[derive(Debug, Clone)]
 enum WorkspaceFinder {
     RootMarkers(&'static [&'static str]),
@@ -154,83 +149,6 @@ pub fn find_workspace(filetype: impl AsRef<str>, source_file: &Path) -> Option<&
 }
 
 // source_file => Available Linters => Enabled Linters => Run
-
-// TODO: deprecated
-pub fn lint_in_background<Handler>(
-    filetype: &str,
-    source_file: PathBuf,
-    workspace_root: &Path,
-    handler: Handler,
-) -> Vec<JoinHandle<()>>
-where
-    Handler: HandleLinterDiagnostics + Send + Sync + Clone + 'static,
-{
-    let mut handles = Vec::new();
-
-    handles.push(tokio::spawn({
-        let handler = handler.clone();
-        let source_file = source_file.clone();
-        let workspace_root = workspace_root.to_path_buf();
-        async move {
-            if let Ok(linter_result) =
-                linters::typos::run_typos(&source_file, &workspace_root).await
-            {
-                let _ = handler.handle_linter_result(linter_result);
-            }
-        }
-    }));
-
-    let workspace_root = workspace_root.to_path_buf();
-
-    match filetype {
-        "go" => {
-            let job = async move { linters::go::run_gopls(&source_file, &workspace_root).await };
-
-            handles.push(spawn_linter_job(job, handler));
-        }
-        "rust" => {
-            handles
-                .extend(linters::rust::RustLinter::new(source_file, workspace_root).run(handler));
-        }
-        "sh" => {
-            let job =
-                async move { linters::sh::run_shellcheck(&source_file, &workspace_root).await };
-
-            handles.push(spawn_linter_job(job, handler));
-        }
-        "vim" => {
-            let job = async move { linters::vim::run_vint(&source_file, &workspace_root).await };
-
-            handles.push(spawn_linter_job(job, handler));
-        }
-        _ => {}
-    }
-
-    handles
-}
-
-// TODO: deprecated
-fn spawn_linter_job<Handler>(
-    job: impl Future<Output = std::io::Result<LinterDiagnostics>> + Send + 'static,
-    handler: Handler,
-) -> tokio::task::JoinHandle<()>
-where
-    Handler: HandleLinterDiagnostics + Send + Sync + Clone + 'static,
-{
-    tokio::spawn(async move {
-        let linter_result = match job.await {
-            Ok(res) => res,
-            Err(err) => {
-                tracing::error!(?err, "Error occurred running linter");
-                return;
-            }
-        };
-
-        if let Err(err) = handler.handle_linter_result(linter_result) {
-            tracing::error!(?err, "Error occurred in handling the linter result");
-        }
-    })
-}
 
 pub async fn start_linting_in_background(
     filetype: &str,
