@@ -161,13 +161,13 @@ impl BufferDiagnostics {
 }
 
 #[derive(Clone)]
-struct LinterResultHandler {
+struct LinterDiagnosticsHandler {
     bufnr: usize,
     vim: Vim,
     buffer_diagnostics: BufferDiagnostics,
 }
 
-impl LinterResultHandler {
+impl LinterDiagnosticsHandler {
     fn new(bufnr: usize, vim: Vim, buffer_diagnostics: BufferDiagnostics) -> Self {
         Self {
             bufnr,
@@ -175,14 +175,12 @@ impl LinterResultHandler {
             buffer_diagnostics,
         }
     }
-}
 
-impl ide::linting::HandleLinterResult for LinterResultHandler {
-    fn handle_linter_result(
+    fn on_linter_diagnostics(
         &self,
-        linter_result: ide::linting::LinterResult,
+        linter_diagnostics: ide::linting::LinterDiagnostics,
     ) -> std::io::Result<()> {
-        let mut new_diagnostics = linter_result.diagnostics;
+        let mut new_diagnostics = linter_diagnostics.diagnostics;
         new_diagnostics.sort_by(|a, b| a.spans[0].line_start.cmp(&b.spans[0].line_start));
         new_diagnostics.dedup();
 
@@ -234,6 +232,15 @@ impl ide::linting::HandleLinterResult for LinterResultHandler {
         });
 
         Ok(())
+    }
+}
+
+impl ide::linting::HandleLinterDiagnostics for LinterDiagnosticsHandler {
+    fn handle_linter_result(
+        &self,
+        linter_diagnostics: ide::linting::LinterDiagnostics,
+    ) -> std::io::Result<()> {
+        self.on_linter_diagnostics(linter_diagnostics)
     }
 }
 
@@ -328,7 +335,11 @@ impl Linter {
             &buf_linter_info.filetype,
             buf_linter_info.source_file.clone(),
             &buf_linter_info.workspace,
-            LinterResultHandler::new(bufnr, self.vim.clone(), buf_linter_info.diagnostics.clone()),
+            LinterDiagnosticsHandler::new(
+                bufnr,
+                self.vim.clone(),
+                buf_linter_info.diagnostics.clone(),
+            ),
         );
 
         if !new_jobs.is_empty() {

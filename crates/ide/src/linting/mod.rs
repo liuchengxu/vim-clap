@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::future::Future;
 use std::path::{Path, PathBuf};
+use tokio::sync::mpsc::UnboundedSender;
 use tokio::task::JoinHandle;
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone, Eq, PartialEq)]
@@ -107,14 +108,14 @@ pub enum LintEngine {
 }
 
 #[derive(Debug, Clone)]
-pub struct LinterResult {
+pub struct LinterDiagnostics {
     pub engine: LintEngine,
     pub diagnostics: Vec<Diagnostic>,
 }
 
 /// A hook invoked when a linter finishes its job.
-pub trait HandleLinterResult {
-    fn handle_linter_result(&self, linter_result: LinterResult) -> std::io::Result<()>;
+pub trait HandleLinterDiagnostics {
+    fn handle_linter_result(&self, linter_result: LinterDiagnostics) -> std::io::Result<()>;
 }
 
 #[derive(Debug, Clone)]
@@ -154,6 +155,7 @@ pub fn find_workspace(filetype: impl AsRef<str>, source_file: &Path) -> Option<&
 
 // source_file => Available Linters => Enabled Linters => Run
 
+// TODO: deprecated
 pub fn lint_in_background<Handler>(
     filetype: &str,
     source_file: PathBuf,
@@ -161,7 +163,7 @@ pub fn lint_in_background<Handler>(
     handler: Handler,
 ) -> Vec<JoinHandle<()>>
 where
-    Handler: HandleLinterResult + Send + Sync + Clone + 'static,
+    Handler: HandleLinterDiagnostics + Send + Sync + Clone + 'static,
 {
     let mut handles = Vec::new();
 
@@ -207,12 +209,13 @@ where
     handles
 }
 
+// TODO: deprecated
 fn spawn_linter_job<Handler>(
-    job: impl Future<Output = std::io::Result<LinterResult>> + Send + 'static,
+    job: impl Future<Output = std::io::Result<LinterDiagnostics>> + Send + 'static,
     handler: Handler,
 ) -> tokio::task::JoinHandle<()>
 where
-    Handler: HandleLinterResult + Send + Sync + Clone + 'static,
+    Handler: HandleLinterDiagnostics + Send + Sync + Clone + 'static,
 {
     tokio::spawn(async move {
         let linter_result = match job.await {
@@ -227,4 +230,51 @@ where
             tracing::error!(?err, "Error occurred in handling the linter result");
         }
     })
+}
+
+pub async fn start_linting_in_background(
+    filetype: &str,
+    source_file: PathBuf,
+    workspace_root: &Path,
+    diagnostics_sender: UnboundedSender<LinterDiagnostics>,
+) {
+    tokio::spawn({
+        let source_file = source_file.clone();
+        let workspace_root = workspace_root.to_path_buf();
+        let diagnostics_sender = diagnostics_sender.clone();
+
+        async move {
+            if let Ok(linter_result) =
+                linters::typos::run_typos(&source_file, &workspace_root).await
+            {
+                let _ = diagnostics_sender.send(linter_result);
+            }
+        }
+    });
+
+    let workspace_root = workspace_root.to_path_buf();
+
+    match filetype {
+        "go" => {
+            if let Ok(linter_result) = linters::go::run_gopls(&source_file, &workspace_root).await {
+                let _ = diagnostics_sender.send(linter_result);
+            }
+        }
+        "rust" => {
+            linters::rust::RustLinter::new(source_file, workspace_root).start(diagnostics_sender);
+        }
+        "sh" => {
+            if let Ok(linter_result) =
+                linters::sh::run_shellcheck(&source_file, &workspace_root).await
+            {
+                let _ = diagnostics_sender.send(linter_result);
+            }
+        }
+        "vim" => {
+            if let Ok(linter_result) = linters::vim::run_vint(&source_file, &workspace_root).await {
+                let _ = diagnostics_sender.send(linter_result);
+            }
+        }
+        _ => {}
+    }
 }
