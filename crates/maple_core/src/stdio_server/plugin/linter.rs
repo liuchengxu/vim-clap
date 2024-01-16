@@ -28,7 +28,8 @@ impl BufferInfo {
 #[clap_plugin(
   id = "linter",
   actions = [
-    "lint",
+    "echo-diagnostics",
+    "echo-diagnostics-at-cursor",
     "format",
     "first-error",
     "last-error",
@@ -149,7 +150,7 @@ impl Linter {
     async fn on_cursor_moved(&self, bufnr: usize) -> VimResult<()> {
         let _ = self
             .diagnostics_worker_msg_sender
-            .send(WorkerMessage::DisplayDiagnosticsAtCursor(bufnr));
+            .send(WorkerMessage::ShowDiagnosticsAtCursorInFloatWin(bufnr));
 
         Ok(())
     }
@@ -208,15 +209,17 @@ impl ClapPlugin for Linter {
                 }
                 self.toggle.switch();
             }
-            LinterAction::Lint => {
+            LinterAction::EchoDiagnostics => {
                 let bufnr = self.vim.bufnr("").await?;
-
-                // TODO: if the diagnostics state already exists, return early, otherwise continue.
+                let _ = self
+                    .diagnostics_worker_msg_sender
+                    .send(WorkerMessage::EchoDiagnostics(bufnr));
+            }
+            LinterAction::EchoDiagnosticsAtCursor => {
+                let bufnr = self.vim.bufnr("").await?;
                 let _ = self
                     .diagnostics_worker_msg_sender
                     .send(WorkerMessage::EchoDiagnosticsAtCursor(bufnr));
-
-                self.on_buf_enter(bufnr).await?;
             }
             LinterAction::Debug => {
                 let bufnr = self.vim.bufnr("").await?;

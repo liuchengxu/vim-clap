@@ -257,10 +257,11 @@ fn convert_lsp_diagnostic_to_diagnostic(lsp_diag: maple_lsp::lsp::Diagnostic) ->
 }
 
 pub enum WorkerMessage {
-    ResetBufferDiagnostics(usize),
-    DisplayDiagnosticsAtCursor(usize),
+    EchoDiagnostics(usize),
     EchoDiagnosticsAtCursor(usize),
     NavigateDiagnostics((usize, DiagnosticKind, Direction)),
+    ShowDiagnosticsAtCursorInFloatWin(usize),
+    ResetBufferDiagnostics(usize),
     LinterDiagnostics((usize, LinterDiagnostics)),
     LspDiagnostics(maple_lsp::lsp::PublishDiagnosticsParams),
 }
@@ -279,15 +280,13 @@ impl BufferDiagnosticsWorker {
     async fn run(mut self) -> PluginResult<()> {
         while let Some(worker_msg) = self.worker_msg_receiver.recv().await {
             match worker_msg {
-                WorkerMessage::ResetBufferDiagnostics(bufnr) => {
-                    self.buffer_diagnostics
-                        .entry(bufnr)
-                        .and_modify(|v| v.reset())
-                        .or_insert_with(BufferDiagnostics::new);
-                }
-                WorkerMessage::DisplayDiagnosticsAtCursor(bufnr) => {
+                WorkerMessage::EchoDiagnostics(bufnr) => {
                     if let Some(diagnostics) = self.buffer_diagnostics.get(&bufnr) {
-                        diagnostics.display_diagnostics_at_cursor(&self.vim).await?;
+                        let diagnostics = diagnostics.inner.read();
+                        self.vim.echo_message(format!("{diagnostics:?}"))?;
+                    } else {
+                        self.vim
+                            .echo_message(format!("diagnostics not found for buffer {bufnr}"))?;
                     }
                 }
                 WorkerMessage::EchoDiagnosticsAtCursor(bufnr) => {
@@ -303,7 +302,7 @@ impl BufferDiagnosticsWorker {
                             .collect::<Vec<_>>();
 
                         for diagnostic in current_diagnostics {
-                            let _ = self.vim.echo_info(diagnostic.human_message());
+                            self.vim.echo_info(diagnostic.human_message())?;
                         }
                     }
                 }
@@ -317,6 +316,17 @@ impl BufferDiagnosticsWorker {
                             self.vim.exec("execute", "normal! zz")?;
                         }
                     }
+                }
+                WorkerMessage::ShowDiagnosticsAtCursorInFloatWin(bufnr) => {
+                    if let Some(diagnostics) = self.buffer_diagnostics.get(&bufnr) {
+                        diagnostics.display_diagnostics_at_cursor(&self.vim).await?;
+                    }
+                }
+                WorkerMessage::ResetBufferDiagnostics(bufnr) => {
+                    self.buffer_diagnostics
+                        .entry(bufnr)
+                        .and_modify(|v| v.reset())
+                        .or_insert_with(BufferDiagnostics::new);
                 }
                 WorkerMessage::LinterDiagnostics((bufnr, linter_diagnostics)) => {
                     tracing::debug!(bufnr, "Recv linter diagnostics: {linter_diagnostics:?}");
@@ -338,11 +348,6 @@ impl BufferDiagnosticsWorker {
                         continue;
                     };
 
-                    let buffer_diagnostics = self
-                        .buffer_diagnostics
-                        .entry(bufnr)
-                        .or_insert_with(BufferDiagnostics::new);
-
                     let diagnostics = diagnostics_params
                         .diagnostics
                         .into_iter()
@@ -350,6 +355,11 @@ impl BufferDiagnosticsWorker {
                         .collect::<Vec<_>>();
 
                     tracing::debug!(path, "Recv lsp diagnostics: {diagnostics:?}");
+
+                    let buffer_diagnostics = self
+                        .buffer_diagnostics
+                        .entry(bufnr)
+                        .or_insert_with(BufferDiagnostics::new);
 
                     update_buffer_diagnostics(bufnr, &self.vim, buffer_diagnostics, diagnostics)?;
                 }

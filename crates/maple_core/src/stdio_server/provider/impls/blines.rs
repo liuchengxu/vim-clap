@@ -30,15 +30,22 @@ impl BlinesProvider {
 
         let source = if ctx.vim.bufmodified(bufnr).await? {
             let lines = ctx.vim.getbufline(bufnr, 1, "$").await?;
-            let items = lines
+            let mut items = lines
                 .into_iter()
                 .enumerate()
                 .map(|(index, line)| {
                     Arc::new(BlinesItem {
                         raw: line,
                         line_number: index + 1,
-                    }) as Arc<dyn types::ClapItem>
+                    })
                 })
+                .collect::<Vec<_>>();
+
+            items.sort_by_key(|i| i.line_number);
+
+            let items = items
+                .into_iter()
+                .map(|item| item as Arc<dyn ClapItem>)
                 .collect::<Vec<_>>();
 
             // Initialize the provider source to reuse the on_move impl.
@@ -104,22 +111,8 @@ impl BlinesProvider {
 
         self.searcher_control.replace(new_control);
     }
-}
 
-#[async_trait::async_trait]
-impl ClapProvider for BlinesProvider {
-    async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        if self.args.query.is_none() {
-            // No longer need to invoke initialize_provider as we did it in new().
-        } else {
-            ctx.handle_base_args(&self.args).await?;
-        }
-        Ok(())
-    }
-
-    async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
-        let query = ctx.vim.input_get().await?;
-
+    fn process_query(&mut self, query: String, ctx: &Context) -> Result<()> {
         match &self.source {
             BufferSource::Items(items) => {
                 let matched_items = filter::par_filter_items(items, &ctx.matcher(&query));
@@ -150,6 +143,23 @@ impl ClapProvider for BlinesProvider {
         }
 
         Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl ClapProvider for BlinesProvider {
+    async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
+        if self.args.query.is_none() {
+            self.process_query("".to_string(), ctx)?;
+        } else {
+            ctx.handle_base_args(&self.args).await?;
+        }
+        Ok(())
+    }
+
+    async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
+        let query = ctx.vim.input_get().await?;
+        self.process_query(query, ctx)
     }
 
     fn on_terminate(&mut self, ctx: &mut Context, session_id: u64) {
