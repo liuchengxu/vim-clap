@@ -85,3 +85,29 @@ pub fn char_indices_to_byte_indices(s: &str, char_indices: &[usize]) -> Vec<usiz
         })
         .collect::<Vec<_>>()
 }
+
+/// Returns the char index of given byte index (0-based) in a line.
+pub fn char_index_for(line: &str, byte_idx: usize) -> Option<usize> {
+    line.char_indices().enumerate().find_map(
+        |(c_idx, (b_idx, _c))| {
+            if byte_idx == b_idx {
+                Some(c_idx)
+            } else {
+                None
+            }
+        },
+    )
+}
+
+/// Returns the char at given byte index (0-based) in a line.
+pub fn char_at(line: &str, byte_idx: usize) -> Option<char> {
+    line.char_indices().enumerate().find_map(
+        |(_c_idx, (b_idx, c))| {
+            if byte_idx == b_idx {
+                Some(c)
+            } else {
+                None
+            }
+        },
+    )
+}

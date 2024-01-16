@@ -329,8 +329,10 @@ impl BufferDiagnosticsWorker {
                     }
                 }
                 WorkerMessage::LspDiagnostics(diagnostics_params) => {
+                    let path = diagnostics_params.uri.path();
+
                     // TODO: uri.path may not be loaded as a buffer.
-                    let Ok(bufnr) = self.vim.bufnr(diagnostics_params.uri.path()).await else {
+                    let Ok(bufnr) = self.vim.bufnr(path).await else {
                         continue;
                     };
 
@@ -345,7 +347,7 @@ impl BufferDiagnosticsWorker {
                         .map(convert_lsp_diagnostic_to_diagnostic)
                         .collect::<Vec<_>>();
 
-                    tracing::debug!("================= lsp diagnostics: {diagnostics:?}");
+                    tracing::debug!(path, "================= lsp diagnostics: {diagnostics:?}");
 
                     update_buffer_diagnostics(bufnr, &self.vim, buffer_diagnostics, diagnostics)?;
                 }

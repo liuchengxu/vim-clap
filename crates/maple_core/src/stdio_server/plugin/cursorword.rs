@@ -21,19 +21,6 @@ struct WordHighlights {
     cword_len: usize,
 }
 
-/// Returns the char at given byte index in a line.
-fn char_at(byte_idx: usize, line: &str) -> Option<char> {
-    line.char_indices().enumerate().find_map(
-        |(_c_idx, (b_idx, c))| {
-            if byte_idx == b_idx {
-                Some(c)
-            } else {
-                None
-            }
-        },
-    )
-}
-
 /// `line_start` and `curlnum` is 1-based line number.
 fn find_word_highlights(
     lines: impl Iterator<Item = String>,
@@ -197,7 +184,7 @@ impl Cursorword {
 
         let is_word = |c: char| c.is_ascii_alphanumeric() || c == '_';
 
-        if let Some(cursor_char) = char_at(col - 1, &curline) {
+        if let Some(cursor_char) = utils::char_at(&curline, col - 1) {
             if !is_word(cursor_char) {
                 return Ok(None);
             }

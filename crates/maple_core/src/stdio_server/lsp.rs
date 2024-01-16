@@ -260,13 +260,15 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
                 self.handle_progress_message(params)?;
             }
             LanguageServerNotification::PublishDiagnostics(params) => {
-                // Notify the diagnostics worker.
-                if self
-                    .diagnostics_worker_msg_sender
-                    .send(DiagnosticsWorkerMessage::LspDiagnostics(params))
-                    .is_err()
-                {
-                    tracing::error!("Failed to send diagnostics from LSP");
+                if !params.diagnostics.is_empty() {
+                    // Notify the diagnostics worker.
+                    if self
+                        .diagnostics_worker_msg_sender
+                        .send(DiagnosticsWorkerMessage::LspDiagnostics(params))
+                        .is_err()
+                    {
+                        tracing::error!("Failed to send diagnostics from LSP");
+                    }
                 }
             }
             _ => {

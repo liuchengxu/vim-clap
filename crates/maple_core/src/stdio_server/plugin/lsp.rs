@@ -288,6 +288,37 @@ impl LspPlugin {
             .ok_or(Error::DocumentNotFound(bufnr))
     }
 
+    async fn get_cursor_lsp_position(
+        &self,
+        bufnr: usize,
+        filepath: &Path,
+    ) -> Result<Option<lsp::Position>, Error> {
+        let line = self.vim.line(".").await?;
+        let col = self.vim.col(".").await?;
+        let lines = self.vim.getbufline(bufnr, line, line).await?;
+
+        let maybe_character_index = if lines.is_empty() {
+            // Buffer may not be loaded, read the local file directly.
+            let Some(line) = utils::read_line_at(filepath, line)? else {
+                return Ok(None);
+            };
+            utils::char_index_for(&line, col - 1)
+        } else {
+            utils::char_index_for(&lines[0], col - 1)
+        };
+
+        let Some(character) = maybe_character_index else {
+            return Ok(None);
+        };
+
+        let cursor_lsp_position = lsp::Position {
+            line: line as u32 - 1,
+            character: character as u32,
+        };
+
+        Ok(Some(cursor_lsp_position))
+    }
+
     async fn goto_impl(&mut self, goto: Goto) -> Result<(), Error> {
         let bufnr = self.vim.bufnr("").await?;
         let document = self.get_doc(bufnr)?;
@@ -501,15 +532,20 @@ impl LspPlugin {
 
         text_edits.reverse();
 
+        let filepath = doc_id
+            .uri
+            .to_file_path()
+            .map_err(|()| Error::InvalidUrl(format!("uri: {} is not a path", doc_id.uri)))?;
+
+        let Ok(Some(cursor_lsp_position)) = self.get_cursor_lsp_position(bufnr, &filepath).await
+        else {
+            return Ok(());
+        };
+
         if !text_edits.is_empty() {
             self.vim.exec(
                 "clap#lsp#text_edit#apply_text_edits",
-                (
-                    doc_id.uri.to_file_path().map_err(|()| {
-                        Error::InvalidUrl(format!("uri: {} is not a path", doc_id.uri))
-                    })?,
-                    text_edits,
-                ),
+                (filepath, text_edits, cursor_lsp_position),
             )?;
         }
 

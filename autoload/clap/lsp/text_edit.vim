@@ -1,12 +1,21 @@
+let s:save_cpo = &cpoptions
+set cpoptions&vim
+
 " NOTE: text_edits are not the original list of text edits sent from the server,
 " they are pre-processed already on the Rust side.
-function! clap#lsp#text_edit#apply_text_edits(filepath, text_edits) abort
+function! clap#lsp#text_edit#apply_text_edits(filepath, text_edits, cursor_lsp_position) abort
     let l:current_bufname = bufname('%')
     let l:target_bufname = a:filepath
-    let l:cursor_position = s:get_lsp_position()
+    let l:cursor_position = a:cursor_lsp_position
+
+    if s:get_lsp_position() != l:cursor_position
+      echoerr 'clap: lsp position is incorrect, aborting ...'
+      return
+    endif
+
+    let l:target_bufnr = bufnr(l:target_bufname)
 
     call s:_switch(l:target_bufname)
-    let l:target_bufnr = bufnr(l:target_bufname)
     for l:text_edit in a:text_edits
       call s:_apply(l:target_bufnr, l:text_edit, l:cursor_position)
     endfor
@@ -132,57 +141,35 @@ function! s:_apply(bufnr, text_edit, cursor_position) abort
     " fixendofline
     let l:buffer_length = len(getbufline(a:bufnr, '^', '$'))
     let l:should_fixendofline = s:get_fixendofline(a:bufnr)
-    let l:should_fixendofline = l:should_fixendofline && l:new_lines[-1] ==# ''
-    let l:should_fixendofline = l:should_fixendofline && l:buffer_length <= a:text_edit['range']['end']['line']
-    let l:should_fixendofline = l:should_fixendofline && a:text_edit['range']['end']['character'] == 0
+          \ && l:new_lines[-1] ==# ''
+          \ && l:buffer_length <= a:text_edit['range']['end']['line']
+          \ && a:text_edit['range']['end']['character'] == 0
     if l:should_fixendofline
-        call remove(l:new_lines, -1)
+      call remove(l:new_lines, -1)
     endif
 
     " fix cursor pos
     if a:text_edit['range']['end']['line'] < a:cursor_position['line']
-        " fix cursor line
-        let a:cursor_position['line'] += l:new_lines_len - l:range_len
+      " fix cursor line
+      let a:cursor_position['line'] += l:new_lines_len - l:range_len
     elseif a:text_edit['range']['end']['line'] == a:cursor_position['line'] && a:text_edit['range']['end']['character'] <= a:cursor_position['character']
-        " fix cursor line and col
-        let a:cursor_position['line'] += l:new_lines_len - l:range_len
-        let l:end_character = strchars(l:new_lines[-1]) - strchars(l:after_line)
-        let l:end_offset = a:cursor_position['character'] - a:text_edit['range']['end']['character']
-        let a:cursor_position['character'] = l:end_character + l:end_offset
+      " fix cursor line and col
+      let a:cursor_position['line'] += l:new_lines_len - l:range_len
+      let l:end_character = strchars(l:new_lines[-1]) - strchars(l:after_line)
+      let l:end_offset = a:cursor_position['character'] - a:text_edit['range']['end']['character']
+      let a:cursor_position['character'] = l:end_character + l:end_offset
     endif
 
     " append or delete lines.
     if l:new_lines_len > l:range_len
-        call append(a:text_edit['range']['start']['line'], repeat([''], l:new_lines_len - l:range_len))
+      call append(a:text_edit['range']['start']['line'], repeat([''], l:new_lines_len - l:range_len))
     elseif l:new_lines_len < l:range_len
-        let l:offset = l:range_len - l:new_lines_len
-        call s:delete(a:bufnr, a:text_edit['range']['start']['line'] + 1, a:text_edit['range']['start']['line'] + l:offset)
+      let l:offset = l:range_len - l:new_lines_len
+      call s:delete(a:bufnr, a:text_edit['range']['start']['line'] + 1, a:text_edit['range']['start']['line'] + l:offset)
     endif
 
     " set lines.
     call setline(a:text_edit['range']['start']['line'] + 1, l:new_lines)
-endfunction
-
-"
-" _check
-"
-" LSP Spec says `multiple text edits can not overlap those ranges`.
-" This function check it. But does not throw error.
-"
-function! s:_check(text_edits) abort
-  if len(a:text_edits) > 1
-    let l:range = a:text_edits[0].range
-    for l:text_edit in a:text_edits[1 : -1]
-      if l:range.end.line > l:text_edit.range.start.line || (
-      \   l:range.end.line == l:text_edit.range.start.line &&
-      \   l:range.end.character > l:text_edit.range.start.character
-      \ )
-        echom 'ERROR: text_edit: range overlapped.'
-      endif
-      let l:range = l:text_edit.range
-    endfor
-  endif
-  return a:text_edits
 endfunction
 
 "
@@ -201,11 +188,14 @@ endfunction
 "
 function! s:delete(bufnr, start, end) abort
   if exists('*deletebufline')
-      call deletebufline(a:bufnr, a:start, a:end)
+    call deletebufline(a:bufnr, a:start, a:end)
   else
-      let l:foldenable = &foldenable
-      setlocal nofoldenable
-      execute printf('%s,%sdelete _', a:start, a:end)
-      let &foldenable = l:foldenable
+    let l:foldenable = &foldenable
+    setlocal nofoldenable
+    execute printf('%s,%sdelete _', a:start, a:end)
+    let &foldenable = l:foldenable
   endif
 endfunction
+
+let &cpoptions = s:save_cpo
+unlet s:save_cpo
