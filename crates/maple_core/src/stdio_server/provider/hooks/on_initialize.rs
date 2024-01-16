@@ -63,11 +63,6 @@ async fn init_proj_tags(ctx: &Context) -> std::io::Result<ProviderSource> {
 async fn initialize_provider_source(ctx: &Context) -> Result<ProviderSource> {
     // Known providers.
     match ctx.provider_id() {
-        "blines" => {
-            let total = line_count(&ctx.env.start_buffer_path)?;
-            let path = ctx.env.start_buffer_path.clone();
-            return Ok(ProviderSource::File { total, path });
-        }
         "tags" => {
             let items = crate::tools::ctags::buffer_tag_items(&ctx.env.start_buffer_path, false)?;
             let total = items.len();

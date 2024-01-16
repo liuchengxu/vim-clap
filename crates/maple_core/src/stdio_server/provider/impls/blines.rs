@@ -1,38 +1,78 @@
-use crate::stdio_server::provider::hooks::initialize_provider;
+use crate::searcher::blines::BlinesItem;
 use crate::stdio_server::provider::{
-    BaseArgs, ClapProvider, Context, ProviderResult as Result, SearcherControl,
+    BaseArgs, ClapProvider, Context, ProviderResult as Result, ProviderSource, SearcherControl,
 };
 use crate::stdio_server::vim::VimResult;
 use matcher::{Bonus, MatchScope};
-use rayon::iter::IntoParallelIterator;
-use rayon::iter::ParallelIterator;
+use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
-use types::Query;
+use types::{ClapItem, Query};
+
+#[derive(Debug)]
+enum BufferSource {
+    Items(Vec<Arc<dyn ClapItem>>),
+    LocalFile(PathBuf),
+}
 
 #[derive(Debug)]
 pub struct BlinesProvider {
     args: BaseArgs,
     searcher_control: Option<SearcherControl>,
+    source: BufferSource,
 }
 
 impl BlinesProvider {
     pub async fn new(ctx: &Context) -> VimResult<Self> {
         let args = ctx.parse_provider_args().await?;
+
+        let bufnr = ctx.vim.eval::<usize>("g:clap.start.bufnr").await?;
+
+        let source = if ctx.vim.bufmodified(bufnr).await? {
+            let lines = ctx.vim.getbufline(bufnr, 1, "$").await?;
+            let items = lines
+                .into_iter()
+                .enumerate()
+                .map(|(index, line)| {
+                    Arc::new(BlinesItem {
+                        raw: line,
+                        line_number: index + 1,
+                    }) as Arc<dyn types::ClapItem>
+                })
+                .collect::<Vec<_>>();
+
+            // Initialize the provider source to reuse the on_move impl.
+            ctx.set_provider_source(ProviderSource::Small {
+                total: items.len(),
+                items: items.clone(),
+            });
+
+            BufferSource::Items(items)
+        } else {
+            let path = ctx.env.start_buffer_path.clone();
+            let total = utils::line_count(&path)?;
+
+            ctx.set_provider_source(ProviderSource::File {
+                total,
+                path: path.clone(),
+            });
+
+            BufferSource::LocalFile(path)
+        };
+
         Ok(Self {
             args,
             searcher_control: None,
+            source,
         })
     }
 
-    fn process_query(&mut self, query: String, ctx: &Context) {
+    fn process_query_on_local_file(&mut self, query: String, ctx: &Context, source_file: PathBuf) {
         if let Some(control) = self.searcher_control.take() {
             tokio::task::spawn_blocking(move || {
                 control.kill();
             });
         }
-
-        let source_file = ctx.env.start_buffer_path.clone();
 
         let matcher_builder = ctx.matcher_builder().match_scope(MatchScope::Full);
 
@@ -70,7 +110,7 @@ impl BlinesProvider {
 impl ClapProvider for BlinesProvider {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         if self.args.query.is_none() {
-            initialize_provider(ctx, true).await?;
+            // No longer need to invoke initialize_provider as we did it in new().
         } else {
             ctx.handle_base_args(&self.args).await?;
         }
@@ -80,23 +120,10 @@ impl ClapProvider for BlinesProvider {
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.input_get().await?;
 
-        if query.is_empty() {
-            ctx.update_on_empty_query().await?;
-        } else {
-            let bufnr = ctx.vim.eval::<usize>("g:clap.start.bufnr").await?;
-
-            // TODO: cache the latest buffer content.
-            if ctx.vim.bufmodified(bufnr).await? {
-                let lines = ctx.vim.getbufline(bufnr, 1, "$").await?;
-
-                let source_items = lines.into_par_iter().map(|line| {
-                    Arc::new(types::SourceItem::new(line, None, None)) as Arc<dyn types::ClapItem>
-                });
-
-                let matched_items = filter::par_filter(source_items, &ctx.matcher(&query));
-
+        match &self.source {
+            BufferSource::Items(items) => {
+                let matched_items = filter::par_filter_items(items, &ctx.matcher(&query));
                 let printer = printer::Printer::new(ctx.env.display_winwidth, ctx.env.icon);
-
                 let printer::DisplayLines {
                     lines,
                     indices,
@@ -116,10 +143,12 @@ impl ClapProvider for BlinesProvider {
                     "clap#state#process_filter_message",
                     serde_json::json!([msg, true]),
                 )?;
-            } else {
-                self.process_query(query, ctx);
-            };
+            }
+            BufferSource::LocalFile(file) => {
+                self.process_query_on_local_file(query, ctx, file.clone());
+            }
         }
+
         Ok(())
     }
 
