@@ -1,5 +1,6 @@
 use crate::stdio_server::plugin::PluginResult;
 use crate::stdio_server::vim::{Vim, VimResult};
+use crate::types::{Count, DiagnosticKind, Direction};
 use ide::linting::{Code, Diagnostic, DiagnosticSpan, LinterDiagnostics, Severity};
 use parking_lot::RwLock;
 use serde::Serialize;
@@ -8,8 +9,6 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
-
-use super::{Count, DiagnosticKind, Direction};
 
 #[derive(Debug, Clone)]
 struct BufferDiagnostics {

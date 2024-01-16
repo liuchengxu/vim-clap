@@ -1,5 +1,8 @@
-use crate::lsp::{find_lsp_root, language_id_from_path, LanguageServerMessageHandler};
+use crate::stdio_server::diagnostics_worker::WorkerMessage as DiagnosticsWorkerMessage;
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
+use crate::stdio_server::lsp::{
+    find_lsp_root, language_id_from_path, LanguageServerMessageHandler,
+};
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::provider::lsp::{set_lsp_source, LspSource};
 use crate::stdio_server::vim::{Vim, VimError, VimResult};
@@ -10,8 +13,6 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
-
-use super::DiagnosticWorkerMessage;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -156,14 +157,14 @@ pub struct LspPlugin {
     documents: HashMap<usize, Document>,
     /// Goto request in fly.
     current_goto_request: Option<GotoRequest>,
-    diagnostics_worker_msg_sender: UnboundedSender<DiagnosticWorkerMessage>,
+    diagnostics_worker_msg_sender: UnboundedSender<DiagnosticsWorkerMessage>,
     toggle: Toggle,
 }
 
 impl LspPlugin {
     pub fn new(
         vim: Vim,
-        diagnostics_worker_msg_sender: UnboundedSender<DiagnosticWorkerMessage>,
+        diagnostics_worker_msg_sender: UnboundedSender<DiagnosticsWorkerMessage>,
     ) -> Self {
         Self {
             vim,

@@ -1,5 +1,7 @@
+mod diagnostics_worker;
 mod input;
 mod job;
+mod lsp;
 mod plugin;
 mod provider;
 mod request_handler;
@@ -8,7 +10,6 @@ mod vim;
 
 pub use self::input::InputHistory;
 use self::input::{ActionEvent, Event, ProviderEvent};
-pub use self::plugin::DiagnosticWorkerMessage;
 use self::plugin::PluginId;
 use self::provider::{create_provider, Context, ProviderError};
 use self::service::ServiceManager;
@@ -84,10 +85,10 @@ struct InitializedService {
 
 /// Create a new service, with plugins registered from the config file.
 fn initialize_service(vim: Vim) -> InitializedService {
+    use self::diagnostics_worker::start_buffer_diagnostics_worker;
     use self::plugin::{
-        start_buffer_diagnostics_worker, ActionType, ClapPlugin, ColorizerPlugin, CtagsPlugin,
-        CursorwordPlugin, GitPlugin, LinterPlugin, LspPlugin, MarkdownPlugin, SyntaxPlugin,
-        SystemPlugin,
+        ActionType, ClapPlugin, ColorizerPlugin, CtagsPlugin, CursorwordPlugin, GitPlugin,
+        LinterPlugin, LspPlugin, MarkdownPlugin, SyntaxPlugin, SystemPlugin,
     };
 
     let mut callable_actions = Vec::new();

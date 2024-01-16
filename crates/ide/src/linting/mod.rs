@@ -13,6 +13,7 @@ pub struct Code {
     // pub explanation: Option<String>,
 }
 
+// Diagnostic severity.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Severity {
     Error,

@@ -1,35 +1,11 @@
-mod buffer_diagnostics;
-
+use crate::stdio_server::diagnostics_worker::WorkerMessage;
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::vim::{Vim, VimResult};
-use serde::Serialize;
+use crate::types::{DiagnosticKind, Direction};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::sync::mpsc::UnboundedSender;
-
-use self::buffer_diagnostics::WorkerMessage;
-
-pub use self::buffer_diagnostics::start_buffer_diagnostics_worker;
-pub use self::buffer_diagnostics::WorkerMessage as DiagnosticWorkerMessage;
-
-#[derive(Debug, Default, Clone, Serialize)]
-struct Count {
-    error: usize,
-    warn: usize,
-}
-
-pub enum Direction {
-    First,
-    Last,
-    Next,
-    Prev,
-}
-
-pub enum DiagnosticKind {
-    Error,
-    Warn,
-}
 
 #[derive(Debug, Clone)]
 struct BufferInfo {

@@ -1,4 +1,5 @@
-use crate::stdio_server::{DiagnosticWorkerMessage, Vim};
+use super::diagnostics_worker::WorkerMessage as DiagnosticsWorkerMessage;
+use crate::stdio_server::Vim;
 use maple_lsp::{
     lsp, HandleLanguageServerMessage, LanguageServerNotification, LanguageServerRequest,
 };
@@ -119,7 +120,7 @@ pub fn find_lsp_root<'a>(language_id: &str, path: &'a Path) -> Option<&'a Path> 
 pub struct LanguageServerMessageHandler {
     server_name: String,
     last_lsp_update: Option<Instant>,
-    diagnostics_worker_msg_sender: UnboundedSender<DiagnosticWorkerMessage>,
+    diagnostics_worker_msg_sender: UnboundedSender<DiagnosticsWorkerMessage>,
     vim: Vim,
 }
 
@@ -129,7 +130,7 @@ impl LanguageServerMessageHandler {
     pub fn new(
         server_name: String,
         vim: Vim,
-        diagnostics_worker_msg_sender: UnboundedSender<DiagnosticWorkerMessage>,
+        diagnostics_worker_msg_sender: UnboundedSender<DiagnosticsWorkerMessage>,
     ) -> Self {
         Self {
             server_name,
@@ -262,7 +263,7 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
                 // Notify the diagnostics worker.
                 if self
                     .diagnostics_worker_msg_sender
-                    .send(DiagnosticWorkerMessage::LspDiagnostics(params))
+                    .send(DiagnosticsWorkerMessage::LspDiagnostics(params))
                     .is_err()
                 {
                     tracing::error!("Failed to send diagnostics from LSP");
