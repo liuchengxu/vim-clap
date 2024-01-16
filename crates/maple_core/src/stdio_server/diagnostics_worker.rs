@@ -244,8 +244,8 @@ fn convert_lsp_diagnostic_to_diagnostic(lsp_diag: maple_lsp::lsp::Diagnostic) ->
     let spans = vec![DiagnosticSpan {
         line_start: lsp_diag.range.start.line as usize + 1,
         line_end: lsp_diag.range.end.line as usize + 1,
-        column_start: lsp_diag.range.start.character as usize,
-        column_end: lsp_diag.range.end.character as usize,
+        column_start: lsp_diag.range.start.character as usize + 1,
+        column_end: lsp_diag.range.end.character as usize + 1,
     }];
 
     Diagnostic {
@@ -319,6 +319,8 @@ impl BufferDiagnosticsWorker {
                     }
                 }
                 WorkerMessage::LinterDiagnostics((bufnr, linter_diagnostics)) => {
+                    tracing::debug!(bufnr, "Recv linter diagnostics: {linter_diagnostics:?}");
+
                     if let Some(buffer_diagnostics) = self.buffer_diagnostics.get(&bufnr) {
                         update_buffer_diagnostics(
                             bufnr,
@@ -347,7 +349,7 @@ impl BufferDiagnosticsWorker {
                         .map(convert_lsp_diagnostic_to_diagnostic)
                         .collect::<Vec<_>>();
 
-                    tracing::debug!(path, "================= lsp diagnostics: {diagnostics:?}");
+                    tracing::debug!(path, "Recv lsp diagnostics: {diagnostics:?}");
 
                     update_buffer_diagnostics(bufnr, &self.vim, buffer_diagnostics, diagnostics)?;
                 }

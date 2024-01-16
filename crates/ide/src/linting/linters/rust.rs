@@ -26,7 +26,9 @@ impl RustLinter {
 
             move || {
                 if let Ok(linter_result) = linter.cargo_check() {
-                    let _ = diagnostics_sender.send(linter_result);
+                    if !linter_result.diagnostics.is_empty() {
+                        let _ = diagnostics_sender.send(linter_result);
+                    }
                 }
             }
         });
@@ -36,7 +38,9 @@ impl RustLinter {
 
             move || {
                 if let Ok(linter_result) = linter.cargo_clippy() {
-                    let _ = diagnostics_sender.send(linter_result);
+                    if !linter_result.diagnostics.is_empty() {
+                        let _ = diagnostics_sender.send(linter_result);
+                    }
                 }
             }
         });

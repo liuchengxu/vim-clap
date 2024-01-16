@@ -161,7 +161,9 @@ async fn start_linting(
         async move {
             if let Ok(diagnostics) = linters::typos::run_typos(&source_file, &workspace_root).await
             {
-                let _ = diagnostics_sender.send(diagnostics);
+                if !diagnostics.diagnostics.is_empty() {
+                    let _ = diagnostics_sender.send(diagnostics);
+                }
             }
         }
     });
@@ -182,7 +184,9 @@ async fn start_linting(
     };
 
     if let Ok(diagnostics) = diagnostics_result {
-        let _ = diagnostics_sender.send(diagnostics);
+        if !diagnostics.diagnostics.is_empty() {
+            let _ = diagnostics_sender.send(diagnostics);
+        }
     }
 }
 
