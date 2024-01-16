@@ -1,6 +1,6 @@
 use crate::stdio_server::plugin::PluginResult;
 use crate::stdio_server::vim::{Vim, VimResult};
-use crate::types::{Count, DiagnosticKind, Direction};
+use crate::types::{DiagnosticKind, Direction};
 use ide::linting::{Code, Diagnostic, DiagnosticSpan, LinterDiagnostics, Severity};
 use parking_lot::RwLock;
 use serde::Serialize;
@@ -10,10 +10,18 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
+#[derive(Default, Serialize)]
+struct Stats {
+    error: usize,
+    warn: usize,
+}
+
 #[derive(Debug, Clone)]
 struct BufferDiagnostics {
-    /// Whether the diagnostics have been refreshed.
-    refreshed: Arc<AtomicBool>,
+    /// This flag indicates whether the received results are
+    /// the first received ones, for having multiple diagnostics
+    /// sources is very likely,
+    first_result_arrived: Arc<AtomicBool>,
 
     /// List of sorted diagnostics.
     inner: Arc<RwLock<Vec<Diagnostic>>>,
@@ -29,41 +37,42 @@ impl Serialize for BufferDiagnostics {
 }
 
 impl BufferDiagnostics {
+    /// Constructs a new instance of [`BufferDiagnostics`].
     fn new() -> Self {
         Self {
-            refreshed: Arc::new(false.into()),
+            first_result_arrived: Arc::new(false.into()),
             inner: Arc::new(RwLock::new(Vec::new())),
         }
     }
 
     /// Append new diagnostics and returns the count of latest diagnostics.
-    fn append(&self, new_diagnostics: Vec<Diagnostic>) -> Count {
+    fn append(&self, new_diagnostics: Vec<Diagnostic>) -> Stats {
         let mut diagnostics = self.inner.write();
         diagnostics.extend(new_diagnostics);
 
         diagnostics.sort_by(|a, b| a.spans[0].line_start.cmp(&b.spans[0].line_start));
 
-        let mut count = Count::default();
+        let mut stats = Stats::default();
         for d in diagnostics.iter() {
             if d.is_error() {
-                count.error += 1;
+                stats.error += 1;
             } else if d.is_warn() {
-                count.warn += 1;
+                stats.warn += 1;
             }
         }
 
-        count
+        stats
     }
 
     /// Clear the diagnostics list.
     fn reset(&self) {
-        self.refreshed.store(false, Ordering::SeqCst);
+        self.first_result_arrived.store(false, Ordering::SeqCst);
         let mut diagnostics = self.inner.write();
         diagnostics.clear();
     }
 
     /// Returns a tuple of (line_number, column_start) of the sibling diagnostic.
-    fn find_sibling(
+    fn find_sibling_position(
         &self,
         from_line_number: usize,
         kind: DiagnosticKind,
@@ -153,18 +162,17 @@ fn update_buffer_diagnostics(
     bufnr: usize,
     vim: &Vim,
     buffer_diagnostics: &BufferDiagnostics,
-    linter_diagnostics: ide::linting::LinterDiagnostics,
+    mut new_diagnostics: Vec<Diagnostic>,
 ) -> std::io::Result<()> {
-    let mut new_diagnostics = linter_diagnostics.diagnostics;
     new_diagnostics.sort_by(|a, b| a.spans[0].line_start.cmp(&b.spans[0].line_start));
     new_diagnostics.dedup();
 
-    let first_lint_result_arrives = buffer_diagnostics
-        .refreshed
+    let is_first_result = buffer_diagnostics
+        .first_result_arrived
         .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
         .is_ok();
 
-    let new_count = if first_lint_result_arrives {
+    let new_stats = if is_first_result {
         let _ = vim.exec(
             "clap#plugin#linter#refresh_highlights",
             (bufnr, &new_diagnostics),
@@ -172,7 +180,7 @@ fn update_buffer_diagnostics(
 
         buffer_diagnostics.append(new_diagnostics)
     } else {
-        // Remove the potential duplicated results from multiple linters.
+        // Remove the potential duplicated results from multiple diagnostic reporters.
         let existing = buffer_diagnostics.inner.read();
         let mut followup_diagnostics = new_diagnostics
             .into_iter()
@@ -195,33 +203,19 @@ fn update_buffer_diagnostics(
         buffer_diagnostics.append(followup_diagnostics)
     };
 
-    let _ = vim.setbufvar(bufnr, "clap_diagnostics", new_count);
+    let _ = vim.setbufvar(bufnr, "clap_diagnostics", new_stats);
 
-    let buffer_diagnostics = buffer_diagnostics.clone();
-    let vim = vim.clone();
-    tokio::spawn(async move {
-        let _ = buffer_diagnostics.display_diagnostics_at_cursor(&vim).await;
+    tokio::spawn({
+        let buffer_diagnostics = buffer_diagnostics.clone();
+        let vim = vim.clone();
+
+        async move {
+            let _ = buffer_diagnostics.display_diagnostics_at_cursor(&vim).await;
+        }
     });
 
     Ok(())
 }
-
-pub enum WorkerMessage {
-    ResetBufferDiagnostics(usize),
-    DisplayDiagnosticsAtCursor(usize),
-    EchoDiagnosticsAtCursor(usize),
-    NavigateDiagnostics((usize, DiagnosticKind, Direction)),
-    LinterDiagnostics((usize, LinterDiagnostics)),
-    LspDiagnostics(maple_lsp::lsp::PublishDiagnosticsParams),
-}
-
-// pub struct BufferDiagnosticsWorkerHandle {
-// sender: UnboundedSender<WorkerMessage>,
-// }
-
-// impl BufferDiagnosticsWorkerHandle {
-// fn notify(&self, )
-// }
 
 fn convert_lsp_diagnostic_to_diagnostic(lsp_diag: maple_lsp::lsp::Diagnostic) -> Diagnostic {
     use maple_lsp::lsp;
@@ -262,12 +256,22 @@ fn convert_lsp_diagnostic_to_diagnostic(lsp_diag: maple_lsp::lsp::Diagnostic) ->
     }
 }
 
+pub enum WorkerMessage {
+    ResetBufferDiagnostics(usize),
+    DisplayDiagnosticsAtCursor(usize),
+    EchoDiagnosticsAtCursor(usize),
+    NavigateDiagnostics((usize, DiagnosticKind, Direction)),
+    LinterDiagnostics((usize, LinterDiagnostics)),
+    LspDiagnostics(maple_lsp::lsp::PublishDiagnosticsParams),
+}
+
+/// A worker running in a separate task, responsible for processing the diagnostics
+/// reported from LSP as well as the other external linter tools and performing the
+/// actions issued from vim-clap plugins.
 struct BufferDiagnosticsWorker {
     vim: Vim,
     worker_msg_receiver: UnboundedReceiver<WorkerMessage>,
     /// State of each buffer's diagnostics.
-    ///
-    /// The diagnostics may be reported from LSP and other external tools.
     buffer_diagnostics: HashMap<usize, BufferDiagnostics>,
 }
 
@@ -306,7 +310,9 @@ impl BufferDiagnosticsWorker {
                 WorkerMessage::NavigateDiagnostics((bufnr, kind, direction)) => {
                     if let Some(diagnostics) = self.buffer_diagnostics.get(&bufnr) {
                         let lnum = self.vim.line(".").await?;
-                        if let Some((lnum, col)) = diagnostics.find_sibling(lnum, kind, direction) {
+                        if let Some((lnum, col)) =
+                            diagnostics.find_sibling_position(lnum, kind, direction)
+                        {
                             self.vim.exec("cursor", [lnum, col])?;
                             self.vim.exec("execute", "normal! zz")?;
                         }
@@ -318,7 +324,7 @@ impl BufferDiagnosticsWorker {
                             bufnr,
                             &self.vim,
                             buffer_diagnostics,
-                            linter_diagnostics,
+                            linter_diagnostics.diagnostics,
                         )?;
                     }
                 }
@@ -341,15 +347,7 @@ impl BufferDiagnosticsWorker {
 
                     tracing::debug!("================= lsp diagnostics: {diagnostics:?}");
 
-                    update_buffer_diagnostics(
-                        bufnr,
-                        &self.vim,
-                        buffer_diagnostics,
-                        LinterDiagnostics {
-                            engine: ide::linting::LintEngine::Lsp,
-                            diagnostics,
-                        },
-                    )?;
+                    update_buffer_diagnostics(bufnr, &self.vim, buffer_diagnostics, diagnostics)?;
                 }
             }
         }
@@ -369,6 +367,7 @@ pub fn start_buffer_diagnostics_worker(vim: Vim) -> UnboundedSender<WorkerMessag
         };
 
         if let Err(e) = worker.run().await {
+            // Restart the worker?
             tracing::error!(error = ?e, "buffer diagnostics worker exited");
         }
     });

@@ -211,7 +211,7 @@ impl ClapPlugin for Linter {
             LinterAction::Lint => {
                 let bufnr = self.vim.bufnr("").await?;
 
-                // TODO: if requested state exists, return early, otherwise continue.
+                // TODO: if the diagnostics state already exists, return early, otherwise continue.
                 let _ = self
                     .diagnostics_worker_msg_sender
                     .send(WorkerMessage::EchoDiagnosticsAtCursor(bufnr));

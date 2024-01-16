@@ -11,7 +11,6 @@ members = [
     "maple_core",
     "maple_derive",
     "maple_lsp",
-    "markdown_preview",
     "matcher",
     "matcher/extracted_fzy",
     "paths",
@@ -80,7 +79,6 @@ ide = { path = "./ide" }
 maple_core = { path = "./maple_core" }
 maple_derive = { path = "./maple_derive" }
 maple_lsp = { path = "./maple_lsp" }
-markdown_preview = { path = "./markdown_preview" }
 matcher = { path = "./matcher" }
 paths = { path = "./paths" }
 pattern = { path = "./pattern" }

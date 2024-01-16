@@ -99,7 +99,6 @@ pub enum RustLintEngine {
 
 #[derive(Debug, Clone)]
 pub enum LintEngine {
-    Lsp,
     Gopls,
     Rust(RustLintEngine),
     ShellCheck,
@@ -148,19 +147,6 @@ pub fn find_workspace(filetype: impl AsRef<str>, source_file: &Path) -> Option<&
         .and_then(|workspace_finder| workspace_finder.find_workspace(source_file))
 }
 
-// source_file => Available Linters => Enabled Linters => Run
-
-pub fn start_linting_in_background(
-    filetype: String,
-    source_file: PathBuf,
-    workspace_root: PathBuf,
-    diagnostics_sender: UnboundedSender<LinterDiagnostics>,
-) {
-    tokio::spawn(async move {
-        start_linting(&filetype, source_file, &workspace_root, diagnostics_sender).await;
-    });
-}
-
 async fn start_linting(
     filetype: &str,
     source_file: PathBuf,
@@ -173,37 +159,40 @@ async fn start_linting(
         let diagnostics_sender = diagnostics_sender.clone();
 
         async move {
-            if let Ok(linter_result) =
-                linters::typos::run_typos(&source_file, &workspace_root).await
+            if let Ok(diagnostics) = linters::typos::run_typos(&source_file, &workspace_root).await
             {
-                let _ = diagnostics_sender.send(linter_result);
+                let _ = diagnostics_sender.send(diagnostics);
             }
         }
     });
 
     let workspace_root = workspace_root.to_path_buf();
 
-    match filetype {
-        "go" => {
-            if let Ok(linter_result) = linters::go::run_gopls(&source_file, &workspace_root).await {
-                let _ = diagnostics_sender.send(linter_result);
-            }
-        }
+    let diagnostics_result = match filetype {
+        "go" => linters::go::run_gopls(&source_file, &workspace_root).await,
+        "sh" => linters::sh::run_shellcheck(&source_file, &workspace_root).await,
+        "vim" => linters::vim::run_vint(&source_file, &workspace_root).await,
         "rust" => {
             linters::rust::RustLinter::new(source_file, workspace_root).start(diagnostics_sender);
+            return;
         }
-        "sh" => {
-            if let Ok(linter_result) =
-                linters::sh::run_shellcheck(&source_file, &workspace_root).await
-            {
-                let _ = diagnostics_sender.send(linter_result);
-            }
+        _ => {
+            return;
         }
-        "vim" => {
-            if let Ok(linter_result) = linters::vim::run_vint(&source_file, &workspace_root).await {
-                let _ = diagnostics_sender.send(linter_result);
-            }
-        }
-        _ => {}
+    };
+
+    if let Ok(diagnostics) = diagnostics_result {
+        let _ = diagnostics_sender.send(diagnostics);
     }
+}
+
+pub fn start_linting_in_background(
+    filetype: String,
+    source_file: PathBuf,
+    workspace_root: PathBuf,
+    diagnostics_sender: UnboundedSender<LinterDiagnostics>,
+) {
+    tokio::spawn(async move {
+        start_linting(&filetype, source_file, &workspace_root, diagnostics_sender).await;
+    });
 }
