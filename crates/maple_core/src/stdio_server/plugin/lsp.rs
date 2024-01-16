@@ -1,5 +1,8 @@
-use crate::lsp::{find_lsp_root, language_id_from_path, LanguageServerMessageHandler};
+use crate::stdio_server::diagnostics_worker::WorkerMessage as DiagnosticsWorkerMessage;
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
+use crate::stdio_server::lsp::{
+    find_lsp_root, language_id_from_path, LanguageServerMessageHandler,
+};
 use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::provider::lsp::{set_lsp_source, LspSource};
 use crate::stdio_server::vim::{Vim, VimError, VimResult};
@@ -9,6 +12,7 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
+use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -16,6 +20,8 @@ pub enum Error {
     ClientNotFound,
     #[error("language id not found for buffer {0}")]
     LanguageIdNotFound(usize),
+    #[error("unsupported language, config not found: {0}")]
+    LanguageConfigNotFound(LanguageId),
     #[error("document not found")]
     DocumentNotFound(usize),
     #[error("invalid Url: {0}")]
@@ -109,47 +115,30 @@ pub struct LanguageConfig {
     pub root_markers: Vec<String>,
 }
 
-fn nested_to_flat(
-    list: &mut Vec<lsp::SymbolInformation>,
-    file: &lsp::TextDocumentIdentifier,
-    symbol: lsp::DocumentSymbol,
-) {
-    #[allow(deprecated)]
-    list.push(lsp::SymbolInformation {
-        name: symbol.name,
-        kind: symbol.kind,
-        tags: symbol.tags,
-        deprecated: symbol.deprecated,
-        location: lsp::Location::new(file.uri.clone(), symbol.selection_range),
-        container_name: None,
-    });
-    for child in symbol.children.into_iter().flatten() {
-        nested_to_flat(list, file, child);
-    }
-}
-
-#[allow(deprecated)]
-fn into_symbol_information(symbol: lsp::WorkspaceSymbol) -> lsp::SymbolInformation {
-    lsp::SymbolInformation {
-        name: symbol.name,
-        kind: symbol.kind,
-        tags: symbol.tags,
-        deprecated: None,
-        location: match symbol.location {
-            lsp::OneOf::Left(location) => location,
-            lsp::OneOf::Right(workspace_location) => lsp::Location {
-                uri: workspace_location.uri,
-                range: Default::default(),
-            },
+// TODO: support more languages.
+fn get_language_config(language_id: LanguageId) -> Option<maple_lsp::LanguageConfig> {
+    let language_config = match language_id {
+        "rust" => maple_lsp::LanguageConfig {
+            cmd: String::from("rust-analyzer"),
+            args: vec![],
+            root_markers: vec![String::from("Cargo.toml")],
         },
-        container_name: symbol.container_name,
-    }
+        "go" => maple_lsp::LanguageConfig {
+            cmd: String::from("gopls"),
+            args: vec![],
+            root_markers: vec![String::from("go.mod")],
+        },
+        _ => return None,
+    };
+
+    Some(language_config)
 }
 
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
 #[clap_plugin(
   id = "lsp",
   actions = [
+    "format",
     "document-symbols",
     "workspace-symbols",
     "goto-definition",
@@ -162,23 +151,27 @@ fn into_symbol_information(symbol: lsp::WorkspaceSymbol) -> lsp::SymbolInformati
 )]
 pub struct LspPlugin {
     vim: Vim,
-    servers: HashMap<LanguageId, Arc<maple_lsp::Client>>,
+    /// Active language server clients.
+    clients: HashMap<LanguageId, Arc<maple_lsp::Client>>,
+    /// Documents being tracked, keyed by buffer number.
     documents: HashMap<usize, Document>,
+    /// Goto request in fly.
     current_goto_request: Option<GotoRequest>,
+    diagnostics_worker_msg_sender: UnboundedSender<DiagnosticsWorkerMessage>,
     toggle: Toggle,
 }
 
-// LspPlugin
-// => manage a global list of language servers
-//  => one language server serves one kind of source file.
-
 impl LspPlugin {
-    pub fn new(vim: Vim) -> Self {
+    pub fn new(
+        vim: Vim,
+        diagnostics_worker_msg_sender: UnboundedSender<DiagnosticsWorkerMessage>,
+    ) -> Self {
         Self {
             vim,
-            servers: HashMap::new(),
+            clients: HashMap::new(),
             documents: HashMap::new(),
             current_goto_request: None,
+            diagnostics_worker_msg_sender,
             toggle: Toggle::On,
         }
     }
@@ -187,16 +180,8 @@ impl LspPlugin {
         let path = self.vim.bufabspath(bufnr).await?;
 
         let language_id = language_id_from_path(&path).ok_or(Error::LanguageIdNotFound(bufnr))?;
-
-        // TODO: language server config.
-        let language_config = match language_id {
-            "rust" => maple_lsp::LanguageConfig {
-                cmd: String::from("rust-analyzer"),
-                args: vec![],
-                root_markers: vec![String::from("Cargo.toml")],
-            },
-            _ => return Ok(()),
-        };
+        let language_config =
+            get_language_config(language_id).ok_or(Error::LanguageConfigNotFound(language_id))?;
 
         if let std::collections::hash_map::Entry::Vacant(e) = self.documents.entry(bufnr) {
             let bufname = self.vim.bufname(bufnr).await?;
@@ -206,7 +191,7 @@ impl LspPlugin {
                 doc_id: doc_id(&path)?,
             };
 
-            match self.servers.entry(language_id) {
+            match self.clients.entry(language_id) {
                 Entry::Occupied(e) => {
                     let root_uri = find_lsp_root(language_id, path.as_ref())
                         .and_then(|p| Url::from_file_path(p).ok());
@@ -225,7 +210,11 @@ impl LspPlugin {
                         },
                         name.clone(),
                         Some(std::path::PathBuf::from(path.clone())),
-                        LanguageServerMessageHandler::new(name, self.vim.clone()),
+                        LanguageServerMessageHandler::new(
+                            name,
+                            self.vim.clone(),
+                            self.diagnostics_worker_msg_sender.clone(),
+                        ),
                     )
                     .await?;
 
@@ -268,7 +257,7 @@ impl LspPlugin {
             .ok_or(Error::DocumentNotFound(bufnr))?;
 
         let client = self
-            .servers
+            .clients
             .get(&document.language_id)
             .ok_or(Error::ClientNotFound)?;
 
@@ -299,12 +288,43 @@ impl LspPlugin {
             .ok_or(Error::DocumentNotFound(bufnr))
     }
 
+    async fn get_cursor_lsp_position(
+        &self,
+        bufnr: usize,
+        filepath: &Path,
+    ) -> Result<Option<lsp::Position>, Error> {
+        let line = self.vim.line(".").await?;
+        let col = self.vim.col(".").await?;
+        let lines = self.vim.getbufline(bufnr, line, line).await?;
+
+        let maybe_character_index = if lines.is_empty() {
+            // Buffer may not be loaded, read the local file directly.
+            let Some(line) = utils::read_line_at(filepath, line)? else {
+                return Ok(None);
+            };
+            utils::char_index_for(&line, col - 1)
+        } else {
+            utils::char_index_for(&lines[0], col - 1)
+        };
+
+        let Some(character) = maybe_character_index else {
+            return Ok(None);
+        };
+
+        let cursor_lsp_position = lsp::Position {
+            line: line as u32 - 1,
+            character: character as u32,
+        };
+
+        Ok(Some(cursor_lsp_position))
+    }
+
     async fn goto_impl(&mut self, goto: Goto) -> Result<(), Error> {
         let bufnr = self.vim.bufnr("").await?;
         let document = self.get_doc(bufnr)?;
 
         let client = self
-            .servers
+            .clients
             .get(&document.language_id)
             .ok_or(Error::ClientNotFound)?;
 
@@ -339,6 +359,7 @@ impl LspPlugin {
                     .await
             }
             Goto::Reference => {
+                // TODO: configurable include_declaration flag.
                 let include_declaration = false;
                 client
                     .goto_reference(text_document, position, include_declaration, None)
@@ -410,11 +431,30 @@ impl LspPlugin {
     }
 
     async fn document_symbols(&mut self) -> Result<(), Error> {
+        fn nested_to_flat(
+            list: &mut Vec<lsp::SymbolInformation>,
+            file: &lsp::TextDocumentIdentifier,
+            symbol: lsp::DocumentSymbol,
+        ) {
+            #[allow(deprecated)]
+            list.push(lsp::SymbolInformation {
+                name: symbol.name,
+                kind: symbol.kind,
+                tags: symbol.tags,
+                deprecated: symbol.deprecated,
+                location: lsp::Location::new(file.uri.clone(), symbol.selection_range),
+                container_name: None,
+            });
+            for child in symbol.children.into_iter().flatten() {
+                nested_to_flat(list, file, child);
+            }
+        }
+
         let bufnr = self.vim.bufnr("").await?;
         let document = self.get_doc(bufnr)?;
 
         let client = self
-            .servers
+            .clients
             .get(&document.language_id)
             .ok_or(Error::ClientNotFound)?;
 
@@ -443,17 +483,104 @@ impl LspPlugin {
         Ok(())
     }
 
-    async fn workspace_symbols(&mut self) -> Result<(), Error> {
+    async fn text_document_format(&mut self) -> Result<(), Error> {
         let bufnr = self.vim.bufnr("").await?;
         let document = self.get_doc(bufnr)?;
 
         let client = self
-            .servers
+            .clients
+            .get(&document.language_id)
+            .ok_or(Error::ClientNotFound)?;
+
+        let doc_id = document.doc_id.clone();
+
+        // TODO: sync the document?
+
+        let mut text_edits = client
+            .text_document_formatting(
+                doc_id.clone(),
+                lsp::FormattingOptions {
+                    tab_size: self
+                        .vim
+                        .call::<u32>("clap#plugin#lsp#tab_size", bufnr)
+                        .await?,
+                    insert_spaces: self.vim.getbufvar::<usize>(bufnr, "&expandtab").await? == 1,
+                    ..Default::default()
+                },
+                None,
+            )
+            .await?;
+
+        // Simply follows the logic in
+        // https://github.com/prabirshrestha/vim-lsp/blob/d36f381dc8f39a9b86d66ef84c2ebbb7516d91d6/autoload/lsp/utils/text_edit.vim#L160
+        text_edits.iter_mut().for_each(|text_edit| {
+            let start = text_edit.range.start;
+            let end = text_edit.range.end;
+
+            if start.line > end.line || (start.line == end.line && start.character > end.character)
+            {
+                text_edit.range = lsp::Range {
+                    start: end,
+                    end: start,
+                };
+            }
+        });
+
+        // Sort edits by start range, since some LSPs (Omnisharp) send them
+        // in reverse order.
+        text_edits.sort_unstable_by_key(|edit| edit.range.start);
+
+        text_edits.reverse();
+
+        let filepath = doc_id
+            .uri
+            .to_file_path()
+            .map_err(|()| Error::InvalidUrl(format!("uri: {} is not a path", doc_id.uri)))?;
+
+        let Ok(Some(cursor_lsp_position)) = self.get_cursor_lsp_position(bufnr, &filepath).await
+        else {
+            return Ok(());
+        };
+
+        if !text_edits.is_empty() {
+            self.vim.exec(
+                "clap#lsp#text_edit#apply_text_edits",
+                (filepath, text_edits, cursor_lsp_position),
+            )?;
+        }
+
+        Ok(())
+    }
+
+    async fn workspace_symbols(&mut self) -> Result<(), Error> {
+        #[allow(deprecated)]
+        fn into_symbol_information(symbol: lsp::WorkspaceSymbol) -> lsp::SymbolInformation {
+            lsp::SymbolInformation {
+                name: symbol.name,
+                kind: symbol.kind,
+                tags: symbol.tags,
+                deprecated: None,
+                location: match symbol.location {
+                    lsp::OneOf::Left(location) => location,
+                    lsp::OneOf::Right(workspace_location) => lsp::Location {
+                        uri: workspace_location.uri,
+                        range: Default::default(),
+                    },
+                },
+                container_name: symbol.container_name,
+            }
+        }
+
+        let bufnr = self.vim.bufnr("").await?;
+        let document = self.get_doc(bufnr)?;
+
+        let client = self
+            .clients
             .get(&document.language_id)
             .ok_or(Error::ClientNotFound)?;
 
         // Use empty query to fetch all workspace symbols.
-        let symbols = match client.workspace_symbols("".to_string()).await? {
+        let symbols = match client.workspace_symbols("").await? {
             Some(symbols) => symbols,
             None => return Ok(()),
         };
@@ -496,7 +623,7 @@ impl ClapPlugin for LspPlugin {
             BufDelete => {
                 if let Some(doc) = self.documents.remove(&bufnr) {
                     let client = self
-                        .servers
+                        .clients
                         .get(&doc.language_id)
                         .ok_or(Error::ClientNotFound)?;
 
@@ -526,6 +653,9 @@ impl ClapPlugin for LspPlugin {
                     }
                 }
                 self.toggle.switch();
+            }
+            LspAction::Format => {
+                self.text_document_format().await?;
             }
             LspAction::GotoDefinition => {
                 self.goto_impl(Goto::Definition).await?;

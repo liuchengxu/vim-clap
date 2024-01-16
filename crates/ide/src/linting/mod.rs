@@ -3,9 +3,8 @@ mod linters;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::future::Future;
 use std::path::{Path, PathBuf};
-use tokio::task::JoinHandle;
+use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone, Eq, PartialEq)]
 pub struct Code {
@@ -14,6 +13,7 @@ pub struct Code {
     // pub explanation: Option<String>,
 }
 
+// Diagnostic severity.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Severity {
     Error,
@@ -107,14 +107,9 @@ pub enum LintEngine {
 }
 
 #[derive(Debug, Clone)]
-pub struct LinterResult {
+pub struct LinterDiagnostics {
     pub engine: LintEngine,
     pub diagnostics: Vec<Diagnostic>,
-}
-
-/// A hook invoked when a linter finishes its job.
-pub trait HandleLinterResult {
-    fn handle_linter_result(&self, linter_result: LinterResult) -> std::io::Result<()>;
 }
 
 #[derive(Debug, Clone)]
@@ -152,79 +147,56 @@ pub fn find_workspace(filetype: impl AsRef<str>, source_file: &Path) -> Option<&
         .and_then(|workspace_finder| workspace_finder.find_workspace(source_file))
 }
 
-// source_file => Available Linters => Enabled Linters => Run
-
-pub fn lint_in_background<Handler>(
+async fn start_linting(
     filetype: &str,
     source_file: PathBuf,
     workspace_root: &Path,
-    handler: Handler,
-) -> Vec<JoinHandle<()>>
-where
-    Handler: HandleLinterResult + Send + Sync + Clone + 'static,
-{
-    let mut handles = Vec::new();
-
-    handles.push(tokio::spawn({
-        let handler = handler.clone();
+    diagnostics_sender: UnboundedSender<LinterDiagnostics>,
+) {
+    tokio::spawn({
         let source_file = source_file.clone();
         let workspace_root = workspace_root.to_path_buf();
+        let diagnostics_sender = diagnostics_sender.clone();
+
         async move {
-            if let Ok(linter_result) =
-                linters::typos::run_typos(&source_file, &workspace_root).await
+            if let Ok(diagnostics) = linters::typos::run_typos(&source_file, &workspace_root).await
             {
-                let _ = handler.handle_linter_result(linter_result);
+                if !diagnostics.diagnostics.is_empty() {
+                    let _ = diagnostics_sender.send(diagnostics);
+                }
             }
         }
-    }));
+    });
 
     let workspace_root = workspace_root.to_path_buf();
 
-    match filetype {
-        "go" => {
-            let job = async move { linters::go::run_gopls(&source_file, &workspace_root).await };
-
-            handles.push(spawn_linter_job(job, handler));
-        }
+    let diagnostics_result = match filetype {
+        "go" => linters::go::run_gopls(&source_file, &workspace_root).await,
+        "sh" => linters::sh::run_shellcheck(&source_file, &workspace_root).await,
+        "vim" => linters::vim::run_vint(&source_file, &workspace_root).await,
         "rust" => {
-            handles
-                .extend(linters::rust::RustLinter::new(source_file, workspace_root).run(handler));
+            linters::rust::RustLinter::new(source_file, workspace_root).start(diagnostics_sender);
+            return;
         }
-        "sh" => {
-            let job =
-                async move { linters::sh::run_shellcheck(&source_file, &workspace_root).await };
+        _ => {
+            return;
+        }
+    };
 
-            handles.push(spawn_linter_job(job, handler));
+    if let Ok(diagnostics) = diagnostics_result {
+        if !diagnostics.diagnostics.is_empty() {
+            let _ = diagnostics_sender.send(diagnostics);
         }
-        "vim" => {
-            let job = async move { linters::vim::run_vint(&source_file, &workspace_root).await };
-
-            handles.push(spawn_linter_job(job, handler));
-        }
-        _ => {}
     }
-
-    handles
 }
 
-fn spawn_linter_job<Handler>(
-    job: impl Future<Output = std::io::Result<LinterResult>> + Send + 'static,
-    handler: Handler,
-) -> tokio::task::JoinHandle<()>
-where
-    Handler: HandleLinterResult + Send + Sync + Clone + 'static,
-{
+pub fn start_linting_in_background(
+    filetype: String,
+    source_file: PathBuf,
+    workspace_root: PathBuf,
+    diagnostics_sender: UnboundedSender<LinterDiagnostics>,
+) {
     tokio::spawn(async move {
-        let linter_result = match job.await {
-            Ok(res) => res,
-            Err(err) => {
-                tracing::error!(?err, "Error occurred running linter");
-                return;
-            }
-        };
-
-        if let Err(err) = handler.handle_linter_result(linter_result) {
-            tracing::error!(?err, "Error occurred in handling the linter result");
-        }
-    })
+        start_linting(&filetype, source_file, &workspace_root, diagnostics_sender).await;
+    });
 }

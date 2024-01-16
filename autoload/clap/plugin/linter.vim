@@ -154,7 +154,12 @@ function! clap#plugin#linter#display_top_right(current_diagnostics) abort
 endfunction
 
 function! s:highlight_span(bufnr, span) abort
-  call nvim_buf_add_highlight(a:bufnr, s:linter_spans_highlight_ns_id, 'ClapDiagnosticUnderline', a:span.line_start - 1, a:span.column_start - 1, a:span.column_end - 1)
+  try
+    call nvim_buf_add_highlight(a:bufnr, s:linter_spans_highlight_ns_id, 'ClapDiagnosticUnderline', a:span.line_start - 1, a:span.column_start - 1, a:span.column_end - 1)
+  catch
+    " Span may be invalid at this moment since the buffer has been changed.
+    return
+  endtry
 endfunction
 
 function! s:render_eol(bufnr, diagnostics) abort

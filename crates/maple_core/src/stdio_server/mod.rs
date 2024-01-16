@@ -1,5 +1,7 @@
+mod diagnostics_worker;
 mod input;
 mod job;
+mod lsp;
 mod plugin;
 mod provider;
 mod request_handler;
@@ -83,6 +85,7 @@ struct InitializedService {
 
 /// Create a new service, with plugins registered from the config file.
 fn initialize_service(vim: Vim) -> InitializedService {
+    use self::diagnostics_worker::start_buffer_diagnostics_worker;
     use self::plugin::{
         ActionType, ClapPlugin, ColorizerPlugin, CtagsPlugin, CursorwordPlugin, GitPlugin,
         LinterPlugin, LspPlugin, MarkdownPlugin, SyntaxPlugin, SystemPlugin,
@@ -110,8 +113,28 @@ fn initialize_service(vim: Vim) -> InitializedService {
 
     let plugin_config = &crate::config::config().plugin;
 
-    if plugin_config.lsp.enable {
-        register_plugin(Box::new(LspPlugin::new(vim.clone())), None);
+    if plugin_config.lsp.enable || plugin_config.linter.enable {
+        let diagnostics_worker_msg_sender = start_buffer_diagnostics_worker(vim.clone());
+
+        if plugin_config.lsp.enable {
+            register_plugin(
+                Box::new(LspPlugin::new(
+                    vim.clone(),
+                    diagnostics_worker_msg_sender.clone(),
+                )),
+                None,
+            );
+        }
+
+        if plugin_config.linter.enable {
+            register_plugin(
+                Box::new(LinterPlugin::new(
+                    vim.clone(),
+                    diagnostics_worker_msg_sender,
+                )),
+                Some(Duration::from_millis(100)),
+            );
+        }
     }
 
     if plugin_config.colorizer.enable {
@@ -127,13 +150,6 @@ fn initialize_service(vim: Vim) -> InitializedService {
 
     if plugin_config.git.enable {
         register_plugin(Box::new(GitPlugin::new(vim.clone())), None);
-    }
-
-    if plugin_config.linter.enable {
-        register_plugin(
-            Box::new(LinterPlugin::new(vim.clone())),
-            Some(Duration::from_millis(100)),
-        );
     }
 
     if plugin_config.ctags.enable {

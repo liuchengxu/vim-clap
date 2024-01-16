@@ -391,9 +391,7 @@ pub async fn start_client<T: HandleLanguageServerMessage + Send + Sync + 'static
         return Err(Error::FailedToInitServer);
     }
 
-    client
-        .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
-        .expect("Failed to notify Initialized");
+    client.notify::<lsp::notification::Initialized>(lsp::InitializedParams {})?;
 
     tracing::debug!("LSP client initialized");
 
@@ -1073,6 +1071,50 @@ impl Client {
         self.request::<lsp::request::References>(params).await
     }
 
+    pub async fn text_document_formatting(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        options: lsp::FormattingOptions,
+        work_done_token: Option<lsp::ProgressToken>,
+    ) -> Result<Vec<lsp::TextEdit>, Error> {
+        let capabilities = self.capabilities.get().ok_or(Error::Uninitialized)?;
+
+        // Return early if the server does not support formatting.
+        match capabilities.document_formatting_provider {
+            Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_)) => (),
+            _ => return Ok(Vec::new()),
+        };
+
+        // merge FormattingOptions with 'config.format'
+        // let config_format = self
+        // .config
+        // .as_ref()
+        // .and_then(|cfg| cfg.get("format"))
+        // .and_then(|fmt| HashMap::<String, lsp::FormattingProperty>::deserialize(fmt).ok());
+
+        // let options = if let Some(mut properties) = config_format {
+        // // passed in options take precedence over 'config.format'
+        // properties.extend(options.properties);
+        // lsp::FormattingOptions {
+        // properties,
+        // ..options
+        // }
+        // } else {
+        // options
+        // };
+
+        let params = lsp::DocumentFormattingParams {
+            text_document,
+            options,
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
+        };
+
+        Ok(self
+            .request::<lsp::request::Formatting>(params)
+            .await?
+            .unwrap_or_default())
+    }
+
     pub async fn document_symbols(
         &self,
         text_document: TextDocumentIdentifier,
@@ -1101,7 +1143,7 @@ impl Client {
     // empty string to get all symbols
     pub async fn workspace_symbols(
         &self,
-        query: String,
+        query: impl Into<String>,
     ) -> Result<Option<lsp::WorkspaceSymbolResponse>, Error> {
         let capabilities = self.capabilities.get().ok_or(Error::Uninitialized)?;
 
@@ -1115,7 +1157,7 @@ impl Client {
         }
 
         let params = lsp::WorkspaceSymbolParams {
-            query,
+            query: query.into(),
             work_done_progress_params: lsp::WorkDoneProgressParams::default(),
             partial_result_params: lsp::PartialResultParams::default(),
         };

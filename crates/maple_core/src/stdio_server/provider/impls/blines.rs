@@ -1,36 +1,85 @@
-use crate::stdio_server::provider::hooks::initialize_provider;
+use crate::searcher::blines::BlinesItem;
 use crate::stdio_server::provider::{
-    BaseArgs, ClapProvider, Context, ProviderResult as Result, SearcherControl,
+    BaseArgs, ClapProvider, Context, ProviderResult as Result, ProviderSource, SearcherControl,
 };
 use crate::stdio_server::vim::VimResult;
 use matcher::{Bonus, MatchScope};
+use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
-use types::Query;
+use types::{ClapItem, Query};
+
+#[derive(Debug)]
+enum BufferSource {
+    Items(Vec<Arc<dyn ClapItem>>),
+    LocalFile(PathBuf),
+}
 
 #[derive(Debug)]
 pub struct BlinesProvider {
     args: BaseArgs,
     searcher_control: Option<SearcherControl>,
+    source: BufferSource,
 }
 
 impl BlinesProvider {
     pub async fn new(ctx: &Context) -> VimResult<Self> {
         let args = ctx.parse_provider_args().await?;
+
+        let bufnr = ctx.vim.eval::<usize>("g:clap.start.bufnr").await?;
+
+        let source = if ctx.vim.bufmodified(bufnr).await? {
+            let lines = ctx.vim.getbufline(bufnr, 1, "$").await?;
+            let mut items = lines
+                .into_iter()
+                .enumerate()
+                .map(|(index, line)| {
+                    Arc::new(BlinesItem {
+                        raw: line,
+                        line_number: index + 1,
+                    })
+                })
+                .collect::<Vec<_>>();
+
+            items.sort_by_key(|i| i.line_number);
+
+            let items = items
+                .into_iter()
+                .map(|item| item as Arc<dyn ClapItem>)
+                .collect::<Vec<_>>();
+
+            // Initialize the provider source to reuse the on_move impl.
+            ctx.set_provider_source(ProviderSource::Small {
+                total: items.len(),
+                items: items.clone(),
+            });
+
+            BufferSource::Items(items)
+        } else {
+            let path = ctx.env.start_buffer_path.clone();
+            let total = utils::line_count(&path)?;
+
+            ctx.set_provider_source(ProviderSource::File {
+                total,
+                path: path.clone(),
+            });
+
+            BufferSource::LocalFile(path)
+        };
+
         Ok(Self {
             args,
             searcher_control: None,
+            source,
         })
     }
 
-    fn process_query(&mut self, query: String, ctx: &Context) {
+    fn process_query_on_local_file(&mut self, query: String, ctx: &Context, source_file: PathBuf) {
         if let Some(control) = self.searcher_control.take() {
             tokio::task::spawn_blocking(move || {
                 control.kill();
             });
         }
-
-        let source_file = ctx.env.start_buffer_path.clone();
 
         let matcher_builder = ctx.matcher_builder().match_scope(MatchScope::Full);
 
@@ -62,13 +111,46 @@ impl BlinesProvider {
 
         self.searcher_control.replace(new_control);
     }
+
+    fn process_query(&mut self, query: String, ctx: &Context) -> Result<()> {
+        match &self.source {
+            BufferSource::Items(items) => {
+                let matched_items = filter::par_filter_items(items, &ctx.matcher(&query));
+                let printer = printer::Printer::new(ctx.env.display_winwidth, ctx.env.icon);
+                let printer::DisplayLines {
+                    lines,
+                    indices,
+                    truncated_map,
+                    icon_added,
+                } = printer.to_display_lines(matched_items.iter().take(200).cloned().collect());
+
+                let msg = serde_json::json!({
+                    "total": matched_items.len(),
+                    "lines": lines,
+                    "indices": indices,
+                    "icon_added": icon_added,
+                    "truncated_map": truncated_map,
+                });
+
+                ctx.vim.exec(
+                    "clap#state#process_filter_message",
+                    serde_json::json!([msg, true]),
+                )?;
+            }
+            BufferSource::LocalFile(file) => {
+                self.process_query_on_local_file(query, ctx, file.clone());
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[async_trait::async_trait]
 impl ClapProvider for BlinesProvider {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         if self.args.query.is_none() {
-            initialize_provider(ctx, true).await?;
+            self.process_query("".to_string(), ctx)?;
         } else {
             ctx.handle_base_args(&self.args).await?;
         }
@@ -77,18 +159,7 @@ impl ClapProvider for BlinesProvider {
 
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.input_get().await?;
-        // TODO:
-        // if &modified {
-        //      get buf content
-        // } else {
-        //      read from file
-        // }
-        if query.is_empty() {
-            ctx.update_on_empty_query().await?;
-        } else {
-            self.process_query(query, ctx);
-        }
-        Ok(())
+        self.process_query(query, ctx)
     }
 
     fn on_terminate(&mut self, ctx: &mut Context, session_id: u64) {

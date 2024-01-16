@@ -1,4 +1,4 @@
-use crate::linting::{Code, Diagnostic, DiagnosticSpan, LintEngine, LinterResult, Severity};
+use crate::linting::{Code, Diagnostic, DiagnosticSpan, LintEngine, LinterDiagnostics, Severity};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -37,7 +37,10 @@ impl VintMessage {
     }
 }
 
-pub async fn run_vint(source_file: &Path, workspace_root: &Path) -> std::io::Result<LinterResult> {
+pub async fn run_vint(
+    source_file: &Path,
+    workspace_root: &Path,
+) -> std::io::Result<LinterDiagnostics> {
     let output = tokio::process::Command::new("vint")
         .arg("-j")
         .arg(source_file)
@@ -54,7 +57,7 @@ pub async fn run_vint(source_file: &Path, workspace_root: &Path) -> std::io::Res
         .map(|vint_message| vint_message.into_diagnostic())
         .collect();
 
-    Ok(LinterResult {
+    Ok(LinterDiagnostics {
         engine: LintEngine::Vint,
         diagnostics,
     })

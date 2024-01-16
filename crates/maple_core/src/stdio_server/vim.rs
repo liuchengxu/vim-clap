@@ -373,6 +373,7 @@ impl Vim {
         self.call("getbufvar", (buf, varname)).await
     }
 
+    // Same semantic as `:h getbufline()`.
     pub async fn getbufline(
         &self,
         buf: impl Serialize,

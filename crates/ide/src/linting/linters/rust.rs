@@ -1,11 +1,9 @@
 use crate::linting::{
-    Code, Diagnostic, DiagnosticSpan, HandleLinterResult, LintEngine, LinterResult, RustLintEngine,
-    Severity,
+    Code, Diagnostic, DiagnosticSpan, LintEngine, LinterDiagnostics, RustLintEngine, Severity,
 };
 use serde::Deserialize;
 use std::path::PathBuf;
 use std::process::Stdio;
-use tokio::task::JoinHandle;
 
 #[derive(Clone)]
 pub struct RustLinter {
@@ -21,51 +19,47 @@ impl RustLinter {
         }
     }
 
-    pub fn run<Handler: HandleLinterResult + Send + Sync + Clone + 'static>(
-        self,
-        handler: Handler,
-    ) -> Vec<JoinHandle<()>> {
-        let mut handles = Vec::with_capacity(2);
-        let worker = tokio::task::spawn_blocking({
-            let handler = handler.clone();
+    pub fn start(self, diagnostics_sender: tokio::sync::mpsc::UnboundedSender<LinterDiagnostics>) {
+        tokio::task::spawn_blocking({
+            let diagnostics_sender = diagnostics_sender.clone();
             let linter = self.clone();
 
             move || {
                 if let Ok(linter_result) = linter.cargo_check() {
-                    let _ = handler.handle_linter_result(linter_result);
+                    if !linter_result.diagnostics.is_empty() {
+                        let _ = diagnostics_sender.send(linter_result);
+                    }
                 }
             }
         });
-        handles.push(worker);
 
-        let worker = tokio::task::spawn_blocking({
+        tokio::task::spawn_blocking({
             let linter = self;
 
             move || {
                 if let Ok(linter_result) = linter.cargo_clippy() {
-                    let _ = handler.handle_linter_result(linter_result);
+                    if !linter_result.diagnostics.is_empty() {
+                        let _ = diagnostics_sender.send(linter_result);
+                    }
                 }
             }
         });
-        handles.push(worker);
-
-        handles
     }
 
-    pub fn cargo_check(&self) -> std::io::Result<LinterResult> {
+    pub fn cargo_check(&self) -> std::io::Result<LinterDiagnostics> {
         let output = std::process::Command::new("cargo")
             .args(["check", "--frozen", "--message-format=json", "-q"])
             .stderr(Stdio::null())
             .current_dir(&self.workspace_root)
             .output()?;
 
-        Ok(LinterResult {
+        Ok(LinterDiagnostics {
             engine: LintEngine::Rust(RustLintEngine::CargoCheck),
             diagnostics: self.parse_cargo_message(&output.stdout),
         })
     }
 
-    fn cargo_clippy(&self) -> std::io::Result<LinterResult> {
+    fn cargo_clippy(&self) -> std::io::Result<LinterDiagnostics> {
         let output = std::process::Command::new("cargo")
             .args([
                 "clippy",
@@ -82,7 +76,7 @@ impl RustLinter {
             .current_dir(&self.workspace_root)
             .output()?;
 
-        Ok(LinterResult {
+        Ok(LinterDiagnostics {
             engine: LintEngine::Rust(RustLintEngine::CargoClippy),
             diagnostics: self.parse_cargo_message(&output.stdout),
         })

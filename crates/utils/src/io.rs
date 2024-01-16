@@ -106,7 +106,7 @@ where
     Ok(BufReader::new(file).lines())
 }
 
-/// Returns the line at given line number.
+/// Returns the line at given line number (1-based).
 pub fn read_line_at<P>(path: P, line_number: usize) -> Result<Option<String>>
 where
     P: AsRef<Path>,
