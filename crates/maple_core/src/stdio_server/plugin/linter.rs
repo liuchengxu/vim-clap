@@ -8,7 +8,10 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::sync::mpsc::UnboundedSender;
 
-use self::buffer_diagnostics::{start_buffer_diagnostics_worker, WorkerMessage};
+use self::buffer_diagnostics::WorkerMessage;
+
+pub use self::buffer_diagnostics::start_buffer_diagnostics_worker;
+pub use self::buffer_diagnostics::WorkerMessage as DiagnosticWorkerMessage;
 
 #[derive(Debug, Default, Clone, Serialize)]
 struct Count {
@@ -16,14 +19,14 @@ struct Count {
     warn: usize,
 }
 
-enum Direction {
+pub enum Direction {
     First,
     Last,
     Next,
     Prev,
 }
 
-enum DiagnosticKind {
+pub enum DiagnosticKind {
     Error,
     Warn,
 }
@@ -71,9 +74,7 @@ pub struct Linter {
 }
 
 impl Linter {
-    pub fn new(vim: Vim) -> Self {
-        let diagnostics_worker_msg_sender = start_buffer_diagnostics_worker(vim.clone());
-
+    pub fn new(vim: Vim, diagnostics_worker_msg_sender: UnboundedSender<WorkerMessage>) -> Self {
         Self {
             vim,
             bufs: HashMap::new(),
@@ -123,10 +124,12 @@ impl Linter {
 
             async move {
                 while let Some(linter_diagnostics) = diagnostics_receiver.recv().await {
-                    let _ = worker_msg_sender.send(WorkerMessage::LinterDiagnostics((
+                    if let Err(err) = worker_msg_sender.send(WorkerMessage::LinterDiagnostics((
                         bufnr,
                         linter_diagnostics,
-                    )));
+                    ))) {
+                        tracing::error!(?err, "Failed to send diagnostics from linter");
+                    }
                 }
             }
         });

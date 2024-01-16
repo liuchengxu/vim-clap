@@ -9,6 +9,9 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
+use tokio::sync::mpsc::UnboundedSender;
+
+use super::DiagnosticWorkerMessage;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -153,16 +156,21 @@ pub struct LspPlugin {
     documents: HashMap<usize, Document>,
     /// Goto request in fly.
     current_goto_request: Option<GotoRequest>,
+    diagnostics_worker_msg_sender: UnboundedSender<DiagnosticWorkerMessage>,
     toggle: Toggle,
 }
 
 impl LspPlugin {
-    pub fn new(vim: Vim) -> Self {
+    pub fn new(
+        vim: Vim,
+        diagnostics_worker_msg_sender: UnboundedSender<DiagnosticWorkerMessage>,
+    ) -> Self {
         Self {
             vim,
             clients: HashMap::new(),
             documents: HashMap::new(),
             current_goto_request: None,
+            diagnostics_worker_msg_sender,
             toggle: Toggle::On,
         }
     }
@@ -201,7 +209,11 @@ impl LspPlugin {
                         },
                         name.clone(),
                         Some(std::path::PathBuf::from(path.clone())),
-                        LanguageServerMessageHandler::new(name, self.vim.clone()),
+                        LanguageServerMessageHandler::new(
+                            name,
+                            self.vim.clone(),
+                            self.diagnostics_worker_msg_sender.clone(),
+                        ),
                     )
                     .await?;
 

@@ -17,7 +17,9 @@ pub use self::colorizer::ColorizerPlugin;
 pub use self::ctags::CtagsPlugin;
 pub use self::cursorword::Cursorword as CursorwordPlugin;
 pub use self::git::Git as GitPlugin;
-pub use self::linter::Linter as LinterPlugin;
+pub use self::linter::{
+    start_buffer_diagnostics_worker, DiagnosticWorkerMessage, Linter as LinterPlugin,
+};
 pub use self::lsp::LspPlugin;
 pub use self::markdown::Markdown as MarkdownPlugin;
 pub use self::syntax::Syntax as SyntaxPlugin;

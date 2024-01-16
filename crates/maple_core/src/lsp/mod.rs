@@ -1,10 +1,11 @@
-use crate::stdio_server::Vim;
+use crate::stdio_server::{DiagnosticWorkerMessage, Vim};
 use maple_lsp::{
     lsp, HandleLanguageServerMessage, LanguageServerNotification, LanguageServerRequest,
 };
 use serde_json::Value;
 use std::path::Path;
 use std::time::Instant;
+use tokio::sync::mpsc::UnboundedSender;
 
 pub fn language_id_from_path(path: impl AsRef<Path>) -> Option<&'static str> {
     // recommended language_id values
@@ -118,17 +119,23 @@ pub fn find_lsp_root<'a>(language_id: &str, path: &'a Path) -> Option<&'a Path> 
 pub struct LanguageServerMessageHandler {
     server_name: String,
     last_lsp_update: Option<Instant>,
+    diagnostics_worker_msg_sender: UnboundedSender<DiagnosticWorkerMessage>,
     vim: Vim,
 }
 
 impl LanguageServerMessageHandler {
     const LSP_UPDATE_DELAY: u128 = 50;
 
-    pub fn new(server_name: String, vim: Vim) -> Self {
+    pub fn new(
+        server_name: String,
+        vim: Vim,
+        diagnostics_worker_msg_sender: UnboundedSender<DiagnosticWorkerMessage>,
+    ) -> Self {
         Self {
             server_name,
             vim,
             last_lsp_update: None,
+            diagnostics_worker_msg_sender,
         }
     }
 
@@ -223,14 +230,6 @@ impl LanguageServerMessageHandler {
 
         Ok(())
     }
-
-    fn handle_publish_diagnostics(
-        &mut self,
-        params: lsp::PublishDiagnosticsParams,
-    ) -> Result<(), maple_lsp::Error> {
-        let _filename = params.uri.path();
-        Ok(())
-    }
 }
 
 impl HandleLanguageServerMessage for LanguageServerMessageHandler {
@@ -239,7 +238,7 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
         id: rpc::Id,
         request: LanguageServerRequest,
     ) -> Result<Value, rpc::Error> {
-        tracing::debug!(%id, "Processing language server request: {request:?}");
+        tracing::trace!(%id, "Processing language server request: {request:?}");
 
         // match request {
         // LanguageServerRequest::WorkDoneProgressCreate(_params) => {}
@@ -260,7 +259,14 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
                 self.handle_progress_message(params)?;
             }
             LanguageServerNotification::PublishDiagnostics(params) => {
-                self.handle_publish_diagnostics(params)?;
+                // Notify the diagnostics worker.
+                if self
+                    .diagnostics_worker_msg_sender
+                    .send(DiagnosticWorkerMessage::LspDiagnostics(params))
+                    .is_err()
+                {
+                    tracing::error!("Failed to send diagnostics from LSP");
+                }
             }
             _ => {
                 tracing::debug!("TODO: handle language server notification");

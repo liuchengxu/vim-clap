@@ -1,6 +1,6 @@
 use crate::stdio_server::plugin::PluginResult;
 use crate::stdio_server::vim::{Vim, VimResult};
-use ide::linting::{Diagnostic, DiagnosticSpan, LinterDiagnostics};
+use ide::linting::{Code, Diagnostic, DiagnosticSpan, LinterDiagnostics, Severity};
 use parking_lot::RwLock;
 use serde::Serialize;
 use std::cmp::Ordering as CmpOrdering;
@@ -30,6 +30,13 @@ impl Serialize for BufferDiagnostics {
 }
 
 impl BufferDiagnostics {
+    fn new() -> Self {
+        Self {
+            refreshed: Arc::new(false.into()),
+            inner: Arc::new(RwLock::new(Vec::new())),
+        }
+    }
+
     /// Append new diagnostics and returns the count of latest diagnostics.
     fn append(&self, new_diagnostics: Vec<Diagnostic>) -> Count {
         let mut diagnostics = self.inner.write();
@@ -146,7 +153,7 @@ impl BufferDiagnostics {
 fn update_buffer_diagnostics(
     bufnr: usize,
     vim: &Vim,
-    buffer_diagnostics: BufferDiagnostics,
+    buffer_diagnostics: &BufferDiagnostics,
     linter_diagnostics: ide::linting::LinterDiagnostics,
 ) -> std::io::Result<()> {
     let mut new_diagnostics = linter_diagnostics.diagnostics;
@@ -206,7 +213,7 @@ pub enum WorkerMessage {
     EchoDiagnosticsAtCursor(usize),
     NavigateDiagnostics((usize, DiagnosticKind, Direction)),
     LinterDiagnostics((usize, LinterDiagnostics)),
-    LspDiagnostics,
+    LspDiagnostics(maple_lsp::lsp::PublishDiagnosticsParams),
 }
 
 // pub struct BufferDiagnosticsWorkerHandle {
@@ -217,25 +224,46 @@ pub enum WorkerMessage {
 // fn notify(&self, )
 // }
 
-pub fn start_buffer_diagnostics_worker(vim: Vim) -> UnboundedSender<WorkerMessage> {
-    let (worker_msg_sender, worker_msg_receiver) = unbounded_channel();
+fn convert_lsp_diagnostic_to_diagnostic(lsp_diag: maple_lsp::lsp::Diagnostic) -> Diagnostic {
+    use maple_lsp::lsp;
 
-    tokio::spawn(async move {
-        let worker = BufferDiagnosticsWorker {
-            vim,
-            worker_msg_receiver,
-            buffer_diagnostics: HashMap::new(),
-        };
+    let severity = lsp_diag
+        .severity
+        .map(|s| match s {
+            lsp::DiagnosticSeverity::ERROR => Severity::Error,
+            lsp::DiagnosticSeverity::WARNING => Severity::Warning,
+            lsp::DiagnosticSeverity::INFORMATION => Severity::Info,
+            lsp::DiagnosticSeverity::HINT => Severity::Hint,
+            _ => Severity::Unknown,
+        })
+        .unwrap_or(Severity::Unknown);
 
-        if let Err(e) = worker.run().await {
-            tracing::error!(error = ?e, "buffer diagnostics worker exited");
-        }
-    });
+    let code = lsp_diag
+        .code
+        .map(|c| match c {
+            lsp::NumberOrString::Number(n) => n.to_string(),
+            lsp::NumberOrString::String(s) => s,
+        })
+        .unwrap_or_default();
 
-    worker_msg_sender
+    let message = lsp_diag.message;
+
+    let spans = vec![DiagnosticSpan {
+        line_start: lsp_diag.range.start.line as usize + 1,
+        line_end: lsp_diag.range.end.line as usize + 1,
+        column_start: lsp_diag.range.start.character as usize,
+        column_end: lsp_diag.range.end.character as usize,
+    }];
+
+    Diagnostic {
+        message,
+        spans,
+        code: Code { code },
+        severity,
+    }
 }
 
-pub struct BufferDiagnosticsWorker {
+struct BufferDiagnosticsWorker {
     vim: Vim,
     worker_msg_receiver: UnboundedReceiver<WorkerMessage>,
     /// State of each buffer's diagnostics.
@@ -252,10 +280,7 @@ impl BufferDiagnosticsWorker {
                     self.buffer_diagnostics
                         .entry(bufnr)
                         .and_modify(|v| v.reset())
-                        .or_insert_with(|| BufferDiagnostics {
-                            refreshed: Arc::new(false.into()),
-                            inner: Arc::new(RwLock::new(Vec::new())),
-                        });
+                        .or_insert_with(BufferDiagnostics::new);
                 }
                 WorkerMessage::DisplayDiagnosticsAtCursor(bufnr) => {
                     if let Some(diagnostics) = self.buffer_diagnostics.get(&bufnr) {
@@ -293,17 +318,61 @@ impl BufferDiagnosticsWorker {
                         update_buffer_diagnostics(
                             bufnr,
                             &self.vim,
-                            buffer_diagnostics.clone(),
+                            buffer_diagnostics,
                             linter_diagnostics,
                         )?;
                     }
                 }
-                WorkerMessage::LspDiagnostics => {
-                    // TODO: handle diagnostics from LSP.
+                WorkerMessage::LspDiagnostics(diagnostics_params) => {
+                    // TODO: uri.path may not be loaded as a buffer.
+                    let Ok(bufnr) = self.vim.bufnr(diagnostics_params.uri.path()).await else {
+                        continue;
+                    };
+
+                    let buffer_diagnostics = self
+                        .buffer_diagnostics
+                        .entry(bufnr)
+                        .or_insert_with(BufferDiagnostics::new);
+
+                    let diagnostics = diagnostics_params
+                        .diagnostics
+                        .into_iter()
+                        .map(convert_lsp_diagnostic_to_diagnostic)
+                        .collect::<Vec<_>>();
+
+                    tracing::debug!("================= lsp diagnostics: {diagnostics:?}");
+
+                    update_buffer_diagnostics(
+                        bufnr,
+                        &self.vim,
+                        buffer_diagnostics,
+                        LinterDiagnostics {
+                            engine: ide::linting::LintEngine::Lsp,
+                            diagnostics,
+                        },
+                    )?;
                 }
             }
         }
 
         Ok(())
     }
+}
+
+pub fn start_buffer_diagnostics_worker(vim: Vim) -> UnboundedSender<WorkerMessage> {
+    let (worker_msg_sender, worker_msg_receiver) = unbounded_channel();
+
+    tokio::spawn(async move {
+        let worker = BufferDiagnosticsWorker {
+            vim,
+            worker_msg_receiver,
+            buffer_diagnostics: HashMap::new(),
+        };
+
+        if let Err(e) = worker.run().await {
+            tracing::error!(error = ?e, "buffer diagnostics worker exited");
+        }
+    });
+
+    worker_msg_sender
 }

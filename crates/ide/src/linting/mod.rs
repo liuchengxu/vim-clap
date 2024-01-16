@@ -98,6 +98,7 @@ pub enum RustLintEngine {
 
 #[derive(Debug, Clone)]
 pub enum LintEngine {
+    Lsp,
     Gopls,
     Rust(RustLintEngine),
     ShellCheck,
