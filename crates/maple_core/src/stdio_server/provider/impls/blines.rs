@@ -1,4 +1,5 @@
 use crate::searcher::blines::BlinesItem;
+
 use crate::stdio_server::provider::{
     BaseArgs, ClapProvider, Context, ProviderResult as Result, ProviderSource, SearcherControl,
 };
@@ -11,7 +12,9 @@ use types::{ClapItem, Query};
 
 #[derive(Debug)]
 enum BufferSource {
-    Items(Vec<Arc<dyn ClapItem>>),
+    /// Buffer is modified, we need to fetch the latest content via VIM api.
+    ModifiedBuffer(Vec<Arc<dyn ClapItem>>),
+    /// Buffer is unmodified, we can simply read it from the local file.
     LocalFile(PathBuf),
 }
 
@@ -54,7 +57,9 @@ impl BlinesProvider {
                 items: items.clone(),
             });
 
-            BufferSource::Items(items)
+            // TODO: write the modified buffer to a tmp file and preview it later.
+
+            BufferSource::ModifiedBuffer(items)
         } else {
             let path = ctx.env.start_buffer_path.clone();
             let total = utils::line_count(&path)?;
@@ -114,7 +119,7 @@ impl BlinesProvider {
 
     fn process_query(&mut self, query: String, ctx: &Context) -> Result<()> {
         match &self.source {
-            BufferSource::Items(items) => {
+            BufferSource::ModifiedBuffer(items) => {
                 let matched_items = filter::par_filter_items(items, &ctx.matcher(&query));
                 let printer = printer::Printer::new(ctx.env.display_winwidth, ctx.env.icon);
                 let printer::DisplayLines {
@@ -150,7 +155,7 @@ impl BlinesProvider {
 impl ClapProvider for BlinesProvider {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         if self.args.query.is_none() {
-            self.process_query("".to_string(), ctx)?;
+            ctx.update_on_empty_query().await?;
         } else {
             ctx.handle_base_args(&self.args).await?;
         }
@@ -159,7 +164,12 @@ impl ClapProvider for BlinesProvider {
 
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.input_get().await?;
-        self.process_query(query, ctx)
+        if query.is_empty() {
+            ctx.update_on_empty_query().await?;
+        } else {
+            self.process_query(query, ctx)?;
+        }
+        Ok(())
     }
 
     fn on_terminate(&mut self, ctx: &mut Context, session_id: u64) {

@@ -305,7 +305,7 @@ endfunction
 
 function! clap#plugin#linter#toggle_off(bufnr) abort
   call clap#plugin#linter#delete_highlights(a:bufnr)
-  call clap#plugin#linter#close_top_right(a:bufnr)
+  call clap#plugin#linter#close_top_right()
 endfunction
 
 let &cpoptions = s:save_cpo
