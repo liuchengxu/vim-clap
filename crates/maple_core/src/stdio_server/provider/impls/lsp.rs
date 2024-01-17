@@ -147,15 +147,15 @@ pub struct WorkspaceItem {
 }
 
 impl WorkspaceItem {
-    fn new(symbol: &lsp::SymbolInformation) -> Self {
+    fn new(symbol: &lsp::SymbolInformation, name_width: usize) -> Self {
         let kind = to_kind_str(symbol.kind);
         let path = symbol.location.uri.path().to_owned();
         // Convert 0-based to 1-based.
-        let line = symbol.location.range.start.line + 1;
+        let line_number = symbol.location.range.start.line + 1;
+        let decorated_kind = format!("[{kind}]");
         let output_text = format!(
-            "{name:<name_width$} [{kind}] {path}:{line}",
+            "{name:<name_width$} {decorated_kind:<15} {path}:{line_number}",
             name = symbol.name,
-            name_width = 10,
         );
 
         Self {
@@ -202,7 +202,6 @@ pub struct LspProvider {
 
 impl LspProvider {
     pub fn new(ctx: &Context) -> Self {
-        tracing::debug!("==================== icon: {:?}", ctx.env.icon);
         let printer = Printer::new(ctx.env.display_winwidth, ctx.env.icon);
 
         // NOTE: lsp source must be initialized before invoking this provider.
@@ -219,9 +218,12 @@ impl LspProvider {
                 SourceItems::Document((uri.clone(), items))
             }
             LspSource::WorkspaceSymbols(ref symbols) => {
+                let max_len = symbols.iter().map(|s| s.name.len()).max().unwrap_or(15);
                 let items = symbols
                     .iter()
-                    .map(|symbol| Arc::new(WorkspaceItem::new(symbol)) as Arc<dyn ClapItem>)
+                    .map(|symbol| {
+                        Arc::new(WorkspaceItem::new(symbol, max_len)) as Arc<dyn ClapItem>
+                    })
                     .collect::<Vec<_>>();
 
                 SourceItems::Workspace(items)
@@ -308,7 +310,6 @@ impl ClapProvider for LspProvider {
         ctx.preview_manager.reset_scroll();
         let preview_target = match &self.source_items {
             SourceItems::Document((uri, _)) => {
-                let filepath = uri.path();
                 let curline = ctx.vim.display_getcurline().await?;
                 let Some(line_number) = curline
                     .split_whitespace()
@@ -319,13 +320,22 @@ impl ClapProvider for LspProvider {
                 };
 
                 Some(PreviewTarget::LineInFile {
-                    path: PathBuf::from(filepath),
+                    path: PathBuf::from(uri.path()),
                     line_number,
                 })
             }
             SourceItems::Workspace(_) => {
-                // TODO:
-                None
+                let curline = ctx.vim.display_getcurline().await?;
+                let Some(path_and_lnum) = curline.split_whitespace().last() else {
+                    return Ok(());
+                };
+
+                path_and_lnum.split_once(':').and_then(|(path, lnum)| {
+                    Some(PreviewTarget::LineInFile {
+                        path: path.into(),
+                        line_number: lnum.parse::<usize>().ok()?,
+                    })
+                })
             }
             SourceItems::Empty => return Ok(()),
         };

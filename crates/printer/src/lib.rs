@@ -139,7 +139,6 @@ fn convert_truncated_matched_items_to_display_lines(
                 .into_iter()
                 .enumerate()
                 .map(|(idx, matched_item)| {
-                    let display_text = matched_item.display_text();
                     let icon = matched_item
                         .item
                         .icon(icon)
@@ -147,6 +146,7 @@ fn convert_truncated_matched_items_to_display_lines(
                     if let Some(output_text) = truncated_map.get_mut(&(idx + 1)) {
                         *output_text = format!("{icon} {output_text}");
                     }
+                    let display_text = matched_item.display_text();
                     let iconized = format!("{icon} {display_text}");
                     let (line, indices) = (iconized, matched_item.shifted_indices(ICON_CHAR_LEN));
                     let indices = char_indices_to_byte_indices(&line, &indices);
