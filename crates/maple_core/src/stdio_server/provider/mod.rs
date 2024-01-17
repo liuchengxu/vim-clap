@@ -311,6 +311,7 @@ impl Context {
             "grep" => Icon::Enabled(IconKind::Grep),
             "projtags" => Icon::Enabled(IconKind::ProjTags),
             "buffertags" => Icon::Enabled(IconKind::BufferTags),
+            "lsp" => Icon::ClapItem,
             _ => Icon::Null,
         };
 

@@ -202,13 +202,8 @@ pub struct LspProvider {
 
 impl LspProvider {
     pub fn new(ctx: &Context) -> Self {
-        let icon = if ctx.env.icon.enabled() {
-            icon::Icon::Enabled(icon::IconKind::File)
-        } else {
-            icon::Icon::Null
-        };
-
-        let printer = Printer::new(ctx.env.display_winwidth, icon);
+        tracing::debug!("==================== icon: {:?}", ctx.env.icon);
+        let printer = Printer::new(ctx.env.display_winwidth, ctx.env.icon);
 
         // NOTE: lsp source must be initialized before invoking this provider.
         let source_items = match *LSP_SOURCE.lock() {

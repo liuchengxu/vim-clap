@@ -29,18 +29,21 @@ pub enum Icon {
     #[default]
     Null,
     Enabled(IconKind),
+    /// This variant is a mere flag indicating the icon is enabled but actually does not
+    /// do anything on rendering the icon, which will be handled by ClapItem provider internally.
+    ClapItem,
 }
 
 impl Icon {
     pub fn icon_kind(&self) -> Option<IconKind> {
         match self {
-            Self::Null => None,
             Self::Enabled(icon_kind) => Some(*icon_kind),
+            _ => None,
         }
     }
 
     pub fn enabled(&self) -> bool {
-        matches!(self, Self::Enabled(_))
+        matches!(self, Self::Enabled(_) | Self::ClapItem)
     }
 }
 
