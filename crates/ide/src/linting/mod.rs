@@ -139,6 +139,7 @@ pub fn find_workspace(filetype: impl AsRef<str>, source_file: &Path) -> Option<&
             ("sh", ParentOfSourceFile),
             ("vim", ParentOfSourceFile),
             ("markdown", ParentOfSourceFile),
+            ("python", ParentOfSourceFile),
         ])
     });
 
@@ -174,6 +175,7 @@ async fn start_linting(
         "go" => linters::go::run_gopls(&source_file, &workspace_root).await,
         "sh" => linters::sh::run_shellcheck(&source_file, &workspace_root).await,
         "vim" => linters::vim::run_vint(&source_file, &workspace_root).await,
+        "python" => linters::python::run_ruff(&source_file, &workspace_root).await,
         "rust" => {
             linters::rust::RustLinter::new(source_file, workspace_root).start(diagnostics_sender);
             return;
