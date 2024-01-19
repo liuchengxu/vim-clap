@@ -1,4 +1,6 @@
-use crate::linting::{Code, Diagnostic, DiagnosticSpan, LintEngine, LinterDiagnostics, Severity};
+use crate::linting::{
+    Code, Diagnostic, DiagnosticSpan, LintEngine, Linter, LinterDiagnostics, Severity,
+};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -37,28 +39,41 @@ impl VintMessage {
     }
 }
 
-pub async fn run_vint(
-    source_file: &Path,
-    workspace_root: &Path,
-) -> std::io::Result<LinterDiagnostics> {
-    let output = tokio::process::Command::new("vint")
-        .arg("-j")
-        .arg(source_file)
-        .current_dir(workspace_root)
-        .output()
-        .await?;
+pub struct Vint;
 
-    let diagnostics = output
-        .stdout
-        .split(|&b| b == b'\n')
-        .map(|line| line.strip_suffix(b"\r").unwrap_or(line))
-        .filter_map(|line| serde_json::from_slice::<Vec<VintMessage>>(line).ok())
-        .flatten()
-        .map(|vint_message| vint_message.into_diagnostic())
-        .collect();
+impl Linter for Vint {
+    const EXE: &'static str = "vint";
 
-    Ok(LinterDiagnostics {
-        engine: LintEngine::Vint,
-        diagnostics,
-    })
+    fn linter_command(
+        base_cmd: tokio::process::Command,
+        source_file: &Path,
+    ) -> tokio::process::Command {
+        let mut cmd = base_cmd;
+        cmd.arg("-j").arg(source_file);
+        cmd
+    }
+
+    async fn lint_file(
+        &self,
+        source_file: &Path,
+        workspace_root: &Path,
+    ) -> std::io::Result<LinterDiagnostics> {
+        let mut cmd = Self::command(source_file, workspace_root)?;
+
+        let output = cmd.output().await?;
+
+        let diagnostics = output
+            .stdout
+            .split(|&b| b == b'\n')
+            .map(|line| line.strip_suffix(b"\r").unwrap_or(line))
+            .filter_map(|line| serde_json::from_slice::<Vec<VintMessage>>(line).ok())
+            .flatten()
+            .map(|vint_message| vint_message.into_diagnostic())
+            .collect();
+
+        Ok(LinterDiagnostics {
+            engine: LintEngine::Gopls,
+            diagnostics,
+        })
+    }
 }

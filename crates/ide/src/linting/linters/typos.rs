@@ -1,4 +1,4 @@
-use crate::linting::{Code, Diagnostic, DiagnosticSpan, LintEngine, LinterDiagnostics, Severity};
+use crate::linting::{Code, Diagnostic, DiagnosticSpan, Linter, Severity};
 use std::borrow::Cow;
 use std::path::Path;
 
@@ -107,30 +107,23 @@ impl<'m> Message<'m> {
     }
 }
 
-pub async fn run_typos(
-    source_file: &Path,
-    workspace_root: &Path,
-) -> std::io::Result<LinterDiagnostics> {
-    let output = tokio::process::Command::new("typos")
-        .arg("--format=json")
-        .arg(source_file)
-        .current_dir(workspace_root)
-        .output()
-        .await?;
+pub struct Typos;
 
-    let diagnostics = output
-        .stdout
-        .split(|&b| b == b'\n')
-        .map(|line| line.strip_suffix(b"\r").unwrap_or(line))
-        .filter_map(|line| {
-            serde_json::from_slice::<Message>(line)
-                .ok()
-                .and_then(|message| message.try_into_diagnostic())
-        })
-        .collect();
+impl Linter for Typos {
+    const EXE: &'static str = "typos";
 
-    Ok(LinterDiagnostics {
-        engine: LintEngine::Typos,
-        diagnostics,
-    })
+    fn linter_command(
+        base_cmd: tokio::process::Command,
+        source_file: &Path,
+    ) -> tokio::process::Command {
+        let mut cmd = base_cmd;
+        cmd.arg("--format=json").arg(source_file);
+        cmd
+    }
+
+    fn parse_line(&self, line: &[u8]) -> Option<Diagnostic> {
+        serde_json::from_slice::<Message>(line)
+            .ok()
+            .and_then(|message| message.try_into_diagnostic())
+    }
 }

@@ -1,4 +1,4 @@
-use crate::linting::{Code, Diagnostic, DiagnosticSpan, LintEngine, LinterDiagnostics};
+use crate::linting::{Code, Diagnostic, DiagnosticSpan, LintEngine, Linter, LinterDiagnostics};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -47,27 +47,40 @@ impl ShellCheckMessage {
     }
 }
 
-pub async fn run_shellcheck(
-    script_file: &Path,
-    workspace_root: &Path,
-) -> std::io::Result<LinterDiagnostics> {
-    let output = tokio::process::Command::new("shellcheck")
-        .arg("--format=json")
-        .arg(script_file)
-        .current_dir(workspace_root)
-        .output()
-        .await?;
+pub struct ShellCheck;
 
-    if let Ok(messages) = serde_json::from_slice::<Vec<ShellCheckMessage>>(&output.stdout) {
-        let diagnostics = messages.into_iter().map(|m| m.into_diagnostic()).collect();
-        return Ok(LinterDiagnostics {
-            engine: LintEngine::ShellCheck,
-            diagnostics,
-        });
+impl Linter for ShellCheck {
+    const EXE: &'static str = "shellcheck";
+
+    fn linter_command(
+        base_cmd: tokio::process::Command,
+        source_file: &Path,
+    ) -> tokio::process::Command {
+        let mut cmd = base_cmd;
+        cmd.arg("--format=json").arg(source_file);
+        cmd
     }
 
-    Ok(LinterDiagnostics {
-        engine: LintEngine::ShellCheck,
-        diagnostics: Vec::new(),
-    })
+    async fn lint_file(
+        &self,
+        source_file: &Path,
+        workspace_root: &Path,
+    ) -> std::io::Result<LinterDiagnostics> {
+        let mut cmd = Self::command(source_file, workspace_root)?;
+
+        let output = cmd.output().await?;
+
+        if let Ok(messages) = serde_json::from_slice::<Vec<ShellCheckMessage>>(&output.stdout) {
+            let diagnostics = messages.into_iter().map(|m| m.into_diagnostic()).collect();
+            return Ok(LinterDiagnostics {
+                engine: LintEngine::ShellCheck,
+                diagnostics,
+            });
+        }
+
+        Ok(LinterDiagnostics {
+            engine: LintEngine::ShellCheck,
+            diagnostics: Vec::new(),
+        })
+    }
 }

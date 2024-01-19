@@ -1,4 +1,4 @@
-use crate::linting::{Code, Diagnostic, DiagnosticSpan, LintEngine, LinterDiagnostics, Severity};
+use crate::linting::{Code, Diagnostic, DiagnosticSpan, Linter, Severity};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -46,28 +46,25 @@ impl RuffJsonMessage {
     }
 }
 
-pub async fn run_ruff(
-    source_file: &Path,
-    workspace_root: &Path,
-) -> std::io::Result<LinterDiagnostics> {
-    let output = tokio::process::Command::new("ruff")
-        .arg("check")
-        .arg("--output-format=json-lines")
-        .arg(source_file)
-        .current_dir(workspace_root)
-        .output()
-        .await?;
+pub struct Ruff;
 
-    let diagnostics = output
-        .stdout
-        .split(|&b| b == b'\n')
-        .map(|line| line.strip_suffix(b"\r").unwrap_or(line))
-        .filter_map(|line| serde_json::from_slice::<RuffJsonMessage>(line).ok())
-        .map(|ruff_message| ruff_message.into_diagnostic())
-        .collect();
+impl Linter for Ruff {
+    const EXE: &'static str = "ruff";
 
-    Ok(LinterDiagnostics {
-        engine: LintEngine::Vint,
-        diagnostics,
-    })
+    fn linter_command(
+        base_cmd: tokio::process::Command,
+        source_file: &Path,
+    ) -> tokio::process::Command {
+        let mut cmd = base_cmd;
+        cmd.arg("check")
+            .arg("--output-format=json-lines")
+            .arg(source_file);
+        cmd
+    }
+
+    fn parse_line(&self, line: &[u8]) -> Option<Diagnostic> {
+        serde_json::from_slice::<RuffJsonMessage>(line)
+            .map(RuffJsonMessage::into_diagnostic)
+            .ok()
+    }
 }

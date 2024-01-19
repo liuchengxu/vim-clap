@@ -113,13 +113,13 @@ pub struct LinterDiagnostics {
 }
 
 #[derive(Debug, Clone)]
-enum WorkspaceFinder {
+enum WorkspaceMarker {
     RootMarkers(&'static [&'static str]),
     /// Use the parent directory as the workspace_root if no explicit root markers.
     ParentOfSourceFile,
 }
 
-impl WorkspaceFinder {
+impl WorkspaceMarker {
     fn find_workspace<'a>(&'a self, source_file: &'a Path) -> Option<&Path> {
         match self {
             Self::RootMarkers(root_markers) => paths::find_project_root(source_file, root_markers),
@@ -130,9 +130,9 @@ impl WorkspaceFinder {
 
 /// Returns the working directory for running the command of lint engine.
 pub fn find_workspace(filetype: impl AsRef<str>, source_file: &Path) -> Option<&Path> {
-    use WorkspaceFinder::{ParentOfSourceFile, RootMarkers};
+    use WorkspaceMarker::{ParentOfSourceFile, RootMarkers};
 
-    static WORKSPACE_FINDERS: Lazy<HashMap<&str, WorkspaceFinder>> = Lazy::new(|| {
+    static WORKSPACE_MARKERS: Lazy<HashMap<&str, WorkspaceMarker>> = Lazy::new(|| {
         HashMap::from([
             ("go", RootMarkers(&["go.mod", ".git"])),
             ("rust", RootMarkers(&["Cargo.toml"])),
@@ -143,9 +143,73 @@ pub fn find_workspace(filetype: impl AsRef<str>, source_file: &Path) -> Option<&
         ])
     });
 
-    WORKSPACE_FINDERS
+    WORKSPACE_MARKERS
         .get(filetype.as_ref())
-        .and_then(|workspace_finder| workspace_finder.find_workspace(source_file))
+        .and_then(|workspace_marker| workspace_marker.find_workspace(source_file))
+}
+
+trait Linter {
+    const EXE: &'static str;
+
+    /// Constructs a base linter command.
+    fn base_command(workspace_root: &Path) -> std::io::Result<tokio::process::Command> {
+        let executable = which::which(Self::EXE)
+            .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err.to_string()))?;
+
+        let mut cmd = tokio::process::Command::new(executable);
+
+        cmd.current_dir(workspace_root);
+
+        Ok(cmd)
+    }
+
+    /// Append the linter-specific args to the linter executable.
+    fn linter_command(
+        base_cmd: tokio::process::Command,
+        source_file: &Path,
+    ) -> tokio::process::Command;
+
+    /// Constructs the final linter command.
+    fn command(
+        source_file: &Path,
+        workspace_root: &Path,
+    ) -> std::io::Result<tokio::process::Command> {
+        Ok(Self::linter_command(
+            Self::base_command(workspace_root)?,
+            source_file,
+        ))
+    }
+
+    /// Parses the diagnostic message from linter in a line-wise manner.
+    ///
+    /// At most one diagnostic per line. This method must be implemented if the default
+    /// implementation of `Self::lint_file` is used.
+    fn parse_line(&self, _line: &[u8]) -> Option<Diagnostic> {
+        unimplemented!("line-wise parser unimplemented for linter {}", Self::EXE)
+    }
+
+    /// Starts linting a file and returns the diagnostics.
+    async fn lint_file(
+        &self,
+        source_file: &Path,
+        workspace_root: &Path,
+    ) -> std::io::Result<LinterDiagnostics> {
+        let mut cmd = Self::command(source_file, workspace_root)?;
+
+        let output = cmd.output().await?;
+
+        let diagnostics = output
+            .stdout
+            .split(|&b| b == b'\n')
+            .map(|line| line.strip_suffix(b"\r").unwrap_or(line))
+            .filter_map(|line| self.parse_line(line))
+            .collect();
+
+        Ok(LinterDiagnostics {
+            engine: LintEngine::Gopls,
+            diagnostics,
+        })
+    }
 }
 
 async fn start_linting(
@@ -154,13 +218,22 @@ async fn start_linting(
     workspace_root: &Path,
     diagnostics_sender: UnboundedSender<LinterDiagnostics>,
 ) {
+    // Use relative path as the workspace root is always specified explicitly,
+    // otherwise it's possible to run into a glitch when the directory is a symlink for gopls?
+    let source_file = source_file
+        .strip_prefix(workspace_root)
+        .map(|p| p.to_path_buf())
+        .unwrap_or(source_file);
+
     tokio::spawn({
         let source_file = source_file.clone();
         let workspace_root = workspace_root.to_path_buf();
         let diagnostics_sender = diagnostics_sender.clone();
 
         async move {
-            if let Ok(diagnostics) = linters::typos::run_typos(&source_file, &workspace_root).await
+            if let Ok(diagnostics) = linters::typos::Typos
+                .lint_file(&source_file, &workspace_root)
+                .await
             {
                 if !diagnostics.diagnostics.is_empty() {
                     let _ = diagnostics_sender.send(diagnostics);
@@ -172,10 +245,26 @@ async fn start_linting(
     let workspace_root = workspace_root.to_path_buf();
 
     let diagnostics_result = match filetype {
-        "go" => linters::go::run_gopls(&source_file, &workspace_root).await,
-        "sh" => linters::sh::run_shellcheck(&source_file, &workspace_root).await,
-        "vim" => linters::vim::run_vint(&source_file, &workspace_root).await,
-        "python" => linters::python::run_ruff(&source_file, &workspace_root).await,
+        "go" => {
+            linters::go::Gopls
+                .lint_file(&source_file, &workspace_root)
+                .await
+        }
+        "sh" => {
+            linters::sh::ShellCheck
+                .lint_file(&source_file, &workspace_root)
+                .await
+        }
+        "vim" => {
+            linters::vim::Vint
+                .lint_file(&source_file, &workspace_root)
+                .await
+        }
+        "python" => {
+            linters::python::Ruff
+                .lint_file(&source_file, &workspace_root)
+                .await
+        }
         "rust" => {
             linters::rust::RustLinter::new(source_file, workspace_root).start(diagnostics_sender);
             return;
