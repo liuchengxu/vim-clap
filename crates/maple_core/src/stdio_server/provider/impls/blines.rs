@@ -1,10 +1,11 @@
-use crate::searcher::blines::BlinesItem;
-
+use crate::searcher::file::BlinesItem;
+use crate::stdio_server::provider::hooks::PreviewTarget;
 use crate::stdio_server::provider::{
-    BaseArgs, ClapProvider, Context, ProviderResult as Result, ProviderSource, SearcherControl,
+    BaseArgs, ClapProvider, Context, ProviderResult as Result, SearcherControl,
 };
 use crate::stdio_server::vim::VimResult;
 use matcher::{Bonus, MatchScope};
+use std::io::Write;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -22,6 +23,7 @@ enum BufferSource {
 pub struct BlinesProvider {
     args: BaseArgs,
     searcher_control: Option<SearcherControl>,
+    preview_file: PathBuf,
     source: BufferSource,
 }
 
@@ -31,8 +33,10 @@ impl BlinesProvider {
 
         let bufnr = ctx.vim.eval::<usize>("g:clap.start.bufnr").await?;
 
-        let source = if ctx.vim.bufmodified(bufnr).await? {
+        let (source, preview_file) = if ctx.vim.bufmodified(bufnr).await? {
             let lines = ctx.vim.getbufline(bufnr, 1, "$").await?;
+            let file_content = lines.join("\n");
+
             let mut items = lines
                 .into_iter()
                 .enumerate()
@@ -51,30 +55,33 @@ impl BlinesProvider {
                 .map(|item| item as Arc<dyn ClapItem>)
                 .collect::<Vec<_>>();
 
-            // Initialize the provider source to reuse the on_move impl.
-            ctx.set_provider_source(ProviderSource::Small {
-                total: items.len(),
-                items: items.clone(),
-            });
+            // Write the modified buffer to a tmp file and preview it later.
+            let bufname = ctx
+                .env
+                .start_buffer_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("blines_preview");
+            let tmp_file = crate::datastore::generate_cache_file_path(bufname)?;
+            std::fs::File::create(&tmp_file)?.write_all(file_content.as_bytes())?;
 
-            // TODO: write the modified buffer to a tmp file and preview it later.
-
-            BufferSource::ModifiedBuffer(items)
+            (BufferSource::ModifiedBuffer(items), tmp_file)
         } else {
             let path = ctx.env.start_buffer_path.clone();
-            let total = utils::line_count(&path)?;
-
-            ctx.set_provider_source(ProviderSource::File {
-                total,
-                path: path.clone(),
-            });
-
-            BufferSource::LocalFile(path)
+            (BufferSource::LocalFile(path.clone()), path)
         };
+
+        // TODO: refactor the preview_on_empty function so that this dirty
+        // workaround can be removed.
+        ctx.set_provider_source(crate::stdio_server::provider::ProviderSource::File {
+            total: 16, // Unused, does not matter.
+            path: preview_file.clone(),
+        });
 
         Ok(Self {
             args,
             searcher_control: None,
+            preview_file,
             source,
         })
     }
@@ -103,7 +110,7 @@ impl BlinesProvider {
                 let search_context = ctx.search_context(stop_signal.clone());
 
                 tokio::spawn(async move {
-                    crate::searcher::blines::search(query, source_file, matcher, search_context)
+                    crate::searcher::file::search(query, source_file, matcher, search_context)
                         .await;
                 })
             };
@@ -162,6 +169,22 @@ impl ClapProvider for BlinesProvider {
         Ok(())
     }
 
+    async fn on_move(&mut self, ctx: &mut Context) -> Result<()> {
+        if !ctx.env.preview_enabled {
+            return Ok(());
+        }
+        ctx.preview_manager.reset_scroll();
+        let curline = ctx.vim.display_getcurline().await?;
+        let Some(line_number) = pattern::extract_blines_lnum(&curline) else {
+            return Ok(());
+        };
+        let preview_target = PreviewTarget::LineInFile {
+            path: self.preview_file.clone(),
+            line_number,
+        };
+        ctx.update_preview(Some(preview_target)).await
+    }
+
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.input_get().await?;
         if query.is_empty() {
@@ -176,6 +199,9 @@ impl ClapProvider for BlinesProvider {
         if let Some(control) = self.searcher_control.take() {
             // NOTE: The kill operation can not block current task.
             tokio::task::spawn_blocking(move || control.kill());
+        }
+        if let BufferSource::ModifiedBuffer(_) = self.source {
+            let _ = std::fs::remove_file(&self.preview_file);
         }
         ctx.signify_terminated(session_id);
     }

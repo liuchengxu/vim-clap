@@ -2,7 +2,7 @@ mod hooks;
 mod impls;
 
 use self::hooks::{initialize_provider, CachedPreviewImpl, Preview, PreviewTarget};
-use crate::searcher::blines::BlinesItem;
+use crate::searcher::file::BlinesItem;
 use crate::searcher::SearchContext;
 use crate::stdio_server::input::{
     InputRecorder, InternalProviderEvent, KeyEvent, KeyEventType, ProviderEvent,
