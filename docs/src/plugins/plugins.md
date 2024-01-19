@@ -78,6 +78,16 @@ noticeable delays in refreshing the latest diagnostics whenever I made changes t
 the Rust file). This prompted me to develop this linter plugin in Rust and the results have been remarkable.
 The diagnostics update is now considerably faster from what I see on Rust project.
 
+Currently supported linters:
+
+- `go`: [gopls](https://github.com/golang/tools/tree/master/gopls)
+- `sh`: [shellcheck](https://github.com/koalaman/shellcheck)
+- `vim`: [vint](https://github.com/Vimjas/vint)
+- `python`: [ruff](https://github.com/astral-sh/ruff)
+- `rust`: [cargo](https://github.com/rust-lang/cargo) `cargo check`/`cargo clippy`
+
+Ensure the required linter executables are installed and can be found in your system before using this plugin.
+
 ## lsp
 
 ```toml

@@ -111,6 +111,7 @@ pub enum Language {
     Bash,
     C,
     Cpp,
+    Dockerfile,
     Go,
     Javascript,
     Json,
@@ -127,6 +128,7 @@ impl FromStr for Language {
         let language = match s.to_ascii_lowercase().as_str() {
             "bash" => Self::Bash,
             "c" => Self::C,
+            "dockerfile" => Self::Dockerfile,
             "go" => Self::Go,
             "javascript" => Self::Javascript,
             "json" => Self::Json,
@@ -135,7 +137,7 @@ impl FromStr for Language {
             "rust" => Self::Rust,
             "toml" => Self::Toml,
             "viml" => Self::Viml,
-            _ => return Err(format!("Unknown langauge: {s}")),
+            _ => return Err(format!("Unknown language: {s}")),
         };
         Ok(language)
     }
@@ -168,6 +170,7 @@ impl Language {
             "sh" => Self::Bash,
             "c" => Self::C,
             "cpp" => Self::Cpp,
+            "dockerfile" => Self::Dockerfile,
             "go" => Self::Go,
             "javascript" => Self::Javascript,
             "json" => Self::Json,
@@ -201,6 +204,7 @@ impl Language {
             Self::Bash => tree_sitter_bash::HIGHLIGHT_QUERY,
             Self::C => tree_sitter_c::HIGHLIGHT_QUERY,
             Self::Cpp => tree_sitter_cpp::HIGHLIGHT_QUERY,
+            Self::Dockerfile => tree_sitter_dockerfile::HIGHLIGHTS_QUERY,
             Self::Go => tree_sitter_go::HIGHLIGHT_QUERY,
             Self::Javascript => tree_sitter_javascript::HIGHLIGHT_QUERY,
             Self::Json => tree_sitter_json::HIGHLIGHT_QUERY,
@@ -229,6 +233,12 @@ impl Language {
             Language::Cpp => HighlightConfiguration::new(
                 tree_sitter_cpp::language(),
                 tree_sitter_cpp::HIGHLIGHT_QUERY,
+                "",
+                "",
+            ),
+            Language::Dockerfile => HighlightConfiguration::new(
+                tree_sitter_dockerfile::language(),
+                tree_sitter_dockerfile::HIGHLIGHTS_QUERY,
                 "",
                 "",
             ),
