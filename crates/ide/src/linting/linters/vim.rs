@@ -1,6 +1,4 @@
-use crate::linting::{
-    Code, Diagnostic, DiagnosticSpan, LintEngine, Linter, LinterDiagnostics, Severity,
-};
+use crate::linting::{Code, Diagnostic, DiagnosticSpan, Linter, LinterDiagnostics, Severity};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -72,7 +70,7 @@ impl Linter for Vint {
             .collect();
 
         Ok(LinterDiagnostics {
-            engine: LintEngine::Gopls,
+            source: Self::EXE,
             diagnostics,
         })
     }

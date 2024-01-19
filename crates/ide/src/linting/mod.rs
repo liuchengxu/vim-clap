@@ -92,23 +92,8 @@ impl Diagnostic {
 }
 
 #[derive(Debug, Clone)]
-pub enum RustLintEngine {
-    CargoCheck,
-    CargoClippy,
-}
-
-#[derive(Debug, Clone)]
-pub enum LintEngine {
-    Gopls,
-    Rust(RustLintEngine),
-    ShellCheck,
-    Typos,
-    Vint,
-}
-
-#[derive(Debug, Clone)]
 pub struct LinterDiagnostics {
-    pub engine: LintEngine,
+    pub source: &'static str,
     pub diagnostics: Vec<Diagnostic>,
 }
 
@@ -206,7 +191,7 @@ trait Linter {
             .collect();
 
         Ok(LinterDiagnostics {
-            engine: LintEngine::Gopls,
+            source: Self::EXE,
             diagnostics,
         })
     }

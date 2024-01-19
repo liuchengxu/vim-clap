@@ -1,4 +1,4 @@
-use crate::linting::{Code, Diagnostic, DiagnosticSpan, LintEngine, Linter, LinterDiagnostics};
+use crate::linting::{Code, Diagnostic, DiagnosticSpan, Linter, LinterDiagnostics};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -73,13 +73,13 @@ impl Linter for ShellCheck {
         if let Ok(messages) = serde_json::from_slice::<Vec<ShellCheckMessage>>(&output.stdout) {
             let diagnostics = messages.into_iter().map(|m| m.into_diagnostic()).collect();
             return Ok(LinterDiagnostics {
-                engine: LintEngine::ShellCheck,
+                source: Self::EXE,
                 diagnostics,
             });
         }
 
         Ok(LinterDiagnostics {
-            engine: LintEngine::ShellCheck,
+            source: Self::EXE,
             diagnostics: Vec::new(),
         })
     }

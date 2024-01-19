@@ -1,6 +1,4 @@
-use crate::linting::{
-    Code, Diagnostic, DiagnosticSpan, LintEngine, LinterDiagnostics, RustLintEngine, Severity,
-};
+use crate::linting::{Code, Diagnostic, DiagnosticSpan, LinterDiagnostics, Severity};
 use serde::Deserialize;
 use std::path::PathBuf;
 use std::process::Stdio;
@@ -54,7 +52,7 @@ impl RustLinter {
             .output()?;
 
         Ok(LinterDiagnostics {
-            engine: LintEngine::Rust(RustLintEngine::CargoCheck),
+            source: "cargo",
             diagnostics: self.parse_cargo_message(&output.stdout),
         })
     }
@@ -77,7 +75,7 @@ impl RustLinter {
             .output()?;
 
         Ok(LinterDiagnostics {
-            engine: LintEngine::Rust(RustLintEngine::CargoClippy),
+            source: "clippy",
             diagnostics: self.parse_cargo_message(&output.stdout),
         })
     }
