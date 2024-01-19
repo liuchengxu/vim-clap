@@ -12,7 +12,7 @@ static RE: Lazy<Regex> = Lazy::new(|| {
 fn parse_line_gopls(line: &[u8]) -> Option<Diagnostic> {
     let line = String::from_utf8_lossy(line);
 
-    for caps in RE.captures_iter(&line) {
+    if let Some(caps) = RE.captures_iter(&line).next() {
         // [path, line, column_start, column_end, message]
         let (Some(line), Some(column_start), Some(column_end), Some(message)) = (
             caps.get(2).and_then(|m| m.as_str().parse::<usize>().ok()),
