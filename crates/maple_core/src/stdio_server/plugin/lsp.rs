@@ -10,7 +10,7 @@ use lsp::Url;
 use maple_lsp::lsp;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -94,6 +94,11 @@ fn to_url(path: impl AsRef<Path>) -> Result<Url, Error> {
         .map_err(|_| Error::InvalidUrl(format!("{}", path.as_ref().display())))
 }
 
+fn to_file_path(uri: lsp::Url) -> Result<PathBuf, Error> {
+    uri.to_file_path()
+        .map_err(|()| Error::InvalidUrl(format!("uri: {uri} is not a path")))
+}
+
 fn doc_id(path: impl AsRef<Path>) -> Result<lsp::TextDocumentIdentifier, Error> {
     Ok(lsp::TextDocumentIdentifier { uri: to_url(path)? })
 }
@@ -134,11 +139,38 @@ fn get_language_config(language_id: LanguageId) -> Option<maple_lsp::LanguageCon
     Some(language_config)
 }
 
+fn preprocess_text_edits(text_edits: Vec<lsp::TextEdit>) -> Vec<lsp::TextEdit> {
+    let mut text_edits = text_edits;
+
+    // Simply follows the logic in
+    // https://github.com/prabirshrestha/vim-lsp/blob/d36f381dc8f39a9b86d66ef84c2ebbb7516d91d6/autoload/lsp/utils/text_edit.vim#L160
+    text_edits.iter_mut().for_each(|text_edit| {
+        let start = text_edit.range.start;
+        let end = text_edit.range.end;
+
+        if start.line > end.line || (start.line == end.line && start.character > end.character) {
+            text_edit.range = lsp::Range {
+                start: end,
+                end: start,
+            };
+        }
+    });
+
+    // Sort edits by start range, since some LSPs (Omnisharp) send them
+    // in reverse order.
+    text_edits.sort_unstable_by_key(|edit| edit.range.start);
+
+    text_edits.reverse();
+
+    text_edits
+}
+
 #[derive(Debug, Clone, maple_derive::ClapPlugin)]
 #[clap_plugin(
   id = "lsp",
   actions = [
     "format",
+    "rename",
     "document-symbols",
     "workspace-symbols",
     "goto-definition",
@@ -370,7 +402,7 @@ impl LspPlugin {
 
         let locations = match locations_result {
             Ok(locations) => locations,
-            Err(maple_lsp::Error::RequestFailure(request_failure)) => {
+            Err(maple_lsp::Error::ResponseFailure(request_failure)) => {
                 self.vim
                     .echo_message(format!("request_failure: {request_failure:?}"))?;
                 return Ok(());
@@ -496,7 +528,7 @@ impl LspPlugin {
 
         // TODO: sync the document?
 
-        let mut text_edits = client
+        let text_edits = client
             .text_document_formatting(
                 doc_id.clone(),
                 lsp::FormattingOptions {
@@ -511,42 +543,128 @@ impl LspPlugin {
             )
             .await?;
 
-        // Simply follows the logic in
-        // https://github.com/prabirshrestha/vim-lsp/blob/d36f381dc8f39a9b86d66ef84c2ebbb7516d91d6/autoload/lsp/utils/text_edit.vim#L160
-        text_edits.iter_mut().for_each(|text_edit| {
-            let start = text_edit.range.start;
-            let end = text_edit.range.end;
+        if !text_edits.is_empty() {
+            let text_edits = preprocess_text_edits(text_edits);
 
-            if start.line > end.line || (start.line == end.line && start.character > end.character)
-            {
-                text_edit.range = lsp::Range {
-                    start: end,
-                    end: start,
-                };
-            }
-        });
+            let filepath = doc_id
+                .uri
+                .to_file_path()
+                .map_err(|()| Error::InvalidUrl(format!("uri: {} is not a path", doc_id.uri)))?;
 
-        // Sort edits by start range, since some LSPs (Omnisharp) send them
-        // in reverse order.
-        text_edits.sort_unstable_by_key(|edit| edit.range.start);
+            let Ok(Some(cursor_lsp_position)) =
+                self.get_cursor_lsp_position(bufnr, &filepath).await
+            else {
+                return Ok(());
+            };
 
-        text_edits.reverse();
+            self.vim.exec(
+                "clap#lsp#text_edit#apply_text_edits",
+                (filepath, text_edits, cursor_lsp_position),
+            )?;
+        }
 
-        let filepath = doc_id
-            .uri
-            .to_file_path()
-            .map_err(|()| Error::InvalidUrl(format!("uri: {} is not a path", doc_id.uri)))?;
+        Ok(())
+    }
+
+    async fn process_text_document_edit(
+        &self,
+        bufnr: usize,
+        doc_edit: lsp::TextDocumentEdit,
+    ) -> Result<(), Error> {
+        let uri = doc_edit.text_document.uri;
+
+        let edits = doc_edit
+            .edits
+            .into_iter()
+            .map(|edit| match edit {
+                lsp::OneOf::Left(edit) => edit,
+                lsp::OneOf::Right(annotated_edit) => annotated_edit.text_edit,
+            })
+            .collect();
+
+        let text_edits = preprocess_text_edits(edits);
+
+        let filepath = to_file_path(uri)?;
 
         let Ok(Some(cursor_lsp_position)) = self.get_cursor_lsp_position(bufnr, &filepath).await
         else {
             return Ok(());
         };
 
-        if !text_edits.is_empty() {
-            self.vim.exec(
-                "clap#lsp#text_edit#apply_text_edits",
-                (filepath, text_edits, cursor_lsp_position),
-            )?;
+        self.vim.exec(
+            "clap#lsp#text_edit#apply_text_edits",
+            (filepath, text_edits, cursor_lsp_position),
+        )?;
+
+        Ok(())
+    }
+
+    async fn rename_symbol(&mut self) -> Result<(), Error> {
+        let bufnr = self.vim.bufnr("").await?;
+        let document = self.get_doc(bufnr)?;
+
+        let client = self
+            .clients
+            .get(&document.language_id)
+            .ok_or(Error::ClientNotFound)?;
+
+        let doc_id = document.doc_id.clone();
+
+        // TODO: sync the document?
+
+        let Ok(Some(cursor_lsp_position)) = self
+            .get_cursor_lsp_position(bufnr, &to_file_path(document.doc_id.uri.clone())?)
+            .await
+        else {
+            return Ok(());
+        };
+
+        let maybe_workspace_edit = match client
+            .rename_symbol(doc_id.clone(), cursor_lsp_position, "NewName".into())
+            .await
+        {
+            Ok(res) => res,
+            Err(maple_lsp::Error::ResponseFailure(failure)) => {
+                self.vim.echo_message(failure.error.message)?;
+                return Ok(());
+            }
+            Err(err) => return Err(err.into()),
+        };
+
+        tracing::debug!("====== workspace edit: {maybe_workspace_edit:?}");
+
+        if let Some(workspace_edit) = maybe_workspace_edit {
+            if let Some(document_changes) = workspace_edit.document_changes {
+                match document_changes {
+                    lsp::DocumentChanges::Edits(edits) => {
+                        for edit in edits {
+                            self.process_text_document_edit(bufnr, edit).await?;
+                        }
+                    }
+                    lsp::DocumentChanges::Operations(operations) => {
+                        for operation in operations {
+                            match operation {
+                                lsp::DocumentChangeOperation::Op(op) => {
+                                    tracing::debug!("TODO: handle op {op:?}");
+                                }
+                                lsp::DocumentChangeOperation::Edit(edit) => {
+                                    self.process_text_document_edit(bufnr, edit).await?;
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if let Some(changes) = workspace_edit.changes {
+                for (uri, edits) in changes {
+                    let filepath = to_file_path(uri)?;
+                    let text_edits = preprocess_text_edits(edits);
+
+                    self.vim.exec(
+                        "clap#lsp#text_edit#apply_text_edits",
+                        (filepath, text_edits, cursor_lsp_position),
+                    )?;
+                }
+            }
         }
 
         Ok(())
@@ -656,6 +774,9 @@ impl ClapPlugin for LspPlugin {
             }
             LspAction::Format => {
                 self.text_document_format().await?;
+            }
+            LspAction::Rename => {
+                self.rename_symbol().await?;
             }
             LspAction::GotoDefinition => {
                 self.goto_impl(Goto::Definition).await?;
