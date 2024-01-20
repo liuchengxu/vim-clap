@@ -209,7 +209,7 @@ impl Syntax {
 
         let start = std::time::Instant::now();
 
-        let raw_highlights = tree_sitter::highlight(language, &source_code)?;
+        let raw_highlights = language.highlight(&source_code)?;
 
         let file_size = FileSize(source_code.len());
 
@@ -342,7 +342,7 @@ impl Syntax {
 
         let source_code = std::fs::read(&source_file)?;
 
-        let new_highlights = tree_sitter::highlight(language, &source_code)?;
+        let new_highlights = language.highlight(&source_code)?;
 
         let file_size = FileSize(source_code.len());
 

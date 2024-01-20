@@ -807,7 +807,7 @@ fn fetch_syntax_highlights(
                     // 1. Check the last modified time.
                     // 2. If unchanged, try retrieving from the cache.
                     // 3. Otherwise parse it.
-                    let Ok(raw_highlights) = tree_sitter::highlight(language, &source_code) else {
+                    let Ok(raw_highlights) = language.highlight(&source_code) else {
                         return None;
                     };
 
