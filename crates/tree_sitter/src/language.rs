@@ -62,7 +62,7 @@ impl Config {
 
 /// Small macro to generate a module, declaring the list of highlight name
 /// in tree_sitter_highlight and associated vim highlight group name.
-macro_rules! highlight_names_module {
+macro_rules! def_capture_name_highlights {
     ( $mod_name:ident; $( ($name:expr, $group:expr) ),* $(,)?) => {
         mod $mod_name {
             pub(super) const HIGHLIGHT_NAMES: &'static [&'static str] = &[
@@ -75,35 +75,70 @@ macro_rules! highlight_names_module {
     };
 }
 
-// Bash
-highlight_names_module![
-  builtin;
+def_capture_name_highlights![
+  default_captures;
+    // Standard capture names
+    //
+    // https://github.com/tree-sitter/tree-sitter/blob/660481dbf71413eba5a928b0b0ab8da50c1109e0/highlight/src/lib.rs#L22
+    ("attribute", "PreProc"),
+    ("boolean", "Boolean"),
+    ("carriage-return", "Special"),
     ("comment", "Comment"),
-    ("conditional", "Conditional"),
+    ("comment.documentation", "SpecialComment"),
     ("constant", "Constant"),
     ("constant.builtin", "Constant"),
+    ("constructor", "Function"),
+    ("constructor.builtin", "Function"),
+    ("embedded", "Function"),
+    ("error", "Error"),
+    ("escape", "Function"),
     ("function", "Function"),
     ("function.builtin", "Special"),
-    ("function.macro", "Macro"),
     ("keyword", "Keyword"),
-    ("label", "Label"),
+    // TODO: better defaults
+    ("markup", "Keyword"),
+    ("markup.bold", "Keyword"),
+    ("markup.heading", "Keyword"),
+    ("markup.italic", "Keyword"),
+    ("markup.link", "Keyword"),
+    ("markup.link.url", "Keyword"),
+    ("markup.list", "Keyword"),
+    ("markup.list.checked", "Keyword"),
+    ("markup.list.numbered", "Keyword"),
+    ("markup.list.unchecked", "Keyword"),
+    ("markup.list.unnumbered", "Keyword"),
+    ("markup.quote", "Keyword"),
+    ("markup.raw", "Keyword"),
+    ("markup.raw.block", "Keyword"),
+    ("markup.raw.inline", "Keyword"),
+    ("markup.strikethrough", "Keyword"),
+    ("module", "Directory"),
     ("number", "Number"),
     ("operator", "Operator"),
     ("property", "Identifier"),
+    ("property.builtin", "Identifier"),
+    ("punctuation", "Delimiter"),
+    ("punctuation.bracket", "Delimiter"),
     ("punctuation.delimiter", "Delimiter"),
     ("punctuation.special", "Special"),
     ("string", "String"),
     ("string.escape", "String"),
+    ("string.regexp", "String"),
     ("string.special", "SpecialChar"),
+    ("string.special.symbol", "SpecialChar"),
     ("tag", "Tag"),
     ("type", "Type"),
-    ("type.definition", "Typedef"),
     ("type.builtin", "Type"),
-    ("punctuation", "Delimiter"),
-    ("punctuation.bracket", "Delimiter"),
     ("variable", "Identifier"),
     ("variable.builtin", "Identifier"),
+    ("variable.member", "Identifier"),
     ("variable.parameter", "Identifier"),
+
+    // Custom locals.
+    ("conditional", "Conditional"),
+    ("function.macro", "Macro"),
+    ("label", "Label"),
+    ("type.definition", "Typedef"),
 ];
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Ord, PartialOrd)]
@@ -188,14 +223,14 @@ impl Language {
     pub fn highlight_name(&self, highlight: Highlight) -> &'static str {
         match &CONFIG.language.get(self) {
             Some(config) => &config.highlight_names[highlight.0],
-            None => builtin::HIGHLIGHT_NAMES[highlight.0],
+            None => default_captures::HIGHLIGHT_NAMES[highlight.0],
         }
     }
 
     pub fn highlight_group(&self, highlight: Highlight) -> &'static str {
         match &CONFIG.language.get(self) {
             Some(config) => &config.highlight_groups[highlight.0],
-            None => builtin::HIGHLIGHT_GROUPS[highlight.0],
+            None => default_captures::HIGHLIGHT_GROUPS[highlight.0],
         }
     }
 
@@ -300,7 +335,7 @@ impl Language {
                 config.configure(conf.highlight_names.as_slice());
             }
             None => {
-                config.configure(builtin::HIGHLIGHT_NAMES);
+                config.configure(default_captures::HIGHLIGHT_NAMES);
             }
         }
 
