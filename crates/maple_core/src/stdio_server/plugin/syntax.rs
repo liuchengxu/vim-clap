@@ -157,10 +157,7 @@ impl Syntax {
     }
 
     async fn identify_buffer_language(&self, bufnr: usize, source_file: &Path) -> Option<Language> {
-        if let Some(language) = source_file.extension().and_then(|e| {
-            e.to_str()
-                .and_then(tree_sitter::Language::try_from_extension)
-        }) {
+        if let Some(language) = tree_sitter::Language::try_from_path(source_file) {
             Some(language)
         } else if let Ok(filetype) = self.vim.getbufvar::<String>(bufnr, "&filetype").await {
             tree_sitter::Language::try_from_filetype(&filetype)

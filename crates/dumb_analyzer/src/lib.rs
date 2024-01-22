@@ -106,7 +106,7 @@ pub fn calculate_pattern_priority(pattern: impl AsRef<str>, file_ext: &str) -> O
     //
     // 1. blines provider prepends the line number to the original line and the language bonus
     //    is mostly used in the blines provider.
-    // 2. Languages like Rust has the visibility before the commen keyword(fn, struct, ...).
+    // 2. Languages like Rust has the visibility before the common keyword(fn, struct, ...).
     pattern
         .as_ref()
         .split_whitespace()

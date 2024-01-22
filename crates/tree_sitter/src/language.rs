@@ -2,6 +2,7 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
+use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
 use tree_sitter_highlight::{Highlight, HighlightConfiguration};
@@ -179,6 +180,13 @@ impl FromStr for Language {
 }
 
 impl Language {
+    pub fn try_from_path(path: impl AsRef<Path>) -> Option<Self> {
+        path.as_ref()
+            .extension()
+            .and_then(|s| s.to_str())
+            .and_then(Self::try_from_extension)
+    }
+
     /// Constructs a new instance of [`Language`] from the file extension if any.
     pub fn try_from_extension(extension: &str) -> Option<Self> {
         let language = match extension {
