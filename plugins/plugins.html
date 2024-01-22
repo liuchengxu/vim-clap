@@ -192,6 +192,7 @@
 <li><a href="#cursorword">cursorword</a></li>
 <li><a href="#git">git</a></li>
 <li><a href="#linter">linter</a></li>
+<li><a href="#lsp">lsp</a></li>
 <li><a href="#markdown">markdown</a></li>
 <li><a href="#syntax">syntax</a></li>
 </ul>
@@ -217,7 +218,9 @@ enable = true
 <tr><td style="text-align: left">Highlight the word under the cursor</td><td style="text-align: left"><a href="https://github.com/tveskag/nvim-blame-line">nvim-blame-line</a></br><a href="https://github.com/RRethy/vim-illuminate">vim-illuminate</a></br> <a href="https://github.com/itchyny/vim-cursorword">vim-cursorword</a></br><a href="https://github.com/osyo-manga/vim-brightest">vim-brightest</a></td></tr>
 </tbody></table>
 </div>
-<p>By default this plugin utilizes <code>Normal</code> guibg as the primary color. It then lighten this base color for <code>ClapCursorWord</code> and darkens it for <code>ClapCursorWordTwins</code>. You can manually adjust them in case the default highlights does not meet your expectations.</p>
+<p>By default this plugin utilizes <code>Normal</code> guibg as the primary color. It then lighten this base color for <code>ClapCursorWord</code>
+and darkens it for <code>ClapCursorWordTwins</code>. You can manually adjust them in case the default highlights does not meet your
+expectations.</p>
 <h2 id="git"><a class="header" href="#git">git</a></h2>
 <pre><code class="language-toml">[plugin.git]
 enable = true
@@ -228,16 +231,32 @@ enable = true
 <tr><td style="text-align: left">Open the permalink of current line in browser</td><td style="text-align: left"><a href="https://github.com/9seconds/repolink.nvim">repolink.nvim</a></td></tr>
 </tbody></table>
 </div>
-<p>The signs are updated when you save the buffer and are rendered lazily, i.e., the signs are only displayed when they are visually in the range of screen.</p>
+<p>The signs are updated when you save the buffer and are rendered lazily, i.e., the signs are only displayed when they
+are visually in the range of screen.</p>
 <h2 id="linter"><a class="header" href="#linter">linter</a></h2>
 <pre><code class="language-toml">[plugin.linter]
 enable = true
 </code></pre>
-<p>Although <a href="https://github.com/dense-analysis/ale">ALE</a> has been an incredible and feature-rich linter plugin that served me well for an extended
-period, I began to notice a persistent lagging issue over time. There were noticeable delays in refreshing
-the latest diagnostics whenever I made changes to the source file (especially the Rust file). This prompted
-me to develop this linter plugin in Rust and the results have been remarkable. The diagnostics update is now
-considerably faster from what I see on Rust project.</p>
+<p>Although <a href="https://github.com/dense-analysis/ale">ALE</a> has been an incredible and feature-rich linter plugin
+that served me well for an extended period, I began to notice a persistent lagging issue over time. There were
+noticeable delays in refreshing the latest diagnostics whenever I made changes to the source file (especially
+the Rust file). This prompted me to develop this linter plugin in Rust and the results have been remarkable.
+The diagnostics update is now considerably faster from what I see on Rust project.</p>
+<p>Currently supported linters:</p>
+<ul>
+<li><code>go</code>: <a href="https://github.com/golang/tools/tree/master/gopls">gopls</a></li>
+<li><code>sh</code>: <a href="https://github.com/koalaman/shellcheck">shellcheck</a></li>
+<li><code>vim</code>: <a href="https://github.com/Vimjas/vint">vint</a></li>
+<li><code>python</code>: <a href="https://github.com/astral-sh/ruff">ruff</a></li>
+<li><code>rust</code>: <a href="https://github.com/rust-lang/cargo">cargo</a> <code>cargo check</code>/<code>cargo clippy</code></li>
+</ul>
+<p>Ensure the required linter executables are installed and can be found in your system before using this plugin.</p>
+<h2 id="lsp"><a class="header" href="#lsp">lsp</a></h2>
+<pre><code class="language-toml">[plugin.lsp]
+enable = true
+</code></pre>
+<p>This plugin aims to implement the language server protocol. It's still pretty experimental and only a handful
+features are supported at present.</p>
 <h2 id="markdown"><a class="header" href="#markdown">markdown</a></h2>
 <pre><code class="language-toml">[plugin.markdown]
 enable = true
@@ -253,10 +272,11 @@ enable = true
 <pre><code class="language-toml">[plugin.syntax]
 enable = true
 </code></pre>
-<p>This plugin implements the sublime-syntax and tree-sitter highlighting. The sublime-syntax is feature-limited and pretty experimental, this plugin primarily focues on the tree-sitter highlighting support.</p>
-<p>Officially tree-sitter supported languages:</p>
+<p>This plugin implements the sublime-syntax and tree-sitter highlighting. The sublime-syntax is feature-limited and
+pretty experimental, this plugin primarily focues on the tree-sitter highlighting support.</p>
+<p>Currently tree-sitter supported languages:</p>
 <ul>
-<li>Bash, C, Cpp, Go, Javascript, Json, Markdown, Python, Rust, Toml, Viml</li>
+<li>Bash, C, Cpp, Dockerfile, Go, Javascript, Json, Markdown, Python, Rust, Toml, Viml</li>
 </ul>
 
                     </main>
