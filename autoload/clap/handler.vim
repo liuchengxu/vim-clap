@@ -116,6 +116,11 @@ function! clap#handler#exit() abort
   call g:clap.provider.on_exit()
   silent doautocmd <nomodeline> User ClapOnExit
   let s:old_input = ''
+  " Restore the cursor to the origin if sink is not invoked.
+  if !get(g:, '__clap_provider_did_sink', v:false)
+    noautocmd call win_gotoid(g:clap.start.winid)
+    noautocmd call cursor(g:clap.start.old_pos)
+  endif
 endfunction
 
 function! s:noop() abort

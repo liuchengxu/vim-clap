@@ -2,6 +2,7 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
+use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
 use tree_sitter_highlight::{Highlight, HighlightConfiguration};
@@ -62,7 +63,7 @@ impl Config {
 
 /// Small macro to generate a module, declaring the list of highlight name
 /// in tree_sitter_highlight and associated vim highlight group name.
-macro_rules! highlight_names_module {
+macro_rules! def_capture_name_highlights {
     ( $mod_name:ident; $( ($name:expr, $group:expr) ),* $(,)?) => {
         mod $mod_name {
             pub(super) const HIGHLIGHT_NAMES: &'static [&'static str] = &[
@@ -75,35 +76,70 @@ macro_rules! highlight_names_module {
     };
 }
 
-// Bash
-highlight_names_module![
-  builtin;
+def_capture_name_highlights![
+  default_captures;
+    // Standard capture names
+    //
+    // https://github.com/tree-sitter/tree-sitter/blob/660481dbf71413eba5a928b0b0ab8da50c1109e0/highlight/src/lib.rs#L22
+    ("attribute", "PreProc"),
+    ("boolean", "Boolean"),
+    ("carriage-return", "Special"),
     ("comment", "Comment"),
-    ("conditional", "Conditional"),
+    ("comment.documentation", "SpecialComment"),
     ("constant", "Constant"),
     ("constant.builtin", "Constant"),
+    ("constructor", "Function"),
+    ("constructor.builtin", "Function"),
+    ("embedded", "Function"),
+    ("error", "Error"),
+    ("escape", "Function"),
     ("function", "Function"),
     ("function.builtin", "Special"),
-    ("function.macro", "Macro"),
     ("keyword", "Keyword"),
-    ("label", "Label"),
+    // TODO: better defaults
+    ("markup", "Keyword"),
+    ("markup.bold", "Keyword"),
+    ("markup.heading", "Keyword"),
+    ("markup.italic", "Keyword"),
+    ("markup.link", "Keyword"),
+    ("markup.link.url", "Keyword"),
+    ("markup.list", "Keyword"),
+    ("markup.list.checked", "Keyword"),
+    ("markup.list.numbered", "Keyword"),
+    ("markup.list.unchecked", "Keyword"),
+    ("markup.list.unnumbered", "Keyword"),
+    ("markup.quote", "Keyword"),
+    ("markup.raw", "Keyword"),
+    ("markup.raw.block", "Keyword"),
+    ("markup.raw.inline", "Keyword"),
+    ("markup.strikethrough", "Keyword"),
+    ("module", "Directory"),
     ("number", "Number"),
     ("operator", "Operator"),
     ("property", "Identifier"),
+    ("property.builtin", "Identifier"),
+    ("punctuation", "Delimiter"),
+    ("punctuation.bracket", "Delimiter"),
     ("punctuation.delimiter", "Delimiter"),
     ("punctuation.special", "Special"),
     ("string", "String"),
     ("string.escape", "String"),
+    ("string.regexp", "String"),
     ("string.special", "SpecialChar"),
+    ("string.special.symbol", "SpecialChar"),
     ("tag", "Tag"),
     ("type", "Type"),
-    ("type.definition", "Typedef"),
     ("type.builtin", "Type"),
-    ("punctuation", "Delimiter"),
-    ("punctuation.bracket", "Delimiter"),
     ("variable", "Identifier"),
     ("variable.builtin", "Identifier"),
+    ("variable.member", "Identifier"),
     ("variable.parameter", "Identifier"),
+
+    // Custom locals.
+    ("conditional", "Conditional"),
+    ("function.macro", "Macro"),
+    ("label", "Label"),
+    ("type.definition", "Typedef"),
 ];
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Ord, PartialOrd)]
@@ -111,6 +147,7 @@ pub enum Language {
     Bash,
     C,
     Cpp,
+    Dockerfile,
     Go,
     Javascript,
     Json,
@@ -127,6 +164,7 @@ impl FromStr for Language {
         let language = match s.to_ascii_lowercase().as_str() {
             "bash" => Self::Bash,
             "c" => Self::C,
+            "dockerfile" => Self::Dockerfile,
             "go" => Self::Go,
             "javascript" => Self::Javascript,
             "json" => Self::Json,
@@ -135,13 +173,20 @@ impl FromStr for Language {
             "rust" => Self::Rust,
             "toml" => Self::Toml,
             "viml" => Self::Viml,
-            _ => return Err(format!("Unknown langauge: {s}")),
+            _ => return Err(format!("Unknown language: {s}")),
         };
         Ok(language)
     }
 }
 
 impl Language {
+    pub fn try_from_path(path: impl AsRef<Path>) -> Option<Self> {
+        path.as_ref()
+            .extension()
+            .and_then(|s| s.to_str())
+            .and_then(Self::try_from_extension)
+    }
+
     /// Constructs a new instance of [`Language`] from the file extension if any.
     pub fn try_from_extension(extension: &str) -> Option<Self> {
         let language = match extension {
@@ -168,6 +213,7 @@ impl Language {
             "sh" => Self::Bash,
             "c" => Self::C,
             "cpp" => Self::Cpp,
+            "dockerfile" => Self::Dockerfile,
             "go" => Self::Go,
             "javascript" => Self::Javascript,
             "json" => Self::Json,
@@ -185,14 +231,14 @@ impl Language {
     pub fn highlight_name(&self, highlight: Highlight) -> &'static str {
         match &CONFIG.language.get(self) {
             Some(config) => &config.highlight_names[highlight.0],
-            None => builtin::HIGHLIGHT_NAMES[highlight.0],
+            None => default_captures::HIGHLIGHT_NAMES[highlight.0],
         }
     }
 
     pub fn highlight_group(&self, highlight: Highlight) -> &'static str {
         match &CONFIG.language.get(self) {
             Some(config) => &config.highlight_groups[highlight.0],
-            None => builtin::HIGHLIGHT_GROUPS[highlight.0],
+            None => default_captures::HIGHLIGHT_GROUPS[highlight.0],
         }
     }
 
@@ -201,6 +247,7 @@ impl Language {
             Self::Bash => tree_sitter_bash::HIGHLIGHT_QUERY,
             Self::C => tree_sitter_c::HIGHLIGHT_QUERY,
             Self::Cpp => tree_sitter_cpp::HIGHLIGHT_QUERY,
+            Self::Dockerfile => tree_sitter_dockerfile::HIGHLIGHTS_QUERY,
             Self::Go => tree_sitter_go::HIGHLIGHT_QUERY,
             Self::Javascript => tree_sitter_javascript::HIGHLIGHT_QUERY,
             Self::Json => tree_sitter_json::HIGHLIGHT_QUERY,
@@ -229,6 +276,12 @@ impl Language {
             Language::Cpp => HighlightConfiguration::new(
                 tree_sitter_cpp::language(),
                 tree_sitter_cpp::HIGHLIGHT_QUERY,
+                "",
+                "",
+            ),
+            Language::Dockerfile => HighlightConfiguration::new(
+                tree_sitter_dockerfile::language(),
+                tree_sitter_dockerfile::HIGHLIGHTS_QUERY,
                 "",
                 "",
             ),
@@ -290,7 +343,7 @@ impl Language {
                 config.configure(conf.highlight_names.as_slice());
             }
             None => {
-                config.configure(builtin::HIGHLIGHT_NAMES);
+                config.configure(default_captures::HIGHLIGHT_NAMES);
             }
         }
 

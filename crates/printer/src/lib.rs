@@ -94,43 +94,68 @@ fn convert_truncated_matched_items_to_display_lines(
     icon: Icon,
     mut truncated_map: LinesTruncatedMap,
 ) -> DisplayLines {
-    if let Some(icon_kind) = icon.icon_kind() {
-        let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = matched_items
-            .into_iter()
-            .enumerate()
-            .map(|(idx, matched_item)| {
-                let display_text = matched_item.display_text();
-                let iconized = if let Some(output_text) = truncated_map.get_mut(&(idx + 1)) {
+    match icon {
+        Icon::Null => {
+            let (lines, indices): (Vec<_>, Vec<_>) = matched_items
+                .into_iter()
+                .map(|matched_item| {
+                    let (line, indices) = (
+                        matched_item.display_text().to_string(),
+                        matched_item.indices,
+                    );
+                    let indices = char_indices_to_byte_indices(&line, &indices);
+                    (line, indices)
+                })
+                .unzip();
+
+            DisplayLines::new(lines, indices, truncated_map, false)
+        }
+        Icon::Enabled(icon_kind) => {
+            let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = matched_items
+                .into_iter()
+                .enumerate()
+                .map(|(idx, matched_item)| {
+                    let display_text = matched_item.display_text();
+                    let iconized = if let Some(output_text) = truncated_map.get_mut(&(idx + 1)) {
+                        let icon = matched_item
+                            .item
+                            .icon(icon)
+                            .expect("Icon must be provided if specified");
+                        *output_text = format!("{icon} {output_text}");
+                        format!("{icon} {display_text}")
+                    } else {
+                        icon_kind.add_icon_to_text(&display_text)
+                    };
+                    let (line, indices) = (iconized, matched_item.shifted_indices(ICON_CHAR_LEN));
+                    let indices = char_indices_to_byte_indices(&line, &indices);
+                    (line, indices)
+                })
+                .unzip();
+
+            DisplayLines::new(lines, indices, truncated_map, true)
+        }
+        Icon::ClapItem => {
+            let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = matched_items
+                .into_iter()
+                .enumerate()
+                .map(|(idx, matched_item)| {
                     let icon = matched_item
                         .item
                         .icon(icon)
-                        .expect("Icon must be provided if specified");
-                    *output_text = format!("{icon} {output_text}");
-                    format!("{icon} {display_text}")
-                } else {
-                    icon_kind.add_icon_to_text(&display_text)
-                };
-                let (line, indices) = (iconized, matched_item.shifted_indices(ICON_CHAR_LEN));
-                let indices = char_indices_to_byte_indices(&line, &indices);
-                (line, indices)
-            })
-            .unzip();
+                        .expect("Icon must be provided by ClapItem");
+                    if let Some(output_text) = truncated_map.get_mut(&(idx + 1)) {
+                        *output_text = format!("{icon} {output_text}");
+                    }
+                    let display_text = matched_item.display_text();
+                    let iconized = format!("{icon} {display_text}");
+                    let (line, indices) = (iconized, matched_item.shifted_indices(ICON_CHAR_LEN));
+                    let indices = char_indices_to_byte_indices(&line, &indices);
+                    (line, indices)
+                })
+                .unzip();
 
-        DisplayLines::new(lines, indices, truncated_map, true)
-    } else {
-        let (lines, indices): (Vec<_>, Vec<_>) = matched_items
-            .into_iter()
-            .map(|matched_item| {
-                let (line, indices) = (
-                    matched_item.display_text().to_string(),
-                    matched_item.indices,
-                );
-                let indices = char_indices_to_byte_indices(&line, &indices);
-                (line, indices)
-            })
-            .unzip();
-
-        DisplayLines::new(lines, indices, truncated_map, false)
+            DisplayLines::new(lines, indices, truncated_map, true)
+        }
     }
 }
 

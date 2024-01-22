@@ -1,6 +1,4 @@
-use crate::linting::{
-    Code, Diagnostic, DiagnosticSpan, LintEngine, LinterDiagnostics, RustLintEngine, Severity,
-};
+use crate::linting::{Code, Diagnostic, DiagnosticSpan, LinterDiagnostics, Severity};
 use serde::Deserialize;
 use std::path::PathBuf;
 use std::process::Stdio;
@@ -54,7 +52,7 @@ impl RustLinter {
             .output()?;
 
         Ok(LinterDiagnostics {
-            engine: LintEngine::Rust(RustLintEngine::CargoCheck),
+            source: "cargo",
             diagnostics: self.parse_cargo_message(&output.stdout),
         })
     }
@@ -77,7 +75,7 @@ impl RustLinter {
             .output()?;
 
         Ok(LinterDiagnostics {
-            engine: LintEngine::Rust(RustLintEngine::CargoClippy),
+            source: "clippy",
             diagnostics: self.parse_cargo_message(&output.stdout),
         })
     }
@@ -209,8 +207,9 @@ enum JsonMessage {
     Rustc(cargo_metadata::diagnostic::Diagnostic),
 }
 
-// https://github.com/rust-lang/rust-analyzer/blob/12e28c35758051dd6bc9cdf419a50dff80fab64d/crates/flycheck/src/lib.rs#L483
 // Try to deserialize a message from Cargo or Rustc.
+//
+// https://github.com/rust-lang/rust-analyzer/blob/12e28c35758051dd6bc9cdf419a50dff80fab64d/crates/flycheck/src/lib.rs#L483
 #[allow(clippy::single_match)]
 fn process_line(line: &[u8]) -> Option<CargoMessage> {
     let mut deserializer = serde_json::Deserializer::from_slice(line);

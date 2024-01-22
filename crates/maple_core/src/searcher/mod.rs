@@ -1,4 +1,4 @@
-pub mod blines;
+pub mod file;
 pub mod files;
 pub mod grep;
 pub mod tagfiles;

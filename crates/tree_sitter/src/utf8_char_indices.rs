@@ -1,4 +1,4 @@
-/// Efficient of `String::from_utf8_lossy(input).char_indices()` without allocation.
+/// Efficient version of `String::from_utf8_lossy(input).char_indices()` without allocation.
 pub struct UncheckedUtf8CharIndices<'a> {
     input: &'a [u8],
     byte_index: usize,

@@ -24,6 +24,7 @@ type SublimeHighlights = Vec<(usize, Vec<TokenHighlight>)>;
 
 /// (start, length, highlight_group)
 type LineHighlights = Vec<(usize, usize, String)>;
+/// (line_number, line_highlights)
 type TsHighlights = Vec<(usize, LineHighlights)>;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -426,7 +427,7 @@ impl<'a> CachedPreviewImpl<'a> {
         };
 
         let sublime_or_ts_highlights =
-            fetch_syntax_highlights(&lines, path, 0, self.max_line_width(), 0..lines.len(), 0);
+            fetch_syntax_highlights(&lines, path, 0, self.max_line_width(), 0..lines.len(), None);
 
         let total = utils::line_count(path)?;
         let end = lines.len();
@@ -479,30 +480,29 @@ impl<'a> CachedPreviewImpl<'a> {
                 highlight_lnum,
                 lines,
             }) => {
-                let context_lines = fetch_context_lines(
-                    &lines,
-                    highlight_lnum,
-                    lnum,
-                    start,
-                    container_width,
-                    path,
-                    self.ctx.env.is_nvim,
-                )
-                .await;
-                let highlight_lnum = highlight_lnum + context_lines.len();
-
-                let context_lines_is_empty = context_lines.is_empty();
+                let maybe_code_context =
+                    find_code_context(&lines, highlight_lnum, lnum, start, path).await;
 
                 // 1 (header line) + 1 (1-based line number)
-                let line_number_offset = context_lines.len() + 1 + 1;
+                let line_number_offset = 1 + 1 + if maybe_code_context.is_some() { 3 } else { 0 };
                 let sublime_or_ts_highlights = fetch_syntax_highlights(
                     &lines,
                     path,
                     line_number_offset,
                     self.max_line_width(),
                     start..end + 1,
-                    context_lines.len(),
+                    maybe_code_context.as_ref(),
                 );
+
+                let context_lines = maybe_code_context
+                    .map(|code_context| {
+                        code_context.into_context_lines(container_width, self.ctx.env.is_nvim)
+                    })
+                    .unwrap_or_default();
+
+                let context_lines_is_empty = context_lines.is_empty();
+
+                let highlight_lnum = highlight_lnum + context_lines.len();
 
                 let header_line = truncated_preview_header();
                 let lines = std::iter::once(header_line)
@@ -633,22 +633,73 @@ async fn context_tag_with_timeout(path: &Path, lnum: usize) -> Option<BufferTag>
     }
 }
 
-async fn fetch_context_lines(
+/// This struct represents the context of current code block in the preview window.
+///
+/// It's likely that the displayed preview content is unable to convey the context due to the size
+/// limit of the preview window, for instance, a function is too large to fit into the preview
+/// window and the cursor is in the middle of this function, we're missing the context which function
+/// the code block is in.
+///
+/// The idea here is similar to how we find the nearest symbol at cursor using ctags, finding the
+/// line containing the context line and displaying it along with the normal preview content.
+struct CodeContext {
+    /// Full context line.
+    ///
+    /// `async fn fetch_context_lines(`
+    line: String,
+}
+
+impl CodeContext {
+    const CONTEXT_LINE_NUMBER: usize = 2;
+    // 1 context line + 2 border lines.
+    const CONTEXT_LINES_LEN: usize = 3;
+
+    /// ------------------
+    /// line
+    /// ------------------
+    fn into_context_lines(self, container_width: usize, is_nvim: bool) -> Vec<String> {
+        // Vim has a different border width.
+        let border_line = "─".repeat(if is_nvim {
+            container_width
+        } else {
+            container_width - 2
+        });
+
+        let mut context_lines = Vec::with_capacity(Self::CONTEXT_LINES_LEN);
+
+        context_lines.push(border_line.clone());
+
+        // Truncate the right of pattern, 2 whitespaces + 💡
+        let max_line_len = container_width - 4;
+        let mut line = self.line;
+        if line.len() > max_line_len {
+            // Use the chars instead of indexing the str to avoid the char boundary error.
+            line = line.chars().take(max_line_len - 4 - 2).collect::<String>();
+            line.push_str("..");
+        };
+        line.push_str("  💡");
+        context_lines.push(line);
+
+        context_lines.push(border_line);
+
+        context_lines
+    }
+}
+
+async fn find_code_context(
     lines: &[String],
     highlight_lnum: usize,
     lnum: usize,
     start: usize,
-    container_width: usize,
     path: &Path,
-    is_nvim: bool,
-) -> Vec<String> {
+) -> Option<CodeContext> {
     // Some checks against the latest preview line.
     let Some(line) = lines.get(highlight_lnum - 1) else {
-        return Vec::new();
+        return None;
     };
 
     let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
-        return Vec::new();
+        return None;
     };
 
     let skip_context_tag = {
@@ -658,50 +709,21 @@ async fn fetch_context_lines(
     };
 
     if skip_context_tag {
-        return Vec::new();
+        return None;
     };
-
-    let generate_border_line = |container_width: usize, is_nvim: bool| -> String {
-        // Vim has a different border width.
-        "─".repeat(if is_nvim {
-            container_width
-        } else {
-            container_width - 2
-        })
-    };
-
-    let mut context_lines = Vec::new();
 
     match context_tag_with_timeout(path, lnum).await {
         Some(tag) if tag.line_number < start => {
-            context_lines.reserve_exact(3);
-
-            let border_line = generate_border_line(container_width, is_nvim);
-
-            context_lines.push(border_line.clone());
-
-            // Truncate the right of pattern, 2 whitespaces + 💡
-            let max_pattern_len = container_width - 4;
             let pattern = tag.trimmed_pattern();
-            let (mut context_line, to_push) = if pattern.len() > max_pattern_len {
-                // Use the chars instead of indexing the str to avoid the char boundary error.
-                let p: String = pattern.chars().take(max_pattern_len - 4 - 2).collect();
-                (p, "..  💡")
-            } else {
-                (String::from(pattern), "  💡")
-            };
-            context_line.reserve(to_push.len());
-            context_line.push_str(to_push);
-            context_lines.push(context_line);
-
-            context_lines.push(border_line);
+            Some(CodeContext {
+                line: pattern.to_string(),
+            })
         }
         _ => {
             // No context lines if no tag found prior to the line number.
+            None
         }
     }
-
-    context_lines
 }
 
 fn calculate_scrollbar(
@@ -746,7 +768,7 @@ fn fetch_syntax_highlights(
     line_number_offset: usize,
     max_line_width: usize,
     range: Range<usize>,
-    context_lines_offset: usize,
+    maybe_code_context: Option<&CodeContext>,
 ) -> SublimeOrTreeSitter {
     use crate::config::HighlightEngine;
     use utils::SizeChecker;
@@ -795,9 +817,7 @@ fn fetch_syntax_highlights(
                 return SublimeOrTreeSitter::Neither;
             }
 
-            path.extension()
-                .and_then(|s| s.to_str())
-                .and_then(tree_sitter::Language::try_from_extension)
+            tree_sitter::Language::try_from_path(path)
                 .and_then(|language| {
                     let Ok(source_code) = std::fs::read(path) else {
                         return None;
@@ -807,7 +827,7 @@ fn fetch_syntax_highlights(
                     // 1. Check the last modified time.
                     // 2. If unchanged, try retrieving from the cache.
                     // 3. Otherwise parse it.
-                    let Ok(raw_highlights) = tree_sitter::highlight(language, &source_code) else {
+                    let Ok(raw_highlights) = language.highlight(&source_code) else {
                         return None;
                     };
 
@@ -817,6 +837,36 @@ fn fetch_syntax_highlights(
                         language,
                         range.into(),
                     );
+
+                    let mut maybe_context_line_highlight = None;
+
+                    let context_lines_offset = if let Some(code_context) = maybe_code_context {
+                        if let Ok(highlight_items) =
+                            language.highlight_line(code_context.line.as_bytes())
+                        {
+                            let line_highlights = highlight_items
+                                .into_iter()
+                                .filter_map(|i| {
+                                    let start = i.start.column;
+                                    let length = i.end.column - i.start.column;
+                                    // Ignore the invisible highlights.
+                                    if start + length > max_line_width {
+                                        None
+                                    } else {
+                                        let group = language.highlight_group(i.highlight);
+                                        Some((start, length, group.to_string()))
+                                    }
+                                })
+                                .collect::<Vec<_>>();
+
+                            maybe_context_line_highlight
+                                .replace((CodeContext::CONTEXT_LINE_NUMBER, line_highlights));
+                        }
+
+                        CodeContext::CONTEXT_LINES_LEN
+                    } else {
+                        0
+                    };
 
                     Some(
                         ts_highlights
@@ -841,6 +891,7 @@ fn fetch_syntax_highlights(
 
                                 (line_number_in_preview_win, line_highlights)
                             })
+                            .chain(maybe_context_line_highlight)
                             .collect(),
                     )
                 })

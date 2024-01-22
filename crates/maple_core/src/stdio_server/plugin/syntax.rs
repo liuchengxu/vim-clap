@@ -157,10 +157,7 @@ impl Syntax {
     }
 
     async fn identify_buffer_language(&self, bufnr: usize, source_file: &Path) -> Option<Language> {
-        if let Some(language) = source_file.extension().and_then(|e| {
-            e.to_str()
-                .and_then(tree_sitter::Language::try_from_extension)
-        }) {
+        if let Some(language) = tree_sitter::Language::try_from_path(source_file) {
             Some(language)
         } else if let Ok(filetype) = self.vim.getbufvar::<String>(bufnr, "&filetype").await {
             tree_sitter::Language::try_from_filetype(&filetype)
@@ -209,7 +206,7 @@ impl Syntax {
 
         let start = std::time::Instant::now();
 
-        let raw_highlights = tree_sitter::highlight(language, &source_code)?;
+        let raw_highlights = language.highlight(&source_code)?;
 
         let file_size = FileSize(source_code.len());
 
@@ -342,7 +339,7 @@ impl Syntax {
 
         let source_code = std::fs::read(&source_file)?;
 
-        let new_highlights = tree_sitter::highlight(language, &source_code)?;
+        let new_highlights = language.highlight(&source_code)?;
 
         let file_size = FileSize(source_code.len());
 

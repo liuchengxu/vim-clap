@@ -76,7 +76,7 @@ impl<'de> Deserialize<'de> for NiceDuration {
 fn test_nice_duration_serde() {
     let duration = time::Duration::new(10, 20);
     let nice_duration = NiceDuration(duration);
-    let seralized = serde_json::to_string(&nice_duration).unwrap();
-    let deserialized: NiceDuration = serde_json::from_str(&seralized).unwrap();
+    let serialized = serde_json::to_string(&nice_duration).unwrap();
+    let deserialized: NiceDuration = serde_json::from_str(&serialized).unwrap();
     assert_eq!(deserialized, NiceDuration(time::Duration::new(10, 20)));
 }

@@ -12,6 +12,6 @@ config-md:
 	cd crates/config_gen && cargo run
 
 clippy:
-	cd crates && cargo clippy --workspace -- -D warnings
+	cd crates && cargo clippy --workspace --all-features --all-targets -- -D warnings
 
 .PHONY: all maple python-dynamic-module config-md clippy

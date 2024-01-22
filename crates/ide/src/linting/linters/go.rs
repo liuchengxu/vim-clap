@@ -1,4 +1,4 @@
-use crate::linting::{Code, Diagnostic, DiagnosticSpan, LintEngine, LinterDiagnostics, Severity};
+use crate::linting::{Code, Diagnostic, DiagnosticSpan, Linter, Severity};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::path::Path;
@@ -9,55 +9,51 @@ static RE: Lazy<Regex> = Lazy::new(|| {
         .expect("Regex for parsing gopls output must be correct otherwise the upstream format must have been changed")
 });
 
-pub async fn run_gopls(
-    source_file: &Path,
-    workspace_root: &Path,
-) -> std::io::Result<LinterDiagnostics> {
-    // Use relative path as the workspace is specified explicitly, otherwise it's
-    // possible to run into a glitch when the directory is a symlink?
-    let source_file = source_file
-        .strip_prefix(workspace_root)
-        .unwrap_or(source_file);
-    let output = tokio::process::Command::new("gopls")
-        .arg("check")
-        .arg(source_file)
-        .current_dir(workspace_root)
-        .output()
-        .await?;
+fn parse_line_gopls(line: &[u8]) -> Option<Diagnostic> {
+    let line = String::from_utf8_lossy(line);
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    if let Some(caps) = RE.captures_iter(&line).next() {
+        // [path, line, column_start, column_end, message]
+        let (Some(line), Some(column_start), Some(column_end), Some(message)) = (
+            caps.get(2).and_then(|m| m.as_str().parse::<usize>().ok()),
+            caps.get(3).and_then(|m| m.as_str().parse::<usize>().ok()),
+            caps.get(4).and_then(|m| m.as_str().parse::<usize>().ok()),
+            caps.get(5).map(|m| m.as_str().to_string()),
+        ) else {
+            return None;
+        };
 
-    let mut diagnostics = Vec::new();
-
-    for line in stdout.split('\n') {
-        if !line.is_empty() {
-            for caps in RE.captures_iter(line) {
-                // [path, line, column_start, column_end, message]
-                let (Some(line), Some(column_start), Some(column_end), Some(message)) = (
-                    caps.get(2).and_then(|m| m.as_str().parse::<usize>().ok()),
-                    caps.get(3).and_then(|m| m.as_str().parse::<usize>().ok()),
-                    caps.get(4).and_then(|m| m.as_str().parse::<usize>().ok()),
-                    caps.get(5).map(|m| m.as_str().to_string()),
-                ) else {
-                    continue;
-                };
-                diagnostics.push(Diagnostic {
-                    spans: vec![DiagnosticSpan {
-                        line_start: line,
-                        line_end: line,
-                        column_start,
-                        column_end,
-                    }],
-                    code: Code::default(),
-                    severity: Severity::Error,
-                    message,
-                });
-            }
-        }
+        return Some(Diagnostic {
+            spans: vec![DiagnosticSpan {
+                line_start: line,
+                line_end: line,
+                column_start,
+                column_end,
+            }],
+            code: Code::default(),
+            severity: Severity::Error,
+            message,
+        });
     }
 
-    Ok(LinterDiagnostics {
-        engine: LintEngine::Gopls,
-        diagnostics,
-    })
+    None
+}
+
+pub struct Gopls;
+
+impl Linter for Gopls {
+    const EXE: &'static str = "gopls";
+
+    fn linter_command(
+        base_cmd: tokio::process::Command,
+        source_file: &Path,
+    ) -> tokio::process::Command {
+        let mut cmd = base_cmd;
+        cmd.arg("check").arg(source_file);
+        cmd
+    }
+
+    fn parse_line(&self, line: &[u8]) -> Option<Diagnostic> {
+        parse_line_gopls(line)
+    }
 }

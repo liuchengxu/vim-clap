@@ -1024,6 +1024,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+ "which",
 ]
 
 [[package]]
@@ -2452,6 +2453,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "tree-sitter-dockerfile"
+version = "0.1.0"
+source = "git+https://github.com/liuchengxu/tree-sitter-dockerfile?rev=be454233564871db713aab035e9cdc4c3ec572dc#be454233564871db713aab035e9cdc4c3ec572dc"
+dependencies = [
+ "cc",
+ "tree-sitter",
+]
+
+[[package]]
 name = "tree-sitter-go"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2553,6 +2563,7 @@ dependencies = [
  "tree-sitter-bash",
  "tree-sitter-c",
  "tree-sitter-cpp",
+ "tree-sitter-dockerfile",
  "tree-sitter-go",
  "tree-sitter-highlight",
  "tree-sitter-javascript",

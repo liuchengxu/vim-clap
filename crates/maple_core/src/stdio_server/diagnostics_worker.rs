@@ -239,7 +239,10 @@ fn convert_lsp_diagnostic_to_diagnostic(lsp_diag: maple_lsp::lsp::Diagnostic) ->
         })
         .unwrap_or_default();
 
-    let message = lsp_diag.message;
+    // Replace "\r\n", "\r", and "\n" with " "
+    let message = ["\r\n", "\r", "\n"]
+        .iter()
+        .fold(lsp_diag.message, |acc, &newline| acc.replace(newline, " "));
 
     let spans = vec![DiagnosticSpan {
         line_start: lsp_diag.range.start.line as usize + 1,
@@ -327,6 +330,9 @@ impl BufferDiagnosticsWorker {
                         .entry(bufnr)
                         .and_modify(|v| v.reset())
                         .or_insert_with(BufferDiagnostics::new);
+                    self.vim
+                        .setbufvar(bufnr, "clap_diagnostics", Stats::default())?;
+                    self.vim.exec("clap#plugin#linter#toggle_off", [bufnr])?;
                 }
                 WorkerMessage::LinterDiagnostics((bufnr, linter_diagnostics)) => {
                     tracing::debug!(bufnr, "Recv linter diagnostics: {linter_diagnostics:?}");

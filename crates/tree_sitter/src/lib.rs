@@ -58,13 +58,27 @@ thread_local! {
     static HIGHLIGHTER: RefCell<Highlighter> = RefCell::new(Highlighter::new());
 }
 
-/// Implements the syntax highlighting.
-pub fn highlight(
-    language: Language,
-    source: &[u8],
-) -> Result<BTreeMap<usize, Vec<HighlightItem>>, tree_sitter_highlight::Error> {
-    let config = language::get_highlight_config(language);
-    HIGHLIGHTER.with_borrow_mut(|highlighter| highlight_inner(highlighter, &config, source))
+impl Language {
+    /// Returns the syntax highlights of multiple lines.
+    pub fn highlight(
+        self,
+        source: &[u8],
+    ) -> Result<BTreeMap<usize, Vec<HighlightItem>>, tree_sitter_highlight::Error> {
+        let config = language::get_highlight_config(self);
+        HIGHLIGHTER.with_borrow_mut(|highlighter| highlight_inner(highlighter, &config, source))
+    }
+
+    /// Returns the syntax highlights of a single line.
+    pub fn highlight_line(
+        self,
+        source: &[u8],
+    ) -> Result<Vec<HighlightItem>, tree_sitter_highlight::Error> {
+        let config = language::get_highlight_config(self);
+        HIGHLIGHTER.with_borrow_mut(|highlighter| {
+            highlight_inner(highlighter, &config, source)
+                .map(|x| x.get(&0).cloned().unwrap_or_default())
+        })
+    }
 }
 
 fn highlight_inner(
@@ -189,6 +203,42 @@ fn pretty_print_tree_impl<W: std::fmt::Write>(
 #[cfg(test)]
 mod tests {
     // use super::*;
+
+    #[test]
+    fn test_highlight_line() {
+        // let line = b"let config = language::get_highlight_config(language);";
+
+        let line = b"pub fn parse_scopes(query: &str) -> Vec<&str> {";
+
+        let highlight_items = crate::language::Language::Rust
+            .highlight_line(line)
+            .unwrap();
+        println!("{highlight_items:?}");
+
+        let syntax_tokens = highlight_items
+            .into_iter()
+            .map(|i| {
+                (
+                    crate::Language::Rust.highlight_name(i.highlight),
+                    String::from_utf8_lossy(&line[i.start.column..i.end.column]),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        println!("syntax_tokens: {syntax_tokens:?}");
+
+        // assert_eq!(
+        // syntax_tokens,
+        // vec![
+        // "keyword",
+        // "punctuation.delimiter",
+        // "function",
+        // "punctuation.bracket",
+        // "punctuation.bracket",
+        // "punctuation.delimiter"
+        // ]
+        // )
+    }
 
     #[test]
     fn test_parse_highlight_groups() {

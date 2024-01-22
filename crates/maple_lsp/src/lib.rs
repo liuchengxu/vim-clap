@@ -3,7 +3,8 @@ mod language_server_message;
 use futures_util::TryFutureExt;
 use lsp::request::Request as RequestT;
 use lsp::{
-    GotoDefinitionParams, Position, ProgressToken, ServerCapabilities, TextDocumentIdentifier, Url,
+    GotoDefinitionParams, OneOf, Position, ProgressToken, ServerCapabilities,
+    TextDocumentIdentifier, Url,
 };
 use parking_lot::Mutex;
 use rpc::{Id, Params, RpcMessage, RpcNotification, RpcRequest, RpcResponse, Version};
@@ -33,8 +34,8 @@ pub enum Error {
     FailedToInitServer,
     #[error("method {0} is unsupported by language server")]
     Unsupported(&'static str),
-    #[error("client request returns a failure response: {0:?}")]
-    RequestFailure(rpc::Failure),
+    #[error("received a failure response: {0:?}")]
+    ResponseFailure(rpc::Failure),
     #[error("stream closed")]
     StreamClosed,
     #[error("Unhandled message")]
@@ -671,7 +672,7 @@ impl Client {
         self.server_tx.send(RpcMessage::Request(rpc_request))?;
         match request_result_rx.await? {
             RpcResponse::Success(ok) => Ok(serde_json::from_value(ok.result)?),
-            RpcResponse::Failure(err) => Err(Error::RequestFailure(err)),
+            RpcResponse::Failure(err) => Err(Error::ResponseFailure(err)),
         }
     }
 
@@ -1193,6 +1194,34 @@ impl Client {
 
         self.request::<lsp::request::CodeActionRequest>(params)
             .await
+    }
+
+    pub async fn rename_symbol(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+        new_name: String,
+    ) -> Result<Option<lsp::WorkspaceEdit>, Error> {
+        let capabilities = self.capabilities.get().ok_or(Error::Uninitialized)?;
+
+        // Return early if the server does not support code actions.
+        match capabilities.rename_provider {
+            Some(OneOf::Left(true)) | Some(OneOf::Right(_)) => (),
+            _ => return Ok(None),
+        }
+
+        let params = lsp::RenameParams {
+            text_document_position: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            new_name,
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+        };
+
+        self.request::<lsp::request::Rename>(params).await
     }
 
     pub async fn shutdown(&self) -> Result<(), Error> {

@@ -2,7 +2,7 @@ mod hooks;
 mod impls;
 
 use self::hooks::{initialize_provider, CachedPreviewImpl, Preview, PreviewTarget};
-use crate::searcher::blines::BlinesItem;
+use crate::searcher::file::BlinesItem;
 use crate::searcher::SearchContext;
 use crate::stdio_server::input::{
     InputRecorder, InternalProviderEvent, KeyEvent, KeyEventType, ProviderEvent,
@@ -311,6 +311,7 @@ impl Context {
             "grep" => Icon::Enabled(IconKind::Grep),
             "projtags" => Icon::Enabled(IconKind::ProjTags),
             "buffertags" => Icon::Enabled(IconKind::BufferTags),
+            "lsp" => Icon::ClapItem,
             _ => Icon::Null,
         };
 

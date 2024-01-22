@@ -88,7 +88,7 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync {
     }
 
     /// Text specifically for performing the fuzzy matching, part of the entire
-    /// mathcing pipeline.
+    /// matching pipeline.
     ///
     /// The fuzzy matching process only happens when Some(_) is returned.
     fn fuzzy_text(&self, match_scope: MatchScope) -> Option<FuzzyText> {
