@@ -55,7 +55,7 @@ impl CtagsPlugin {
     async fn set_winbar(&self, bufnr: usize, tag: &BufferTag) -> Result<(), PluginError> {
         const SEP: char = '';
 
-        let winid = self.vim.bare_call::<usize>("nvim_get_current_win").await?;
+        let winid = self.vim.bare_call::<usize>("win_getid").await?;
 
         if self.vim.call::<usize>("winbufnr", [winid]).await? == bufnr {
             let mut winbar_items = if let Some(scope) = &tag.scope {
@@ -84,10 +84,49 @@ impl CtagsPlugin {
         Ok(())
     }
 
-    /// Updates the buffer variable `clap_current_symbol`.
+    // Update states if there is no symbol found at current position.
+    async fn on_no_symbol_found(
+        &mut self,
+        bufnr: usize,
+        winbar_enabled: bool,
+    ) -> Result<(), PluginError> {
+        self.vim.setbufvar(bufnr, "clap_current_symbol", {})?;
+
+        let should_reset_winbar = self.last_cursor_tag.take().is_some();
+        if winbar_enabled && should_reset_winbar {
+            let winid = self.vim.call::<usize>("bufwinid", [bufnr]).await?;
+
+            self.vim
+                .exec("clap#api#set_winbar", (winid, serde_json::json!([])))?;
+
+            // Redraw the statusline to reflect the latest tag.
+            self.vim.exec("execute", ["redrawstatus"])?;
+        }
+
+        Ok(())
+    }
+
+    /// Fetch the symbol at cursor and update the states accordingly.
     async fn on_cursor_moved(&mut self, bufnr: usize) -> Result<(), PluginError> {
         let Some(buffer_tags) = self.buf_tags.get(&bufnr) else {
             return Ok(());
+        };
+
+        let winbar_enabled = match self.enable_winbar {
+            Some(x) => x,
+            None => {
+                // Neovim-only
+                let is_nvim = self
+                    .vim
+                    .call::<usize>("has", "nvim")
+                    .await
+                    .map(|x| x == 1)
+                    .unwrap_or(false);
+
+                self.enable_winbar.replace(is_nvim);
+
+                is_nvim
+            }
         };
 
         let curlnum = self.vim.line(".").await?;
@@ -97,12 +136,12 @@ impl CtagsPlugin {
                 Some(idx) => idx,
                 None => {
                     // Before the first tag.
-                    self.vim.setbufvar(bufnr, "clap_current_symbol", {})?;
-                    self.last_cursor_tag.take();
+                    self.on_no_symbol_found(bufnr, winbar_enabled).await?;
                     return Ok(());
                 }
             },
         };
+
         if let Some(tag) = buffer_tags.get(idx) {
             if let Some(last_cursor_tag) = &self.last_cursor_tag {
                 if last_cursor_tag == tag {
@@ -122,23 +161,6 @@ impl CtagsPlugin {
                 }),
             )?;
 
-            let winbar_enabled = match self.enable_winbar {
-                Some(x) => x,
-                None => {
-                    // Neovim-only
-                    let is_nvim = self
-                        .vim
-                        .call::<usize>("has", "nvim")
-                        .await
-                        .map(|x| x == 1)
-                        .unwrap_or(false);
-
-                    self.enable_winbar.replace(is_nvim);
-
-                    is_nvim
-                }
-            };
-
             if winbar_enabled {
                 self.set_winbar(bufnr, &tag).await?;
             }
@@ -148,8 +170,7 @@ impl CtagsPlugin {
 
             self.last_cursor_tag.replace(tag.clone());
         } else {
-            self.vim.setbufvar(bufnr, "clap_current_symbol", {})?;
-            self.last_cursor_tag.take();
+            self.on_no_symbol_found(bufnr, winbar_enabled).await?;
         }
 
         Ok(())
