@@ -535,6 +535,9 @@ impl Context {
         tracing::debug!("ProviderSession {session_id:?}-{provider_id} terminated");
         let mut input_history = crate::datastore::INPUT_HISTORY_IN_MEMORY.lock();
         input_history.update_inputs(provider_id, self.input_recorder.clone().into_inputs());
+        if let Err(err) = crate::datastore::store_input_history(&input_history) {
+            tracing::error!(?err, "Failed to sync the latest input history to the disk.");
+        }
     }
 
     pub async fn record_input(&mut self) -> VimResult<()> {

@@ -3,6 +3,7 @@ use crate::stdio_server::provider::ProviderId;
 use crate::stdio_server::service::ProviderSessionId;
 use crate::stdio_server::Error;
 use rpc::{Params, RpcNotification};
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -168,7 +169,7 @@ impl ProviderEventSender {
 }
 
 /// Input history of all providers.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct InputHistory(HashMap<ProviderId, VecDeque<String>>);
 
 impl InputHistory {
