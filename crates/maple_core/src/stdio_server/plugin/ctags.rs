@@ -60,21 +60,21 @@ impl CtagsPlugin {
         if self.vim.call::<usize>("winbufnr", [winid]).await? == bufnr {
             let mut winbar_items = if let Some(scope) = &tag.scope {
                 vec![
-                    ("LineNr", format!("\\ {SEP}\\ ")),
+                    ("LineNr", format!(" {SEP} ")),
                     (
                         "Include",
                         format!("{}", icon::tags_kind_icon(&scope.scope_kind)),
                     ),
-                    ("Normal", format!("\\ {}", &scope.scope)),
+                    ("Normal", format!(" {}", &scope.scope)),
                 ]
             } else {
                 Vec::new()
             };
 
             winbar_items.extend([
-                ("LineNr", format!("\\ {SEP}\\ ")),
+                ("LineNr", format!(" {SEP} ")),
                 ("Type", format!("{}", icon::tags_kind_icon(&tag.kind))),
-                ("Normal", format!("\\ {}", &tag.name)),
+                ("Normal", format!(" {}", &tag.name)),
             ]);
 
             self.vim

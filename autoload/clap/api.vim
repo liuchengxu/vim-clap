@@ -161,7 +161,7 @@ endfunction
 function! clap#api#set_winbar(winid, items) abort
   let winbar = ''
   for i in a:items
-    let winbar .= printf('%%#%s#%s%%*', i[0], i[1])
+    let winbar .= printf('%%#%s#%s%%*', i[0], escape(i[1], ' '))
   endfor
   call clap#api#win_execute(a:winid, 'setlocal winbar='.l:winbar)
 endfunction
