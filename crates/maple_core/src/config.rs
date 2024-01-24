@@ -150,6 +150,9 @@ pub struct CtagsPluginConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
 
+    /// Whether to enable winbar. (Neovim only)
+    pub enable_winbar: bool,
+
     /// Disable this plugin if the file size exceeds the max size limit.
     ///
     /// By default the max file size limit is 4MiB.
@@ -160,6 +163,7 @@ impl Default for CtagsPluginConfig {
     fn default() -> Self {
         Self {
             enable: false,
+            enable_winbar: false,
             max_file_size: 4 * 1024 * 1024,
         }
     }

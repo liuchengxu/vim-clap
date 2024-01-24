@@ -30,6 +30,7 @@ impl<'a> ScopeRef<'a> {
 #[clap_plugin(id = "ctags")]
 pub struct CtagsPlugin {
     vim: Vim,
+    enable_winbar: Option<bool>,
     last_cursor_tag: Option<BufferTag>,
     buf_tags: HashMap<usize, Vec<BufferTag>>,
     file_size_checker: SizeChecker,
@@ -40,10 +41,47 @@ impl CtagsPlugin {
         let ctags_config = &crate::config::config().plugin.ctags;
         Self {
             vim,
+            enable_winbar: if !ctags_config.enable_winbar {
+                Some(false)
+            } else {
+                None
+            },
             last_cursor_tag: None,
             buf_tags: HashMap::new(),
             file_size_checker: SizeChecker::new(ctags_config.max_file_size),
         }
+    }
+
+    async fn set_winbar(&self, bufnr: usize, tag: &BufferTag) -> Result<(), PluginError> {
+        const SEP: char = '';
+
+        let winid = self.vim.bare_call::<usize>("nvim_get_current_win").await?;
+
+        if self.vim.call::<usize>("winbufnr", [winid]).await? == bufnr {
+            let mut winbar_items = if let Some(scope) = &tag.scope {
+                vec![
+                    ("LineNr", format!("\\ {SEP}\\ ")),
+                    (
+                        "Include",
+                        format!("{}", icon::tags_kind_icon(&scope.scope_kind)),
+                    ),
+                    ("Normal", format!("\\ {}", &scope.scope)),
+                ]
+            } else {
+                Vec::new()
+            };
+
+            winbar_items.extend([
+                ("LineNr", format!("\\ {SEP}\\ ")),
+                ("Type", format!("{}", icon::tags_kind_icon(&tag.kind))),
+                ("Normal", format!("\\ {}", &tag.name)),
+            ]);
+
+            self.vim
+                .exec("clap#api#set_winbar", (winid, winbar_items))?;
+        }
+
+        Ok(())
     }
 
     /// Updates the buffer variable `clap_current_symbol`.
@@ -83,6 +121,27 @@ impl CtagsPlugin {
                     "scope": tag.scope.as_ref().map(ScopeRef::from_scope),
                 }),
             )?;
+
+            let winbar_enabled = match self.enable_winbar {
+                Some(x) => x,
+                None => {
+                    // Neovim-only
+                    let is_nvim = self
+                        .vim
+                        .call::<usize>("has", "nvim")
+                        .await
+                        .map(|x| x == 1)
+                        .unwrap_or(false);
+
+                    self.enable_winbar.replace(is_nvim);
+
+                    is_nvim
+                }
+            };
+
+            if winbar_enabled {
+                self.set_winbar(bufnr, &tag).await?;
+            }
 
             // Redraw the statusline to reflect the latest tag.
             self.vim.exec("execute", ["redrawstatus"])?;

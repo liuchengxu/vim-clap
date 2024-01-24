@@ -158,6 +158,14 @@ function! s:api.curbufline(lnum) abort
   return get(getbufline(bufnr(''), a:lnum), 0, v:null)
 endfunction
 
+function! clap#api#set_winbar(winid, items) abort
+  let winbar = ''
+  for i in a:items
+    let winbar .= printf('%%#%s#%s%%*', i[0], i[1])
+  endfor
+  call clap#api#win_execute(a:winid, 'setlocal winbar='.l:winbar)
+endfunction
+
 function! s:api.append_and_write(lnum, text) abort
   call append(a:lnum, a:text)
   silent noautocmd write
