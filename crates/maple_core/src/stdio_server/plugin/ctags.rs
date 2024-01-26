@@ -58,36 +58,56 @@ impl CtagsPlugin {
 
         let winid = self.vim.bare_call::<usize>("win_getid").await?;
 
+        let path = self.vim.expand(format!("#{bufnr}")).await?;
+
+        let mut winbar_items = Vec::new();
+
+        let mut segments = path.split(std::path::MAIN_SEPARATOR);
+
+        if let Some(seg) = segments.next() {
+            winbar_items.push(("Normal", seg.to_string()));
+        }
+
+        winbar_items.extend(
+            segments.flat_map(|seg| [("LineNr", format!(" {SEP} ")), ("Normal", format!("{seg}"))]),
+        );
+
+        // Add icon to the filename.
+        if let Some(last) = winbar_items.pop() {
+            winbar_items.extend([
+                ("Label", format!("{} ", icon::file_icon(&last.1))),
+                ("Normal", last.1),
+            ]);
+        }
+
         if self.vim.call::<usize>("winbufnr", [winid]).await? == bufnr {
-            let mut winbar_items = if let Some(scope) = &tag.scope {
-                vec![
+            if let Some(scope) = &tag.scope {
+                winbar_items.extend([
                     ("LineNr", format!(" {SEP} ")),
                     (
                         "Include",
                         format!("{}", icon::tags_kind_icon(&scope.scope_kind)),
                     ),
                     ("ModeMsg", format!(" {}", &scope.scope)),
-                ]
-            } else {
-                Vec::new()
-            };
+                ]);
+            }
 
             winbar_items.extend([
                 ("LineNr", format!(" {SEP} ")),
                 ("Type", format!("{}", icon::tags_kind_icon(&tag.kind))),
                 ("ModeMsg", format!(" {}", &tag.name)),
             ]);
+        }
 
-            if winbar_items.is_empty() {
-                self.vim.exec("clap#api#set_winbar", (winid, ""))?;
-            } else {
-                let winbar = winbar_items
-                    .iter()
-                    .map(|(highlight, value)| format!("%#{highlight}#{value}%*"))
-                    .join("");
+        if winbar_items.is_empty() {
+            self.vim.exec("clap#api#set_winbar", (winid, ""))?;
+        } else {
+            let winbar = winbar_items
+                .iter()
+                .map(|(highlight, value)| format!("%#{highlight}#{value}%*"))
+                .join("");
 
-                self.vim.exec("clap#api#set_winbar", (winid, winbar))?;
-            }
+            self.vim.exec("clap#api#set_winbar", (winid, winbar))?;
         }
 
         Ok(())
