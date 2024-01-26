@@ -3,6 +3,7 @@ use crate::stdio_server::plugin::{ClapPlugin, PluginError};
 use crate::stdio_server::vim::Vim;
 use crate::tools::ctags::{BufferTag, Scope};
 use icon::IconType;
+use itertools::Itertools;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -65,7 +66,7 @@ impl CtagsPlugin {
                         "Include",
                         format!("{}", icon::tags_kind_icon(&scope.scope_kind)),
                     ),
-                    ("Normal", format!(" {}", &scope.scope)),
+                    ("ModeMsg", format!(" {}", &scope.scope)),
                 ]
             } else {
                 Vec::new()
@@ -74,11 +75,19 @@ impl CtagsPlugin {
             winbar_items.extend([
                 ("LineNr", format!(" {SEP} ")),
                 ("Type", format!("{}", icon::tags_kind_icon(&tag.kind))),
-                ("Normal", format!(" {}", &tag.name)),
+                ("ModeMsg", format!(" {}", &tag.name)),
             ]);
 
-            self.vim
-                .exec("clap#api#set_winbar", (winid, winbar_items))?;
+            if winbar_items.is_empty() {
+                self.vim.exec("clap#api#set_winbar", (winid, ""))?;
+            } else {
+                let winbar = winbar_items
+                    .iter()
+                    .map(|(highlight, value)| format!("%#{highlight}#{value}%*"))
+                    .join("");
+
+                self.vim.exec("clap#api#set_winbar", (winid, winbar))?;
+            }
         }
 
         Ok(())
@@ -116,15 +125,8 @@ impl CtagsPlugin {
             Some(x) => x,
             None => {
                 // Neovim-only
-                let is_nvim = self
-                    .vim
-                    .call::<usize>("has", "nvim")
-                    .await
-                    .map(|x| x == 1)
-                    .unwrap_or(false);
-
+                let is_nvim = self.vim.has("nvim").await.unwrap_or(false);
                 self.enable_winbar.replace(is_nvim);
-
                 is_nvim
             }
         };
@@ -135,7 +137,7 @@ impl CtagsPlugin {
             Err(idx) => match idx.checked_sub(1) {
                 Some(idx) => idx,
                 None => {
-                    // Before the first tag.
+                    // Cursor is in front of the first tag.
                     self.on_no_symbol_found(bufnr, winbar_enabled).await?;
                     return Ok(());
                 }

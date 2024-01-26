@@ -361,6 +361,12 @@ impl Vim {
         self.call("fnamemodify", [fname, mods]).await
     }
 
+    pub async fn has(&self, feature: impl Serialize) -> VimResult<bool> {
+        self.call::<usize>("has", [feature])
+            .await
+            .map(|supported| supported == 1)
+    }
+
     pub async fn getbufoneline(&self, buf: impl Serialize, lnum: usize) -> VimResult<String> {
         self.call("getbufoneline", (buf, lnum)).await
     }

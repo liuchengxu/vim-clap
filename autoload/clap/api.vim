@@ -37,6 +37,15 @@ else
   endfunction
 endif
 
+function! clap#api#set_winbar(winid, winbar) abort
+  if empty(a:winbar)
+    let l:winbar = ''
+  else
+    let l:winbar = escape(a:winbar, ' ')
+  endif
+  call clap#api#win_execute(a:winid, 'setlocal winbar='.l:winbar)
+endfunction
+
 let s:api = {}
 
 if s:is_nvim
@@ -156,14 +165,6 @@ endfunction
 
 function! s:api.curbufline(lnum) abort
   return get(getbufline(bufnr(''), a:lnum), 0, v:null)
-endfunction
-
-function! clap#api#set_winbar(winid, items) abort
-  let winbar = ''
-  for i in a:items
-    let winbar .= printf('%%#%s#%s%%*', i[0], escape(i[1], ' '))
-  endfor
-  call clap#api#win_execute(a:winid, 'setlocal winbar='.l:winbar)
 endfunction
 
 function! s:api.append_and_write(lnum, text) abort
