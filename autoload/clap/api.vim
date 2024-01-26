@@ -37,7 +37,7 @@ else
   endfunction
 endif
 
-function! clap#api#set_winbar(winid, winbar) abort
+function! clap#api#update_winbar(winid, winbar) abort
   if empty(a:winbar)
     let l:winbar = ''
   else

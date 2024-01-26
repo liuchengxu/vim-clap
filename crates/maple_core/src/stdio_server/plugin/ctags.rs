@@ -53,41 +53,68 @@ impl CtagsPlugin {
         }
     }
 
-    async fn set_winbar(&self, bufnr: usize, tag: &BufferTag) -> Result<(), PluginError> {
+    async fn update_winbar(
+        &self,
+        bufnr: usize,
+        tag: Option<&BufferTag>,
+    ) -> Result<(), PluginError> {
         const SEP: char = '';
 
         let winid = self.vim.bare_call::<usize>("win_getid").await?;
 
-        if self.vim.call::<usize>("winbufnr", [winid]).await? == bufnr {
-            let mut winbar_items = if let Some(scope) = &tag.scope {
-                vec![
-                    ("LineNr", format!(" {SEP} ")),
-                    (
-                        "Include",
-                        format!("{}", icon::tags_kind_icon(&scope.scope_kind)),
-                    ),
-                    ("ModeMsg", format!(" {}", &scope.scope)),
-                ]
-            } else {
-                Vec::new()
-            };
+        let path = self.vim.expand(format!("#{bufnr}")).await?;
 
+        let mut winbar_items = Vec::new();
+
+        // TODO: Cache the filepath section.
+        let mut segments = path.split(std::path::MAIN_SEPARATOR);
+
+        if let Some(seg) = segments.next() {
+            winbar_items.push(("Normal", seg.to_string()));
+        }
+
+        winbar_items.extend(
+            segments.flat_map(|seg| [("LineNr", format!(" {SEP} ")), ("Normal", format!("{seg}"))]),
+        );
+
+        // Add icon to the filename.
+        if let Some(last) = winbar_items.pop() {
             winbar_items.extend([
-                ("LineNr", format!(" {SEP} ")),
-                ("Type", format!("{}", icon::tags_kind_icon(&tag.kind))),
-                ("ModeMsg", format!(" {}", &tag.name)),
+                ("Label", format!("{} ", icon::file_icon(&last.1))),
+                ("Normal", last.1),
             ]);
+        }
 
-            if winbar_items.is_empty() {
-                self.vim.exec("clap#api#set_winbar", (winid, ""))?;
-            } else {
-                let winbar = winbar_items
-                    .iter()
-                    .map(|(highlight, value)| format!("%#{highlight}#{value}%*"))
-                    .join("");
+        if let Some(tag) = tag {
+            if self.vim.call::<usize>("winbufnr", [winid]).await? == bufnr {
+                if let Some(scope) = &tag.scope {
+                    winbar_items.extend([
+                        ("LineNr", format!(" {SEP} ")),
+                        (
+                            "Include",
+                            format!("{}", icon::tags_kind_icon(&scope.scope_kind)),
+                        ),
+                        ("ModeMsg", format!(" {}", &scope.scope)),
+                    ]);
+                }
 
-                self.vim.exec("clap#api#set_winbar", (winid, winbar))?;
+                winbar_items.extend([
+                    ("LineNr", format!(" {SEP} ")),
+                    ("Type", format!("{}", icon::tags_kind_icon(&tag.kind))),
+                    ("ModeMsg", format!(" {}", &tag.name)),
+                ]);
             }
+        }
+
+        if winbar_items.is_empty() {
+            self.vim.exec("clap#api#update_winbar", (winid, ""))?;
+        } else {
+            let winbar = winbar_items
+                .iter()
+                .map(|(highlight, value)| format!("%#{highlight}#{value}%*"))
+                .join("");
+
+            self.vim.exec("clap#api#update_winbar", (winid, winbar))?;
         }
 
         Ok(())
@@ -103,10 +130,7 @@ impl CtagsPlugin {
 
         let should_reset_winbar = self.last_cursor_tag.take().is_some();
         if winbar_enabled && should_reset_winbar {
-            let winid = self.vim.call::<usize>("bufwinid", [bufnr]).await?;
-
-            self.vim
-                .exec("clap#api#set_winbar", (winid, serde_json::json!([])))?;
+            self.update_winbar(bufnr, None).await?;
 
             // Redraw the statusline to reflect the latest tag.
             self.vim.exec("execute", ["redrawstatus"])?;
@@ -164,7 +188,7 @@ impl CtagsPlugin {
             )?;
 
             if winbar_enabled {
-                self.set_winbar(bufnr, &tag).await?;
+                self.update_winbar(bufnr, Some(&tag)).await?;
             }
 
             // Redraw the statusline to reflect the latest tag.
