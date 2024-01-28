@@ -27,6 +27,21 @@ impl<'a> ScopeRef<'a> {
     }
 }
 
+fn shrink_text_to_fit(path: String, max_width: usize) -> String {
+    if path.len() < max_width {
+        path
+    } else {
+        const DOTS: char = '…';
+        let to_shrink_len = path.len() - max_width;
+        let left = path.chars().take(max_width / 2).collect::<String>();
+        let right = path
+            .chars()
+            .skip(max_width / 2 + 1 + to_shrink_len)
+            .collect::<String>();
+        format!("{left}{DOTS}{right}")
+    }
+}
+
 #[derive(Debug, maple_derive::ClapPlugin)]
 #[clap_plugin(id = "ctags")]
 pub struct CtagsPlugin {
@@ -61,46 +76,76 @@ impl CtagsPlugin {
         const SEP: char = '';
 
         let winid = self.vim.bare_call::<usize>("win_getid").await?;
+        let winwidth = self.vim.winwidth(winid).await?;
 
         let path = self.vim.expand(format!("#{bufnr}")).await?;
 
         let mut winbar_items = Vec::new();
 
-        // TODO: Cache the filepath section.
-        let mut segments = path.split(std::path::MAIN_SEPARATOR);
-
-        if let Some(seg) = segments.next() {
-            winbar_items.push(("Normal", seg.to_string()));
+        enum PathStyle {
+            /// Display each component in path in one segment.
+            ///
+            /// crates > maple_core > src > stdio_server > plugin > ctags.rs
+            OneSegmentPerComponent,
+            /// Display the full path in one segment.
+            ///
+            /// crates/maple_core/src/stdio_server/plugin/ctags.rs
+            FullPath,
         }
 
-        winbar_items.extend(
-            segments.flat_map(|seg| [("LineNr", format!(" {SEP} ")), ("Normal", format!("{seg}"))]),
-        );
+        let path_style = PathStyle::FullPath;
 
-        // Add icon to the filename.
-        if let Some(last) = winbar_items.pop() {
-            winbar_items.extend([
-                ("Label", format!("{} ", icon::file_icon(&last.1))),
-                ("Normal", last.1),
-            ]);
+        match path_style {
+            PathStyle::OneSegmentPerComponent => {
+                // TODO: Cache the filepath section.
+                let mut segments = path.split(std::path::MAIN_SEPARATOR);
+
+                if let Some(seg) = segments.next() {
+                    winbar_items.push(("Normal", seg.to_string()));
+                }
+
+                winbar_items.extend(segments.flat_map(|seg| {
+                    [("LineNr", format!(" {SEP} ")), ("Normal", format!("{seg}"))]
+                }));
+
+                // Add icon to the filename.
+                if let Some(last) = winbar_items.pop() {
+                    winbar_items.extend([
+                        ("Label", format!("{} ", icon::file_icon(&last.1))),
+                        ("Normal", last.1),
+                    ]);
+                }
+            }
+            PathStyle::FullPath => {
+                let icon_part = format!("{} ", icon::file_icon(&path));
+                let max_width = winwidth / 2 - icon_part.len();
+                winbar_items.extend([
+                    ("Label", icon_part),
+                    ("Normal", shrink_text_to_fit(path, max_width)),
+                ]);
+            }
         }
 
         if let Some(tag) = tag {
             if self.vim.call::<usize>("winbufnr", [winid]).await? == bufnr {
                 if let Some(scope) = &tag.scope {
+                    let mut scope_kind_icon = icon::tags_kind_icon(&scope.scope_kind).to_string();
+                    scope_kind_icon.push_str(" ");
+                    let scope_max_width = winwidth / 4 - scope_kind_icon.len();
                     winbar_items.extend([
                         ("LineNr", format!(" {SEP} ")),
+                        ("Include", scope_kind_icon),
                         (
-                            "Include",
-                            format!("{}", icon::tags_kind_icon(&scope.scope_kind)),
+                            "ModeMsg",
+                            shrink_text_to_fit(scope.scope.clone(), scope_max_width),
                         ),
-                        ("ModeMsg", format!(" {}", &scope.scope)),
                     ]);
                 }
 
+                let tag_kind_icon = icon::tags_kind_icon(&tag.kind).to_string();
                 winbar_items.extend([
                     ("LineNr", format!(" {SEP} ")),
-                    ("Type", format!("{}", icon::tags_kind_icon(&tag.kind))),
+                    ("Type", tag_kind_icon),
                     ("ModeMsg", format!(" {}", &tag.name)),
                 ]);
             }
@@ -216,6 +261,8 @@ impl ClapPlugin for CtagsPlugin {
         let (event_type, params) = autocmd;
 
         let bufnr = params.parse_bufnr()?;
+
+        tracing::debug!(?event_type, "============= ctags autocmd");
 
         match event_type {
             BufEnter | BufWritePost => {
