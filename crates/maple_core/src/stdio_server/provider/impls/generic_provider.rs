@@ -205,6 +205,13 @@ impl ClapProvider for GenericProvider {
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.input_get().await?;
 
+        // Handle the empty separately, otherwise the order of items may be altered
+        // due to the filtering later, which is inconsistent with `on_initialize` behaviour.
+        if query.is_empty() {
+            ctx.update_on_empty_query().await?;
+            return Ok(());
+        }
+
         let small_list_response =
             if let ProviderSource::Small { ref items, .. } = *ctx.provider_source.read() {
                 let matched_items = filter::par_filter_items(items, &ctx.matcher(&query));
