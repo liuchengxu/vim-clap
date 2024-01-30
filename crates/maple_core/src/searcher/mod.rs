@@ -72,6 +72,7 @@ impl Default for WalkConfig {
 }
 
 fn walk_parallel(paths: Vec<PathBuf>, walk_config: WalkConfig) -> WalkParallel {
+    // TODO: smarter paths to search the parent directory of path first?
     let mut builder = WalkBuilder::new(&paths[0]);
     for path in &paths[1..] {
         builder.add(path);

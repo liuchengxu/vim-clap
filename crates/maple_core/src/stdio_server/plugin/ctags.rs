@@ -117,12 +117,8 @@ impl CtagsPlugin {
                 }
             }
             PathStyle::FullPath => {
-                let icon_part = format!("{} ", icon::file_icon(&path));
-                let max_width = winwidth / 2 - icon_part.len();
-                winbar_items.extend([
-                    ("Label", icon_part),
-                    ("Normal", shrink_text_to_fit(path, max_width)),
-                ]);
+                let max_width = winwidth / 2;
+                winbar_items.push(("Normal", shrink_text_to_fit(path, max_width)));
             }
         }
 
