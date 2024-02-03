@@ -143,15 +143,47 @@ pub struct MarkdownPluginConfig {
     pub enable: bool,
 }
 
+#[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub enum FilePathStyle {
+    /// Display each component in path in one segment.
+    ///
+    /// crates > maple_core > src > stdio_server > plugin > ctags.rs
+    #[default]
+    OneSegmentPerComponent,
+
+    /// Display the full path in one segment.
+    ///
+    /// crates/maple_core/src/stdio_server/plugin/ctags.rs
+    FullPath,
+}
+
+/// Winbar config. (Neovim only)
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct WinbarConfig {
+    /// Whether to enable the winbar.
+    pub enable: bool,
+
+    /// Specify the display style for the file path in winbar.
+    pub file_path_style: FilePathStyle,
+}
+
+impl Default for WinbarConfig {
+    fn default() -> Self {
+        Self {
+            enable: false,
+            file_path_style: FilePathStyle::OneSegmentPerComponent,
+        }
+    }
+}
+
 /// Ctags plugin.
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct CtagsPluginConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
-
-    /// Whether to enable winbar. (Neovim only)
-    pub enable_winbar: bool,
 
     /// Disable this plugin if the file size exceeds the max size limit.
     ///
@@ -163,7 +195,6 @@ impl Default for CtagsPluginConfig {
     fn default() -> Self {
         Self {
             enable: false,
-            enable_winbar: false,
             max_file_size: 4 * 1024 * 1024,
         }
     }
@@ -370,6 +401,9 @@ pub struct Config {
 
     /// Plugin configuration.
     pub plugin: PluginConfig,
+
+    /// Winbar configuration.
+    pub winbar: WinbarConfig,
 
     /// Provider (fuzzy picker) configuration.
     pub provider: ProviderConfig,

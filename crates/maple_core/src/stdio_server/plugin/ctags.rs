@@ -1,3 +1,4 @@
+use crate::config::FilePathStyle;
 use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ClapPlugin, PluginError};
 use crate::stdio_server::vim::Vim;
@@ -57,7 +58,7 @@ impl CtagsPlugin {
         let ctags_config = &crate::config::config().plugin.ctags;
         Self {
             vim,
-            enable_winbar: if !ctags_config.enable_winbar {
+            enable_winbar: if !crate::config::config().winbar.enable {
                 Some(false)
             } else {
                 None
@@ -82,21 +83,10 @@ impl CtagsPlugin {
 
         let mut winbar_items = Vec::new();
 
-        enum PathStyle {
-            /// Display each component in path in one segment.
-            ///
-            /// crates > maple_core > src > stdio_server > plugin > ctags.rs
-            OneSegmentPerComponent,
-            /// Display the full path in one segment.
-            ///
-            /// crates/maple_core/src/stdio_server/plugin/ctags.rs
-            FullPath,
-        }
-
-        let path_style = PathStyle::FullPath;
+        let path_style = &crate::config::config().winbar.file_path_style;
 
         match path_style {
-            PathStyle::OneSegmentPerComponent => {
+            FilePathStyle::OneSegmentPerComponent => {
                 // TODO: Cache the filepath section.
                 let mut segments = path.split(std::path::MAIN_SEPARATOR);
 
@@ -104,9 +94,11 @@ impl CtagsPlugin {
                     winbar_items.push(("Normal", seg.to_string()));
                 }
 
-                winbar_items.extend(segments.flat_map(|seg| {
-                    [("LineNr", format!(" {SEP} ")), ("Normal", format!("{seg}"))]
-                }));
+                winbar_items.extend(
+                    segments.flat_map(|seg| {
+                        [("LineNr", format!(" {SEP} ")), ("Normal", seg.to_string())]
+                    }),
+                );
 
                 // Add icon to the filename.
                 if let Some(last) = winbar_items.pop() {
@@ -116,9 +108,23 @@ impl CtagsPlugin {
                     ]);
                 }
             }
-            PathStyle::FullPath => {
-                let max_width = winwidth / 2;
-                winbar_items.push(("Normal", shrink_text_to_fit(path, max_width)));
+            FilePathStyle::FullPath => {
+                let max_width = match tag {
+                    Some(tag) => {
+                        if tag.scope.is_some() {
+                            winwidth / 2
+                        } else {
+                            winwidth * 2 / 3
+                        }
+                    }
+                    None => winwidth,
+                };
+                let path = if let Some(home) = dirs::Dirs::base().home_dir().to_str() {
+                    path.replacen(home, "~", 1)
+                } else {
+                    path
+                };
+                winbar_items.push(("LineNr", shrink_text_to_fit(path, max_width)));
             }
         }
 
@@ -126,7 +132,7 @@ impl CtagsPlugin {
             if self.vim.call::<usize>("winbufnr", [winid]).await? == bufnr {
                 if let Some(scope) = &tag.scope {
                     let mut scope_kind_icon = icon::tags_kind_icon(&scope.scope_kind).to_string();
-                    scope_kind_icon.push_str(" ");
+                    scope_kind_icon.push(' ');
                     let scope_max_width = winwidth / 4 - scope_kind_icon.len();
                     winbar_items.extend([
                         ("LineNr", format!(" {SEP} ")),
@@ -229,7 +235,7 @@ impl CtagsPlugin {
             )?;
 
             if winbar_enabled {
-                self.update_winbar(bufnr, Some(&tag)).await?;
+                self.update_winbar(bufnr, Some(tag)).await?;
             }
 
             // Redraw the statusline to reflect the latest tag.
