@@ -9,7 +9,7 @@ python-dynamic-module:
 	cd pythonx/clap && $(MAKE_CMD) build
 
 config-md:
-	cd crates/config_gen && cargo run
+	cd crates/maple_config/doc_gen && cargo run
 
 clippy:
 	cd crates && cargo clippy --workspace --all-features --all-targets -- -D warnings

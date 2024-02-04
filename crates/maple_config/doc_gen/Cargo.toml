@@ -1,11 +1,13 @@
 [package]
-name = "config_gen"
+name = "doc_gen"
 version = "0.1.0"
 edition = "2021"
+description = "Generate config markdown document from the inline docs"
 
 [dependencies]
 inflections = "1.1.1"
-maple_core = { path = "../maple_core" }
+maple_config = { path = "../" }
+maple_core = { path = "../../maple_core" }
 toml = "0.5"
 syn = { version = "1", features = ["full"] }
 quote = "1"

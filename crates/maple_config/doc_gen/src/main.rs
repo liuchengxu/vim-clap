@@ -1,6 +1,6 @@
 use inflections::case::to_snake_case;
 use itertools::Itertools;
-use maple_core::config::Config;
+use maple_config::Config;
 use quote::ToTokens;
 use std::{collections::BTreeMap, str::FromStr};
 use syn::{
@@ -9,7 +9,7 @@ use syn::{
 use toml_edit::Document;
 
 fn main() {
-    let source_code = include_str!("../../maple_core/src/config.rs");
+    let source_code = include_str!("../../src/lib.rs");
 
     // Parse the source code into an AST
     let ast: syn::File = syn::parse_str(source_code).expect("Failed to parse Rust source code");
@@ -36,6 +36,8 @@ fn main() {
         .unwrap()
         .parent()
         .unwrap()
+        .parent()
+        .unwrap()
         .join("docs")
         .join("src")
         .join("plugins")
@@ -43,7 +45,7 @@ fn main() {
 
     if !config_md.exists() {
         panic!(
-            "../../docs/src/plugins/config.md not found, cwd: {}",
+            "../../../docs/src/plugins/config.md not found, cwd: {}",
             current_dir.display()
         );
     }

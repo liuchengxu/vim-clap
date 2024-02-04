@@ -9,6 +9,7 @@ members = [
     "cli",
     "ide",
     "maple_config",
+    "maple_config/doc_gen",
     "maple_core",
     "maple_derive",
     "maple_lsp",
@@ -22,7 +23,7 @@ members = [
     "types",
     "tree_sitter",
     "utils",
-    "upgrade", "maple_tools", "maple_config",
+    "upgrade",
 ]
 
 exclude = ["config_gen"]
