@@ -1,7 +1,7 @@
 use super::QueryInfo;
-use crate::config::IgnoreConfig;
 use crate::find_usages::{AddressableUsage, CtagsSearcher, GtagsSearcher, RegexSearcher, Usages};
 use crate::tools::ctags::{get_language, TagsGenerator};
+use maple_config::IgnoreConfig;
 use paths::AbsPathBuf;
 use rayon::prelude::*;
 use std::collections::HashSet;
@@ -180,7 +180,7 @@ fn filter_usages(
         git_tracked_only,
         ignore_file_path_pattern,
         ..
-    } = crate::config::config().ignore_config("dumb_jump", cwd);
+    } = maple_config::config().ignore_config("dumb_jump", cwd);
 
     let mut addressable_usages = addressable_usages;
 

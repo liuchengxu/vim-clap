@@ -1,5 +1,4 @@
 pub mod cache;
-pub mod config;
 pub mod datastore;
 pub mod find_usages;
 pub mod helptags;

@@ -243,9 +243,9 @@ impl Syntax {
         raw_ts_highlights: &RawTsHighlights,
         file_size: FileSize,
     ) -> Result<Option<VimHighlights>, PluginError> {
-        use crate::config::RenderStrategy;
+        use maple_config::RenderStrategy;
 
-        let render_strategy = &crate::config::config().plugin.syntax.render_strategy;
+        let render_strategy = &maple_config::config().plugin.syntax.render_strategy;
 
         let highlight_range = match render_strategy {
             RenderStrategy::VisualLines => {

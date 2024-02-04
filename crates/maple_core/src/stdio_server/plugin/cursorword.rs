@@ -125,7 +125,7 @@ pub struct Cursorword {
 
 impl Cursorword {
     pub fn new(vim: Vim) -> Self {
-        let (ignore_extensions, ignore_file_names): (Vec<_>, Vec<_>) = crate::config::config()
+        let (ignore_extensions, ignore_file_names): (Vec<_>, Vec<_>) = maple_config::config()
             .plugin
             .cursorword
             .ignore_files
@@ -170,11 +170,7 @@ impl Cursorword {
         let [_bufnum, curlnum, col, _off] = self.vim.getpos(".").await?;
         let curline = self.vim.getbufoneline(bufnr, curlnum).await?;
 
-        if crate::config::config()
-            .plugin
-            .cursorword
-            .ignore_comment_line
-        {
+        if maple_config::config().plugin.cursorword.ignore_comment_line {
             if let Some(ext) = source_file.extension().and_then(|s| s.to_str()) {
                 if dumb_analyzer::is_comment(curline.as_str(), ext) {
                     return Ok(None);

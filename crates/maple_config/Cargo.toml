@@ -1,0 +1,13 @@
+[package]
+name = "maple_config"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dirs = { workspace = true }
+once_cell = { workspace = true }
+serde = { workspace = true }
+toml = { workspace = true }
+
+paths = { workspace = true }
+types = { workspace = true }

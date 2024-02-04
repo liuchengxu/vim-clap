@@ -12,7 +12,7 @@ pub struct Rpc;
 impl Rpc {
     pub async fn run(&self, args: Args) -> Result<()> {
         let (config, maybe_toml_err) =
-            maple_core::config::load_config_on_startup(args.config_file.clone());
+            maple_config::load_config_on_startup(args.config_file.clone());
 
         let maybe_log = if let Some(log_path) = args.log {
             Some(log_path)

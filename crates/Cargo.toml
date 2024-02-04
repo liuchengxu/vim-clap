@@ -8,6 +8,7 @@ members = [
     "icon",
     "cli",
     "ide",
+    "maple_config",
     "maple_core",
     "maple_derive",
     "maple_lsp",
@@ -21,7 +22,7 @@ members = [
     "types",
     "tree_sitter",
     "utils",
-    "upgrade",
+    "upgrade", "maple_tools", "maple_config",
 ]
 
 exclude = ["config_gen"]
@@ -77,6 +78,7 @@ dumb_analyzer = { path = "./dumb_analyzer" }
 filter = { path = "./filter" }
 icon = { path = "./icon" }
 ide = { path = "./ide" }
+maple_config = { path = "./maple_config" }
 maple_core = { path = "./maple_core" }
 maple_derive = { path = "./maple_derive" }
 maple_lsp = { path = "./maple_lsp" }

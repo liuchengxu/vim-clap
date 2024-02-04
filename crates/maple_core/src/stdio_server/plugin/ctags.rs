@@ -1,10 +1,10 @@
-use crate::config::FilePathStyle;
 use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ClapPlugin, PluginError};
 use crate::stdio_server::vim::Vim;
 use crate::tools::ctags::{BufferTag, Scope};
 use icon::IconType;
 use itertools::Itertools;
+use maple_config::FilePathStyle;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -55,10 +55,10 @@ pub struct CtagsPlugin {
 
 impl CtagsPlugin {
     pub fn new(vim: Vim) -> Self {
-        let ctags_config = &crate::config::config().plugin.ctags;
+        let ctags_config = &maple_config::config().plugin.ctags;
         Self {
             vim,
-            enable_winbar: if !crate::config::config().winbar.enable {
+            enable_winbar: if !maple_config::config().winbar.enable {
                 Some(false)
             } else {
                 None
@@ -83,7 +83,7 @@ impl CtagsPlugin {
 
         let mut winbar_items = Vec::new();
 
-        let path_style = &crate::config::config().winbar.file_path_style;
+        let path_style = &maple_config::config().winbar.file_path_style;
 
         match path_style {
             FilePathStyle::OneSegmentPerComponent => {
