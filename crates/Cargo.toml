@@ -8,6 +8,8 @@ members = [
     "icon",
     "cli",
     "ide",
+    "maple_config",
+    "maple_config/doc_gen",
     "maple_core",
     "maple_derive",
     "maple_lsp",
@@ -36,6 +38,7 @@ chrono = { version = "0.4", features = ["serde"] }
 chrono-humanize = "0.2.3"
 clap = { version = "4.2", features = ["derive"] }
 colors-transform = "0.2.11"
+criterion = "0.5"
 directories = "4.0"
 futures = "0.3"
 fuzzy-matcher = "0.3"
@@ -77,6 +80,7 @@ dumb_analyzer = { path = "./dumb_analyzer" }
 filter = { path = "./filter" }
 icon = { path = "./icon" }
 ide = { path = "./ide" }
+maple_config = { path = "./maple_config" }
 maple_core = { path = "./maple_core" }
 maple_derive = { path = "./maple_derive" }
 maple_lsp = { path = "./maple_lsp" }

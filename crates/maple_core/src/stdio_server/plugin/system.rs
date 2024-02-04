@@ -158,7 +158,7 @@ impl ClapPlugin for System {
                 }
             }
             SystemAction::OpenConfig => {
-                let config_file = crate::config::config_file();
+                let config_file = maple_config::config_file();
                 self.vim
                     .exec("execute", format!("edit {}", config_file.display()))?;
             }

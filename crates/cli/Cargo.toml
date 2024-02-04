@@ -27,6 +27,7 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 filter = { workspace = true }
 icon = { workspace = true }
 matcher = { workspace = true }
+maple_config = { workspace = true }
 maple_core = { workspace = true }
 pattern = { workspace = true }
 printer = { workspace = true }
@@ -34,7 +35,7 @@ types = { workspace = true }
 utils = { workspace = true }
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = { workspace = true }
 
 [[bench]]
 name = "benchmark"

@@ -37,6 +37,15 @@ else
   endfunction
 endif
 
+function! clap#api#update_winbar(winid, winbar) abort
+  if empty(a:winbar)
+    let l:winbar = ''
+  else
+    let l:winbar = escape(a:winbar, ' ')
+  endif
+  call clap#api#win_execute(a:winid, 'setlocal winbar='.l:winbar)
+endfunction
+
 let s:api = {}
 
 if s:is_nvim

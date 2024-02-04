@@ -111,7 +111,7 @@ fn initialize_service(vim: Vim) -> InitializedService {
     register_plugin(Box::new(SystemPlugin::new(vim.clone())), None);
     register_plugin(Box::new(SyntaxPlugin::new(vim.clone())), None);
 
-    let plugin_config = &crate::config::config().plugin;
+    let plugin_config = &maple_config::config().plugin;
 
     if plugin_config.lsp.enable || plugin_config.linter.enable {
         let diagnostics_worker_msg_sender = start_buffer_diagnostics_worker(vim.clone());
@@ -177,7 +177,7 @@ impl ConfigError {
         if let Some(err) = self.maybe_toml_err {
             vim.echo_warn(format!(
                 "Using default Config due to the error in {}: {err}",
-                crate::config::config_file().display()
+                maple_config::config_file().display()
             ))?;
         }
 

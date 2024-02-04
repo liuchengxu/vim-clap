@@ -1,4 +1,5 @@
 //! This module provides the feature of persistent data store via file system.
+//! Typically, the info will be persisted in the json format.
 
 use crate::cache::CacheInfo;
 use crate::recent_files::SortedRecentFiles;
@@ -13,10 +14,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 /// Linux: ~/.local/share/vimclap/cache.json
-const CACHE_FILENAME: &str = "cache.json";
-
 static CACHE_METADATA_PATH: Lazy<Option<PathBuf>> =
-    Lazy::new(|| generate_data_file_path(CACHE_FILENAME).ok());
+    Lazy::new(|| generate_data_file_path("cache.json").ok());
 
 pub static CACHE_INFO_IN_MEMORY: Lazy<Arc<Mutex<CacheInfo>>> = Lazy::new(|| {
     let mut maybe_persistent =
@@ -26,10 +25,12 @@ pub static CACHE_INFO_IN_MEMORY: Lazy<Arc<Mutex<CacheInfo>>> = Lazy::new(|| {
 });
 
 /// Linux: ~/.local/share/vimclap/recent_files.json
-const RECENT_FILES_FILENAME: &str = "recent_files.json";
-
 static RECENT_FILES_JSON_PATH: Lazy<Option<PathBuf>> =
-    Lazy::new(|| generate_data_file_path(RECENT_FILES_FILENAME).ok());
+    Lazy::new(|| generate_data_file_path("recent_files.json").ok());
+
+/// Linux: ~/.local/share/vimclap/input_history.json
+static INPUT_HISTORY_JSON_PATH: Lazy<Option<PathBuf>> =
+    Lazy::new(|| generate_data_file_path("input_history.json").ok());
 
 pub static RECENT_FILES_IN_MEMORY: Lazy<Mutex<SortedRecentFiles>> = Lazy::new(|| {
     let maybe_persistent = load_json(RECENT_FILES_JSON_PATH.as_deref())
@@ -39,18 +40,29 @@ pub static RECENT_FILES_IN_MEMORY: Lazy<Mutex<SortedRecentFiles>> = Lazy::new(||
 });
 
 pub static INPUT_HISTORY_IN_MEMORY: Lazy<Arc<Mutex<InputHistory>>> = Lazy::new(|| {
-    // TODO: make input history persistent?
-    Arc::new(Mutex::new(InputHistory::new()))
+    Arc::new(Mutex::new(
+        load_json(INPUT_HISTORY_JSON_PATH.as_deref()).unwrap_or_else(InputHistory::new),
+    ))
 });
 
+/// Synchronize the latest state of cache info to the disk.
 pub fn store_cache_info(cache_info: &CacheInfo) -> std::io::Result<()> {
     write_json(cache_info, CACHE_METADATA_PATH.as_ref())
 }
 
+/// Synchronize the latest state of recent files to the disk.
 pub fn store_recent_files(recent_files: &SortedRecentFiles) -> std::io::Result<()> {
     write_json(recent_files, RECENT_FILES_JSON_PATH.as_ref())
 }
 
+/// Synchronize the latest state of input history to the disk.
+pub fn store_input_history(input_history: &InputHistory) -> std::io::Result<()> {
+    write_json(input_history, INPUT_HISTORY_JSON_PATH.as_ref())
+}
+
+/// Returns the path of `cache.json`.
+///
+/// Used by maple_cli to inspect the local cache state.
 pub fn cache_metadata_path() -> Option<&'static PathBuf> {
     CACHE_METADATA_PATH.as_ref()
 }

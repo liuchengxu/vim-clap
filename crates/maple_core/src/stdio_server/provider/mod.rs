@@ -315,7 +315,7 @@ impl Context {
             _ => Icon::Null,
         };
 
-        let rank_criteria = crate::config::config().matcher.rank_criteria();
+        let rank_criteria = maple_config::config().matcher.rank_criteria();
         let matcher_builder = provider_id.matcher_builder().rank_criteria(rank_criteria);
 
         let display_winwidth = vim.winwidth(display.winid).await?;
@@ -361,7 +361,7 @@ impl Context {
         };
 
         let input_history = crate::datastore::INPUT_HISTORY_IN_MEMORY.lock();
-        let inputs = if crate::config::config().provider.share_input_history {
+        let inputs = if maple_config::config().provider.share_input_history {
             input_history.all_inputs()
         } else {
             input_history.inputs(&env.provider_id)
@@ -401,7 +401,7 @@ impl Context {
     }
 
     pub fn provider_debounce(&self) -> u64 {
-        crate::config::config().provider_debounce(self.env.provider_id.as_str())
+        maple_config::config().provider_debounce(self.env.provider_id.as_str())
     }
 
     pub fn matcher_builder(&self) -> MatcherBuilder {
@@ -535,6 +535,9 @@ impl Context {
         tracing::debug!("ProviderSession {session_id:?}-{provider_id} terminated");
         let mut input_history = crate::datastore::INPUT_HISTORY_IN_MEMORY.lock();
         input_history.update_inputs(provider_id, self.input_recorder.clone().into_inputs());
+        if let Err(err) = crate::datastore::store_input_history(&input_history) {
+            tracing::error!(?err, "Failed to sync the latest input history to the disk.");
+        }
     }
 
     pub async fn record_input(&mut self) -> VimResult<()> {

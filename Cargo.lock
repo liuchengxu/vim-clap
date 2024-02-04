@@ -345,6 +345,7 @@ dependencies = [
  "futures",
  "icon",
  "itertools",
+ "maple_config",
  "maple_core",
  "matcher",
  "num_cpus",
@@ -1273,6 +1274,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "maple_config"
+version = "0.1.0"
+dependencies = [
+ "dirs",
+ "once_cell",
+ "paths",
+ "serde",
+ "toml 0.5.11",
+ "types",
+]
+
+[[package]]
 name = "maple_core"
 version = "0.1.0"
 dependencies = [
@@ -1294,6 +1307,7 @@ dependencies = [
  "ide",
  "ignore",
  "itertools",
+ "maple_config",
  "maple_derive",
  "maple_lsp",
  "matcher",

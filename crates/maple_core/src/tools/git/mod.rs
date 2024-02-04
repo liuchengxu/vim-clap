@@ -34,7 +34,7 @@ impl BlameInfo {
                 let time = chrono_humanize::HumanTime::from(time);
                 let author = if user_name.eq(author) { "You" } else { author };
 
-                if let Some(fmt) = &crate::config::config().plugin.git.blame_format_string {
+                if let Some(fmt) = &maple_config::config().plugin.git.blame_format_string {
                     let mut display_string = fmt.to_string();
                     let mut replace_template_string = |to_replace: &str, replace_with: &str| {
                         if let Some(idx) = display_string.find(to_replace) {

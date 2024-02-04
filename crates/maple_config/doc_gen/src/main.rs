@@ -1,6 +1,6 @@
 use inflections::case::to_snake_case;
 use itertools::Itertools;
-use maple_core::config::Config;
+use maple_config::Config;
 use quote::ToTokens;
 use std::{collections::BTreeMap, str::FromStr};
 use syn::{
@@ -9,7 +9,7 @@ use syn::{
 use toml_edit::Document;
 
 fn main() {
-    let source_code = include_str!("../../maple_core/src/config.rs");
+    let source_code = include_str!("../../src/lib.rs");
 
     // Parse the source code into an AST
     let ast: syn::File = syn::parse_str(source_code).expect("Failed to parse Rust source code");
@@ -17,7 +17,7 @@ fn main() {
     let doc = process_ast(&ast);
 
     // Print the modified TOML document
-    println!("{}", doc.to_string());
+    println!("{doc}");
 
     if cfg!(debug_assertions) {
         let default_config_toml = std::env::current_dir()
@@ -36,6 +36,8 @@ fn main() {
         .unwrap()
         .parent()
         .unwrap()
+        .parent()
+        .unwrap()
         .join("docs")
         .join("src")
         .join("plugins")
@@ -43,7 +45,7 @@ fn main() {
 
     if !config_md.exists() {
         panic!(
-            "../../docs/src/plugins/config.md not found, cwd: {}",
+            "../../../docs/src/plugins/config.md not found, cwd: {}",
             current_dir.display()
         );
     }
@@ -52,7 +54,7 @@ fn main() {
     // The convention in config.md is there is one and only one toml code block, which will be
     // periodly updated using the auto-generated toml above.
     let mut config_md_content = s
-        .split("\n")
+        .split('\n')
         .take_while(|line| !line.starts_with("```toml"))
         .collect::<Vec<_>>()
         .into_iter()
@@ -96,16 +98,14 @@ impl FieldInfo {
 }
 
 fn extract_doc_comment(attr: &Attribute) -> Option<String> {
-    if let Ok(meta) = attr.parse_meta() {
-        if let Meta::NameValue(MetaNameValue {
-            path,
-            lit: Lit::Str(comment),
-            ..
-        }) = meta
-        {
-            if path.is_ident("doc") {
-                return Some(comment.value());
-            }
+    if let Ok(Meta::NameValue(MetaNameValue {
+        path,
+        lit: Lit::Str(comment),
+        ..
+    })) = attr.parse_meta()
+    {
+        if path.is_ident("doc") {
+            return Some(comment.value());
         }
     }
     None
@@ -158,7 +158,7 @@ fn parse_enum(e: &ItemEnum) -> BTreeMap<String, FieldInfo> {
             let docs = variant
                 .attrs
                 .iter()
-                .filter_map(|attr| extract_doc_comment(attr))
+                .filter_map(extract_doc_comment)
                 .collect();
             let variant_name = &variant.ident;
             (
@@ -266,21 +266,18 @@ fn process_ast(ast: &syn::File) -> Document {
                     for (mut t_key, t_item) in t.iter_mut() {
                         let docs_key = to_snake_case(t_key.get());
 
-                        match struct_docs.get(&docs_key) {
-                            Some(s) => {
-                                if s.docs.is_empty() {
-                                    continue;
-                                }
-
-                                let comments = s.as_toml_comments();
-
-                                if let Some(t) = t_item.as_table_mut() {
-                                    t.decor_mut().set_prefix(format!("\n{comments}\n"));
-                                } else if t_item.is_value() {
-                                    t_key.decor_mut().set_prefix(format!("{comments}\n"));
-                                }
+                        if let Some(s) = struct_docs.get(&docs_key) {
+                            if s.docs.is_empty() {
+                                continue;
                             }
-                            None => {}
+
+                            let comments = s.as_toml_comments();
+
+                            if let Some(t) = t_item.as_table_mut() {
+                                t.decor_mut().set_prefix(format!("\n{comments}\n"));
+                            } else if t_item.is_value() {
+                                t_key.decor_mut().set_prefix(format!("{comments}\n"));
+                            }
                         }
                     }
                 } else if t_item.is_value() {

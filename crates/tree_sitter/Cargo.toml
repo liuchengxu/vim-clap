@@ -31,7 +31,7 @@ tree-sitter-dockerfile = { git = "https://github.com/liuchengxu/tree-sitter-dock
 tree-sitter-vim = { git = "https://github.com/liuchengxu/tree-sitter-vim", rev = "a001587c17ab24fdade5403eb6c4763460d6814c" }
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = { workspace = true }
 rand = "0.8"
 tree-sitter-tags = "0.20"
 

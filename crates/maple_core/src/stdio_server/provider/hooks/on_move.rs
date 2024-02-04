@@ -770,10 +770,10 @@ fn fetch_syntax_highlights(
     range: Range<usize>,
     maybe_code_context: Option<&CodeContext>,
 ) -> SublimeOrTreeSitter {
-    use crate::config::HighlightEngine;
+    use maple_config::HighlightEngine;
     use utils::SizeChecker;
 
-    let provider_config = &crate::config::config().provider;
+    let provider_config = &maple_config::config().provider;
 
     match provider_config.preview_highlight_engine {
         HighlightEngine::SublimeSyntax => {

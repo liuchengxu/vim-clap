@@ -2,6 +2,18 @@
 
 ## [unreleased]
 
+## Added
+
+- Input history of providers are now persistent.
+- Added experimental winbar support (neovim-only).
+```
+[winbar]
+enable = true
+```
+
+## Fixed
+
+- Make the behaviour on empty query consistent across the providers.
 
 ## [0.50] 2024-01-02
 
