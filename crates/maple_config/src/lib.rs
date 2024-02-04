@@ -396,14 +396,14 @@ pub struct Config {
     /// Log configuration.
     pub log: LogConfig,
 
+    /// Winbar configuration.
+    pub winbar: WinbarConfig,
+
     /// Matcher configuration.
     pub matcher: MatcherConfig,
 
     /// Plugin configuration.
     pub plugin: PluginConfig,
-
-    /// Winbar configuration.
-    pub winbar: WinbarConfig,
 
     /// Provider (fuzzy picker) configuration.
     pub provider: ProviderConfig,
@@ -479,6 +479,10 @@ mod tests {
                     log_file: Some("/tmp/clap.log".to_string()),
                     max_level: "trace".to_string(),
                     ..Default::default()
+                },
+                winbar: WinbarConfig {
+                    enable: false,
+                    file_path_style: FilePathStyle::OneSegmentPerComponent
                 },
                 matcher: MatcherConfig {
                     tiebreak: "score,-begin,-end,-length".to_string()

@@ -35,7 +35,7 @@ types = { workspace = true }
 utils = { workspace = true }
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = { workspace = true }
 
 [[bench]]
 name = "benchmark"
