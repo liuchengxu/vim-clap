@@ -38,6 +38,9 @@ else
 endif
 
 function! clap#api#update_winbar(winid, winbar) abort
+  if winheight(a:winid) < 2
+    return 0
+  endif
   if empty(a:winbar)
     let l:winbar = ''
   else

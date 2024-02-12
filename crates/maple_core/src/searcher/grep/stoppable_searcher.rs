@@ -85,7 +85,7 @@ impl StoppableSearchImpl {
 
         let search_root = paths[0].clone();
 
-        walk_parallel(paths, WalkConfig::default()).run(|| {
+        walk_parallel(paths, WalkConfig::default(), "grep").run(|| {
             let mut searcher = searcher.clone();
             let matcher = matcher.clone();
             let sender = sender.clone();

@@ -309,27 +309,36 @@ pub struct PluginConfig {
     pub syntax: SyntaxPluginConfig,
 }
 
+/// Represents configuration options for ignoring certain files/folders/patterns when searching.
 #[derive(Serialize, Deserialize, Debug, Default, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct IgnoreConfig {
     /// Whether to ignore the comment line when applicable.
     pub ignore_comments: bool,
 
-    /// Only include the results from the files being tracked by git if in a git repo.
+    /// Whether to include only results from files tracked by git, if in a git repository.
     pub git_tracked_only: bool,
 
-    /// Ignore the results from the files whose file name matches this pattern.
+    /// Patterns for ignoring files based on their names.
     ///
-    /// For instance, if you want to exclude the results whose file name matches
-    /// `test` for dumb_jump provider:
+    /// For instance, to exclude results from files whose names contain "test" for
+    /// the dumb_jump provider:
     ///
     /// ```toml
     /// [provider.provider-ignores.dumb_jump]
-    /// ignore-file-path-pattern = ["test"]
+    /// ignore-file-name-pattern = ["test"]
     /// ```
     pub ignore_file_name_pattern: Vec<String>,
 
-    /// Ignore the results from the files whose file path matches this pattern.
+    /// Patterns for ignoring files based on their paths.
+    ///
+    /// For instance, to exclude the results from the folder whose names contain `test`
+    /// in the project `~/src/github.com/vim/vim`:
+    ///
+    /// ```toml
+    /// [provider.project-ignores."~/src/github.com/vim/vim"]
+    /// ignore-file-path-pattern = ["test"]
+    /// ```
     pub ignore_file_path_pattern: Vec<String>,
 }
 
