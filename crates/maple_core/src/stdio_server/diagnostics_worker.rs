@@ -335,7 +335,7 @@ impl BufferDiagnosticsWorker {
                     self.vim.exec("clap#plugin#linter#toggle_off", [bufnr])?;
                 }
                 WorkerMessage::LinterDiagnostics((bufnr, linter_diagnostics)) => {
-                    tracing::debug!(bufnr, "Recv linter diagnostics: {linter_diagnostics:?}");
+                    tracing::trace!(bufnr, "Recv linter diagnostics: {linter_diagnostics:?}");
 
                     if let Some(buffer_diagnostics) = self.buffer_diagnostics.get(&bufnr) {
                         update_buffer_diagnostics(
@@ -360,7 +360,7 @@ impl BufferDiagnosticsWorker {
                         .map(convert_lsp_diagnostic_to_diagnostic)
                         .collect::<Vec<_>>();
 
-                    tracing::debug!(path, "Recv lsp diagnostics: {diagnostics:?}");
+                    tracing::trace!(path, "Recv LSP diagnostics: {diagnostics:?}");
 
                     let buffer_diagnostics = self
                         .buffer_diagnostics
