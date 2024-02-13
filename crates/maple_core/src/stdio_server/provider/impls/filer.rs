@@ -203,12 +203,7 @@ impl FilerProvider {
         let processed = current_items.len();
 
         if query.is_empty() {
-            let printer::DisplayLines {
-                lines,
-                mut indices,
-                truncated_map: _,
-                icon_added,
-            } = self.printer.to_display_lines(
+            let mut display_lines = self.printer.to_display_lines(
                 current_items
                     .iter()
                     .take(200)
@@ -218,21 +213,23 @@ impl FilerProvider {
             );
 
             if self.icon_enabled {
-                indices.iter_mut().for_each(|v| {
+                display_lines.indices.iter_mut().for_each(|v| {
                     v.iter_mut().for_each(|x| {
                         *x -= 2;
                     })
                 });
             }
 
-            let result = json!({
-                "lines": &lines, "indices": indices, "matched": 0, "processed": processed, "icon_added": icon_added,
-            });
+            let update_info = printer::PickerUpdateInfo {
+                matched: 0,
+                processed,
+                display_lines,
+                display_syntax: None,
+            };
 
-            ctx.vim
-                .exec("clap#state#process_filter_message", json!([result, true]))?;
+            ctx.vim.exec("clap#picker#update", &update_info)?;
 
-            return Ok(lines);
+            return Ok(update_info.display_lines.lines);
         }
 
         let matcher = ctx.matcher_builder().build(query.into());
@@ -241,31 +238,26 @@ impl FilerProvider {
 
         matched_items.truncate(200);
 
-        let printer::DisplayLines {
-            lines,
-            mut indices,
-            truncated_map,
-            icon_added,
-        } = self.printer.to_display_lines(matched_items);
+        let mut display_lines = self.printer.to_display_lines(matched_items);
 
         if self.icon_enabled {
-            indices.iter_mut().for_each(|v| {
+            display_lines.indices.iter_mut().for_each(|v| {
                 v.iter_mut().for_each(|x| {
                     *x -= 2;
                 })
             });
         }
 
-        let result = if truncated_map.is_empty() {
-            json!({ "lines": &lines, "indices": indices, "matched": matched, "processed": processed, "icon_added": icon_added })
-        } else {
-            json!({ "lines": &lines, "indices": indices, "matched": matched, "processed": processed, "icon_added": icon_added, "truncated_map": truncated_map })
+        let update_info = printer::PickerUpdateInfo {
+            matched,
+            processed,
+            display_lines,
+            display_syntax: None,
         };
 
-        ctx.vim
-            .exec("clap#state#process_filter_message", json!([result, true]))?;
+        ctx.vim.exec("clap#picker#update", &update_info)?;
 
-        Ok(lines)
+        Ok(update_info.display_lines.lines)
     }
 
     async fn update_preview(&self, preview_target: PreviewTarget, ctx: &mut Context) -> Result<()> {
