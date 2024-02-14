@@ -171,14 +171,14 @@ pub struct StdioProgressor;
 impl SearchProgressUpdate<DisplayLines> for StdioProgressor {
     fn quick_update(&self, matched: usize, processed: usize) {
         #[allow(non_upper_case_globals)]
-        const deprecated_method: &str = "clap#state#process_filter_message";
+        const deprecated_method: &str = "clap#legacy#state#process_filter_message";
 
         println_json_with_length!(matched, processed, deprecated_method);
     }
 
     fn update_all(&self, display_lines: &DisplayLines, matched: usize, processed: usize) {
         #[allow(non_upper_case_globals)]
-        const deprecated_method: &str = "clap#state#process_filter_message";
+        const deprecated_method: &str = "clap#legacy#state#process_filter_message";
 
         let DisplayLines {
             lines,
@@ -223,7 +223,7 @@ impl SearchProgressUpdate<DisplayLines> for StdioProgressor {
         } = display_lines;
 
         #[allow(non_upper_case_globals)]
-        const deprecated_method: &str = "clap#state#process_filter_message";
+        const deprecated_method: &str = "clap#legacy#state#process_filter_message";
         println_json_with_length!(
             deprecated_method,
             lines,

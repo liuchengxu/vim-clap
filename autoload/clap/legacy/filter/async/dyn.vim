@@ -21,7 +21,7 @@ function! s:handle_stdio_message(msg) abort
     return
   endif
 
-  call clap#state#process_filter_message(decoded, v:false)
+  call clap#legacy#state#process_filter_message(decoded, v:false)
   call clap#preview#update_with_delay()
 endfunction
 

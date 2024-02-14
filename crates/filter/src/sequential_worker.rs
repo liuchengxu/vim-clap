@@ -175,7 +175,7 @@ impl Watcher {
                 let total = self.total;
 
                 #[allow(non_upper_case_globals)]
-                const deprecated_method: &str = "clap#state#process_filter_message";
+                const deprecated_method: &str = "clap#legacy#state#process_filter_message";
                 if self.last_lines != lines.as_slice() {
                     let icon_added = self.icon.enabled();
                     println_json_with_length!(total, lines, indices, deprecated_method, icon_added);
@@ -313,7 +313,7 @@ fn print_on_dyn_run_finished(display_lines: DisplayLines, total_matched: usize) 
     } = display_lines;
 
     #[allow(non_upper_case_globals)]
-    const deprecated_method: &str = "clap#state#process_filter_message";
+    const deprecated_method: &str = "clap#legacy#state#process_filter_message";
     println_json_with_length!(
         deprecated_method,
         lines,

@@ -137,10 +137,10 @@ function! clap#legacy#filter#on_typed(FilterFn, query, candidates) abort
     let l:lines = [g:clap_no_matches_msg]
     let g:__clap_has_no_matches = v:true
     call g:clap.display.set_lines_lazy(lines)
-    " In clap#state#refresh_matches_count() we reset the sign to the first line,
+    " In clap#legacy#state#refresh_matches_count() we reset the sign to the first line,
     " But the signs are seemingly removed when setting the lines, so we should
     " postpone the sign update.
-    call clap#state#refresh_matches_count(0)
+    call clap#legacy#state#refresh_matches_count(0)
     if exists('g:__clap_lines_truncated_map')
       unlet g:__clap_lines_truncated_map
     endif
@@ -151,7 +151,7 @@ function! clap#legacy#filter#on_typed(FilterFn, query, candidates) abort
   else
     let g:__clap_has_no_matches = v:false
     call g:clap.display.set_lines_lazy(lines)
-    call clap#state#refresh_matches_count(len(l:lines))
+    call clap#legacy#state#refresh_matches_count(len(l:lines))
   endif
 
   call g:clap#display_win.shrink_if_undersize()
