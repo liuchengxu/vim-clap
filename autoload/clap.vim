@@ -174,7 +174,7 @@ function! clap#_exit_provider() abort
 
   call clap#sign#reset_all()
 
-  call clap#state#clear_post()
+  call clap#picker#clear_state_post()
 endfunction
 
 function! clap#_open_provider(provider_id_or_alias) abort
@@ -279,7 +279,7 @@ function! clap#open_provider(provider_id_or_alias) abort
     return
   endif
 
-  call clap#state#clear_pre()
+  call clap#picker#clear_state_pre()
 
   " g:__clap_provider_cwd can be set during this process, so this needs to be executed after s:clear_state()
   if has_key(g:clap.provider._(), 'source')
