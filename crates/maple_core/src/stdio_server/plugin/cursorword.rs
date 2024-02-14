@@ -1,4 +1,4 @@
-use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
+use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType, PluginAction};
 use crate::stdio_server::plugin::{ClapPlugin, PluginError};
 use crate::stdio_server::vim::{Vim, VimError};
 use colors_transform::Color;
@@ -270,7 +270,7 @@ impl Cursorword {
 
 #[async_trait::async_trait]
 impl ClapPlugin for Cursorword {
-    async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
+    async fn handle_action(&mut self, action: PluginAction) -> Result<(), PluginError> {
         match self.parse_action(&action.method)? {
             CursorwordAction::__DefineHighlights => {
                 define_highlights(&self.vim).await?;

@@ -3,7 +3,7 @@ use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::lsp::{
     find_lsp_root, language_id_from_path, LanguageServerMessageHandler,
 };
-use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
+use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginError, Toggle};
 use crate::stdio_server::provider::lsp::{set_lsp_source, LspSource};
 use crate::stdio_server::vim::{Vim, VimError, VimResult};
 use lsp::Url;
@@ -297,6 +297,7 @@ impl LspPlugin {
 
         let new_name = self.vim.bufname(bufnr).await?;
 
+        // Reload the document.
         if !new_name.eq(&document.bufname) {
             // close old doc
             let old_doc = document.doc_id.clone();
@@ -736,6 +737,7 @@ impl ClapPlugin for LspPlugin {
                 self.on_buf_enter(bufnr).await?;
             }
             BufWritePost => {
+                // did save
                 self.on_buf_write_post(bufnr).await?;
             }
             BufDelete => {
@@ -759,8 +761,8 @@ impl ClapPlugin for LspPlugin {
         Ok(())
     }
 
-    async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
-        let ActionRequest { method, params: _ } = action;
+    async fn handle_action(&mut self, action: PluginAction) -> Result<(), PluginError> {
+        let PluginAction { method, params: _ } = action;
         match self.parse_action(method)? {
             LspAction::Toggle => {
                 match self.toggle {

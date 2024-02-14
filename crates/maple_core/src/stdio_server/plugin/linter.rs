@@ -1,6 +1,6 @@
 use crate::stdio_server::diagnostics_worker::WorkerMessage;
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
+use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginError, Toggle};
 use crate::stdio_server::vim::{Vim, VimResult};
 use crate::types::{DiagnosticKind, Direction};
 use std::collections::HashMap;
@@ -189,11 +189,11 @@ impl ClapPlugin for Linter {
         Ok(())
     }
 
-    async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
+    async fn handle_action(&mut self, action: PluginAction) -> Result<(), PluginError> {
         use DiagnosticKind::{Error, Warn};
         use Direction::{First, Last, Next, Prev};
 
-        let ActionRequest { method, params: _ } = action;
+        let PluginAction { method, params: _ } = action;
         match self.parse_action(method)? {
             LinterAction::Toggle => {
                 match self.toggle {

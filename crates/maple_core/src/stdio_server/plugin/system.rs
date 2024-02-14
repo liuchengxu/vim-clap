@@ -1,5 +1,5 @@
 use crate::datastore::RECENT_FILES_IN_MEMORY;
-use crate::stdio_server::input::ActionRequest;
+use crate::stdio_server::input::PluginAction;
 use crate::stdio_server::plugin::{ClapPlugin, PluginError, PluginResult};
 use crate::stdio_server::vim::Vim;
 use copypasta::{ClipboardContext, ClipboardProvider};
@@ -105,8 +105,8 @@ where
 
 #[async_trait::async_trait]
 impl ClapPlugin for System {
-    async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
-        let ActionRequest { method, params } = action;
+    async fn handle_action(&mut self, action: PluginAction) -> Result<(), PluginError> {
+        let PluginAction { method, params } = action;
 
         match self.parse_action(method)? {
             SystemAction::__NoteRecentFiles => {

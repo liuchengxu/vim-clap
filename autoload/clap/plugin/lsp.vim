@@ -57,5 +57,46 @@ function! clap#plugin#lsp#tab_size(bufnr) abort
     return getbufvar(a:bufnr, '&tabstop')
 endfunction
 
+function! clap#plugin#lsp#listener(bufnr, start, end, added, changes) abort
+  echom string([a:bufnr, a:start, a:end, a:added, a:changes])
+endfunction
+
+function! clap#plugin#lsp#reload() abort
+  call clap#client#notify('__note_recent_files', [+expand('<abuf>')])
+  " didClose and didOpen
+endfunction
+
+function! clap#plugin#lsp#detach() abort
+  " didClose and detach
+endfunction
+
+function! clap#plugin#lsp#buf_attach(bufnr) abort
+	if has('nvim')
+    let g:__clap_buf_to_attach = a:bufnr
+lua << END
+  vim.api.nvim_buf_attach(vim.g.__clap_buf_to_attach, false, {
+    on_lines = function(_lines, bufnr, _changedtick, firstline, lastline, new_lastline)
+      vim.api.nvim_call_function("clap#plugin#lsp#listener", {
+        bufnr,
+        firstline + 1,
+        lastline + 1,
+        new_lastline - lastline,
+        {{lnum = firstline + 1, ["end"] = lastline + 1, added = new_lastline - lastline, col = 1}}})
+    end,
+
+    on_reload = function()
+      vim.api.nvim_call_function("clap#plugin#lsp#reload", {})
+    end,
+
+    on_detach = function()
+      vim.api.nvim_call_function("clap#plugin#lsp#detach", {})
+    end
+    })
+END
+	else
+		call listener_add('clap#plugin#lsp#listener')
+	endif
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo

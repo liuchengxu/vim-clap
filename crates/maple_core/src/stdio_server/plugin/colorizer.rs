@@ -1,4 +1,4 @@
-use crate::stdio_server::input::ActionRequest;
+use crate::stdio_server::input::PluginAction;
 use crate::stdio_server::plugin::{ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::vim::Vim;
 use colors_transform::{AlphaColor, Color, Hsl, Rgb};
@@ -194,7 +194,7 @@ fn parse<T: std::str::FromStr>(caps: &regex::Captures, i: usize) -> Option<T> {
 
 #[async_trait::async_trait]
 impl ClapPlugin for ColorizerPlugin {
-    async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
+    async fn handle_action(&mut self, action: PluginAction) -> Result<(), PluginError> {
         match self.parse_action(&action.method)? {
             ColorizerAction::Toggle => {
                 let bufnr = self.vim.bufnr("").await?;

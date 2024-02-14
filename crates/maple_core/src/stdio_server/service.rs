@@ -1,7 +1,7 @@
 //! Each invocation of Clap provider is a session. When you exit the provider, the session ends.
 
 use crate::stdio_server::input::{
-    ActionRequest, AutocmdEvent, AutocmdEventType, InternalProviderEvent, PluginEvent,
+    AutocmdEvent, AutocmdEventType, InternalProviderEvent, PluginAction, PluginEvent,
     ProviderEvent, ProviderEventSender,
 };
 use crate::stdio_server::plugin::{ActionType, ClapPlugin, PluginId};
@@ -445,9 +445,9 @@ impl ServiceManager {
             });
     }
 
-    pub fn notify_plugin_action(&mut self, plugin_id: PluginId, action_request: ActionRequest) {
+    pub fn notify_plugin_action(&mut self, plugin_id: PluginId, plugin_action: PluginAction) {
         if let Entry::Occupied(v) = self.plugins.entry(plugin_id) {
-            if v.get().1.send(PluginEvent::Action(action_request)).is_err() {
+            if v.get().1.send(PluginEvent::Action(plugin_action)).is_err() {
                 v.remove_entry();
             }
         }

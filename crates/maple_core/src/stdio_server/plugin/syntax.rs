@@ -2,7 +2,7 @@ pub mod sublime;
 
 use self::sublime::SublimeSyntaxImpl;
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
+use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginError, Toggle};
 use crate::stdio_server::vim::Vim;
 use std::collections::{BTreeMap, HashMap};
 use std::ops::Range;
@@ -488,8 +488,8 @@ impl ClapPlugin for Syntax {
         Ok(())
     }
 
-    async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
-        let ActionRequest { method, params: _ } = action;
+    async fn handle_action(&mut self, action: PluginAction) -> Result<(), PluginError> {
+        let PluginAction { method, params: _ } = action;
         match self.parse_action(method)? {
             SyntaxAction::TreeSitterHighlight => {
                 let bufnr = self.vim.bufnr("").await?;

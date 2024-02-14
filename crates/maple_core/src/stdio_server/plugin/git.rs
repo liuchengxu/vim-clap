@@ -1,5 +1,5 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::plugin::{ActionRequest, ClapPlugin, PluginError, Toggle};
+use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginError, Toggle};
 use crate::stdio_server::vim::Vim;
 use crate::tools::git::{parse_blame_info, GitRepo, Modification, SignType, Summary};
 use std::collections::HashMap;
@@ -341,8 +341,8 @@ impl ClapPlugin for Git {
         Ok(())
     }
 
-    async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
-        let ActionRequest { method, params: _ } = action;
+    async fn handle_action(&mut self, action: PluginAction) -> Result<(), PluginError> {
+        let PluginAction { method, params: _ } = action;
 
         match self.parse_action(method)? {
             GitAction::Toggle => {

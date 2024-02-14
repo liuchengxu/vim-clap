@@ -1,4 +1,4 @@
-use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
+use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType, PluginAction};
 use crate::stdio_server::plugin::{ClapPlugin, PluginError};
 use crate::stdio_server::vim::Vim;
 use crate::tools::ctags::{BufferTag, Scope};
@@ -252,7 +252,7 @@ impl CtagsPlugin {
 
 #[async_trait::async_trait]
 impl ClapPlugin for CtagsPlugin {
-    async fn handle_action(&mut self, _action: ActionRequest) -> Result<(), PluginError> {
+    async fn handle_action(&mut self, _action: PluginAction) -> Result<(), PluginError> {
         Ok(())
     }
 

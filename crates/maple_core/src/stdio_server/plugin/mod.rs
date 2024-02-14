@@ -9,7 +9,7 @@ pub mod syntax;
 mod system;
 
 use self::lsp::Error as LspError;
-use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
+use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType, PluginAction};
 use crate::stdio_server::vim::VimError;
 use std::fmt::Debug;
 
@@ -90,9 +90,25 @@ pub type PluginResult<T> = std::result::Result<T, PluginError>;
 /// A trait each Clap plugin must implement.
 #[async_trait::async_trait]
 pub trait ClapPlugin: ClapAction + Debug + Send + Sync + 'static {
-    async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError>;
-
     /// Returns the list of subscribed Autocmd events.
+    ///
+    /// The default implementation returns an empty list of subscriptions, which means the plugin
+    /// is not listening to any autocmd events by default.
+    ///
+    /// If the provider handles any autocmd events, the corresponding autocmd subscriptions
+    /// can be implemented automatically by applying the derive macro `#[maple_derive::subscriptions]`
+    /// on the function [`Self::handle_autocmd`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #[maple_derive::subscriptions]
+    /// async fn handle_autocmd(&mut self, _autocmd: AutocmdEvent) -> Result<(), PluginError> {
+    ///     // TODO: subscribe and handle certains autocmd events.
+    ///     ...
+    ///     Ok(())
+    /// }
+    /// ```
     fn subscriptions(&self) -> &[AutocmdEventType] {
         &[]
     }
@@ -100,6 +116,8 @@ pub trait ClapPlugin: ClapAction + Debug + Send + Sync + 'static {
     async fn handle_autocmd(&mut self, _autocmd: AutocmdEvent) -> Result<(), PluginError> {
         Ok(())
     }
+
+    async fn handle_action(&mut self, action: PluginAction) -> Result<(), PluginError>;
 }
 
 #[cfg(test)]
