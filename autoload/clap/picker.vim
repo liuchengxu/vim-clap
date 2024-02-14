@@ -6,48 +6,49 @@ scriptencoding utf-8
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-function! clap#picker#update(decoded_msg) abort
+function! clap#picker#process_progress(matched, processed) abort
+  call clap#indicator#update(a:matched, a:processed)
+endfunction
+
+function! clap#picker#update(update_info) abort
   if !g:clap.display.win_is_valid()
     return
   endif
 
-  let decoded = a:decoded_msg
+  let update_info = a:update_info
 
-  if has_key(decoded, 'matched')
-    if has_key(decoded, 'processed')
-      call clap#indicator#update(decoded.matched, decoded.processed)
-    else
-      call clap#indicator#update_matched(decoded.matched)
+  call clap#indicator#update(update_info.matched, update_info.processed)
+
+  if update_info.matched == 0
+    call g:clap.display.set_lines([g:clap_no_matches_msg])
+    call g:clap.preview.clear()
+    if exists('g:__clap_lines_truncated_map')
+      unlet g:__clap_lines_truncated_map
     endif
+    return
+  else
+    call g:clap.display.set_lines(update_info.lines)
   endif
 
-  if has_key(decoded, 'lines')
-    call g:clap.display.set_lines(decoded.lines)
-    if empty(decoded.lines)
-      call g:clap.preview.clear()
-      return
-    endif
-  endif
-
-  if has_key(decoded, 'truncated_map')
-    let g:__clap_lines_truncated_map = decoded.truncated_map
+  if has_key(update_info, 'truncated_map')
+    let g:__clap_lines_truncated_map = update_info.truncated_map
   elseif exists('g:__clap_lines_truncated_map')
     unlet g:__clap_lines_truncated_map
   endif
 
-  if has_key(decoded, 'icon_added')
-    let g:__clap_icon_added_by_maple = decoded.icon_added
-  endif
+  let g:__clap_icon_added_by_maple = update_info.icon_added
 
-  if has_key(decoded, 'display_syntax')
-    call setbufvar(g:clap.display.bufnr, '&syntax', decoded.display_syntax)
+  if has_key(update_info, 'display_syntax')
+    call setbufvar(g:clap.display.bufnr, '&syntax', update_info.display_syntax)
   endif
 
   call clap#sign#ensure_exists()
 
-  if has_key(decoded, 'indices')
+  call clap#preview#update_with_delay()
+
+  if has_key(update_info, 'indices')
     try
-      call clap#highlighter#add_highlights(decoded.indices)
+      call clap#highlighter#add_highlights(update_info.indices)
     catch
       return
     endtry

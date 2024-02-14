@@ -74,34 +74,6 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
   endif
 endfunction
 
-function! clap#state#process_progress(matched, processed) abort
-  call clap#indicator#update(a:matched, a:processed)
-endfunction
-
-function! clap#state#process_progress_full(display_lines, matched, processed) abort
-  if !g:clap.display.win_is_valid()
-    return
-  endif
-  call clap#indicator#update(a:matched, a:processed)
-  if a:matched == 0
-    call g:clap.display.set_lines([g:clap_no_matches_msg])
-    call g:clap.preview.clear()
-  else
-    call g:clap.display.set_lines(a:display_lines.lines)
-  endif
-  call clap#highlighter#add_highlights(a:display_lines.indices)
-  call clap#preview#update_with_delay()
-  if a:matched > 0
-    call clap#sign#ensure_exists()
-  endif
-  let g:__clap_icon_added_by_maple = a:display_lines.icon_added
-  if !empty(a:display_lines.truncated_map)
-    let g:__clap_lines_truncated_map = a:display_lines.truncated_map
-  elseif exists('g:__clap_lines_truncated_map')
-    unlet g:__clap_lines_truncated_map
-  endif
-endfunction
-
 function! clap#state#update_picker(result) abort
   if !g:clap.display.win_is_valid()
     return

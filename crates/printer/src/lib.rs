@@ -99,6 +99,16 @@ pub struct PickerUpdateInfo {
     pub display_syntax: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct PickerUpdateInfoRef<'a> {
+    pub matched: usize,
+    pub processed: usize,
+    #[serde(flatten)]
+    pub display_lines: &'a DisplayLines,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub display_syntax: Option<String>,
+}
+
 fn convert_truncated_matched_items_to_display_lines(
     matched_items: impl IntoIterator<Item = MatchedItem>,
     icon: Icon,
