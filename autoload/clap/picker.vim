@@ -36,7 +36,7 @@ function! clap#picker#update(update_info) abort
     unlet g:__clap_lines_truncated_map
   endif
 
-  let g:__clap_icon_added_by_maple = update_info.icon_added
+  let g:__clap_icon_added_by_maple = get(update_info, 'icon_added', v:false)
 
   if has_key(update_info, 'display_syntax')
     call setbufvar(g:clap.display.bufnr, '&syntax', update_info.display_syntax)
@@ -44,7 +44,13 @@ function! clap#picker#update(update_info) abort
 
   call clap#sign#ensure_exists()
 
-  call clap#preview#update_with_delay()
+  if has_key(update_info, 'preview')
+    if !empty(update_info.preview)
+      call clap#state#update_picker_preview(update_info.preview)
+    endif
+  else
+    call clap#preview#update_with_delay()
+  endif
 
   if has_key(update_info, 'indices')
     try

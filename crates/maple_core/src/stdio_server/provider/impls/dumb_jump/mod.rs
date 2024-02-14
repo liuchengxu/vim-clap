@@ -270,9 +270,14 @@ impl DumbJumpProvider {
             .map(|usage| (usage.line.as_str(), usage.indices.as_slice()))
             .unzip();
 
-        let response = json!({ "lines": lines, "indices": indices, "matched": matched });
+        let update_info = json!({
+          "matched": matched,
+          "processed": matched,
+          "lines": lines,
+          "indices": indices,
+        });
 
-        ctx.vim.exec("clap#state#update_picker", response)?;
+        ctx.vim.exec("clap#picker#update", update_info)?;
 
         self.cached_results = search_results;
         self.current_usages.take();
@@ -357,9 +362,9 @@ impl ClapProvider for DumbJumpProvider {
 
         // Try to refilter the cached results.
         if self.cached_results.query_info.is_superset(&query_info) {
-            let refiltered = self
-                .cached_results
-                .usages
+            let usages = &self.cached_results.usages;
+            let processed = usages.len();
+            let refiltered = usages
                 .par_iter()
                 .filter_map(|Usage { line, indices }| {
                     query_info
@@ -374,8 +379,15 @@ impl ClapProvider for DumbJumpProvider {
                 .take(200)
                 .map(|Usage { line, indices }| (line.as_str(), indices.as_slice()))
                 .unzip();
-            let response = json!({ "lines": lines, "indices": indices, "matched": matched });
-            ctx.vim.exec("clap#state#update_picker", response)?;
+
+            let update_info = json!({
+              "matched": matched,
+              "processed": processed,
+              "lines": lines,
+              "indices": indices,
+            });
+
+            ctx.vim.exec("clap#picker#update", update_info)?;
             self.current_usages.replace(refiltered.into());
             return Ok(());
         }

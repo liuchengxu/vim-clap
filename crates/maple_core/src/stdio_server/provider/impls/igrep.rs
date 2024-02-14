@@ -225,6 +225,7 @@ impl Explorer {
             processed,
             display_lines,
             display_syntax: Some("clap_filer".to_string()),
+            ..Default::default()
         };
 
         ctx.vim.exec("clap#picker#update", &update_info)?;

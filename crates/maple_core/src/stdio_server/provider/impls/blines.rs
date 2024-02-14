@@ -136,7 +136,7 @@ impl BlinesProvider {
                     matched: matched_items.len(),
                     processed: items.len(),
                     display_lines,
-                    display_syntax: None,
+                    ..Default::default()
                 };
 
                 ctx.vim.exec("clap#picker#update", update_info)?;

@@ -7,6 +7,7 @@ mod truncation;
 use self::truncation::LinesTruncatedMap;
 use icon::{Icon, ICON_CHAR_LEN};
 use serde::Serialize;
+use serde_json::Value;
 use std::path::PathBuf;
 use truncation::truncate_grep_results;
 use types::MatchedItem;
@@ -48,7 +49,7 @@ macro_rules! println_json_with_length {
 ///
 /// 1. Truncate the line if the window can't fit it.
 /// 2. Add an icon to the beginning.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct DisplayLines {
     /// Lines to display, maybe truncated.
     pub lines: Vec<String>,
@@ -89,7 +90,7 @@ impl DisplayLines {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct PickerUpdateInfo {
     pub matched: usize,
     pub processed: usize,
@@ -97,6 +98,7 @@ pub struct PickerUpdateInfo {
     pub display_lines: DisplayLines,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub display_syntax: Option<String>,
+    pub preview: Option<Value>,
 }
 
 #[derive(Debug, Clone, Serialize)]

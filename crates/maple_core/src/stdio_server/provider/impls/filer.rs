@@ -224,7 +224,7 @@ impl FilerProvider {
                 matched: 0,
                 processed,
                 display_lines,
-                display_syntax: None,
+                ..Default::default()
             };
 
             ctx.vim.exec("clap#picker#update", &update_info)?;
@@ -252,7 +252,7 @@ impl FilerProvider {
             matched,
             processed,
             display_lines,
-            display_syntax: None,
+            ..Default::default()
         };
 
         ctx.vim.exec("clap#picker#update", &update_info)?;

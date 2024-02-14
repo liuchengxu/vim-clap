@@ -221,7 +221,7 @@ impl SearchProgressUpdate<DisplayLines> for SearchProgressor {
             matched: total_matched,
             processed: total_processed,
             display_lines,
-            display_syntax: None,
+            ..Default::default()
         };
         let _ = self.vim.exec("clap#picker#update", update_info);
     }

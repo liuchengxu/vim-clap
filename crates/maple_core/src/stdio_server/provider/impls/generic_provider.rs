@@ -222,7 +222,7 @@ impl ClapProvider for GenericProvider {
                     matched: matched_items.len(),
                     processed: items.len(),
                     display_lines,
-                    display_syntax: None,
+                    ..Default::default()
                 };
                 Some((update_info, matched_items))
             } else {

@@ -6,7 +6,6 @@ use matcher::MatchScope;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use printer::Printer;
-use serde_json::json;
 use std::sync::Arc;
 use std::{borrow::Cow, path::PathBuf};
 use types::{ClapItem, FuzzyText, Query};
@@ -257,36 +256,19 @@ impl LspProvider {
         // Only display the top 200 items.
         ranked.truncate(200);
 
-        let printer::DisplayLines {
-            lines,
-            indices,
-            truncated_map,
-            icon_added,
-        } = self.printer.to_display_lines(ranked);
+        let mut display_lines = self.printer.to_display_lines(ranked);
 
         // The indices are empty on the empty query.
-        let indices = indices
-            .into_iter()
-            .filter(|i| !i.is_empty())
-            .collect::<Vec<_>>();
+        display_lines.indices.retain(|i| !i.is_empty());
 
-        let mut value = json!({
-            "lines": lines,
-            "indices": indices,
-            "matched": matched,
-            "processed": processed,
-            "icon_added": icon_added,
-            "preview": Option::<serde_json::Value>::None,
-        });
+        let update_info = printer::PickerUpdateInfo {
+            matched,
+            processed,
+            display_lines,
+            ..Default::default()
+        };
 
-        if !truncated_map.is_empty() {
-            value
-                .as_object_mut()
-                .expect("Value is constructed as an Object")
-                .insert("truncated_map".into(), json!(truncated_map));
-        }
-
-        ctx.vim.exec("clap#state#update_picker", value)?;
+        ctx.vim.exec("clap#picker#update", update_info)?;
 
         Ok(())
     }
