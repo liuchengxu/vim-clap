@@ -550,7 +550,7 @@ impl Context {
     pub async fn next_input(&mut self) -> ProviderResult<()> {
         if let Some(next) = self.input_recorder.move_to_next() {
             if self.env.is_nvim {
-                self.vim.exec("clap#state#set_input", [next])?;
+                self.vim.exec("clap#picker#set_input", [next])?;
             } else {
                 self.vim
                     .exec("clap#popup#move_manager#set_input_and_react", [next])?;
@@ -563,7 +563,7 @@ impl Context {
     pub async fn prev_input(&mut self) -> ProviderResult<()> {
         if let Some(previous) = self.input_recorder.move_to_prev() {
             if self.env.is_nvim {
-                self.vim.exec("clap#state#set_input", [previous])?;
+                self.vim.exec("clap#picker#set_input", [previous])?;
             } else {
                 self.vim
                     .exec("clap#popup#move_manager#set_input_and_react", [previous])?;
@@ -598,7 +598,7 @@ impl Context {
     }
 
     pub fn update_picker_preview(&self, preview: Preview) -> VimResult<()> {
-        self.vim.exec("clap#state#update_picker_preview", preview)
+        self.vim.exec("clap#picker#update_preview", preview)
     }
 
     async fn update_preview(
@@ -611,7 +611,7 @@ impl Context {
 
         if curline.is_empty() {
             tracing::debug!("Skipping preview as curline is empty");
-            self.vim.bare_exec("clap#state#clear_preview")?;
+            self.vim.bare_exec("clap#picker#clear_preview")?;
             return Ok(());
         }
 
@@ -660,11 +660,11 @@ impl Context {
             } = printer.to_display_lines(items);
 
             self.vim.exec(
-                "clap#state#update_picker_on_empty_query",
+                "clap#picker#update_on_empty_query",
                 json!([lines, truncated_map, icon_added]),
             )
         } else {
-            self.vim.bare_exec("clap#state#clear_screen")
+            self.vim.bare_exec("clap#picker#clear_all")
         }
     }
 }

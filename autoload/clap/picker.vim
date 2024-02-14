@@ -6,6 +6,34 @@ scriptencoding utf-8
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+function! clap#picker#init(lines, truncated_map, icon_added, using_cache) abort
+  if !g:clap.display.win_is_valid()
+    return
+  endif
+  if empty(g:clap.input.get())
+    call g:clap.display.set_lines_lazy(a:lines)
+    call g:clap#display_win.shrink_if_undersize()
+  endif
+
+  if a:using_cache
+    let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.using_cache
+  else
+    let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.done
+  endif
+
+  let g:__clap_icon_added_by_maple = a:icon_added
+  if !empty(a:truncated_map)
+    let g:__clap_lines_truncated_map = a:truncated_map
+  elseif exists('g:__clap_lines_truncated_map')
+    unlet g:__clap_lines_truncated_map
+  endif
+
+  call clap#indicator#update_processed(g:clap.display.initial_size)
+  call clap#sign#ensure_exists()
+  call clap#spinner#refresh()
+  call clap#preview#update_with_delay()
+endfunction
+
 function! clap#picker#process_progress(matched, processed) abort
   call clap#indicator#update(a:matched, a:processed)
 endfunction
@@ -46,7 +74,7 @@ function! clap#picker#update(update_info) abort
 
   if has_key(update_info, 'preview')
     if !empty(update_info.preview)
-      call clap#state#update_picker_preview(update_info.preview)
+      call clap#picker#update_preview(update_info.preview)
     endif
   else
     call clap#preview#update_with_delay()
@@ -59,6 +87,86 @@ function! clap#picker#update(update_info) abort
       return
     endtry
   endif
+endfunction
+
+function! clap#picker#update_on_empty_query(lines, truncated_map, icon_added) abort
+  if !g:clap.display.win_is_valid()
+    return
+  endif
+  call g:clap.display.set_lines_lazy(a:lines)
+  call g:clap#display_win.shrink_if_undersize()
+  if !empty(a:truncated_map)
+    let g:__clap_lines_truncated_map = a:truncated_map
+  elseif exists('g:__clap_lines_truncated_map')
+    unlet g:__clap_lines_truncated_map
+  endif
+  let g:__clap_icon_added_by_maple = a:icon_added
+  call clap#sign#ensure_exists()
+  call g:clap.display.clear_highlight()
+  call clap#indicator#update_matched(0)
+  call clap#preview#update_with_delay()
+endfunction
+
+function! clap#picker#update_preview(preview) abort
+  if !g:clap.display.win_is_valid()
+    return
+  endif
+  if has_key(a:preview, 'lines')
+    try
+      call g:clap.preview.show(a:preview.lines)
+    catch
+      " Neovim somehow has a bug decoding the lines
+      call g:clap.preview.show(['Error occurred while showing the preview:', v:exception, '', string(a:preview.lines)])
+      return
+    endtry
+    if has_key(a:preview, 'sublime_syntax_highlights')
+      for [lnum, line_highlight] in a:preview.sublime_syntax_highlights
+        try
+          call clap#highlighter#highlight_line(g:clap.preview.bufnr, lnum, line_highlight)
+        catch
+          " Ignore any potential errors as the line might be truncated.
+        endtry
+      endfor
+    elseif has_key(a:preview, 'tree_sitter_highlights')
+      call clap#highlighter#add_ts_highlights(g:clap.preview.bufnr, [], a:preview.tree_sitter_highlights)
+    elseif has_key(a:preview, 'vim_syntax_info')
+      let vim_syntax_info = a:preview.vim_syntax_info
+      if !empty(vim_syntax_info.syntax)
+        call g:clap.preview.set_syntax(vim_syntax_info.syntax)
+      elseif !empty(vim_syntax_info.fname)
+        call g:clap.preview.set_syntax(clap#ext#into_filetype(vim_syntax_info.fname))
+      endif
+    endif
+    call clap#preview#highlight_header()
+
+    if has_key(a:preview, 'hi_lnum')
+      call g:clap.preview.add_highlight(a:preview.hi_lnum+1)
+    endif
+
+    if has_key(a:preview, 'scrollbar')
+      let [top_position, length] = a:preview.scrollbar
+      call clap#floating_win#show_preview_scrollbar(top_position, length)
+    endif
+  endif
+endfunction
+
+function! clap#picker#clear_preview() abort
+  call g:clap.preview.clear()
+endfunction
+
+function! clap#picker#clear_all() abort
+  if exists('g:__clap_lines_truncated_map')
+    unlet g:__clap_lines_truncated_map
+  endif
+  call g:clap.display.clear()
+  call g:clap.preview.clear()
+  call clap#indicator#set_none()
+endfunction
+
+function! clap#picker#set_input(new) abort
+  call g:clap.input.set(a:new)
+  " Move cursor to the end of line.
+  call clap#api#win_execute(g:clap.input.winid, 'call cursor(1, 1000)')
 endfunction
 
 let &cpoptions = s:save_cpo

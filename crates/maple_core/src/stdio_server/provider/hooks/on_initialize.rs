@@ -160,7 +160,7 @@ fn on_initialized_source(
             let using_cache = provider_source.using_cache();
 
             ctx.vim.exec(
-                "clap#state#init_display",
+                "clap#picker#init",
                 json!([lines, truncated_map, icon_added, using_cache]),
             )?;
         }
