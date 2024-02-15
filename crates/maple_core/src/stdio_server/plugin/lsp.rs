@@ -20,9 +20,9 @@ pub enum Error {
     ClientNotFound,
     #[error("language id not found for buffer {0}")]
     LanguageIdNotFound(usize),
-    #[error("unsupported language, config not found: {0}")]
-    LanguageConfigNotFound(LanguageId),
-    #[error("document not found")]
+    #[error("language config not found: {0}")]
+    UnsupportedLanguage(LanguageId),
+    #[error("buffer not attached")]
     BufferNotAttached(usize),
     #[error("invalid Url: {0}")]
     InvalidUrl(String),
@@ -71,12 +71,26 @@ struct GotoRequest {
 
 type LanguageId = &'static str;
 
-/// Buffer associated to a buffer.
+/// Represents an attached buffer.
 #[derive(Debug, Clone)]
 struct Buffer {
-    language_id: LanguageId,
     bufname: String,
     doc_id: lsp::TextDocumentIdentifier,
+    language_id: LanguageId,
+}
+
+fn to_url(path: impl AsRef<Path>) -> Result<Url, Error> {
+    Url::from_file_path(path.as_ref())
+        .map_err(|_| Error::InvalidUrl(format!("{}", path.as_ref().display())))
+}
+
+fn to_file_path(uri: lsp::Url) -> Result<PathBuf, Error> {
+    uri.to_file_path()
+        .map_err(|()| Error::InvalidUrl(format!("uri {uri} is not a file path")))
+}
+
+fn doc_id(path: impl AsRef<Path>) -> Result<lsp::TextDocumentIdentifier, Error> {
+    Ok(lsp::TextDocumentIdentifier { uri: to_url(path)? })
 }
 
 fn open_new_doc(
@@ -87,20 +101,6 @@ fn open_new_doc(
     let text = std::fs::read_to_string(path)?;
     client.text_document_did_open(to_url(path)?, 0, text, language_id)?;
     Ok(())
-}
-
-fn to_url(path: impl AsRef<Path>) -> Result<Url, Error> {
-    Url::from_file_path(path.as_ref())
-        .map_err(|_| Error::InvalidUrl(format!("{}", path.as_ref().display())))
-}
-
-fn to_file_path(uri: lsp::Url) -> Result<PathBuf, Error> {
-    uri.to_file_path()
-        .map_err(|()| Error::InvalidUrl(format!("uri: {uri} is not a path")))
-}
-
-fn doc_id(path: impl AsRef<Path>) -> Result<lsp::TextDocumentIdentifier, Error> {
-    Ok(lsp::TextDocumentIdentifier { uri: to_url(path)? })
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -216,7 +216,7 @@ impl LspPlugin {
 
         let language_id = language_id_from_path(&path).ok_or(Error::LanguageIdNotFound(bufnr))?;
         let language_config =
-            get_language_config(language_id).ok_or(Error::LanguageConfigNotFound(language_id))?;
+            get_language_config(language_id).ok_or(Error::UnsupportedLanguage(language_id))?;
 
         if let Entry::Vacant(e) = self.attached_buffers.entry(bufnr) {
             let bufname = self.vim.bufname(bufnr).await?;
@@ -681,18 +681,15 @@ impl LspPlugin {
         }
 
         let bufnr = self.vim.bufnr("").await?;
-        let document = self.get_buffer(bufnr)?;
+        let buffer = self.get_buffer(bufnr)?;
 
         let client = self
             .clients
-            .get(&document.language_id)
+            .get(&buffer.language_id)
             .ok_or(Error::ClientNotFound)?;
 
-        let doc_id = document.doc_id.clone();
-
-        let symbols = match client.document_symbols(doc_id.clone()).await? {
-            Some(symbols) => symbols,
-            None => return Ok(()),
+        let Some(symbols) = client.document_symbols(buffer.doc_id.clone()).await? else {
+            return Ok(());
         };
 
         // lsp has two ways to represent symbols (flat/nested)
@@ -702,13 +699,14 @@ impl LspPlugin {
             lsp::DocumentSymbolResponse::Nested(symbols) => {
                 let mut flat_symbols = Vec::new();
                 for symbol in symbols {
-                    nested_to_flat(&mut flat_symbols, &doc_id, symbol)
+                    nested_to_flat(&mut flat_symbols, &buffer.doc_id, symbol)
                 }
                 flat_symbols
             }
         };
 
-        self.open_picker(LspSource::DocumentSymbols((doc_id.uri.clone(), symbols)))?;
+        let uri = buffer.doc_id.uri.clone();
+        self.open_picker(LspSource::DocumentSymbols((uri, symbols)))?;
 
         Ok(())
     }

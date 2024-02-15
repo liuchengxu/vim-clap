@@ -66,9 +66,9 @@ function! clap#plugin#lsp#detach(bufnr) abort
 endfunction
 
 if has('nvim')
-
-function! clap#plugin#lsp#on_lines(bufnr, changedtick, firstline, lastline, new_lastline) abort
-  call clap#client#notify('lsp/__did_change', [a:bufnr, a:changedtick, a:firstline, a:lastline, a:new_lastline])
+" [bufnr, changedtick, firstline, lastline, new_lastline]
+function! clap#plugin#lsp#on_lines(...) abort
+  call clap#client#notify('lsp/__did_change', a:000)
 endfunction
 
 function! clap#plugin#lsp#buf_attach(bufnr) abort
