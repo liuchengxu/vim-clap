@@ -23,7 +23,7 @@ pub enum Error {
     #[error("unsupported language, config not found: {0}")]
     LanguageConfigNotFound(LanguageId),
     #[error("document not found")]
-    DocumentNotFound(usize),
+    BufferNotAttached(usize),
     #[error("invalid Url: {0}")]
     InvalidUrl(String),
     #[error(transparent)]
@@ -71,9 +71,9 @@ struct GotoRequest {
 
 type LanguageId = &'static str;
 
-/// Document associated to a buffer.
+/// Buffer associated to a buffer.
 #[derive(Debug, Clone)]
-struct Document {
+struct Buffer {
     language_id: LanguageId,
     bufname: String,
     doc_id: lsp::TextDocumentIdentifier,
@@ -169,6 +169,9 @@ fn preprocess_text_edits(text_edits: Vec<lsp::TextEdit>) -> Vec<lsp::TextEdit> {
 #[clap_plugin(
   id = "lsp",
   actions = [
+    "__reload",
+    "__detach",
+    "__did_change",
     "format",
     "rename",
     "document-symbols",
@@ -186,7 +189,7 @@ pub struct LspPlugin {
     /// Active language server clients.
     clients: HashMap<LanguageId, Arc<maple_lsp::Client>>,
     /// Documents being tracked, keyed by buffer number.
-    documents: HashMap<usize, Document>,
+    attached_buffers: HashMap<usize, Buffer>,
     /// Goto request in fly.
     current_goto_request: Option<GotoRequest>,
     diagnostics_worker_msg_sender: UnboundedSender<DiagnosticsWorkerMessage>,
@@ -201,23 +204,23 @@ impl LspPlugin {
         Self {
             vim,
             clients: HashMap::new(),
-            documents: HashMap::new(),
+            attached_buffers: HashMap::new(),
             current_goto_request: None,
             diagnostics_worker_msg_sender,
             toggle: Toggle::On,
         }
     }
 
-    async fn on_buf_enter(&mut self, bufnr: usize) -> Result<(), Error> {
+    async fn buffer_attach(&mut self, bufnr: usize) -> Result<(), Error> {
         let path = self.vim.bufabspath(bufnr).await?;
 
         let language_id = language_id_from_path(&path).ok_or(Error::LanguageIdNotFound(bufnr))?;
         let language_config =
             get_language_config(language_id).ok_or(Error::LanguageConfigNotFound(language_id))?;
 
-        if let std::collections::hash_map::Entry::Vacant(e) = self.documents.entry(bufnr) {
+        if let Entry::Vacant(e) = self.attached_buffers.entry(bufnr) {
             let bufname = self.vim.bufname(bufnr).await?;
-            let document = Document {
+            let buffer = Buffer {
                 language_id,
                 bufname,
                 doc_id: doc_id(&path)?,
@@ -229,7 +232,7 @@ impl LspPlugin {
                         .and_then(|p| Url::from_file_path(p).ok());
                     let client = e.get();
                     client.try_add_workspace(root_uri)?;
-                    open_new_doc(client, document.language_id, &path)?;
+                    open_new_doc(client, buffer.language_id, &path)?;
                 }
                 Entry::Vacant(e) => {
                     let enable_snippets = false;
@@ -241,7 +244,7 @@ impl LspPlugin {
                             enable_snippets,
                         },
                         name.clone(),
-                        Some(std::path::PathBuf::from(path.clone())),
+                        Some(PathBuf::from(path.clone())),
                         LanguageServerMessageHandler::new(
                             name,
                             self.vim.clone(),
@@ -250,14 +253,93 @@ impl LspPlugin {
                     )
                     .await?;
 
-                    open_new_doc(&client, document.language_id, &path)?;
+                    open_new_doc(&client, buffer.language_id, &path)?;
 
                     e.insert(client);
                 }
             }
 
-            e.insert(document);
+            self.vim.exec("clap#plugin#lsp#buf_attach", [bufnr])?;
+
+            e.insert(buffer);
         }
+
+        Ok(())
+    }
+
+    fn buffer_detach(&mut self, bufnr: usize) -> Result<(), Error> {
+        if let Some(buffer) = self.attached_buffers.remove(&bufnr) {
+            let client = self
+                .clients
+                .get(&buffer.language_id)
+                .ok_or(Error::ClientNotFound)?;
+
+            client
+                .text_document_did_close(buffer.doc_id)
+                .map_err(Error::Lsp)?;
+        }
+        Ok(())
+    }
+
+    async fn text_document_did_change(
+        &self,
+        (bufnr, changedtick, _firstline, _lastline, _new_lastline): (
+            usize,
+            i32,
+            usize,
+            usize,
+            usize,
+        ),
+    ) -> Result<(), Error> {
+        let document = self.get_buffer(bufnr)?;
+
+        let client = self
+            .clients
+            .get(&document.language_id)
+            .ok_or(Error::ClientNotFound)?;
+
+        // TODO: incremental changes
+        let new_text = self.vim.getbufline(bufnr, 1, '$').await?.join("\n");
+
+        let _ = client.text_document_did_change(
+            lsp::VersionedTextDocumentIdentifier {
+                uri: document.doc_id.uri.clone(),
+                version: changedtick,
+            },
+            new_text,
+        );
+
+        Ok(())
+    }
+
+    async fn text_document_did_save(&mut self, bufnr: usize) -> Result<(), Error> {
+        let buffer = self
+            .attached_buffers
+            .get_mut(&bufnr)
+            .ok_or(Error::BufferNotAttached(bufnr))?;
+
+        let client = self
+            .clients
+            .get(&buffer.language_id)
+            .ok_or(Error::ClientNotFound)?;
+
+        let new_name = self.vim.bufname(bufnr).await?;
+
+        // Reload the document.
+        if !new_name.eq(&buffer.bufname) {
+            // Close old doc.
+            let old_doc = buffer.doc_id.clone();
+            client.text_document_did_close(old_doc)?;
+
+            // Open new doc.
+            let path = self.vim.bufabspath(bufnr).await?;
+            let new_doc = doc_id(&path)?;
+            open_new_doc(client, buffer.language_id, &path)?;
+            buffer.bufname = new_name;
+            buffer.doc_id = new_doc;
+        }
+
+        client.text_document_did_save(buffer.doc_id.clone())?;
 
         Ok(())
     }
@@ -282,43 +364,10 @@ impl LspPlugin {
         Ok(())
     }
 
-    async fn on_buf_write_post(&mut self, bufnr: usize) -> Result<(), Error> {
-        let document = self
-            .documents
-            .get_mut(&bufnr)
-            .ok_or(Error::DocumentNotFound(bufnr))?;
-
-        let client = self
-            .clients
-            .get(&document.language_id)
-            .ok_or(Error::ClientNotFound)?;
-
-        let path = self.vim.bufabspath(bufnr).await?;
-
-        let new_name = self.vim.bufname(bufnr).await?;
-
-        // Reload the document.
-        if !new_name.eq(&document.bufname) {
-            // close old doc
-            let old_doc = document.doc_id.clone();
-            client.text_document_did_close(old_doc)?;
-
-            // open new doc
-            let new_doc = doc_id(&path)?;
-            open_new_doc(client, document.language_id, &path)?;
-            document.bufname = new_name;
-            document.doc_id = new_doc;
-        }
-
-        client.text_document_did_save(document.doc_id.clone())?;
-
-        Ok(())
-    }
-
-    fn get_doc(&self, bufnr: usize) -> Result<&Document, Error> {
-        self.documents
+    fn get_buffer(&self, bufnr: usize) -> Result<&Buffer, Error> {
+        self.attached_buffers
             .get(&bufnr)
-            .ok_or(Error::DocumentNotFound(bufnr))
+            .ok_or(Error::BufferNotAttached(bufnr))
     }
 
     async fn get_cursor_lsp_position(
@@ -354,7 +403,7 @@ impl LspPlugin {
 
     async fn goto_impl(&mut self, goto: Goto) -> Result<(), Error> {
         let bufnr = self.vim.bufnr("").await?;
-        let document = self.get_doc(bufnr)?;
+        let document = self.get_buffer(bufnr)?;
 
         let client = self
             .clients
@@ -463,71 +512,16 @@ impl LspPlugin {
         self.vim.exec("clap#plugin#lsp#open_picker", [title])
     }
 
-    async fn document_symbols(&mut self) -> Result<(), Error> {
-        fn nested_to_flat(
-            list: &mut Vec<lsp::SymbolInformation>,
-            file: &lsp::TextDocumentIdentifier,
-            symbol: lsp::DocumentSymbol,
-        ) {
-            #[allow(deprecated)]
-            list.push(lsp::SymbolInformation {
-                name: symbol.name,
-                kind: symbol.kind,
-                tags: symbol.tags,
-                deprecated: symbol.deprecated,
-                location: lsp::Location::new(file.uri.clone(), symbol.selection_range),
-                container_name: None,
-            });
-            for child in symbol.children.into_iter().flatten() {
-                nested_to_flat(list, file, child);
-            }
-        }
-
-        let bufnr = self.vim.bufnr("").await?;
-        let document = self.get_doc(bufnr)?;
-
-        let client = self
-            .clients
-            .get(&document.language_id)
-            .ok_or(Error::ClientNotFound)?;
-
-        let doc_id = document.doc_id.clone();
-
-        let symbols = match client.document_symbols(doc_id.clone()).await? {
-            Some(symbols) => symbols,
-            None => return Ok(()),
-        };
-
-        // lsp has two ways to represent symbols (flat/nested)
-        // convert the nested variant to flat, so that we have a homogeneous list
-        let symbols = match symbols {
-            lsp::DocumentSymbolResponse::Flat(symbols) => symbols,
-            lsp::DocumentSymbolResponse::Nested(symbols) => {
-                let mut flat_symbols = Vec::new();
-                for symbol in symbols {
-                    nested_to_flat(&mut flat_symbols, &doc_id, symbol)
-                }
-                flat_symbols
-            }
-        };
-
-        self.open_picker(LspSource::DocumentSymbols((doc_id.uri.clone(), symbols)))?;
-
-        Ok(())
-    }
-
     async fn text_document_format(&mut self) -> Result<(), Error> {
         let bufnr = self.vim.bufnr("").await?;
-        let document = self.get_doc(bufnr)?;
+        let buffer = self.get_buffer(bufnr)?;
 
         let client = self
             .clients
-            .get(&document.language_id)
+            .get(&buffer.language_id)
             .ok_or(Error::ClientNotFound)?;
 
-        let doc_id = document.doc_id.clone();
-
-        // TODO: sync the document?
+        let doc_id = buffer.doc_id.clone();
 
         let text_edits = client
             .text_document_formatting(
@@ -547,10 +541,9 @@ impl LspPlugin {
         if !text_edits.is_empty() {
             let text_edits = preprocess_text_edits(text_edits);
 
-            let filepath = doc_id
-                .uri
-                .to_file_path()
-                .map_err(|()| Error::InvalidUrl(format!("uri: {} is not a path", doc_id.uri)))?;
+            let filepath = doc_id.uri.to_file_path().map_err(|()| {
+                Error::InvalidUrl(format!("uri: {} is not a file path", doc_id.uri))
+            })?;
 
             let Ok(Some(cursor_lsp_position)) =
                 self.get_cursor_lsp_position(bufnr, &filepath).await
@@ -602,7 +595,7 @@ impl LspPlugin {
 
     async fn rename_symbol(&mut self) -> Result<(), Error> {
         let bufnr = self.vim.bufnr("").await?;
-        let document = self.get_doc(bufnr)?;
+        let document = self.get_buffer(bufnr)?;
 
         let client = self
             .clients
@@ -610,8 +603,6 @@ impl LspPlugin {
             .ok_or(Error::ClientNotFound)?;
 
         let doc_id = document.doc_id.clone();
-
-        // TODO: sync the document?
 
         let Ok(Some(cursor_lsp_position)) = self
             .get_cursor_lsp_position(bufnr, &to_file_path(document.doc_id.uri.clone())?)
@@ -631,8 +622,6 @@ impl LspPlugin {
             }
             Err(err) => return Err(err.into()),
         };
-
-        tracing::debug!("====== workspace edit: {maybe_workspace_edit:?}");
 
         if let Some(workspace_edit) = maybe_workspace_edit {
             if let Some(document_changes) = workspace_edit.document_changes {
@@ -671,6 +660,59 @@ impl LspPlugin {
         Ok(())
     }
 
+    async fn document_symbols(&mut self) -> Result<(), Error> {
+        fn nested_to_flat(
+            list: &mut Vec<lsp::SymbolInformation>,
+            file: &lsp::TextDocumentIdentifier,
+            symbol: lsp::DocumentSymbol,
+        ) {
+            #[allow(deprecated)]
+            list.push(lsp::SymbolInformation {
+                name: symbol.name,
+                kind: symbol.kind,
+                tags: symbol.tags,
+                deprecated: symbol.deprecated,
+                location: lsp::Location::new(file.uri.clone(), symbol.selection_range),
+                container_name: None,
+            });
+            for child in symbol.children.into_iter().flatten() {
+                nested_to_flat(list, file, child);
+            }
+        }
+
+        let bufnr = self.vim.bufnr("").await?;
+        let document = self.get_buffer(bufnr)?;
+
+        let client = self
+            .clients
+            .get(&document.language_id)
+            .ok_or(Error::ClientNotFound)?;
+
+        let doc_id = document.doc_id.clone();
+
+        let symbols = match client.document_symbols(doc_id.clone()).await? {
+            Some(symbols) => symbols,
+            None => return Ok(()),
+        };
+
+        // lsp has two ways to represent symbols (flat/nested)
+        // convert the nested variant to flat, so that we have a homogeneous list
+        let symbols = match symbols {
+            lsp::DocumentSymbolResponse::Flat(symbols) => symbols,
+            lsp::DocumentSymbolResponse::Nested(symbols) => {
+                let mut flat_symbols = Vec::new();
+                for symbol in symbols {
+                    nested_to_flat(&mut flat_symbols, &doc_id, symbol)
+                }
+                flat_symbols
+            }
+        };
+
+        self.open_picker(LspSource::DocumentSymbols((doc_id.uri.clone(), symbols)))?;
+
+        Ok(())
+    }
+
     async fn workspace_symbols(&mut self) -> Result<(), Error> {
         #[allow(deprecated)]
         fn into_symbol_information(symbol: lsp::WorkspaceSymbol) -> lsp::SymbolInformation {
@@ -691,17 +733,16 @@ impl LspPlugin {
         }
 
         let bufnr = self.vim.bufnr("").await?;
-        let document = self.get_doc(bufnr)?;
+        let buffer = self.get_buffer(bufnr)?;
 
         let client = self
             .clients
-            .get(&document.language_id)
+            .get(&buffer.language_id)
             .ok_or(Error::ClientNotFound)?;
 
         // Use empty query to fetch all workspace symbols.
-        let symbols = match client.workspace_symbols("").await? {
-            Some(symbols) => symbols,
-            None => return Ok(()),
+        let Some(symbols) = client.workspace_symbols("").await? else {
+            return Ok(());
         };
 
         let symbols = match symbols {
@@ -734,23 +775,13 @@ impl ClapPlugin for LspPlugin {
         match autocmd_event_type {
             BufNewFile => {}
             BufEnter => {
-                self.on_buf_enter(bufnr).await?;
+                self.buffer_attach(bufnr).await?;
             }
             BufWritePost => {
-                // did save
-                self.on_buf_write_post(bufnr).await?;
+                self.text_document_did_save(bufnr).await?;
             }
             BufDelete => {
-                if let Some(doc) = self.documents.remove(&bufnr) {
-                    let client = self
-                        .clients
-                        .get(&doc.language_id)
-                        .ok_or(Error::ClientNotFound)?;
-
-                    client
-                        .text_document_did_close(doc.doc_id)
-                        .map_err(Error::Lsp)?;
-                }
+                self.buffer_detach(bufnr)?;
             }
             CursorMoved => {
                 self.on_cursor_moved(bufnr).await?;
@@ -762,14 +793,21 @@ impl ClapPlugin for LspPlugin {
     }
 
     async fn handle_action(&mut self, action: PluginAction) -> Result<(), PluginError> {
-        let PluginAction { method, params: _ } = action;
+        let PluginAction { method, params } = action;
         match self.parse_action(method)? {
+            LspAction::__DidChange => self.text_document_did_change(params.parse()?).await?,
+            LspAction::__Reload => {
+                tracing::debug!("reload buffer: {params:?}");
+            }
+            LspAction::__Detach => {
+                tracing::debug!("detach buffer: {params:?}");
+            }
             LspAction::Toggle => {
                 match self.toggle {
                     Toggle::On => {}
                     Toggle::Off => {
                         let bufnr = self.vim.bufnr("").await?;
-                        self.on_buf_enter(bufnr).await?;
+                        self.buffer_attach(bufnr).await?;
                     }
                 }
                 self.toggle.switch();

@@ -870,6 +870,53 @@ impl Client {
         })
     }
 
+    pub fn text_document_did_change(
+        &self,
+        text_document: lsp::VersionedTextDocumentIdentifier,
+        new_text: String,
+    ) -> Result<(), Error> {
+        let capabilities = self.capabilities.get().ok_or(Error::Uninitialized)?;
+
+        // Return early if the server does not support document sync.
+        let sync_capabilities = match capabilities.text_document_sync {
+            Some(
+                lsp::TextDocumentSyncCapability::Kind(kind)
+                | lsp::TextDocumentSyncCapability::Options(lsp::TextDocumentSyncOptions {
+                    change: Some(kind),
+                    ..
+                }),
+            ) => kind,
+            // None | SyncOptions { changes: None }
+            _ => return Ok(()),
+        };
+
+        let changes = match sync_capabilities {
+            lsp::TextDocumentSyncKind::FULL => {
+                vec![lsp::TextDocumentContentChangeEvent {
+                    // range = None -> whole document
+                    range: None,        //Some(Range)
+                    range_length: None, // u64 apparently deprecated
+                    text: new_text.to_string(),
+                }]
+            }
+            lsp::TextDocumentSyncKind::INCREMENTAL => {
+                // TODO: incremental changes.
+                vec![lsp::TextDocumentContentChangeEvent {
+                    range: None,
+                    range_length: None,
+                    text: new_text,
+                }]
+            }
+            lsp::TextDocumentSyncKind::NONE => return Ok(()),
+            kind => unimplemented!("{:?}", kind),
+        };
+
+        self.notify::<lsp::notification::DidChangeTextDocument>(lsp::DidChangeTextDocumentParams {
+            text_document,
+            content_changes: changes,
+        })
+    }
+
     pub fn text_document_did_close(
         &self,
         text_document: lsp::TextDocumentIdentifier,

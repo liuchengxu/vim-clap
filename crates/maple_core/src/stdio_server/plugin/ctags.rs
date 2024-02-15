@@ -264,8 +264,6 @@ impl ClapPlugin for CtagsPlugin {
 
         let bufnr = params.parse_bufnr()?;
 
-        tracing::debug!(?event_type, "============= ctags autocmd");
-
         match event_type {
             BufEnter | BufWritePost => {
                 let file_path: String = self.vim.expand(format!("#{bufnr}:p")).await?;
