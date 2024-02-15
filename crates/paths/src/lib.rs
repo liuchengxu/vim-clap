@@ -76,7 +76,7 @@ impl TryFrom<PathBuf> for AbsPathBuf {
                         .map(|p| PathBuf::from(p.to_string()))
                         .ok()
                 })
-                .map(|abs_pathbuf| AbsPathBuf(abs_pathbuf))
+                .map(AbsPathBuf)
                 .ok_or(path_buf)
         }
     }
