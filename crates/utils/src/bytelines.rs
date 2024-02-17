@@ -1,11 +1,9 @@
 //! A custom implementation of `lines()` method, display the non-utf8 line as well.
 
 use memchr::{memchr, memrchr};
-use std::{
-    borrow::Cow,
-    iter::{DoubleEndedIterator, FusedIterator, Iterator},
-    str,
-};
+use std::borrow::Cow;
+use std::iter::{DoubleEndedIterator, FusedIterator, Iterator};
+use std::str;
 
 /// Parses raw untrusted bytes into the strings.
 #[derive(Clone)]

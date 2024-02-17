@@ -1,4 +1,5 @@
-use std::{env, fs, io::Write};
+use std::io::Write;
+use std::{env, fs};
 
 fn main() {
     built::write_built_file()

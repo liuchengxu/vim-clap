@@ -242,11 +242,8 @@ pub fn grep_results_to_display_lines(
 pub(crate) mod tests {
     use super::*;
     use crate::trimmer::UnicodeDots;
-    use filter::{
-        filter_sequential,
-        matcher::{Bonus, MatcherBuilder},
-        SequentialSource, SourceItem,
-    };
+    use filter::matcher::{Bonus, MatcherBuilder};
+    use filter::{filter_sequential, SequentialSource, SourceItem};
     use std::sync::Arc;
     use types::{ClapItem, Query};
 

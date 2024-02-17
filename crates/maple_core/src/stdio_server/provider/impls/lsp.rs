@@ -1,13 +1,13 @@
-use crate::stdio_server::provider::{
-    hooks::PreviewTarget, ClapProvider, Context, ProviderResult as Result,
-};
+use crate::stdio_server::provider::hooks::PreviewTarget;
+use crate::stdio_server::provider::{ClapProvider, Context, ProviderResult as Result};
 use maple_lsp::lsp;
 use matcher::MatchScope;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use printer::Printer;
+use std::borrow::Cow;
+use std::path::PathBuf;
 use std::sync::Arc;
-use std::{borrow::Cow, path::PathBuf};
 use types::{ClapItem, FuzzyText, Query};
 
 #[derive(Debug)]

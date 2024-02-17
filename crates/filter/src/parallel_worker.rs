@@ -11,8 +11,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use subprocess::Exec;
-use types::SearchProgressUpdate;
-use types::{ClapItem, MatchedItem, Query};
+use types::{ClapItem, MatchedItem, Query, SearchProgressUpdate};
 
 /// Parallelable source.
 #[derive(Debug)]

@@ -1,4 +1,5 @@
-use serde::{de::DeserializeOwned, Deserialize};
+use serde::de::DeserializeOwned;
+use serde::Deserialize;
 
 const USER: &str = "liuchengxu";
 const REPO: &str = "vim-clap";

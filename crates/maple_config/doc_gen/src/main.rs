@@ -2,7 +2,8 @@ use inflections::case::to_snake_case;
 use itertools::Itertools;
 use maple_config::Config;
 use quote::ToTokens;
-use std::{collections::BTreeMap, str::FromStr};
+use std::collections::BTreeMap;
+use std::str::FromStr;
 use syn::{
     Attribute, Field, Fields, ItemEnum, ItemStruct, Lit, Meta, MetaNameValue, PathSegment, Type,
 };

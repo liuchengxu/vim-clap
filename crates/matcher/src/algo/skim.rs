@@ -1,5 +1,6 @@
 use crate::MatchResult;
-use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+use fuzzy_matcher::skim::SkimMatcherV2;
+use fuzzy_matcher::FuzzyMatcher;
 use types::{CaseMatching, Score};
 
 // TODO: do not have to create an instance of SkimMatcherV2 each time.

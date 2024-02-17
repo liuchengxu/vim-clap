@@ -1,6 +1,5 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::fmt;
-use std::time;
+use std::{fmt, time};
 
 /// Summary statistics produced at the end of a search.
 ///
