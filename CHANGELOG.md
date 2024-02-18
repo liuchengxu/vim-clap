@@ -2,8 +2,8 @@
 
 ## [unreleased]
 
-
 ## [0.51] 2024-02-18
+
 ## Added
 
 - Input history of providers are now persistent.
