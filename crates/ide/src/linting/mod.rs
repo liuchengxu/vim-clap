@@ -68,6 +68,16 @@ impl PartialEq for Diagnostic {
         // && self.column_start == other.column_start
         // && self.column_end == other.column_end
 
+        // If the diagnostics point to the same lines and have the same display message, they are considered
+        // as the same as they are visually indistinguishable.
+        if self.spans.iter().zip(other.spans.iter()).all(|(a, b)| {
+            a.line_start == a.line_end && a.line_start == b.line_start && b.line_start == b.line_end
+        }) && is_same_code()
+            && self.message == other.message
+        {
+            return true;
+        }
+
         self.spans == other.spans
             // Having two diagnostics with the same code but different message is possible, which
             // points to the same error essentially.
