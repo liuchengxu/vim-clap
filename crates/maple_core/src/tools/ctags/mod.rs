@@ -274,7 +274,7 @@ impl ProjectCtagsCommand {
                 .map_err(|err| Error::new(ErrorKind::Other, err.to_string()))?,
         )
         .lines()
-        .flatten())
+        .map_while(Result::ok))
     }
 
     /// Returns an iterator of tag line in a formatted form.

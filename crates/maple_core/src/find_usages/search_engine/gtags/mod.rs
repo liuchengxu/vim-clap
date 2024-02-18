@@ -171,7 +171,9 @@ impl GtagsSearcher {
 
 // Returns a stream of tag parsed from the gtags output.
 fn execute(cmd: Exec) -> Result<impl Iterator<Item = Symbol>> {
-    Ok(exec(cmd)?.flatten().filter_map(|s| Symbol::from_gtags(&s)))
+    Ok(exec(cmd)?
+        .map_while(Result::ok)
+        .filter_map(|s| Symbol::from_gtags(&s)))
 }
 
 /// Used for sorting the usages from gtags properly.

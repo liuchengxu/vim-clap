@@ -165,7 +165,7 @@ fn collect_buffer_tags(
     let max_name_len = AtomicUsize::new(0);
 
     let tags = crate::process::subprocess::exec(cmd)?
-        .flatten()
+        .map_while(Result::ok)
         .par_bridge()
         .filter_map(|s| {
             let maybe_tag = parse_tag(&s);
@@ -185,7 +185,7 @@ fn collect_superset_context_tags(
     target_lnum: usize,
 ) -> Result<Vec<BufferTag>> {
     let mut tags = crate::process::subprocess::exec(cmd)?
-        .flatten()
+        .map_while(Result::ok)
         .par_bridge()
         .filter_map(|s| parse_tag(&s))
         // the line of method/function name is lower.
