@@ -2,7 +2,7 @@ use anyhow::{bail, Result};
 use chrono::Datelike;
 use clap::Parser;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
 use std::{env, fs};
 use xshell::{cmd, Shell};
 
@@ -67,7 +67,7 @@ fn release(sh: &Shell, dry_run: bool) -> Result<()> {
     // CHANGELOG.md
     let path = project_root.join("CHANGELOG.md");
     let file = sh.read_file(&path)?;
-    let mut lines = file.split("\n").map(|s| s.to_string()).collect::<Vec<_>>();
+    let mut lines = file.split('\n').map(|s| s.to_string()).collect::<Vec<_>>();
 
     let index = lines
         .iter()
@@ -93,7 +93,7 @@ fn release(sh: &Shell, dry_run: bool) -> Result<()> {
         let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
         let status = Command::new(cargo)
             .current_dir(&project_root)
-            .args(&["build", "--release"])
+            .args(["build", "--release"])
             .status()?;
 
         if !status.success() {
@@ -134,7 +134,7 @@ fn bump_version(
     let next_version = current_version + 1;
     let current_version = current_version.to_string();
     let next_version = next_version.to_string();
-    let mut lines = file.split("\n").map(|s| s.to_string()).collect::<Vec<_>>();
+    let mut lines = file.split('\n').map(|s| s.to_string()).collect::<Vec<_>>();
     if lines
         .iter_mut()
         .try_for_each(|line| {
