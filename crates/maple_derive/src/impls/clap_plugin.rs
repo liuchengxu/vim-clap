@@ -177,11 +177,11 @@ pub fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
                 to_pascal_case(arg)
             };
 
-            let var = Ident::new(&pascal_name, ident.span());
-            plugin_action_variants.push(Ident::new(&pascal_name, ident.span()));
+            let variant = Ident::new(&pascal_name, ident.span());
+            plugin_action_variants.push(variant.clone());
 
             quote! {
-                #method => Ok(#plugin_action::#var),
+                #method => Ok(#plugin_action::#variant),
             }
         })
         .collect::<Vec<_>>();

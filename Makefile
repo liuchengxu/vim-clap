@@ -14,4 +14,7 @@ config-md:
 clippy:
 	cd crates && cargo clippy --workspace --all-features --all-targets -- -D warnings
 
+fmt:
+	cargo +nightly fmt --all
+
 .PHONY: all maple python-dynamic-module config-md clippy

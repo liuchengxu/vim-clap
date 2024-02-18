@@ -57,5 +57,50 @@ function! clap#plugin#lsp#tab_size(bufnr) abort
     return getbufvar(a:bufnr, '&tabstop')
 endfunction
 
+function! clap#plugin#lsp#reload(bufnr) abort
+  call clap#client#notify('lsp/__reload', [a:bufnr])
+endfunction
+
+function! clap#plugin#lsp#detach(bufnr) abort
+  call clap#client#notify('lsp/__detach', [a:bufnr])
+endfunction
+
+if has('nvim')
+" [bufnr, changedtick, firstline, lastline, new_lastline]
+function! clap#plugin#lsp#on_lines(...) abort
+  call clap#client#notify('lsp/__did_change', a:000)
+endfunction
+
+function! clap#plugin#lsp#buf_attach(bufnr) abort
+    let g:__clap_buf_to_attach = a:bufnr
+lua << END
+  vim.api.nvim_buf_attach(vim.g.__clap_buf_to_attach, false, {
+    on_lines = function(_lines, bufnr, changedtick, firstline, lastline, new_lastline)
+      vim.api.nvim_call_function("clap#plugin#lsp#on_lines", { bufnr, changedtick, firstline, lastline, new_lastline })
+    end,
+
+    on_reload = function(_, bufnr)
+      vim.api.nvim_call_function("clap#plugin#lsp#reload", {bufnr})
+    end,
+
+    on_detach = function(_, bufnr)
+      vim.api.nvim_call_function("clap#plugin#lsp#detach", {bufnr})
+    end
+    })
+END
+endfunction
+
+else
+
+function! clap#plugin#lsp#listener(bufnr, start, end, added, changes) abort
+  echom string([a:bufnr, a:start, a:end, a:added, a:changes])
+endfunction
+
+function! clap#plugin#lsp#buf_attach(bufnr) abort
+  call listener_add('clap#plugin#lsp#listener')
+endfunction
+
+endif
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo

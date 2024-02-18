@@ -9,8 +9,7 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 use subprocess::Exec;
-use types::ClapItem;
-use types::MatchedItem;
+use types::{ClapItem, MatchedItem};
 
 fn parse_bonus(s: &str) -> Result<Bonus> {
     if s.to_lowercase().as_str() == "filename" {

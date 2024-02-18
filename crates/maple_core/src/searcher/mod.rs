@@ -6,6 +6,7 @@ pub mod tagfiles;
 use crate::stdio_server::Vim;
 use icon::Icon;
 use ignore::{WalkBuilder, WalkParallel};
+use paths::AbsPathBuf;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
@@ -71,12 +72,20 @@ impl Default for WalkConfig {
     }
 }
 
-fn walk_parallel(paths: Vec<PathBuf>, walk_config: WalkConfig) -> WalkParallel {
+fn walk_parallel(paths: Vec<PathBuf>, walk_config: WalkConfig, provider_id: &str) -> WalkParallel {
+    // paths must be non-empty.
+    let search_root = paths[0].clone();
+
+    let maybe_ignore_config = AbsPathBuf::try_from(search_root)
+        .map(|project_dir| maple_config::config().ignore_config(provider_id, &project_dir))
+        .ok();
+
     // TODO: smarter paths to search the parent directory of path first?
     let mut builder = WalkBuilder::new(&paths[0]);
     for path in &paths[1..] {
         builder.add(path);
     }
+
     builder
         .hidden(walk_config.hidden)
         .parents(walk_config.parents)
@@ -86,9 +95,39 @@ fn walk_parallel(paths: Vec<PathBuf>, walk_config: WalkConfig) -> WalkParallel {
         .git_global(walk_config.git_global)
         .git_exclude(walk_config.git_exclude)
         .max_depth(walk_config.max_depth)
-        // We always want to ignore the .git directory, otherwise if
-        // `ignore` is turned off above, we end up with a lot of noise
-        // in our picker.
-        .filter_entry(|entry| entry.file_name() != ".git")
+        .filter_entry(move |entry| {
+            let file_name = entry.file_name();
+
+            // We always want to ignore the .git directory, otherwise if
+            // `ignore` is turned off above, we end up with a lot of noise
+            // in our picker.
+            if file_name == ".git" {
+                return false;
+            }
+
+            if let Some(ignore_config) = maybe_ignore_config {
+                if let Some(file_name) = file_name.to_str() {
+                    if ignore_config
+                        .ignore_file_name_pattern
+                        .iter()
+                        .any(|name| file_name.contains(name.as_str()))
+                    {
+                        return false;
+                    }
+                }
+
+                if let Some(file_path) = entry.path().to_str() {
+                    if ignore_config
+                        .ignore_file_path_pattern
+                        .iter()
+                        .any(|p| file_path.contains(p))
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            true
+        })
         .build_parallel()
 }

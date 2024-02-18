@@ -15,7 +15,7 @@ pub type AutocmdEvent = (AutocmdEventType, Params);
 #[derive(Debug, Clone)]
 pub enum PluginEvent {
     Autocmd(AutocmdEvent),
-    Action(ActionRequest),
+    Action(PluginAction),
 }
 
 impl PluginEvent {
@@ -72,15 +72,15 @@ pub enum KeyEventType {
     CtrlP,
 }
 
-pub type ActionEvent = (PluginId, ActionRequest);
+pub type ActionEvent = (PluginId, PluginAction);
 
 #[derive(Debug, Clone)]
-pub struct ActionRequest {
+pub struct PluginAction {
     pub method: String,
     pub params: Params,
 }
 
-impl From<RpcNotification> for ActionRequest {
+impl From<RpcNotification> for PluginAction {
     fn from(notification: RpcNotification) -> Self {
         Self {
             method: notification.method,

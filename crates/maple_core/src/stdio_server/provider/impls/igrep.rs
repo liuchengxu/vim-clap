@@ -203,12 +203,7 @@ impl Explorer {
 
         let processed = current_items.len();
 
-        let printer::DisplayLines {
-            lines,
-            mut indices,
-            truncated_map: _,
-            icon_added,
-        } = self.printer.to_display_lines(
+        let mut display_lines = self.printer.to_display_lines(
             current_items
                 .iter()
                 .take(200)
@@ -218,26 +213,24 @@ impl Explorer {
         );
 
         if ctx.env.icon.enabled() {
-            indices.iter_mut().for_each(|v| {
+            display_lines.indices.iter_mut().for_each(|v| {
                 v.iter_mut().for_each(|x| {
                     *x -= 2;
                 })
             });
         }
 
-        let result = json!({
-            "lines": &lines,
-            "indices": indices,
-            "matched": 0,
-            "processed": processed,
-            "icon_added": icon_added,
-            "display_syntax": "clap_filer",
-        });
+        let update_info = printer::PickerUpdateInfo {
+            matched: 0,
+            processed,
+            display_lines,
+            display_syntax: Some("clap_filer".to_string()),
+            ..Default::default()
+        };
 
-        ctx.vim
-            .exec("clap#state#process_filter_message", json!([result, true]))?;
+        ctx.vim.exec("clap#picker#update", &update_info)?;
 
-        Ok(lines)
+        Ok(update_info.display_lines.lines)
     }
 
     async fn preview_current_line(&self, ctx: &mut Context) -> Result<()> {

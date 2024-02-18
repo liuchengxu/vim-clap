@@ -106,7 +106,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
         let cmd = self.build_exec(query, query_type);
 
         Ok(exec(cmd)?
-            .flatten()
+            .map_while(Result::ok)
             .filter_map(|s| Symbol::from_readtags(&s)))
     }
 }

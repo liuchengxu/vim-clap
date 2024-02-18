@@ -10,6 +10,15 @@
 [winbar]
 enable = true
 ```
+- Added project-specific ignore configs for more providers. You can use
+
+```toml
+# Ignore the results from the certain files/folders.
+# For example, ignore the test files when searching in the folder ~/src/github.com/bitcoin/bitcoin.
+[provider.project-ignores."~/src/github.com/bitcoin/bitcoin"]
+ignore-file-path-pattern = ["test"]
+ignore-file-name-pattern = ["test"]
+```
 
 ## Fixed
 

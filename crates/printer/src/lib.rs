@@ -7,6 +7,7 @@ mod truncation;
 use self::truncation::LinesTruncatedMap;
 use icon::{Icon, ICON_CHAR_LEN};
 use serde::Serialize;
+use serde_json::Value;
 use std::path::PathBuf;
 use truncation::truncate_grep_results;
 use types::MatchedItem;
@@ -48,7 +49,7 @@ macro_rules! println_json_with_length {
 ///
 /// 1. Truncate the line if the window can't fit it.
 /// 2. Add an icon to the beginning.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct DisplayLines {
     /// Lines to display, maybe truncated.
     pub lines: Vec<String>,
@@ -87,6 +88,27 @@ impl DisplayLines {
 
         println_json!(lines, indices, truncated_map, icon_added, total);
     }
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct PickerUpdateInfo {
+    pub matched: usize,
+    pub processed: usize,
+    #[serde(flatten)]
+    pub display_lines: DisplayLines,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub display_syntax: Option<String>,
+    pub preview: Option<Value>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PickerUpdateInfoRef<'a> {
+    pub matched: usize,
+    pub processed: usize,
+    #[serde(flatten)]
+    pub display_lines: &'a DisplayLines,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub display_syntax: Option<String>,
 }
 
 fn convert_truncated_matched_items_to_display_lines(
@@ -220,11 +242,8 @@ pub fn grep_results_to_display_lines(
 pub(crate) mod tests {
     use super::*;
     use crate::trimmer::UnicodeDots;
-    use filter::{
-        filter_sequential,
-        matcher::{Bonus, MatcherBuilder},
-        SequentialSource, SourceItem,
-    };
+    use filter::matcher::{Bonus, MatcherBuilder};
+    use filter::{filter_sequential, SequentialSource, SourceItem};
     use std::sync::Arc;
     use types::{ClapItem, Query};
 

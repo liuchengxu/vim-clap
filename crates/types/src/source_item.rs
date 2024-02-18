@@ -1,9 +1,10 @@
 use crate::matcher::{MatchResult, Rank};
 use icon::Icon;
 use pattern::{extract_file_name, extract_grep_pattern, extract_tag_name};
+use std::any::Any;
+use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::sync::Arc;
-use std::{any::Any, borrow::Cow};
 
 pub trait AsAny {
     fn as_any(&self) -> &dyn Any;

@@ -1,6 +1,6 @@
 #![allow(clippy::enum_variant_names)]
 
-use crate::stdio_server::input::{ActionRequest, AutocmdEvent, AutocmdEventType};
+use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType, PluginAction};
 use crate::stdio_server::plugin::{ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::vim::Vim;
 use once_cell::sync::Lazy;
@@ -240,8 +240,8 @@ impl ClapPlugin for Markdown {
         Ok(())
     }
 
-    async fn handle_action(&mut self, action: ActionRequest) -> Result<(), PluginError> {
-        let ActionRequest { method, params: _ } = action;
+    async fn handle_action(&mut self, action: PluginAction) -> Result<(), PluginError> {
+        let PluginAction { method, params: _ } = action;
         match self.parse_action(method)? {
             MarkdownAction::GenerateToc => {
                 let file = self.vim.current_buffer_path().await?;

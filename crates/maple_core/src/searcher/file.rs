@@ -83,6 +83,7 @@ fn search_lines(
     Ok(())
 }
 
+/// Search lines in a single file.
 pub async fn search(
     query: String,
     source_file: PathBuf,

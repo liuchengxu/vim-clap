@@ -4,7 +4,7 @@ use crate::stdio_server::provider::{BaseArgs, ClapProvider, Context, ProviderRes
 use parking_lot::Mutex;
 use paths::AbsPathBuf;
 use printer::Printer;
-use serde_json::{json, Value};
+use serde_json::json;
 use std::sync::Arc;
 use types::{ClapItem, MatchedItem, RankCalculator, Score};
 
@@ -37,7 +37,7 @@ impl RecentFilesProvider {
         query: String,
         preview_size: Option<usize>,
         lnum: usize,
-    ) -> Result<Value> {
+    ) -> Result<printer::PickerUpdateInfo> {
         let cwd = cwd.to_string();
 
         let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
@@ -114,26 +114,23 @@ impl RecentFilesProvider {
             .filter(|i| !i.is_empty())
             .collect::<Vec<_>>();
 
-        let mut value = json!({
-            "lines": lines,
-            "indices": indices,
-            "matched": matched,
-            "processed": processed,
-            "icon_added": icon_added,
-            "preview": preview,
-        });
-
-        if !truncated_map.is_empty() {
-            value
-                .as_object_mut()
-                .expect("Value is constructed as an Object")
-                .insert("truncated_map".into(), json!(truncated_map));
-        }
+        let update_info = printer::PickerUpdateInfo {
+            matched,
+            processed,
+            display_lines: printer::DisplayLines {
+                lines,
+                indices,
+                truncated_map,
+                icon_added,
+            },
+            display_syntax: None,
+            preview,
+        };
 
         let mut lines = self.lines.lock();
         *lines = ranked;
 
-        Ok(value)
+        Ok(update_info)
     }
 }
 
@@ -147,11 +144,11 @@ impl ClapProvider for RecentFilesProvider {
                 None
             };
 
-            let response =
+            let update_info =
                 self.clone()
                     .process_query(ctx.cwd.clone(), "".into(), preview_size, 1)?;
 
-            ctx.vim.exec("clap#state#update_picker", response)?;
+            ctx.vim.exec("clap#picker#update", update_info)?;
         } else {
             ctx.handle_base_args(&self.args).await?;
         }
@@ -184,7 +181,7 @@ impl ClapProvider for RecentFilesProvider {
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.input_get().await?;
 
-        let response = tokio::task::spawn_blocking({
+        let update_info = tokio::task::spawn_blocking({
             let query = query.clone();
             let recent_files = self.clone();
 
@@ -202,7 +199,7 @@ impl ClapProvider for RecentFilesProvider {
 
         let current_query = ctx.vim.input_get().await?;
         if current_query == query {
-            ctx.vim.exec("clap#state#update_picker", response)?;
+            ctx.vim.exec("clap#picker#update", update_info)?;
         }
 
         Ok(())

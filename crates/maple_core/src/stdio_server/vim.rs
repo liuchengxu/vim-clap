@@ -185,7 +185,7 @@ impl SearchProgressUpdate<DisplayLines> for SearchProgressor {
         }
 
         let _ = self.vim.exec(
-            "clap#state#process_progress",
+            "clap#picker#process_progress",
             [total_matched, total_processed],
         );
     }
@@ -199,10 +199,13 @@ impl SearchProgressUpdate<DisplayLines> for SearchProgressor {
         if self.stopped.load(Ordering::Relaxed) {
             return;
         }
-        let _ = self.vim.exec(
-            "clap#state#process_progress_full",
-            (display_lines, total_matched, total_processed),
-        );
+        let update_info = printer::PickerUpdateInfoRef {
+            matched: total_matched,
+            processed: total_processed,
+            display_lines,
+            display_syntax: None,
+        };
+        let _ = self.vim.exec("clap#picker#update", update_info);
     }
 
     fn on_finished(
@@ -214,10 +217,13 @@ impl SearchProgressUpdate<DisplayLines> for SearchProgressor {
         if self.stopped.load(Ordering::Relaxed) {
             return;
         }
-        let _ = self.vim.exec(
-            "clap#state#process_progress_full",
-            (display_lines, total_matched, total_processed),
-        );
+        let update_info = printer::PickerUpdateInfo {
+            matched: total_matched,
+            processed: total_processed,
+            display_lines,
+            ..Default::default()
+        };
+        let _ = self.vim.exec("clap#picker#update", update_info);
     }
 }
 

@@ -26,7 +26,7 @@ fn search_files(
 
     let search_root = paths[0].clone();
 
-    walk_parallel(paths, walk_config).run(|| {
+    walk_parallel(paths, walk_config, "files").run(|| {
         let matcher = matcher.clone();
         let sender = sender.clone();
         let stop_signal = stop_signal.clone();

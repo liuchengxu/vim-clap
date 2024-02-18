@@ -5,8 +5,7 @@ use crate::stdio_server::provider::{
 use crate::stdio_server::vim::SearchProgressor;
 use filter::{FilterContext, ParallelSource};
 use parking_lot::Mutex;
-use printer::{DisplayLines, Printer};
-use serde_json::json;
+use printer::Printer;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -217,29 +216,23 @@ impl ClapProvider for GenericProvider {
                 let matched_items = filter::par_filter_items(items, &ctx.matcher(&query));
                 let printer = Printer::new(ctx.env.display_winwidth, ctx.env.icon);
                 // Take the first 200 entries and add an icon to each of them.
-                let DisplayLines {
-                    lines,
-                    indices,
-                    truncated_map,
-                    icon_added,
-                } = printer.to_display_lines(matched_items.iter().take(200).cloned().collect());
-                let msg = json!({
-                    "total": matched_items.len(),
-                    "lines": lines,
-                    "indices": indices,
-                    "icon_added": icon_added,
-                    "truncated_map": truncated_map,
-                });
-                Some((msg, matched_items))
+                let display_lines =
+                    printer.to_display_lines(matched_items.iter().take(200).cloned().collect());
+                let update_info = printer::PickerUpdateInfo {
+                    matched: matched_items.len(),
+                    processed: items.len(),
+                    display_lines,
+                    ..Default::default()
+                };
+                Some((update_info, matched_items))
             } else {
                 None
             };
 
-        if let Some((msg, matched_items)) = small_list_response {
+        if let Some((update_info, matched_items)) = small_list_response {
             let new_query = ctx.vim.input_get().await?;
             if new_query == query {
-                ctx.vim
-                    .exec("clap#state#process_filter_message", json!([msg, true]))?;
+                ctx.vim.exec("clap#picker#update", update_info)?;
                 let mut current_results = self.current_results.lock();
                 *current_results = matched_items;
             }

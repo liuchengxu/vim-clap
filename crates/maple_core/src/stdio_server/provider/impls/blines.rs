@@ -129,25 +129,17 @@ impl BlinesProvider {
             BufferSource::ModifiedBuffer(items) => {
                 let matched_items = filter::par_filter_items(items, &ctx.matcher(&query));
                 let printer = printer::Printer::new(ctx.env.display_winwidth, ctx.env.icon);
-                let printer::DisplayLines {
-                    lines,
-                    indices,
-                    truncated_map,
-                    icon_added,
-                } = printer.to_display_lines(matched_items.iter().take(200).cloned().collect());
+                let display_lines =
+                    printer.to_display_lines(matched_items.iter().take(200).cloned().collect());
 
-                let msg = serde_json::json!({
-                    "total": matched_items.len(),
-                    "lines": lines,
-                    "indices": indices,
-                    "icon_added": icon_added,
-                    "truncated_map": truncated_map,
-                });
+                let update_info = printer::PickerUpdateInfo {
+                    matched: matched_items.len(),
+                    processed: items.len(),
+                    display_lines,
+                    ..Default::default()
+                };
 
-                ctx.vim.exec(
-                    "clap#state#process_filter_message",
-                    serde_json::json!([msg, true]),
-                )?;
+                ctx.vim.exec("clap#picker#update", update_info)?;
             }
             BufferSource::LocalFile(file) => {
                 self.process_query_on_local_file(query, ctx, file.clone());

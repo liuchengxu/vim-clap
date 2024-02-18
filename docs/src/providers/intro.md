@@ -131,3 +131,15 @@ For nvim-compe:
 ```vim
 autocmd FileType clap_input call compe#setup({ 'enabled': v:false }, 0)
 ```
+
+## Configuration
+
+### Project-specific ignore config
+
+Ignore the results from the certain files/folders.
+
+```toml
+[provider.project-ignores."~/src/github.com/bitcoin/bitcoin"]
+ignore-file-path-pattern = ["test"]
+ignore-file-name-pattern = ["test"]
+```

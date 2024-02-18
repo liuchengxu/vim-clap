@@ -66,10 +66,19 @@ impl From<AbsPathBuf> for PathBuf {
 impl TryFrom<PathBuf> for AbsPathBuf {
     type Error = PathBuf;
     fn try_from(path_buf: PathBuf) -> Result<AbsPathBuf, PathBuf> {
-        if !path_buf.is_absolute() {
-            return Err(path_buf);
+        if path_buf.is_absolute() {
+            Ok(Self(path_buf))
+        } else {
+            path_buf
+                .to_str()
+                .and_then(|p| {
+                    shellexpand::full(p)
+                        .map(|p| PathBuf::from(p.to_string()))
+                        .ok()
+                })
+                .map(AbsPathBuf)
+                .ok_or(path_buf)
         }
-        Ok(Self(path_buf))
     }
 }
 

@@ -11,3 +11,4 @@ itertools = { workspace = true }
 serde = { workspace = true }
 
 dirs = { workspace = true }
+shellexpand = "3.1.0"
