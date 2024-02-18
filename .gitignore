@@ -16,6 +16,7 @@ publish.sh
 crates/Cargo.lock
 pythonx/clap/fuzzymatch_rs.so
 
+!.cargo
 !.editorconfig
 !.travis.yml
 !.gitignore
