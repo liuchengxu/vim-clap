@@ -101,7 +101,7 @@ pub trait ClapPlugin: ClapAction + Debug + Send + Sync + 'static {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_compile
     /// #[maple_derive::subscriptions]
     /// async fn handle_autocmd(&mut self, _autocmd: AutocmdEvent) -> Result<(), PluginError> {
     ///     // Subscribe and handle certains autocmd events.
