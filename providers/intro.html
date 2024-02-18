@@ -260,16 +260,16 @@
 </li>
 <li>
 <p><code>g:clap_provider_alias</code>: Dict, if you don't want to invoke some clap provider by its id(name), as it's too long or somehow, you can add an alias for that provider.</p>
-<pre><code class="language-vim">&quot; The provider name is `command_history`, with the following alias config,
-&quot; now you can call it via both `:Clap command_history` and `:Clap hist:`.
+<pre><code class="language-vim">" The provider name is `command_history`, with the following alias config,
+" now you can call it via both `:Clap command_history` and `:Clap hist:`.
 let g:clap_provider_alias = {'hist:': 'command_history'}
 </code></pre>
 </li>
 <li>
-<p><code>g:clap_selected_sign</code>: Dict, <code>{ 'text': ' &gt;', 'texthl': &quot;ClapSelectedSign&quot;, &quot;linehl&quot;: &quot;ClapSelected&quot;}</code>.</p>
+<p><code>g:clap_selected_sign</code>: Dict, <code>{ 'text': ' &gt;', 'texthl': "ClapSelectedSign", "linehl": "ClapSelected"}</code>.</p>
 </li>
 <li>
-<p><code>g:clap_current_selection_sign</code>: Dict, <code>{ 'text': '&gt;&gt;', 'texthl': &quot;ClapCurrentSelectionSign&quot;, &quot;linehl&quot;: &quot;ClapCurrentSelection&quot;}</code>.</p>
+<p><code>g:clap_current_selection_sign</code>: Dict, <code>{ 'text': '&gt;&gt;', 'texthl': "ClapCurrentSelectionSign", "linehl": "ClapCurrentSelection"}</code>.</p>
 </li>
 <li>
 <p><code>g:clap_no_matches_msg</code>: String, <code>'NO MATCHES FOUND'</code>, message to show when there is no matches found.</p>
@@ -287,14 +287,14 @@ let g:clap_provider_alias = {'hist:': 'command_history'}
 <p><code>g:clap_provider_grep_blink</code>: [2, 100] by default, blink 2 times with 100ms timeout when jumping the result. Set it to [0, 0] to disable the blink.</p>
 </li>
 <li>
-<p><code>g:clap_provider_grep_opts</code>: An empty string by default, allows you to enable flags such as <code>'--hidden -g &quot;!.git/&quot;'</code>.</p>
+<p><code>g:clap_provider_grep_opts</code>: An empty string by default, allows you to enable flags such as <code>'--hidden -g "!.git/"'</code>.</p>
 </li>
 </ul>
 <p>See <code>:help clap-options</code> for more information.</p>
 <h2 id="how-to-create-your-own-provider"><a class="header" href="#how-to-create-your-own-provider">How to Create Your Own Provider</a></h2>
-<pre><code class="language-vim">&quot; `:Clap quick_open` to open some dotfiles quickly.
-&quot; `description` is actually optional, but if you want to show this provider
-&quot; when you call `:Clap`, the `description` is necessary.
+<pre><code class="language-vim">" `:Clap quick_open` to open some dotfiles quickly.
+" `description` is actually optional, but if you want to show this provider
+" when you call `:Clap`, the `description` is necessary.
 let g:clap_provider_quick_open = {
       \ 'source': ['~/.vimrc', '~/.spacevim', '~/.bashrc', '~/.tmux.conf'],
       \ 'sink': 'e',
@@ -310,6 +310,13 @@ let g:clap_provider_quick_open = {
 </code></pre>
 <p>For nvim-compe:</p>
 <pre><code class="language-vim">autocmd FileType clap_input call compe#setup({ 'enabled': v:false }, 0)
+</code></pre>
+<h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
+<h3 id="project-specific-ignore-config"><a class="header" href="#project-specific-ignore-config">Project-specific ignore config</a></h3>
+<p>Ignore the results from the certain files/folders.</p>
+<pre><code class="language-toml">[provider.project-ignores."~/src/github.com/bitcoin/bitcoin"]
+ignore-file-path-pattern = ["test"]
+ignore-file-name-pattern = ["test"]
 </code></pre>
 
                     </main>

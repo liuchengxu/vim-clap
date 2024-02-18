@@ -225,19 +225,19 @@ Support <a href="https://github.com/junegunn/fzf#search-syntax">the search synta
 </ul>
 <h2 id="installation-1"><a class="header" href="#installation-1">Installation</a></h2>
 <h3 id="vim-plug"><a class="header" href="#vim-plug"><a href="https://github.com/junegunn/vim-plug">vim-plug</a></a></h3>
-<pre><code class="language-vim">&quot; Build the Rust binary if `cargo` exists on your system.
+<pre><code class="language-vim">" Build the Rust binary if `cargo` exists on your system.
 Plug 'liuchengxu/vim-clap', { 'do': ':Clap install-binary' }
 
-&quot; The bang version will try to download the prebuilt binary if `cargo` does not exist.
+" The bang version will try to download the prebuilt binary if `cargo` does not exist.
 Plug 'liuchengxu/vim-clap', { 'do': ':Clap install-binary!' }
 
-&quot; `:Clap install-binary[!]` will always try to compile the binary locally.
-&quot; If you do care about the disk used for the compilation, use the way of force download,
-&quot; which will directly download the prebuilt binary even if `cargo` is available.
+" `:Clap install-binary[!]` will always try to compile the binary locally.
+" If you do care about the disk used for the compilation, use the way of force download,
+" which will directly download the prebuilt binary even if `cargo` is available.
 Plug 'liuchengxu/vim-clap', { 'do': { -&gt; clap#installer#force_download() } }
 
-&quot; `:Clap install-binary[!]` will run using the terminal feature which is inherently async.
-&quot; If you don't want that and hope to run the hook synchorously:
+" `:Clap install-binary[!]` will run using the terminal feature which is inherently async.
+" If you don't want that and hope to run the hook synchorously:
 Plug 'liuchengxu/vim-clap', { 'do': has('win32') ? 'cargo build --release' : 'make' }
 </code></pre>
 <p>Employing the <code>do</code> hook of the Vim plugin manager typically facilitates the automatic installation of the additional Rust binary, offering a convenient and recommended solution. However, if this process encounters any issues, manual compilation of the Rust dependency is required, as outlined in <a href="guide/./install_rust.html">the subsequent section</a>.</p>
@@ -265,7 +265,7 @@ cargo build --release
 <h3 id="compile-rust-binary-via-docker-linux-only"><a class="header" href="#compile-rust-binary-via-docker-linux-only">Compile Rust binary via Docker (Linux Only)</a></h3>
 <p>If you run into the libssl error when using the prebuilt binary from GitHub release, you can try building a static Rust binary:</p>
 <pre><code class="language-bash">$ cd path/to/vim-clap
-$ docker run --rm -it -v &quot;$(pwd)&quot;:/volume clux/muslrust cargo build --profile production --locked
+$ docker run --rm -it -v "$(pwd)":/volume clux/muslrust cargo build --profile production --locked
 $ cp target/x86_64-unknown-linux-musl/production/maple bin/maple
 # See if it really works
 $ ./bin/maple version
@@ -367,16 +367,16 @@ $ ./bin/maple version
 </li>
 <li>
 <p><code>g:clap_provider_alias</code>: Dict, if you don't want to invoke some clap provider by its id(name), as it's too long or somehow, you can add an alias for that provider.</p>
-<pre><code class="language-vim">&quot; The provider name is `command_history`, with the following alias config,
-&quot; now you can call it via both `:Clap command_history` and `:Clap hist:`.
+<pre><code class="language-vim">" The provider name is `command_history`, with the following alias config,
+" now you can call it via both `:Clap command_history` and `:Clap hist:`.
 let g:clap_provider_alias = {'hist:': 'command_history'}
 </code></pre>
 </li>
 <li>
-<p><code>g:clap_selected_sign</code>: Dict, <code>{ 'text': ' &gt;', 'texthl': &quot;ClapSelectedSign&quot;, &quot;linehl&quot;: &quot;ClapSelected&quot;}</code>.</p>
+<p><code>g:clap_selected_sign</code>: Dict, <code>{ 'text': ' &gt;', 'texthl': "ClapSelectedSign", "linehl": "ClapSelected"}</code>.</p>
 </li>
 <li>
-<p><code>g:clap_current_selection_sign</code>: Dict, <code>{ 'text': '&gt;&gt;', 'texthl': &quot;ClapCurrentSelectionSign&quot;, &quot;linehl&quot;: &quot;ClapCurrentSelection&quot;}</code>.</p>
+<p><code>g:clap_current_selection_sign</code>: Dict, <code>{ 'text': '&gt;&gt;', 'texthl': "ClapCurrentSelectionSign", "linehl": "ClapCurrentSelection"}</code>.</p>
 </li>
 <li>
 <p><code>g:clap_no_matches_msg</code>: String, <code>'NO MATCHES FOUND'</code>, message to show when there is no matches found.</p>
@@ -394,14 +394,14 @@ let g:clap_provider_alias = {'hist:': 'command_history'}
 <p><code>g:clap_provider_grep_blink</code>: [2, 100] by default, blink 2 times with 100ms timeout when jumping the result. Set it to [0, 0] to disable the blink.</p>
 </li>
 <li>
-<p><code>g:clap_provider_grep_opts</code>: An empty string by default, allows you to enable flags such as <code>'--hidden -g &quot;!.git/&quot;'</code>.</p>
+<p><code>g:clap_provider_grep_opts</code>: An empty string by default, allows you to enable flags such as <code>'--hidden -g "!.git/"'</code>.</p>
 </li>
 </ul>
 <p>See <code>:help clap-options</code> for more information.</p>
 <h2 id="how-to-create-your-own-provider"><a class="header" href="#how-to-create-your-own-provider">How to Create Your Own Provider</a></h2>
-<pre><code class="language-vim">&quot; `:Clap quick_open` to open some dotfiles quickly.
-&quot; `description` is actually optional, but if you want to show this provider
-&quot; when you call `:Clap`, the `description` is necessary.
+<pre><code class="language-vim">" `:Clap quick_open` to open some dotfiles quickly.
+" `description` is actually optional, but if you want to show this provider
+" when you call `:Clap`, the `description` is necessary.
 let g:clap_provider_quick_open = {
       \ 'source': ['~/.vimrc', '~/.spacevim', '~/.bashrc', '~/.tmux.conf'],
       \ 'sink': 'e',
@@ -418,13 +418,20 @@ let g:clap_provider_quick_open = {
 <p>For nvim-compe:</p>
 <pre><code class="language-vim">autocmd FileType clap_input call compe#setup({ 'enabled': v:false }, 0)
 </code></pre>
+<h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
+<h3 id="project-specific-ignore-config"><a class="header" href="#project-specific-ignore-config">Project-specific ignore config</a></h3>
+<p>Ignore the results from the certain files/folders.</p>
+<pre><code class="language-toml">[provider.project-ignores."~/src/github.com/bitcoin/bitcoin"]
+ignore-file-path-pattern = ["test"]
+ignore-file-name-pattern = ["test"]
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="theme"><a class="header" href="#theme">Theme</a></h1>
 <p>By default vim-clap would use the colors extracted from your current colorscheme, which is not guaranteed to suitable for all the colorschemes. You can try the built-in <code>material_design_dark</code> theme if the default theme does not work well:</p>
 <pre><code class="language-vim">let g:clap_theme = 'material_design_dark'
 </code></pre>
 <p><img src="https://user-images.githubusercontent.com/8850248/74818883-6cfdc380-533a-11ea-81fb-d09d90498c96.png" alt="material_design_dark-theme" /></p>
 <p>You could also set <code>g:clap_theme</code> to be a <code>Dict</code> to specify the palette:</p>
-<pre><code class="language-vim">&quot; Change the CamelCase of related highlight group name to under_score_case.
+<pre><code class="language-vim">" Change the CamelCase of related highlight group name to under_score_case.
 let g:clap_theme = { 'search_text': {'guifg': 'red', 'ctermfg': 'red'} }
 </code></pre>
 <p><code>ClapDisplay</code> and <code>ClapPreview</code> are the most basic highlight groups for the display and preview window, which can be overridden if the provider has its own syntax highlight, then checkout the related <a href="providers/syntax">syntax</a> file for more granular highlights directly.</p>
@@ -539,7 +546,7 @@ Use <code>:q</code> to exit.</li>
 <h3 id="extended-search-syntax"><a class="header" href="#extended-search-syntax">Extended search syntax</a></h3>
 <p>Apart from the basic fzf search syntax, more search syntax are supported:</p>
 <div class="table-wrapper"><table><thead><tr><th>Token</th><th>Match type</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>&quot;cli</code></td><td>word-match</td><td>Items that match word <code>cli</code> (<code>clippy</code> does not match <code>&quot;cli</code>)</td></tr>
+<tr><td><code>"cli</code></td><td>word-match</td><td>Items that match word <code>cli</code> (<code>clippy</code> does not match <code>"cli</code>)</td></tr>
 </tbody></table>
 </div><div style="break-before: page; page-break-before: always;"></div><h1 id="clap-plugins"><a class="header" href="#clap-plugins">Clap Plugins</a></h1>
 <blockquote>
@@ -548,7 +555,7 @@ Use <code>:q</code> to exit.</li>
 <p>Vim-Clap was originally a mere Vim fuzzy picker plugin, however, the integration of a robust Rust backend unveiled the potential to implement various additional functionalities effortlessly, for enjoyable experimentation and potential performance enhancements.</p>
 <p>Note that the vim-Clap plugins were mainly created for the plugin author's personal uses, thus they may not be feature-complete as their alternatives. Bugs are expected as these plugins are not extensively tested, feel free to use if you are brave enough.</p>
 <p>You must enable the <code>g:clap_plugin_experimental</code> flag in your <code>.vimrc</code> and create a <a href="plugins/./config.html">config file</a> beforehand.</p>
-<pre><code class="language-vim">&quot; Specify this variable to enable the plugin feature.
+<pre><code class="language-vim">" Specify this variable to enable the plugin feature.
 let g:clap_plugin_experimental = v:true
 </code></pre>
 <p>All the non-system plugins are disabled by default. To enable the plugins, you need to set <code>enable = true</code> explicitly for the plugins in the config file.</p>
@@ -556,7 +563,7 @@ let g:clap_plugin_experimental = v:true
 enable = true
 </code></pre>
 <p>Check out <a href="plugins/./plugins.html">Available Plugins</a> for detailed introduction to the plugins. Try <code>:Clap clap_actions</code> to take a look at the existing actions.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="configuration-1"><a class="header" href="#configuration-1">Configuration</a></h1>
 <p>User config file is loaded from:</p>
 <ul>
 <li>Linux: <code>~/.config/vimclap/config.toml</code></li>
@@ -567,21 +574,28 @@ enable = true
 <pre><code class="language-toml">## Log configuration.
 [log]
 # Specify the max log level.
-max-level = &quot;debug&quot;
+max-level = "debug"
 # Specify the log target to enable more detailed logging.
 #
 # Particularly useful for the debugging purpose.
 #
 # ```toml
 # [log]
-# log-target = &quot;maple_core::stdio_server=trace,rpc=debug&quot;
+# log-target = "maple_core::stdio_server=trace,rpc=debug"
 # ```
-log-target = &quot;&quot;
+log-target = ""
+
+## Winbar configuration.
+[winbar]
+# Whether to enable the winbar.
+enable = false
+# Specify the display style for the file path in winbar.
+file-path-style = "one-segment-per-component"
 
 ## Matcher configuration.
 [matcher]
 # Specify how the results are sorted.
-tiebreak = &quot;score,-begin,-end,-length&quot;
+tiebreak = "score,-begin,-end,-length"
 [plugin.colorizer]
 # Whether to enable this plugin.
 enable = false
@@ -592,7 +606,7 @@ enable = false
 # Whether to ignore the comment line
 ignore-comment-line = false
 # Disable the plugin when the file matches this pattern.
-ignore-files = &quot;*.toml,*.json,*.yml,*.log,tmp&quot;
+ignore-files = "*.toml,*.json,*.yml,*.log,tmp"
 
 [plugin.ctags]
 # Whether to enable this plugin.
@@ -607,6 +621,10 @@ max-file-size = 4194304
 enable = true
 
 [plugin.linter]
+# Whether to enable this plugin.
+enable = false
+
+[plugin.lsp]
 # Whether to enable this plugin.
 enable = false
 
@@ -629,10 +647,10 @@ enable = false
 #
 # ```toml
 # [plugin.syntax.render-strategy]
-# strategy = &quot;visual-lines&quot;
+# strategy = "visual-lines"
 # ```
 [plugin.syntax.render-strategy]
-strategy = &quot;entire-buffer-up-to-limit&quot;
+strategy = "entire-buffer-up-to-limit"
 file-size-limit = 262144
 
 ## Provider (fuzzy picker) configuration.
@@ -642,7 +660,7 @@ share-input-history = false
 # Specify the syntax highlight engine for the provider preview.
 #
 # Possible values: `vim`, `sublime-syntax` and `tree-sitter`
-preview-highlight-engine = &quot;vim&quot;
+preview-highlight-engine = "vim"
 
 # Ignore configuration per project, with paths specified as
 # absolute path or relative to the home directory.
@@ -666,7 +684,7 @@ preview-highlight-engine = &quot;vim&quot;
 # ```toml
 # [provider.debounce]
 # # Set debounce to 100ms for files provider specifically.
-# &quot;files&quot; = 100
+# "files" = 100
 # ```
 [provider.debounce]
 
@@ -674,19 +692,27 @@ preview-highlight-engine = &quot;vim&quot;
 [global-ignore]
 # Whether to ignore the comment line when applicable.
 ignore-comments = false
-# Only include the results from the files being tracked by git if in a git repo.
+# Whether to include only results from files tracked by git, if in a git repository.
 git-tracked-only = false
-# Ignore the results from the files whose file name matches this pattern.
+# Patterns for ignoring files based on their names.
 #
-# For instance, if you want to exclude the results whose file name matches
-# `test` for dumb_jump provider:
+# For instance, to exclude results from files whose names contain "test" for
+# the dumb_jump provider:
 #
 # ```toml
 # [provider.provider-ignores.dumb_jump]
-# ignore-file-path-pattern = [&quot;test&quot;]
+# ignore-file-name-pattern = ["test"]
 # ```
 ignore-file-name-pattern = []
-# Ignore the results from the files whose file path matches this pattern.
+# Patterns for ignoring files based on their paths.
+#
+# For instance, to exclude the results from the folder whose names contain `test`
+# in the project `~/src/github.com/vim/vim`:
+#
+# ```toml
+# [provider.project-ignores."~/src/github.com/vim/vim"]
+# ignore-file-path-pattern = ["test"]
+# ```
 ignore-file-path-pattern = []
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="available-plugins"><a class="header" href="#available-plugins">Available Plugins</a></h1>

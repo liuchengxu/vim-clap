@@ -206,7 +206,7 @@ cargo build --release
 <h3 id="compile-rust-binary-via-docker-linux-only"><a class="header" href="#compile-rust-binary-via-docker-linux-only">Compile Rust binary via Docker (Linux Only)</a></h3>
 <p>If you run into the libssl error when using the prebuilt binary from GitHub release, you can try building a static Rust binary:</p>
 <pre><code class="language-bash">$ cd path/to/vim-clap
-$ docker run --rm -it -v &quot;$(pwd)&quot;:/volume clux/muslrust cargo build --profile production --locked
+$ docker run --rm -it -v "$(pwd)":/volume clux/muslrust cargo build --profile production --locked
 $ cp target/x86_64-unknown-linux-musl/production/maple bin/maple
 # See if it really works
 $ ./bin/maple version
