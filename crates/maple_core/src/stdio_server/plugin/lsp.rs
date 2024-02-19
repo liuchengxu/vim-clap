@@ -1,14 +1,13 @@
+mod handler;
 mod language_config;
 
 use crate::stdio_server::diagnostics_worker::WorkerMessage as DiagnosticsWorkerMessage;
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::lsp::{
-    find_lsp_root, language_id_from_path, LanguageServerMessageHandler,
-};
 use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginError, Toggle};
 use crate::stdio_server::provider::lsp::{set_lsp_source, LspSource};
 use crate::stdio_server::vim::{Vim, VimError, VimResult};
-use language_config::get_language_server_config;
+use handler::LanguageServerMessageHandler;
+use language_config::{find_lsp_root, get_language_server_config, language_id_from_path};
 use lsp::Url;
 use maple_lsp::lsp;
 use std::collections::hash_map::Entry;
