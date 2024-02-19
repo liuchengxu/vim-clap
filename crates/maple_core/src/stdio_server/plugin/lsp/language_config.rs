@@ -172,7 +172,7 @@ fn config_inner() -> &'static ConfigurationInner {
     })
 }
 
-pub fn get_root_markers<'a>(language_name: LanguageId) -> Vec<String> {
+pub fn get_root_markers(language_name: LanguageId) -> Vec<String> {
     let config = config_inner();
 
     config

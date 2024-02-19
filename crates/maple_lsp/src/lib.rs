@@ -346,9 +346,9 @@ impl LanguageServerConfig {
     }
 
     pub fn update_config(&mut self, user_config: serde_json::Value) {
-        self.config
-            .as_mut()
-            .map(|c| json_patch::merge(c, user_config));
+        if let Some(c) = self.config.as_mut() {
+            json_patch::merge(c, user_config);
+        }
     }
 }
 
