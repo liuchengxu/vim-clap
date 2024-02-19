@@ -319,32 +319,51 @@ pub fn find_lsp_workspace(
     None
 }
 
-#[derive(Debug, Clone)]
-pub struct LanguageConfig {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct LanguageServerConfig {
     /// Language server executable, e.g., `rust-analyzer`.
-    pub cmd: String,
+    pub command: String,
+
     /// Arguments passed to the language server executable.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub args: Vec<String>,
+
     /// Project root pattern for this language, e.g., `Cargo.toml` for rust.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub root_markers: Vec<String>,
+
+    /// initialize_options
+    #[serde(default, skip_serializing, deserialize_with = "deserialize_lsp_config")]
+    pub config: Option<serde_json::Value>,
 }
 
-impl LanguageConfig {
+impl LanguageServerConfig {
     pub fn server_name(&self) -> String {
-        self.cmd
+        self.command
             .rsplit_once(std::path::MAIN_SEPARATOR)
             .map(|(_, binary)| binary)
-            .unwrap_or(&self.cmd)
+            .unwrap_or(&self.command)
             .to_owned()
     }
 }
 
+fn deserialize_lsp_config<'de, D>(deserializer: D) -> Result<Option<serde_json::Value>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Option::<toml::Value>::deserialize(deserializer)?
+        .map(|toml| toml.try_into().map_err(serde::de::Error::custom))
+        .transpose()
+}
+
 #[derive(Debug, Clone)]
 pub struct ClientParams {
-    pub language_config: LanguageConfig,
+    pub language_server_config: LanguageServerConfig,
     pub manual_roots: Vec<PathBuf>,
     pub enable_snippets: bool,
-    pub initialization_options: Option<serde_json::Value>,
 }
 
 pub async fn start_client<T: HandleLanguageServerMessage + Send + Sync + 'static>(
@@ -354,20 +373,20 @@ pub async fn start_client<T: HandleLanguageServerMessage + Send + Sync + 'static
     language_server_message_handler: T,
 ) -> Result<Arc<Client>, Error> {
     let ClientParams {
-        language_config,
+        language_server_config,
         manual_roots,
         enable_snippets,
-        initialization_options,
     } = client_params;
 
-    let LanguageConfig {
-        cmd,
+    let LanguageServerConfig {
+        command,
         args,
         root_markers,
-    } = language_config;
+        config: initialization_options,
+    } = language_server_config;
 
     let client = Client::new(
-        &cmd,
+        &command,
         &args,
         name,
         &root_markers,
@@ -376,7 +395,7 @@ pub async fn start_client<T: HandleLanguageServerMessage + Send + Sync + 'static
         language_server_message_handler,
     )?;
 
-    tracing::debug!(?cmd, "A new LSP Client created: {client:?}");
+    tracing::debug!(?command, "A new LSP Client created: {client:?}");
 
     let client = Arc::new(client);
 

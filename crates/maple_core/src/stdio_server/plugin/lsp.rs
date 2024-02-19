@@ -8,7 +8,7 @@ use crate::stdio_server::lsp::{
 use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginError, Toggle};
 use crate::stdio_server::provider::lsp::{set_lsp_source, LspSource};
 use crate::stdio_server::vim::{Vim, VimError, VimResult};
-use language_config::get_language_config;
+use language_config::get_language_server_config;
 use lsp::Url;
 use maple_lsp::lsp;
 use std::collections::hash_map::Entry;
@@ -182,8 +182,8 @@ impl LspPlugin {
         let path = self.vim.bufabspath(bufnr).await?;
 
         let language_id = language_id_from_path(&path).ok_or(Error::LanguageIdNotFound(bufnr))?;
-        let language_config =
-            get_language_config(language_id).ok_or(Error::UnsupportedLanguage(language_id))?;
+        let language_server_config = get_language_server_config(language_id)
+            .ok_or(Error::UnsupportedLanguage(language_id))?;
 
         if let Entry::Vacant(e) = self.attached_buffers.entry(bufnr) {
             let bufname = self.vim.bufname(bufnr).await?;
@@ -203,14 +203,12 @@ impl LspPlugin {
                 }
                 Entry::Vacant(e) => {
                     let enable_snippets = false;
-                    let name = language_config.server_name();
+                    let name = language_server_config.server_name();
                     let client = maple_lsp::start_client(
                         maple_lsp::ClientParams {
-                            language_config,
+                            language_server_config,
                             manual_roots: vec![],
                             enable_snippets,
-                            // TODO: server specific init options.
-                            initialization_options: None,
                         },
                         name.clone(),
                         Some(PathBuf::from(path.clone())),
