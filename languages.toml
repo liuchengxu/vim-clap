@@ -1,10 +1,20 @@
-[language-server.gopls]
-command = "gopls"
+[[language]]
+name = "go"
+filetype = ["go"]
 root-markers = ["go.mod"]
+language-servers = [ "gopls" ]
+
+[[language]]
+name = "rust"
+filetype = ["rust"]
+root-markers = ["Cargo.toml", "Cargo.lock"]
+language-servers = [ "rust-analyzer" ]
+
+[language-server]
+gopls = { command = "gopls" }
 
 [language-server.rust-analyzer]
 command = "rust-analyzer"
-root-markers = ["Cargo.toml"]
 
 [language-server.rust-analyzer.config]
 inlayHints.lifetimeElisionHints.enable = "skip_trivial"

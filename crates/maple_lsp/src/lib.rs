@@ -330,12 +330,7 @@ pub struct LanguageServerConfig {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub args: Vec<String>,
 
-    /// Project root pattern for this language, e.g., `Cargo.toml` for rust.
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub root_markers: Vec<String>,
-
-    /// initialize_options
+    /// Represents the optional `initialization_options`.
     #[serde(default, skip_serializing, deserialize_with = "deserialize_lsp_config")]
     pub config: Option<serde_json::Value>,
 }
@@ -366,12 +361,16 @@ pub struct ClientParams {
     pub enable_snippets: bool,
 }
 
-pub async fn start_client<T: HandleLanguageServerMessage + Send + Sync + 'static>(
+pub async fn start_client<T>(
     client_params: ClientParams,
     name: String,
     doc_path: Option<PathBuf>,
+    root_markers: Vec<String>,
     language_server_message_handler: T,
-) -> Result<Arc<Client>, Error> {
+) -> Result<Arc<Client>, Error>
+where
+    T: HandleLanguageServerMessage + Send + Sync + 'static,
+{
     let ClientParams {
         language_server_config,
         manual_roots,
@@ -381,7 +380,6 @@ pub async fn start_client<T: HandleLanguageServerMessage + Send + Sync + 'static
     let LanguageServerConfig {
         command,
         args,
-        root_markers,
         config: initialization_options,
     } = language_server_config;
 

@@ -17,6 +17,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
+use self::language_config::get_root_markers;
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("lsp client not found")]
@@ -212,6 +214,7 @@ impl LspPlugin {
                         },
                         name.clone(),
                         Some(PathBuf::from(path.clone())),
+                        get_root_markers(language_id),
                         LanguageServerMessageHandler::new(
                             name,
                             self.vim.clone(),
