@@ -344,6 +344,7 @@ pub struct ClientParams {
     pub language_config: LanguageConfig,
     pub manual_roots: Vec<PathBuf>,
     pub enable_snippets: bool,
+    pub initialization_options: Option<serde_json::Value>,
 }
 
 pub async fn start_client<T: HandleLanguageServerMessage + Send + Sync + 'static>(
@@ -356,6 +357,7 @@ pub async fn start_client<T: HandleLanguageServerMessage + Send + Sync + 'static
         language_config,
         manual_roots,
         enable_snippets,
+        initialization_options,
     } = client_params;
 
     let LanguageConfig {
@@ -382,7 +384,7 @@ pub async fn start_client<T: HandleLanguageServerMessage + Send + Sync + 'static
         .capabilities
         .get_or_try_init(|| {
             client
-                .initialize(enable_snippets)
+                .initialize(enable_snippets, initialization_options)
                 .map_ok(|response| response.capabilities)
         })
         .await;
@@ -696,7 +698,11 @@ impl Client {
         Ok(())
     }
 
-    async fn initialize(&self, enable_snippets: bool) -> Result<lsp::InitializeResult, Error> {
+    async fn initialize(
+        &self,
+        enable_snippets: bool,
+        initialization_options: Option<serde_json::Value>,
+    ) -> Result<lsp::InitializeResult, Error> {
         #[allow(deprecated)]
         let params = lsp::InitializeParams {
             process_id: Some(std::process::id()),
@@ -705,7 +711,7 @@ impl Client {
             // clients will prefer _uri if possible
             root_path: self.root_path.to_str().map(|s| s.to_string()),
             root_uri: self.root_uri.clone(),
-            initialization_options: None,
+            initialization_options,
             capabilities: lsp::ClientCapabilities {
                 workspace: Some(lsp::WorkspaceClientCapabilities {
                     configuration: Some(true),

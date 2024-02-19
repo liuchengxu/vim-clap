@@ -17,6 +17,9 @@ struct Plugin {
     actions: Option<Expr>,
 }
 
+/// Separator for non-system plugin actions, `git.reload`.
+const SEP: char = '.';
+
 pub fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
     let mut maybe_plugin_id = None;
     let mut actions_parsed = Vec::<String>::new();
@@ -136,7 +139,7 @@ pub fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
         let namespaced_action = if plugin_id == "system" {
             action.clone()
         } else {
-            format!("{plugin_id}/{action}")
+            format!("{plugin_id}{SEP}{action}")
         };
 
         if is_callable {
@@ -165,11 +168,11 @@ pub fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
     let action_variants = raw_actions
         .iter()
         .map(|arg| {
-            // "__note-recent-files", "cursorword/__define-highlights"
+            // "__note-recent-files", "cursorword.__define-highlights"
             let method = if plugin_id == "system" {
                 arg.to_string()
             } else {
-                format!("{plugin_id}/{arg}")
+                format!("{plugin_id}{SEP}{arg}")
             };
             let pascal_name = if let Some(name) = arg.strip_prefix("__") {
                 format!("__{}", to_pascal_case(name))

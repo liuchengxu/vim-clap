@@ -209,6 +209,8 @@ impl LspPlugin {
                             language_config,
                             manual_roots: vec![],
                             enable_snippets,
+                            // TODO: server specific init options.
+                            initialization_options: None,
                         },
                         name.clone(),
                         Some(PathBuf::from(path.clone())),
