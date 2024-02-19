@@ -1,3 +1,5 @@
+mod language_config;
+
 use crate::stdio_server::diagnostics_worker::WorkerMessage as DiagnosticsWorkerMessage;
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::lsp::{
@@ -6,6 +8,7 @@ use crate::stdio_server::lsp::{
 use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginError, Toggle};
 use crate::stdio_server::provider::lsp::{set_lsp_source, LspSource};
 use crate::stdio_server::vim::{Vim, VimError, VimResult};
+use language_config::get_language_config;
 use lsp::Url;
 use maple_lsp::lsp;
 use std::collections::hash_map::Entry;
@@ -101,42 +104,6 @@ fn open_new_doc(
     let text = std::fs::read_to_string(path)?;
     client.text_document_did_open(to_url(path)?, 0, text, language_id)?;
     Ok(())
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "kebab-case", deny_unknown_fields)]
-pub struct LanguageConfig {
-    /// c-sharp, rust, tsx
-    #[serde(rename = "name")]
-    pub language_id: String,
-
-    /// see the table under https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentItem
-    /// csharp, rust, typescriptreact, for the language-server
-    #[serde(rename = "language-id")]
-    pub language_server_language_id: Option<String>,
-
-    /// these indicate project roots <.git, Cargo.toml>
-    #[serde(default)]
-    pub root_markers: Vec<String>,
-}
-
-// TODO: support more languages.
-fn get_language_config(language_id: LanguageId) -> Option<maple_lsp::LanguageConfig> {
-    let language_config = match language_id {
-        "rust" => maple_lsp::LanguageConfig {
-            cmd: String::from("rust-analyzer"),
-            args: vec![],
-            root_markers: vec![String::from("Cargo.toml")],
-        },
-        "go" => maple_lsp::LanguageConfig {
-            cmd: String::from("gopls"),
-            args: vec![],
-            root_markers: vec![String::from("go.mod")],
-        },
-        _ => return None,
-    };
-
-    Some(language_config)
 }
 
 fn preprocess_text_edits(text_edits: Vec<lsp::TextEdit>) -> Vec<lsp::TextEdit> {
