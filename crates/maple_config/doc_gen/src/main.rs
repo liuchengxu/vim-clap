@@ -243,11 +243,9 @@ fn process_ast(ast: &syn::File) -> Document {
 
                                 // Ugly workaround to handle the special case `SyntaxPluginConfig
                                 // { render_strategy }`.
-                                if t_key.get() == "render-strategy" {
-                                    if let Some(t) = item.as_table_mut() {
-                                        t.decor_mut().set_prefix(format!("\n{comments}\n"));
-                                    }
-                                } else if t_key.get() == "language-server" {
+                                if t_key.get() == "render-strategy"
+                                    || t_key.get() == "language-server"
+                                {
                                     if let Some(t) = item.as_table_mut() {
                                         t.decor_mut().set_prefix(format!("\n{comments}\n"));
                                     }

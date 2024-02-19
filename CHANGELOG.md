@@ -2,6 +2,8 @@
 
 ## [unreleased]
 
+- Change the syntax of plugin actions from `plugin/action` to `plugin.action` for better compatibility with other tools.
+
 ### Internal
 
 - Improve the robustness of the publish pipeline by migrating Bash and Python scripts to `cargo xtask`.

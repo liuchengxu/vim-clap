@@ -1,13 +1,16 @@
 mod handler;
 mod language_config;
 
+use self::language_config::{
+    find_lsp_root, get_language_server_config, get_root_markers, language_id_by_filetype,
+    language_id_by_path,
+};
 use crate::stdio_server::diagnostics_worker::WorkerMessage as DiagnosticsWorkerMessage;
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginError, Toggle};
 use crate::stdio_server::provider::lsp::{set_lsp_source, LspSource};
 use crate::stdio_server::vim::{Vim, VimError, VimResult};
 use handler::LanguageServerMessageHandler;
-use language_config::{find_lsp_root, get_language_server_config, language_id_from_path};
 use lsp::Url;
 use maple_lsp::lsp;
 use std::collections::hash_map::Entry;
@@ -15,8 +18,6 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
-
-use self::language_config::get_root_markers;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -180,8 +181,18 @@ impl LspPlugin {
     async fn buffer_attach(&mut self, bufnr: usize) -> Result<(), Error> {
         let path = self.vim.bufabspath(bufnr).await?;
 
-        let Some(language_id) = language_id_from_path(&path) else {
-            return Ok(());
+        let language_id = match language_id_by_path(&path) {
+            Some(v) => v,
+            None => {
+                let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+
+                match language_id_by_filetype(&filetype) {
+                    Some(v) => v,
+                    None => {
+                        return Ok(());
+                    }
+                }
+            }
         };
 
         let language_server_config = get_language_server_config(language_id)
