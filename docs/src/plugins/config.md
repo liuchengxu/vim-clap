@@ -65,6 +65,20 @@ enable = false
 [plugin.lsp]
 # Whether to enable this plugin.
 enable = false
+# Whether to include the declaration when invoking goto-reference.
+include-declaration = false
+
+# Custom language server configurations.
+#
+# # Example
+#
+# ```toml
+# [plugin.lsp.language-server.rust-analyzer]
+# procMacro.enable = false
+# procMacro.attributes.enable = false
+# diagnostics.disabled = [ "unresolved-proc-macro" ]
+# ```
+[plugin.lsp.language-server]
 
 [plugin.markdown]
 # Whether to enable this plugin.

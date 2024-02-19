@@ -247,6 +247,10 @@ fn process_ast(ast: &syn::File) -> Document {
                                     if let Some(t) = item.as_table_mut() {
                                         t.decor_mut().set_prefix(format!("\n{comments}\n"));
                                     }
+                                } else if t_key.get() == "language-server" {
+                                    if let Some(t) = item.as_table_mut() {
+                                        t.decor_mut().set_prefix(format!("\n{comments}\n"));
+                                    }
                                 } else {
                                     t_key.decor_mut().set_prefix(format!("{comments}\n"));
                                 }
