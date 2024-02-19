@@ -189,8 +189,21 @@ pub fn get_language_server_config(
 
     let language_config = config.languages.get(language_name)?;
 
-    // TODO: Only support the first server for now.
+    // TODO: Support multiple servers?
     let language_server = language_config.language_servers.first()?;
 
-    config.language_servers.get(language_server).cloned()
+    let mut language_server_config = config.language_servers.get(language_server).cloned()?;
+
+    // Update the language server config specified in config.toml.
+    if let Some(user_config) = maple_config::config()
+        .plugin
+        .lsp
+        .language_server
+        .get(language_server.as_str())
+    {
+        let user_config: serde_json::Value = serde_json::from_str(&user_config.to_string()).ok()?;
+        language_server_config.update_config(user_config);
+    }
+
+    Some(language_server_config)
 }

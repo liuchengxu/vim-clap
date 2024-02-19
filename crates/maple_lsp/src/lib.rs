@@ -1,3 +1,4 @@
+mod json_patch;
 mod language_server_message;
 
 use futures_util::TryFutureExt;
@@ -342,6 +343,12 @@ impl LanguageServerConfig {
             .map(|(_, binary)| binary)
             .unwrap_or(&self.command)
             .to_owned()
+    }
+
+    pub fn update_config(&mut self, user_config: serde_json::Value) {
+        self.config
+            .as_mut()
+            .map(|c| json_patch::merge(c, user_config));
     }
 }
 
