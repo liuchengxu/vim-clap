@@ -22,8 +22,6 @@ use self::language_config::get_root_markers;
 pub enum Error {
     #[error("lsp client not found")]
     ClientNotFound,
-    #[error("language id not found for buffer {0}")]
-    LanguageIdNotFound(usize),
     #[error("language config not found: {0}")]
     UnsupportedLanguage(LanguageId),
     #[error("buffer not attached")]
@@ -182,7 +180,10 @@ impl LspPlugin {
     async fn buffer_attach(&mut self, bufnr: usize) -> Result<(), Error> {
         let path = self.vim.bufabspath(bufnr).await?;
 
-        let language_id = language_id_from_path(&path).ok_or(Error::LanguageIdNotFound(bufnr))?;
+        let Some(language_id) = language_id_from_path(&path) else {
+            return Ok(());
+        };
+
         let language_server_config = get_language_server_config(language_id)
             .ok_or(Error::UnsupportedLanguage(language_id))?;
 
@@ -410,8 +411,7 @@ impl LspPlugin {
                     .await
             }
             Goto::Reference => {
-                // TODO: configurable include_declaration flag.
-                let include_declaration = false;
+                let include_declaration = maple_config::config().plugin.lsp.include_declaration;
                 client
                     .goto_reference(text_document, position, include_declaration, None)
                     .await

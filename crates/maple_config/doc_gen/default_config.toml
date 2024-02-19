@@ -55,6 +55,9 @@ enable = false
 # Whether to enable this plugin.
 enable = false
 
+[plugin.lsp.# Language server configurations.
+language-server]
+
 [plugin.markdown]
 # Whether to enable this plugin.
 enable = false

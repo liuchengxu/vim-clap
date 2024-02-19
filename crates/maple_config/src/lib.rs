@@ -245,6 +245,9 @@ pub struct LspPluginConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
 
+    /// Whether to include the declaration when invoking goto-reference.
+    pub include_declaration: bool,
+
     /// Custom language server configurations.
     ///
     /// # Example

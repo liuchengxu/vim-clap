@@ -2,6 +2,10 @@
 
 ## [unreleased]
 
+### Internal
+
+- Improve the robustness of the publish pipeline by migrating Bash and Python scripts to `cargo xtask`.
+
 ## [0.51] 2024-02-18
 
 ## Added
