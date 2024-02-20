@@ -67,8 +67,29 @@ enable = false
 enable = false
 # Whether to include the declaration when invoking goto-reference.
 include-declaration = false
+# Specifies custom languages that are not built into vim-clap.
+#
+# If a language is not included in the default languages supported by vim-clap,
+# you can specify it here. Note that for languages not listed in the default
+# configuration (check out the full list of supported languages in `languages.toml`),
+# you need to provide associated language server configurations as well.
+#
+# # Example
+#
+# ```toml
+# [[plugin.lsp.language]]
+# name = "erlang"
+# filetype = ["erlang"]
+# root-markers = ["rebar.config"]
+# language-servers = ["erlang-ls"]
+#
+# [plugin.lsp.language-server.erlang-ls]
+# command = "erlang_ls"
+# args = ["--transport", "stdio"]
+# ```
+language = []
 
-# Custom language server configurations.
+# Specify language server configurations.
 #
 # # Example
 #
