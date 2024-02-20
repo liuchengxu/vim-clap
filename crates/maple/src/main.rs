@@ -12,6 +12,7 @@ pub enum Cmd {
     /// Display the current version.
     #[clap(name = "version")]
     Version,
+
     /// Upgrade the prebuilt binary to the latest GitHub release if any.
     ///
     /// Only available for the executable in `vim-clap/bin/maple`.
@@ -24,6 +25,7 @@ pub enum Cmd {
         #[clap(long)]
         no_progress_bar: bool,
     },
+
     /// Run the maple.
     #[clap(flatten)]
     Run(Box<RunCmd>),
