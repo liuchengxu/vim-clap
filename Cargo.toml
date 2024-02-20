@@ -76,7 +76,7 @@ strsim = "0.10.0"
 syntect = "5.0.0"
 subprocess = { git = "https://github.com/hniksic/rust-subprocess" }
 thiserror = "1.0"
-tokio = "1.32"
+tokio = "1.36"
 toml = "0.5"
 tracing = "0.1"
 tracing-appender = "0.2"
