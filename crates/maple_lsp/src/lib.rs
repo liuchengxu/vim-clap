@@ -1,3 +1,4 @@
+mod json_patch;
 mod language_server_message;
 
 use futures_util::TryFutureExt;
@@ -319,53 +320,78 @@ pub fn find_lsp_workspace(
     None
 }
 
-#[derive(Debug, Clone)]
-pub struct LanguageConfig {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct LanguageServerConfig {
     /// Language server executable, e.g., `rust-analyzer`.
-    pub cmd: String,
+    pub command: String,
+
     /// Arguments passed to the language server executable.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub args: Vec<String>,
-    /// Project root pattern for this language, e.g., `Cargo.toml` for rust.
-    pub root_markers: Vec<String>,
+
+    /// Represents the optional `initialization_options`.
+    #[serde(default, skip_serializing, deserialize_with = "deserialize_lsp_config")]
+    pub config: Option<serde_json::Value>,
 }
 
-impl LanguageConfig {
+impl LanguageServerConfig {
     pub fn server_name(&self) -> String {
-        self.cmd
+        self.command
             .rsplit_once(std::path::MAIN_SEPARATOR)
             .map(|(_, binary)| binary)
-            .unwrap_or(&self.cmd)
+            .unwrap_or(&self.command)
             .to_owned()
     }
+
+    pub fn update_config(&mut self, user_config: serde_json::Value) {
+        if let Some(c) = self.config.as_mut() {
+            json_patch::merge(c, user_config);
+        }
+    }
+}
+
+fn deserialize_lsp_config<'de, D>(deserializer: D) -> Result<Option<serde_json::Value>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Option::<toml::Value>::deserialize(deserializer)?
+        .map(|toml| toml.try_into().map_err(serde::de::Error::custom))
+        .transpose()
 }
 
 #[derive(Debug, Clone)]
 pub struct ClientParams {
-    pub language_config: LanguageConfig,
+    pub language_server_config: LanguageServerConfig,
     pub manual_roots: Vec<PathBuf>,
     pub enable_snippets: bool,
 }
 
-pub async fn start_client<T: HandleLanguageServerMessage + Send + Sync + 'static>(
+pub async fn start_client<T>(
     client_params: ClientParams,
     name: String,
     doc_path: Option<PathBuf>,
+    root_markers: Vec<String>,
     language_server_message_handler: T,
-) -> Result<Arc<Client>, Error> {
+) -> Result<Arc<Client>, Error>
+where
+    T: HandleLanguageServerMessage + Send + Sync + 'static,
+{
     let ClientParams {
-        language_config,
+        language_server_config,
         manual_roots,
         enable_snippets,
     } = client_params;
 
-    let LanguageConfig {
-        cmd,
+    let LanguageServerConfig {
+        command,
         args,
-        root_markers,
-    } = language_config;
+        config: initialization_options,
+    } = language_server_config;
 
     let client = Client::new(
-        &cmd,
+        &command,
         &args,
         name,
         &root_markers,
@@ -374,7 +400,7 @@ pub async fn start_client<T: HandleLanguageServerMessage + Send + Sync + 'static
         language_server_message_handler,
     )?;
 
-    tracing::debug!(?cmd, "A new LSP Client created: {client:?}");
+    tracing::debug!(?command, "A new LSP Client created: {client:?}");
 
     let client = Arc::new(client);
 
@@ -382,7 +408,7 @@ pub async fn start_client<T: HandleLanguageServerMessage + Send + Sync + 'static
         .capabilities
         .get_or_try_init(|| {
             client
-                .initialize(enable_snippets)
+                .initialize(enable_snippets, initialization_options)
                 .map_ok(|response| response.capabilities)
         })
         .await;
@@ -696,7 +722,11 @@ impl Client {
         Ok(())
     }
 
-    async fn initialize(&self, enable_snippets: bool) -> Result<lsp::InitializeResult, Error> {
+    async fn initialize(
+        &self,
+        enable_snippets: bool,
+        initialization_options: Option<serde_json::Value>,
+    ) -> Result<lsp::InitializeResult, Error> {
         #[allow(deprecated)]
         let params = lsp::InitializeParams {
             process_id: Some(std::process::id()),
@@ -705,7 +735,7 @@ impl Client {
             // clients will prefer _uri if possible
             root_path: self.root_path.to_str().map(|s| s.to_string()),
             root_uri: self.root_uri.clone(),
-            initialization_options: None,
+            initialization_options,
             capabilities: lsp::ClientCapabilities {
                 workspace: Some(lsp::WorkspaceClientCapabilities {
                     configuration: Some(true),

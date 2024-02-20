@@ -1,7 +1,6 @@
 mod diagnostics_worker;
 mod input;
 mod job;
-mod lsp;
 mod plugin;
 mod provider;
 mod request_handler;

@@ -1383,6 +1383,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tokio",
+ "toml 0.5.11",
  "tracing",
  "which",
 ]

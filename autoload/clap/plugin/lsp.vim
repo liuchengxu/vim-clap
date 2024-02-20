@@ -58,17 +58,17 @@ function! clap#plugin#lsp#tab_size(bufnr) abort
 endfunction
 
 function! clap#plugin#lsp#reload(bufnr) abort
-  call clap#client#notify('lsp/__reload', [a:bufnr])
+  call clap#client#notify('lsp.__reload', [a:bufnr])
 endfunction
 
 function! clap#plugin#lsp#detach(bufnr) abort
-  call clap#client#notify('lsp/__detach', [a:bufnr])
+  call clap#client#notify('lsp.__detach', [a:bufnr])
 endfunction
 
 if has('nvim')
 " [bufnr, changedtick, firstline, lastline, new_lastline]
 function! clap#plugin#lsp#on_lines(...) abort
-  call clap#client#notify('lsp/__did_change', a:000)
+  call clap#client#notify('lsp.__did_change', a:000)
 endfunction
 
 function! clap#plugin#lsp#buf_attach(bufnr) abort

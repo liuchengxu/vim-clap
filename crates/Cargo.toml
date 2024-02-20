@@ -24,6 +24,7 @@ members = [
     "tree_sitter",
     "utils",
     "upgrade",
+    "xtask",
 ]
 
 exclude = ["config_gen"]

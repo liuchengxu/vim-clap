@@ -1,11 +1,16 @@
+mod handler;
+mod language_config;
+
+use self::language_config::{
+    find_lsp_root, get_language_server_config, get_root_markers, language_id_from_filetype,
+    language_id_from_path,
+};
 use crate::stdio_server::diagnostics_worker::WorkerMessage as DiagnosticsWorkerMessage;
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
-use crate::stdio_server::lsp::{
-    find_lsp_root, language_id_from_path, LanguageServerMessageHandler,
-};
 use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginError, Toggle};
 use crate::stdio_server::provider::lsp::{set_lsp_source, LspSource};
 use crate::stdio_server::vim::{Vim, VimError, VimResult};
+use handler::LanguageServerMessageHandler;
 use lsp::Url;
 use maple_lsp::lsp;
 use std::collections::hash_map::Entry;
@@ -18,8 +23,6 @@ use tokio::sync::mpsc::UnboundedSender;
 pub enum Error {
     #[error("lsp client not found")]
     ClientNotFound,
-    #[error("language id not found for buffer {0}")]
-    LanguageIdNotFound(usize),
     #[error("language config not found: {0}")]
     UnsupportedLanguage(LanguageId),
     #[error("buffer not attached")]
@@ -103,42 +106,6 @@ fn open_new_doc(
     Ok(())
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "kebab-case", deny_unknown_fields)]
-pub struct LanguageConfig {
-    /// c-sharp, rust, tsx
-    #[serde(rename = "name")]
-    pub language_id: String,
-
-    /// see the table under https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentItem
-    /// csharp, rust, typescriptreact, for the language-server
-    #[serde(rename = "language-id")]
-    pub language_server_language_id: Option<String>,
-
-    /// these indicate project roots <.git, Cargo.toml>
-    #[serde(default)]
-    pub root_markers: Vec<String>,
-}
-
-// TODO: support more languages.
-fn get_language_config(language_id: LanguageId) -> Option<maple_lsp::LanguageConfig> {
-    let language_config = match language_id {
-        "rust" => maple_lsp::LanguageConfig {
-            cmd: String::from("rust-analyzer"),
-            args: vec![],
-            root_markers: vec![String::from("Cargo.toml")],
-        },
-        "go" => maple_lsp::LanguageConfig {
-            cmd: String::from("gopls"),
-            args: vec![],
-            root_markers: vec![String::from("go.mod")],
-        },
-        _ => return None,
-    };
-
-    Some(language_config)
-}
-
 fn preprocess_text_edits(text_edits: Vec<lsp::TextEdit>) -> Vec<lsp::TextEdit> {
     let mut text_edits = text_edits;
 
@@ -214,9 +181,22 @@ impl LspPlugin {
     async fn buffer_attach(&mut self, bufnr: usize) -> Result<(), Error> {
         let path = self.vim.bufabspath(bufnr).await?;
 
-        let language_id = language_id_from_path(&path).ok_or(Error::LanguageIdNotFound(bufnr))?;
-        let language_config =
-            get_language_config(language_id).ok_or(Error::UnsupportedLanguage(language_id))?;
+        let language_id = match language_id_from_path(&path) {
+            Some(v) => v,
+            None => {
+                let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+
+                match language_id_from_filetype(&filetype) {
+                    Some(v) => v,
+                    None => {
+                        return Ok(());
+                    }
+                }
+            }
+        };
+
+        let language_server_config = get_language_server_config(language_id)
+            .ok_or(Error::UnsupportedLanguage(language_id))?;
 
         if let Entry::Vacant(e) = self.attached_buffers.entry(bufnr) {
             let bufname = self.vim.bufname(bufnr).await?;
@@ -236,15 +216,16 @@ impl LspPlugin {
                 }
                 Entry::Vacant(e) => {
                     let enable_snippets = false;
-                    let name = language_config.server_name();
+                    let name = language_server_config.server_name();
                     let client = maple_lsp::start_client(
                         maple_lsp::ClientParams {
-                            language_config,
+                            language_server_config,
                             manual_roots: vec![],
                             enable_snippets,
                         },
                         name.clone(),
                         Some(PathBuf::from(path.clone())),
+                        get_root_markers(language_id),
                         LanguageServerMessageHandler::new(
                             name,
                             self.vim.clone(),
@@ -278,6 +259,33 @@ impl LspPlugin {
                 .text_document_did_close(buffer.doc_id)
                 .map_err(Error::Lsp)?;
         }
+        Ok(())
+    }
+
+    async fn reload_document(&mut self, bufnr: usize) -> Result<(), Error> {
+        let buffer = self
+            .attached_buffers
+            .get_mut(&bufnr)
+            .ok_or(Error::BufferNotAttached(bufnr))?;
+
+        let client = self
+            .clients
+            .get(&buffer.language_id)
+            .ok_or(Error::ClientNotFound)?;
+
+        let new_name = self.vim.bufname(bufnr).await?;
+
+        // Close old doc.
+        let old_doc = buffer.doc_id.clone();
+        client.text_document_did_close(old_doc)?;
+
+        // Open new doc.
+        let path = self.vim.bufabspath(bufnr).await?;
+        let new_doc = doc_id(&path)?;
+        open_new_doc(client, buffer.language_id, &path)?;
+        buffer.bufname = new_name;
+        buffer.doc_id = new_doc;
+
         Ok(())
     }
 
@@ -441,8 +449,7 @@ impl LspPlugin {
                     .await
             }
             Goto::Reference => {
-                // TODO: configurable include_declaration flag.
-                let include_declaration = false;
+                let include_declaration = maple_config::config().plugin.lsp.include_declaration;
                 client
                     .goto_reference(text_document, position, include_declaration, None)
                     .await
@@ -794,12 +801,8 @@ impl ClapPlugin for LspPlugin {
         let PluginAction { method, params } = action;
         match self.parse_action(method)? {
             LspAction::__DidChange => self.text_document_did_change(params.parse()?).await?,
-            LspAction::__Reload => {
-                tracing::debug!("reload buffer: {params:?}");
-            }
-            LspAction::__Detach => {
-                tracing::debug!("detach buffer: {params:?}");
-            }
+            LspAction::__Reload => self.reload_document(params.parse()?).await?,
+            LspAction::__Detach => self.buffer_detach(params.parse()?)?,
             LspAction::Toggle => {
                 match self.toggle {
                     Toggle::On => {}
