@@ -238,6 +238,47 @@ pub struct LinterPluginConfig {
     pub enable: bool,
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug, Default, PartialEq)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub struct LanguageConfig {
+    /// c-sharp, rust, tsx
+    pub name: String,
+
+    /// List of `&filetype` corresponding to this language.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub filetype: Vec<String>,
+
+    /// these indicate project roots <.git, Cargo.toml>
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub root_markers: Vec<String>,
+
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub language_servers: Vec<String>,
+}
+
+impl LanguageConfig {
+    pub fn merge(&mut self, other: Self) {
+        let Self {
+            filetype,
+            root_markers,
+            language_servers,
+            ..
+        } = other;
+
+        self.filetype.extend(filetype);
+        self.filetype.sort();
+        self.filetype.dedup();
+
+        self.root_markers.extend(root_markers);
+        self.root_markers.sort();
+        self.root_markers.dedup();
+
+        self.language_servers.extend(language_servers);
+        self.root_markers.sort();
+        self.root_markers.dedup();
+    }
+}
+
 /// LSP plugin.
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
@@ -247,6 +288,23 @@ pub struct LspPluginConfig {
 
     /// Whether to include the declaration when invoking goto-reference.
     pub include_declaration: bool,
+
+    /// Custom languages, an associated language server config is usually needed.
+    ///
+    /// # Example
+    ///
+    /// ```toml
+    /// [[plugin.lsp.language]]
+    /// name = "erlang"
+    /// filetype = ["erlang"]
+    /// root-markers = ["rebar.config"]
+    /// language-servers = ["erlang-ls"]
+    ///
+    /// [plugin.lsp.language-server.erlang-ls]
+    /// command = "erlang_ls"
+    /// args = ["--transport", "stdio"]
+    /// ```
+    pub language: Vec<LanguageConfig>,
 
     /// Custom language server configurations.
     ///

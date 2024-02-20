@@ -1,3 +1,8 @@
+# Language configuration.
+#
+# NOTE: In order to enable the LSP feature for a language:
+# 1. Define the language, in which the language server is specified.
+# 2. Ensure the corresponding language server configuration is defined.
 [[language]]
 name = "go"
 filetype = ["go"]
@@ -10,8 +15,108 @@ filetype = ["rust"]
 root-markers = ["Cargo.toml", "Cargo.lock"]
 language-servers = [ "rust-analyzer" ]
 
+# Language server configuration.
+#
+# Copied from https://github.com/helix-editor/helix/blob/7c55190806f31595e18da2b56c8ca54d8f5b33b7/languages.toml#L4
 [language-server]
-gopls = { command = "gopls" }
+
+awk-language-server = { command = "awk-language-server" }
+bash-language-server = { command = "bash-language-server", args = ["start"] }
+bass = { command = "bass", args = ["--lsp"] }
+bicep-langserver = { command = "bicep-langserver" }
+bufls = { command = "bufls", args = ["serve"] }
+cairo-language-server = { command = "cairo-language-server", args = [] }
+cl-lsp = { command = "cl-lsp", args = [ "stdio" ] }
+clangd = { command = "clangd" }
+clojure-lsp = { command = "clojure-lsp" }
+cmake-language-server = { command = "cmake-language-server" }
+crystalline = { command = "crystalline", args = ["--stdio"] }
+cs = { command = "cs", args = ["launch", "--contrib", "smithy-language-server", "--", "0"] }
+csharp-ls = { command = "csharp-ls" }
+cuelsp = { command = "cuelsp" }
+dart = { command = "dart", args = ["language-server", "--client-id=helix"] }
+dhall-lsp-server = { command = "dhall-lsp-server" }
+docker-langserver = { command = "docker-langserver", args = ["--stdio"] }
+dot-language-server = { command = "dot-language-server", args = ["--stdio"] }
+elixir-ls = { command = "elixir-ls", config = { elixirLS.dialyzerEnabled = false } }
+elm-language-server = { command = "elm-language-server" }
+elvish = { command = "elvish", args = ["-lsp"] }
+erlang-ls = { command = "erlang_ls" }
+forc = { command = "forc", args = ["lsp"] }
+forth-lsp = { command = "forth-lsp" }
+fortls = { command = "fortls", args = ["--lowercase_intrinsics"] }
+fsharp-ls = { command = "fsautocomplete", config = { AutomaticWorkspaceInit = true } }
+gleam = { command = "gleam", args = ["lsp"] }
+graphql-language-service = { command = "graphql-lsp", args = ["server", "-m", "stream"] }
+haskell-language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
+idris2-lsp = { command = "idris2-lsp" }
+intelephense = { command = "intelephense", args = ["--stdio"] }
+jdtls = { command = "jdtls" }
+jsonnet-language-server = { command = "jsonnet-language-server", args= ["-t", "--lint"] }
+julia = { command = "julia", args = [ "--startup-file=no", "--history-file=no", "--quiet", "-e", "using LanguageServer; runserver()", ] }
+kotlin-language-server = { command = "kotlin-language-server" }
+lean = { command = "lean", args = [ "--server" ] }
+ltex-ls = { command = "ltex-ls" }
+markdoc-ls = { command = "markdoc-ls", args = ["--stdio"] }
+marksman = { command = "marksman", args = ["server"] }
+metals = { command = "metals", config = { "isHttpEnabled" = true } }
+mint = { command = "mint", args = ["ls"] }
+nil = { command = "nil" }
+nimlangserver = { command = "nimlangserver" }
+nls = { command = "nls" }
+nu-lsp = { command = "nu", args = [ "--lsp" ] }
+ocamllsp = { command = "ocamllsp" }
+ols = { command = "ols", args = [] }
+omnisharp = { command = "OmniSharp", args = [ "--languageserver" ] }
+openscad-lsp = { command = "openscad-lsp", args = ["--stdio"] }
+pasls = { command = "pasls", args = [] }
+pbkit = { command = "pb", args = [ "lsp" ] }
+perlnavigator = { command = "perlnavigator", args= ["--stdio"] }
+prisma-language-server = { command = "prisma-language-server", args = ["--stdio"] }
+purescript-language-server = { command = "purescript-language-server", args = ["--stdio"] }
+pylsp = { command = "pylsp" }
+pyright = { command = "pyright-langserver", args = ["--stdio"], config = {} }
+pylyzer = { command = "pylyzer", args = ["--server"] }
+qmlls = { command = "qmlls" }
+r = { command = "R", args = ["--no-echo", "-e", "languageserver::run()"] }
+racket = { command = "racket", args = ["-l", "racket-langserver"] }
+regols = { command = "regols" }
+rescript-language-server = { command = "rescript-language-server", args = ["--stdio"] }
+robotframework_ls = { command = "robotframework_ls" }
+serve-d = { command = "serve-d" }
+slint-lsp = { command = "slint-lsp", args = [] }
+solargraph = { command = "solargraph", args = ["stdio"] }
+solc = { command = "solc", args = ["--lsp"] }
+sourcekit-lsp = { command = "sourcekit-lsp" }
+svlangserver = { command = "svlangserver", args = [] }
+swipl = { command = "swipl", args = [ "-g", "use_module(library(lsp_server))", "-g", "lsp_server:main", "-t", "halt", "--", "stdio" ] }
+tailwindcss-ls = { command = "tailwindcss-language-server", args = ["--stdio"] }
+taplo = { command = "taplo", args = ["lsp", "stdio"] }
+templ = { command = "templ", args = ["lsp"] }
+terraform-ls = { command = "terraform-ls", args = ["serve"] }
+texlab = { command = "texlab" }
+vala-language-server = { command = "vala-language-server" }
+vhdl_ls = { command = "vhdl_ls", args = [] }
+vlang-language-server = { command = "v-analyzer" }
+vscode-css-language-server = { command = "vscode-css-language-server", args = ["--stdio"], config = { provideFormatter = true, css = { validate = { enable = true } } } }
+vscode-html-language-server = { command = "vscode-html-language-server", args = ["--stdio"], config = { provideFormatter = true } }
+vscode-json-language-server = { command = "vscode-json-language-server", args = ["--stdio"], config = { provideFormatter = true, json = { validate = { enable = true } } } }
+vuels = { command = "vue-language-server", args = ["--stdio"], config = { typescript = { tsdk = "node_modules/typescript/lib/" } } }
+wgsl_analyzer = { command = "wgsl_analyzer" }
+yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
+zls = { command = "zls" }
+blueprint-compiler = { command = "blueprint-compiler", args = ["lsp"] }
+typst-lsp = { command = "typst-lsp" }
+
+[language-server.ansible-language-server]
+command = "ansible-language-server"
+args = ["--stdio"]
+
+[language-server.lua-language-server]
+command = "lua-language-server"
+
+[language-server.gopls]
+command = "gopls"
 
 [language-server.rust-analyzer]
 command = "rust-analyzer"

@@ -1,3 +1,4 @@
+use maple_config::LanguageConfig;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
@@ -79,7 +80,7 @@ fn language_id_by_extension(ext: &str) -> Option<LanguageId> {
 
 // recommended language_id values
 // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentItem
-pub fn language_id_by_path(path: impl AsRef<Path>) -> Option<LanguageId> {
+pub fn language_id_from_path(path: impl AsRef<Path>) -> Option<LanguageId> {
     match path.as_ref().extension() {
         Some(ext) => language_id_by_extension(ext.to_str()?),
         None => {
@@ -97,7 +98,7 @@ pub fn language_id_by_path(path: impl AsRef<Path>) -> Option<LanguageId> {
     }
 }
 
-pub fn language_id_by_filetype(filetype: &str) -> Option<LanguageId> {
+pub fn language_id_from_filetype(filetype: &str) -> Option<LanguageId> {
     config_inner().filetypes.get(filetype).map(|s| s.as_str())
 }
 
@@ -118,24 +119,6 @@ pub fn find_lsp_root(language_id: LanguageId, path: &Path) -> Option<&Path> {
         "go" => find(&["go.mod"]),
         _ => paths::find_project_root(path, &[".git", ".hg", ".svn"]).or_else(|| path.parent()),
     }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", deny_unknown_fields)]
-pub struct LanguageConfig {
-    /// c-sharp, rust, tsx
-    pub name: String,
-
-    /// List of `&filetype` corresponding to this language.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub filetype: Vec<String>,
-
-    /// these indicate project roots <.git, Cargo.toml>
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub root_markers: Vec<String>,
-
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub language_servers: Vec<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -178,9 +161,34 @@ fn config_inner() -> &'static ConfigurationInner {
             .flat_map(|l| l.filetype.iter().map(|f| (f.clone(), l.name.clone())))
             .collect();
 
+        let mut user_languages = maple_config::config()
+            .plugin
+            .lsp
+            .language
+            .clone()
+            .into_iter()
+            .map(|c| (c.name.clone(), c))
+            .collect::<HashMap<_, _>>();
+
+        let mut final_languages = language
+            .into_iter()
+            .map(|c| {
+                let c = if let Some(mut config) = user_languages.remove(&c.name) {
+                    // Merge the default language config into the value specified by user.
+                    config.merge(c);
+                    config
+                } else {
+                    c
+                };
+                (c.name.clone(), c)
+            })
+            .collect::<HashMap<_, _>>();
+
+        final_languages.extend(user_languages.into_iter());
+
         ConfigurationInner {
             filetypes,
-            languages: language.into_iter().map(|c| (c.name.clone(), c)).collect(),
+            languages: final_languages,
             language_servers: language_server,
         }
     })

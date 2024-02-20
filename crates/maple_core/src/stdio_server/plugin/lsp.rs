@@ -2,8 +2,8 @@ mod handler;
 mod language_config;
 
 use self::language_config::{
-    find_lsp_root, get_language_server_config, get_root_markers, language_id_by_filetype,
-    language_id_by_path,
+    find_lsp_root, get_language_server_config, get_root_markers, language_id_from_filetype,
+    language_id_from_path,
 };
 use crate::stdio_server::diagnostics_worker::WorkerMessage as DiagnosticsWorkerMessage;
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
@@ -181,12 +181,12 @@ impl LspPlugin {
     async fn buffer_attach(&mut self, bufnr: usize) -> Result<(), Error> {
         let path = self.vim.bufabspath(bufnr).await?;
 
-        let language_id = match language_id_by_path(&path) {
+        let language_id = match language_id_from_path(&path) {
             Some(v) => v,
             None => {
                 let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
 
-                match language_id_by_filetype(&filetype) {
+                match language_id_from_filetype(&filetype) {
                     Some(v) => v,
                     None => {
                         return Ok(());
@@ -259,6 +259,33 @@ impl LspPlugin {
                 .text_document_did_close(buffer.doc_id)
                 .map_err(Error::Lsp)?;
         }
+        Ok(())
+    }
+
+    async fn reload_document(&mut self, bufnr: usize) -> Result<(), Error> {
+        let buffer = self
+            .attached_buffers
+            .get_mut(&bufnr)
+            .ok_or(Error::BufferNotAttached(bufnr))?;
+
+        let client = self
+            .clients
+            .get(&buffer.language_id)
+            .ok_or(Error::ClientNotFound)?;
+
+        let new_name = self.vim.bufname(bufnr).await?;
+
+        // Close old doc.
+        let old_doc = buffer.doc_id.clone();
+        client.text_document_did_close(old_doc)?;
+
+        // Open new doc.
+        let path = self.vim.bufabspath(bufnr).await?;
+        let new_doc = doc_id(&path)?;
+        open_new_doc(client, buffer.language_id, &path)?;
+        buffer.bufname = new_name;
+        buffer.doc_id = new_doc;
+
         Ok(())
     }
 
@@ -774,12 +801,8 @@ impl ClapPlugin for LspPlugin {
         let PluginAction { method, params } = action;
         match self.parse_action(method)? {
             LspAction::__DidChange => self.text_document_did_change(params.parse()?).await?,
-            LspAction::__Reload => {
-                tracing::debug!("reload buffer: {params:?}");
-            }
-            LspAction::__Detach => {
-                tracing::debug!("detach buffer: {params:?}");
-            }
+            LspAction::__Reload => self.reload_document(params.parse()?).await?,
+            LspAction::__Detach => self.buffer_detach(params.parse()?)?,
             LspAction::Toggle => {
                 match self.toggle {
                     Toggle::On => {}
