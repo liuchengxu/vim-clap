@@ -627,6 +627,41 @@ enable = false
 [plugin.lsp]
 # Whether to enable this plugin.
 enable = false
+# Whether to include the declaration when invoking goto-reference.
+include-declaration = false
+# Specifies custom languages that are not built into vim-clap.
+#
+# If a language is not included in the default languages supported by vim-clap,
+# you can specify it here. Note that for languages not listed in the default
+# configuration (check out the full list of supported languages in `languages.toml`),
+# you need to provide associated language server configurations as well.
+#
+# # Example
+#
+# ```toml
+# [[plugin.lsp.language]]
+# name = "erlang"
+# filetype = ["erlang"]
+# root-markers = ["rebar.config"]
+# language-servers = ["erlang-ls"]
+#
+# [plugin.lsp.language-server.erlang-ls]
+# command = "erlang_ls"
+# args = ["--transport", "stdio"]
+# ```
+language = []
+
+# Specify language server configurations.
+#
+# # Example
+#
+# ```toml
+# [plugin.lsp.language-server.rust-analyzer]
+# procMacro.enable = false
+# procMacro.attributes.enable = false
+# diagnostics.disabled = [ "unresolved-proc-macro" ]
+# ```
+[plugin.lsp.language-server]
 
 [plugin.markdown]
 # Whether to enable this plugin.
