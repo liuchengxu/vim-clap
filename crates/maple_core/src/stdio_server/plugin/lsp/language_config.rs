@@ -184,7 +184,7 @@ fn config_inner() -> &'static ConfigurationInner {
             })
             .collect::<HashMap<_, _>>();
 
-        final_languages.extend(user_languages.into_iter());
+        final_languages.extend(user_languages);
 
         ConfigurationInner {
             filetypes,
