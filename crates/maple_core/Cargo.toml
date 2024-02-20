@@ -1,11 +1,11 @@
 [package]
 name = "maple_core"
-version = "0.1.0"
-authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
-edition = "2021"
-license = "MIT"
-publish = false
-homepage = "https://github.com/liuchengxu/vim-clap"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+homepage.workspace = true
 description = "Core of vim-clap Rust backend"
 
 [dependencies]
