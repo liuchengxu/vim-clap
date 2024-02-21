@@ -36,6 +36,8 @@ members = [
     "crates/xtask",
 ]
 
+exclude = ["pythonx/clap/fuzzymatch-rs"]
+
 default-members = ["crates/maple"]
 
 [workspace.dependencies]
