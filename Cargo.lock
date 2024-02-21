@@ -1554,6 +1554,7 @@ dependencies = [
 name = "matcher"
 version = "0.1.0"
 dependencies = [
+ "code_tools",
  "dumb_analyzer",
  "extracted_fzy",
  "fuzzy-matcher",

@@ -10,6 +10,7 @@ grep-matcher = { workspace = true }
 grep-regex = { workspace = true }
 
 dumb_analyzer = { workspace = true }
+code_tools = { workspace = true }
 extracted_fzy = { path = "./extracted_fzy" }
 pattern = { workspace = true }
 types = { workspace = true }

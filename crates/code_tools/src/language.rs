@@ -217,6 +217,13 @@ fn config_inner() -> &'static ConfigurationInner {
     })
 }
 
+/// Return `true` if it is a comment line.
+pub fn is_comment(line: &str, file_ext: &str) -> bool {
+    get_line_comments(file_ext)
+        .iter()
+        .any(|comment_syntax| line.trim_start().starts_with(comment_syntax))
+}
+
 pub fn get_line_comments(file_extension: &str) -> &[String] {
     config_inner()
         .line_comments

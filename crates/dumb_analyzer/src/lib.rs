@@ -1,8 +1,6 @@
 //! Poor man's language analyzer.
 
 use keywords::KeywordPriority;
-use std::collections::HashMap;
-use std::sync::OnceLock;
 
 mod keywords;
 
@@ -30,13 +28,6 @@ impl From<usize> for Priority {
     fn from(priority: usize) -> Self {
         Self(priority)
     }
-}
-
-/// Return `true` if the line is a comment.
-pub fn is_comment(line: &str, file_ext: &str) -> bool {
-    code_tools::language::get_line_comments(file_ext)
-        .iter()
-        .any(|comment_syntax| line.trim_start().starts_with(comment_syntax))
 }
 
 // TODO: More general precise reference resolution, tree-sitter?

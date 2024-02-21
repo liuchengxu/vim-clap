@@ -705,7 +705,7 @@ async fn find_code_context(
     let skip_context_tag = {
         const BLACK_LIST: &[&str] = &["log", "txt", "lock", "toml", "yaml", "mod", "conf"];
 
-        BLACK_LIST.contains(&ext) || dumb_analyzer::is_comment(line, ext)
+        BLACK_LIST.contains(&ext) || code_tools::language::is_comment(line, ext)
     };
 
     if skip_context_tag {
