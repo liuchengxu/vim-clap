@@ -700,6 +700,7 @@ dependencies = [
 name = "dumb_analyzer"
 version = "0.1.0"
 dependencies = [
+ "code_tools",
  "serde_json",
 ]
 

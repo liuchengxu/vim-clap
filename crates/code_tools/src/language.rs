@@ -4,7 +4,14 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::OnceLock;
 
+type FileType = String;
+
 type LanguageId = &'static str;
+
+/// Same semantic as LanguageId, but in the owned form.
+type LanguageName = String;
+
+type FileExtension = String;
 
 fn language_id_by_extension(ext: &str) -> Option<LanguageId> {
     let language_id = match ext {
@@ -133,8 +140,10 @@ struct Configuration {
 
 #[derive(Debug)]
 struct ConfigurationInner {
-    filetypes: HashMap<String, String>,
-    languages: HashMap<String, LanguageConfig>,
+    languages: HashMap<LanguageName, LanguageConfig>,
+    filetypes: HashMap<FileType, LanguageName>,
+    line_comments: HashMap<FileExtension, Vec<String>>,
+    /// Map of LanguageServerName to LanguageServerConfig.
     language_servers: HashMap<String, maple_lsp::LanguageServerConfig>,
 }
 
@@ -156,10 +165,23 @@ fn config_inner() -> &'static ConfigurationInner {
             language_server,
         } = config;
 
-        let filetypes: HashMap<String, String> = language
+        let filetypes = language
             .iter()
-            .flat_map(|l| l.file_types.iter().map(|f| (f.clone(), l.name.clone())))
-            .collect();
+            .flat_map(|l| {
+                l.file_types
+                    .iter()
+                    .map(|filetype| (filetype.clone(), l.name.clone()))
+            })
+            .collect::<HashMap<_, _>>();
+
+        let line_comments = language
+            .iter()
+            .flat_map(|l| {
+                l.file_extensions
+                    .iter()
+                    .map(|ext| (ext.clone(), l.line_comments.clone()))
+            })
+            .collect::<HashMap<_, _>>();
 
         let mut user_languages = maple_config::config()
             .plugin
@@ -188,10 +210,19 @@ fn config_inner() -> &'static ConfigurationInner {
 
         ConfigurationInner {
             filetypes,
+            line_comments,
             languages: final_languages,
             language_servers: language_server,
         }
     })
+}
+
+pub fn get_line_comments(file_extension: &str) -> &[String] {
+    config_inner()
+        .line_comments
+        .get(file_extension)
+        .map(|v| v.as_slice())
+        .unwrap_or_else(|| &[] as &[String])
 }
 
 pub fn get_root_markers(language_name: LanguageId) -> Vec<String> {
