@@ -142,7 +142,7 @@ fn config_inner() -> &'static ConfigurationInner {
     static CELL: OnceLock<ConfigurationInner> = OnceLock::new();
 
     CELL.get_or_init(|| {
-        let languages_toml = include_str!("../../../../../../languages.toml");
+        let languages_toml = include_str!("../../../languages.toml");
 
         let config: Configuration = toml::from_str(languages_toml)
             .map_err(|err| {
@@ -158,7 +158,7 @@ fn config_inner() -> &'static ConfigurationInner {
 
         let filetypes: HashMap<String, String> = language
             .iter()
-            .flat_map(|l| l.filetype.iter().map(|f| (f.clone(), l.name.clone())))
+            .flat_map(|l| l.file_types.iter().map(|f| (f.clone(), l.name.clone())))
             .collect();
 
         let mut user_languages = maple_config::config()

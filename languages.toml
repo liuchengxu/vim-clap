@@ -3,17 +3,99 @@
 # NOTE: In order to enable the LSP feature for a language:
 # 1. Define the language, in which the language server is specified.
 # 2. Ensure the corresponding language server configuration is defined.
+
+[[language]]
+name = "clojure"
+file-extensions = ["clj", "cljs"]
+line-comments = [";"]
+
+[[language]]
+name = "cpp"
+file-extensions = ["cc", "cpp", "h", "hpp", "cxx", "hxx", "inl"]
+line-comments = ["//"]
+
+[[language]]
+name = "elisp"
+file-extensions = ["el"]
+line-comments = [";"]
+
+[[language]]
+name = "elixir"
+file-extensions = ["ex", "exs"]
+line-comments = ["#"]
+
+[[language]]
+name = "erlang"
+file-extensions = ["erl", "hrl"]
+line-comments = ["%"]
+language-servers = ["erlang-ls"]
+
 [[language]]
 name = "go"
-filetype = ["go"]
+file-types = ["go"]
+line-comments = ["//"]
 root-markers = ["go.mod"]
 language-servers = [ "gopls" ]
 
 [[language]]
+name = "javascript"
+file-extensions = ["js", "jsx", "mjs", "cjs"]
+line-comments = ["//"]
+
+[[language]]
+name = "R"
+file-extensions = ["r"]
+line-comments = ["//"]
+
+[[language]]
+name = "lua"
+file-types = ["lua"]
+file-extensions = ["lua"]
+line-comments = ["--"]
+
+[[language]]
+name = "nim"
+file-extensions = ["nim"]
+line-comments = ["#"]
+
+[[language]]
+name = "perl"
+file-extensions = ["perl"]
+line-comments = ["#"]
+
+[[language]]
+name = "php"
+file-extensions = ["php"]
+line-comments = ["//", "#"]
+
+[[language]]
+name = "python"
+file-types = ["python"]
+file-extensions = ["py", "pyi", "mpy"]
+line-comments = ["#"]
+
+[[language]]
+name = "ruby"
+file-types = ["ruby"]
+file-extensions = ["rb"]
+line-comments = ["#"]
+
+[[language]]
 name = "rust"
-filetype = ["rust"]
+file-types = ["rust"]
+line-comments = ["//", "///", "//!"]
 root-markers = ["Cargo.toml", "Cargo.lock"]
 language-servers = [ "rust-analyzer" ]
+
+[[language]]
+name = "tex"
+file-extensions = ["tex"]
+line-comments = ["%"]
+
+[[language]]
+name = "typescript"
+file-extensions = ["ts", "cts", "d.cts", "d.mts", "mts"]
+line-comments = ["//"]
 
 # Language server configuration.
 #

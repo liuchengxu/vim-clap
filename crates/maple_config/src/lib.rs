@@ -246,7 +246,14 @@ pub struct LanguageConfig {
 
     /// List of `&filetype` corresponding to this language.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub filetype: Vec<String>,
+    pub file_types: Vec<String>,
+
+    /// List of `&filetype` corresponding to this language.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub file_extensions: Vec<String>,
+
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub line_comments: Vec<String>,
 
     /// these indicate project roots <.git, Cargo.toml>
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -258,24 +265,26 @@ pub struct LanguageConfig {
 
 impl LanguageConfig {
     pub fn merge(&mut self, other: Self) {
+        let merge_vec = |v: &mut Vec<String>, other: Vec<String>| {
+            v.extend(other);
+            v.sort();
+            v.dedup();
+        };
+
         let Self {
-            filetype,
+            file_types,
+            file_extensions,
+            line_comments,
             root_markers,
             language_servers,
             ..
         } = other;
 
-        self.filetype.extend(filetype);
-        self.filetype.sort();
-        self.filetype.dedup();
-
-        self.root_markers.extend(root_markers);
-        self.root_markers.sort();
-        self.root_markers.dedup();
-
-        self.language_servers.extend(language_servers);
-        self.root_markers.sort();
-        self.root_markers.dedup();
+        merge_vec(&mut self.file_types, file_types);
+        merge_vec(&mut self.file_extensions, file_extensions);
+        merge_vec(&mut self.line_comments, line_comments);
+        merge_vec(&mut self.root_markers, root_markers);
+        merge_vec(&mut self.language_servers, language_servers);
     }
 }
 
@@ -301,7 +310,7 @@ pub struct LspPluginConfig {
     /// ```toml
     /// [[plugin.lsp.language]]
     /// name = "erlang"
-    /// filetype = ["erlang"]
+    /// file-types = ["erlang"]
     /// root-markers = ["rebar.config"]
     /// language-servers = ["erlang-ls"]
     ///

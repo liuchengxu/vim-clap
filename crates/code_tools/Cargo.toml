@@ -12,7 +12,10 @@ regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["rt", "process", "sync"] }
+toml = { workspace = true }
 tracing = { workspace = true }
 which = { workspace = true }
 
 paths = { workspace = true }
+maple_config = { workspace = true }
+maple_lsp = { workspace = true }
