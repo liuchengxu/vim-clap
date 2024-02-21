@@ -34,6 +34,7 @@ members = [
     "crates/upgrade",
     "crates/utils",
     "crates/xtask",
+    "pythonx/clap/fuzzymatch-rs",
 ]
 
 default-members = ["crates/maple"]
