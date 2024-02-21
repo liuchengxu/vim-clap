@@ -10,9 +10,9 @@ static CONFIG_FILE: OnceCell<PathBuf> = OnceCell::new();
 // TODO: reload-config
 static CONFIG: OnceCell<Config> = OnceCell::new();
 
-pub fn load_config_on_startup(
+fn load_config(
     specified_config_file: Option<PathBuf>,
-) -> (&'static Config, Option<toml::de::Error>) {
+) -> (Config, PathBuf, Option<toml::de::Error>) {
     let config_file = specified_config_file.unwrap_or_else(|| {
         // Linux: ~/.config/vimclap/config.toml
         // macOS: ~/Library/Application\ Support/org.vim.Vim-Clap/config.toml
@@ -36,6 +36,14 @@ pub fn load_config_on_startup(
         })
         .unwrap_or_default();
 
+    (loaded_config, config_file, maybe_config_err)
+}
+
+pub fn load_config_on_startup(
+    specified_config_file: Option<PathBuf>,
+) -> (&'static Config, Option<toml::de::Error>) {
+    let (loaded_config, config_file, maybe_config_err) = load_config(specified_config_file);
+
     CONFIG_FILE
         .set(config_file)
         .expect("Failed to initialize Config file");
@@ -48,7 +56,7 @@ pub fn load_config_on_startup(
 }
 
 pub fn config() -> &'static Config {
-    CONFIG.get().expect("Config must be initialized")
+    CONFIG.get_or_init(|| load_config(None).0)
 }
 
 pub fn config_file() -> &'static PathBuf {

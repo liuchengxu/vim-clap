@@ -112,25 +112,20 @@ impl RegexSearcher {
 
         let word = Word::new(word.clone(), re);
 
-        let lang = match get_language(extension) {
-            Some(lang) => lang,
-            None => {
-                // Search the occurrences if no language detected.
-                let occurrences =
-                    word_regex_search_with_extension(&word.raw, true, extension, dir.as_ref())?;
-                let mut usages = occurrences
-                    .into_iter()
-                    .filter_map(|matched| {
-                        usage_matcher
-                            .match_jump_line(matched.build_jump_line("refs", &word))
-                            .map(|(line, indices)| {
-                                RegexUsage::from_matched(&matched, line, indices)
-                            })
-                    })
-                    .collect::<Vec<_>>();
-                usages.par_sort_unstable();
-                return Ok(usages.into_iter().map(Into::into).collect());
-            }
+        let Some(lang) = get_language(extension) else {
+            // Search the occurrences if no language detected.
+            let occurrences =
+                word_regex_search_with_extension(&word.raw, true, extension, dir.as_ref())?;
+            let mut usages = occurrences
+                .into_iter()
+                .filter_map(|matched| {
+                    usage_matcher
+                        .match_jump_line(matched.build_jump_line("refs", &word))
+                        .map(|(line, indices)| RegexUsage::from_matched(&matched, line, indices))
+                })
+                .collect::<Vec<_>>();
+            usages.par_sort_unstable();
+            return Ok(usages.into_iter().map(Into::into).collect());
         };
 
         let lang_regex_searcher =
