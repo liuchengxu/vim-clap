@@ -1,8 +1,8 @@
 [package]
 name = "rpc"
-version = "0.1.0"
-authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
-edition = "2021"
+authors.workspace = true
+edition.workspace = true
+version.workspace = true
 
 [dependencies]
 serde = { workspace = true }

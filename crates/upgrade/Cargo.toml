@@ -1,8 +1,8 @@
 [package]
 name = "upgrade"
-version = "0.1.0"
-authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
-edition = "2021"
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
 indicatif = { workspace = true }

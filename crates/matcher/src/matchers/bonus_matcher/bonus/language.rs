@@ -19,10 +19,10 @@ impl Language {
     pub fn calc_bonus(&self, bonus_text: &str, base_score: Score) -> Score {
         let trimmed = bonus_text.trim_start();
 
-        if dumb_analyzer::is_comment(trimmed, &self.0) {
+        if code_tools::language::is_comment(trimmed, &self.0) {
             -(base_score / 5)
         } else {
-            match dumb_analyzer::calculate_pattern_priority(trimmed, &self.0) {
+            match code_tools::analyzer::calculate_pattern_priority(trimmed, &self.0) {
                 Some(priority) => base_score / priority.as_i32(),
                 None => 0,
             }

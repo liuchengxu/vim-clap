@@ -3,7 +3,6 @@ use super::definition::{
     Definitions, Occurrences,
 };
 use crate::tools::rg::{Match, Word, RG_EXISTS};
-use dumb_analyzer::get_comment_syntax;
 use rayon::prelude::*;
 use std::convert::TryFrom;
 use std::io::{Error, ErrorKind, Result};
@@ -31,7 +30,7 @@ impl ExecutableSearcher {
     /// Executes `command` as a child process.
     ///
     /// Convert the entire output into a stream of ripgrep `Match`.
-    fn search(self, maybe_comments: Option<&[&str]>) -> Result<Vec<Match>> {
+    fn search(self, maybe_comments: Option<&[String]>) -> Result<Vec<Match>> {
         let mut cmd = self.command;
 
         let cmd_output = cmd.output()?;
@@ -74,7 +73,7 @@ pub(super) fn word_regex_search_with_extension(
         command.current_dir(dir);
     }
     ExecutableSearcher::new(command)?.search(if ignore_comment {
-        Some(get_comment_syntax(file_extension))
+        Some(code_tools::language::get_line_comments(file_extension))
     } else {
         None
     })
@@ -97,7 +96,7 @@ impl LanguageRegexSearcher {
     }
 
     /// Finds the occurrences and all definitions concurrently.
-    pub fn all(&self, comments: &[&str]) -> (Definitions, Occurrences) {
+    pub fn all(&self, comments: &[String]) -> (Definitions, Occurrences) {
         (
             Definitions {
                 defs: self.definitions().unwrap_or_default(),
@@ -124,7 +123,7 @@ impl LanguageRegexSearcher {
     /// Finds all the occurrences of `word`.
     ///
     /// Basically the occurrences are composed of definitions and usages.
-    fn occurrences(&self, comments: &[&str]) -> Result<Vec<Match>> {
+    fn occurrences(&self, comments: &[String]) -> Result<Vec<Match>> {
         let mut command = Command::new("rg");
         command
             .arg("--json")
@@ -138,7 +137,7 @@ impl LanguageRegexSearcher {
         ExecutableSearcher::new(command)?.search(Some(comments))
     }
 
-    pub(super) fn regexp_search(&self, comments: &[&str]) -> Result<Vec<Match>> {
+    pub(super) fn regexp_search(&self, comments: &[String]) -> Result<Vec<Match>> {
         let mut command = Command::new("rg");
         command
             .arg("--json")

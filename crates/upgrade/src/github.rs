@@ -42,7 +42,7 @@ pub struct Asset {
 
 // https://docs.github.com/en/rest/releases/releases
 #[derive(Debug, Deserialize)]
-pub struct Release {
+pub struct GitHubRelease {
     pub tag_name: String,
     pub assets: Vec<Asset>,
 }
@@ -65,7 +65,7 @@ async fn request<T: DeserializeOwned>(url: &str) -> std::io::Result<T> {
 
 pub(super) async fn retrieve_asset_size(asset_name: &str, tag: &str) -> std::io::Result<u64> {
     let url = format!("https://api.github.com/repos/{USER}/{REPO}/releases/tags/{tag}");
-    let release: Release = request(&url).await?;
+    let release: GitHubRelease = request(&url).await?;
 
     release
         .assets
@@ -75,9 +75,9 @@ pub(super) async fn retrieve_asset_size(asset_name: &str, tag: &str) -> std::io:
         .ok_or_else(|| panic!("Can not find the asset {asset_name} in given release {tag}"))
 }
 
-pub(super) async fn retrieve_latest_release() -> std::io::Result<Release> {
+pub(super) async fn retrieve_latest_release() -> std::io::Result<GitHubRelease> {
     let url = format!("https://api.github.com/repos/{USER}/{REPO}/releases/latest");
-    request::<Release>(&url).await
+    request::<GitHubRelease>(&url).await
 }
 
 #[cfg(test)]

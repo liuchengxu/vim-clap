@@ -101,7 +101,7 @@ pub(super) fn build_full_regexp(lang: &str, kind: &DefinitionKind, word: &Word) 
 
 /// Returns true if the ripgrep match is a comment line.
 #[inline]
-pub(super) fn is_comment(mat: &Match, comments: &[&str]) -> bool {
+pub(super) fn is_comment(mat: &Match, comments: &[String]) -> bool {
     comments.iter().any(|c| mat.line_starts_with(c))
 }
 
@@ -168,7 +168,7 @@ impl Occurrences {
 
 pub(super) fn find_definitions_and_references(
     lang_regex_searcher: LanguageRegexSearcher,
-    comments: &[&str],
+    comments: &[String],
 ) -> std::io::Result<HashMap<MatchKind, Vec<Match>>> {
     let (definitions, mut occurrences) = lang_regex_searcher.all(comments);
 

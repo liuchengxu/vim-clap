@@ -12,7 +12,7 @@ config-md:
 	cd crates/maple_config/doc_gen && cargo run
 
 clippy:
-	cd crates && cargo clippy --workspace --all-features --all-targets -- -D warnings
+	cargo clippy --workspace --all-features --all-targets -- -D warnings
 
 fmt:
 	cargo +nightly fmt --all

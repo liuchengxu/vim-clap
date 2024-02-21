@@ -2,7 +2,7 @@ use super::Symbol;
 use crate::find_usages::{AddressableUsage, UsageMatcher};
 use crate::process::subprocess::exec;
 use crate::tools::gtags::GTAGS_DIR;
-use dumb_analyzer::resolve_reference_kind;
+use code_tools::analyzer::resolve_reference_kind;
 use rayon::prelude::*;
 use std::io::{Error, ErrorKind, Result};
 use std::path::{PathBuf, MAIN_SEPARATOR};

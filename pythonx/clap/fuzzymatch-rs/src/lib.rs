@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use pyo3::{prelude::*, wrap_pyfunction};
+use pyo3::prelude::*;
+use pyo3::wrap_pyfunction;
 
 use matcher::{Bonus, MatchResult, MatcherBuilder};
 use printer::truncate_item_output_text_v0;
@@ -160,7 +161,8 @@ mod tests {
     #[test]
     fn py_and_rs_subscore_should_work() {
         use matcher::substring::substr_indices as substr_scorer;
-        use pyo3::{prelude::*, types::PyModule};
+        use pyo3::prelude::*;
+        use pyo3::types::PyModule;
         use std::fs;
         use types::CaseMatching;
 

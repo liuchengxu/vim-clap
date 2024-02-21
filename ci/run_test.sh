@@ -6,4 +6,4 @@ cd ..
 
 cargo install ripgrep
 
-cd crates && cargo test --verbose --all -- --nocapture
+cargo test --verbose --all -- --nocapture

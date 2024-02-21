@@ -172,7 +172,7 @@ impl Cursorword {
 
         if maple_config::config().plugin.cursorword.ignore_comment_line {
             if let Some(ext) = source_file.extension().and_then(|s| s.to_str()) {
-                if dumb_analyzer::is_comment(curline.as_str(), ext) {
+                if code_tools::language::is_comment(curline.as_str(), ext) {
                     return Ok(None);
                 }
             }

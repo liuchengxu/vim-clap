@@ -15,7 +15,7 @@ use self::definition::{find_definitions_and_references, DefinitionSearchResult, 
 use self::executable_searcher::{word_regex_search_with_extension, LanguageRegexSearcher};
 use crate::find_usages::{AddressableUsage, Usage, UsageMatcher, Usages};
 use crate::tools::rg::{get_language, Match, Word};
-use dumb_analyzer::{get_comment_syntax, resolve_reference_kind, Priority};
+use code_tools::analyzer::{resolve_reference_kind, Priority};
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind, Result};
@@ -112,31 +112,26 @@ impl RegexSearcher {
 
         let word = Word::new(word.clone(), re);
 
-        let lang = match get_language(extension) {
-            Some(lang) => lang,
-            None => {
-                // Search the occurrences if no language detected.
-                let occurrences =
-                    word_regex_search_with_extension(&word.raw, true, extension, dir.as_ref())?;
-                let mut usages = occurrences
-                    .into_iter()
-                    .filter_map(|matched| {
-                        usage_matcher
-                            .match_jump_line(matched.build_jump_line("refs", &word))
-                            .map(|(line, indices)| {
-                                RegexUsage::from_matched(&matched, line, indices)
-                            })
-                    })
-                    .collect::<Vec<_>>();
-                usages.par_sort_unstable();
-                return Ok(usages.into_iter().map(Into::into).collect());
-            }
+        let Some(lang) = get_language(extension) else {
+            // Search the occurrences if no language detected.
+            let occurrences =
+                word_regex_search_with_extension(&word.raw, true, extension, dir.as_ref())?;
+            let mut usages = occurrences
+                .into_iter()
+                .filter_map(|matched| {
+                    usage_matcher
+                        .match_jump_line(matched.build_jump_line("refs", &word))
+                        .map(|(line, indices)| RegexUsage::from_matched(&matched, line, indices))
+                })
+                .collect::<Vec<_>>();
+            usages.par_sort_unstable();
+            return Ok(usages.into_iter().map(Into::into).collect());
         };
 
         let lang_regex_searcher =
             LanguageRegexSearcher::new(dir.clone(), word.clone(), lang.to_string());
 
-        let comments = get_comment_syntax(extension);
+        let comments = code_tools::language::get_line_comments(extension);
 
         // render the results in group.
         if classify {
@@ -161,7 +156,7 @@ impl RegexSearcher {
     fn regex_search(
         &self,
         lang_regex_searcher: LanguageRegexSearcher,
-        comments: &[&str],
+        comments: &[String],
         usage_matcher: &UsageMatcher,
     ) -> Result<Vec<AddressableUsage>> {
         let (definitions, occurrences) = lang_regex_searcher.all(comments);

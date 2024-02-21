@@ -1,0 +1,22 @@
+[package]
+name = "maple"
+build = "build.rs"
+description = "Rust backend for the vim plugin vim-clap"
+version = "0.1.51"
+include = ["/Cargo.toml", "src/*.rs"]
+rust-version = "1.70"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+homepage.workspace = true
+
+[dependencies]
+clap = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = ["rt"] }
+cli = { workspace = true }
+upgrade = { workspace = true }
+
+[build-dependencies]
+built = { package = "built", version = "0.6", features = ["git2"] }
+chrono = { workspace = true, default-features = false, features = ["clock"] }

@@ -1,15 +1,15 @@
 [package]
 name = "matcher"
-version = "0.1.0"
-authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
-edition = "2021"
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
 fuzzy-matcher = { workspace = true }
 grep-matcher = { workspace = true }
 grep-regex = { workspace = true }
 
-dumb_analyzer = { workspace = true }
+code_tools = { workspace = true }
 extracted_fzy = { path = "./extracted_fzy" }
 pattern = { workspace = true }
 types = { workspace = true }
