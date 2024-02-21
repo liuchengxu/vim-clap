@@ -15,7 +15,7 @@ use self::definition::{find_definitions_and_references, DefinitionSearchResult, 
 use self::executable_searcher::{word_regex_search_with_extension, LanguageRegexSearcher};
 use crate::find_usages::{AddressableUsage, Usage, UsageMatcher, Usages};
 use crate::tools::rg::{get_language, Match, Word};
-use dumb_analyzer::{resolve_reference_kind, Priority};
+use code_tools::analyzer::{resolve_reference_kind, Priority};
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind, Result};

@@ -207,11 +207,11 @@ impl Match {
         self.lines.text()
     }
 
-    pub fn pattern_priority(&self) -> dumb_analyzer::Priority {
+    pub fn pattern_priority(&self) -> code_tools::analyzer::Priority {
         self.path()
             .rsplit_once('.')
             .and_then(|(_, file_ext)| {
-                dumb_analyzer::calculate_pattern_priority(self.pattern(), file_ext)
+                code_tools::analyzer::calculate_pattern_priority(self.pattern(), file_ext)
             })
             .unwrap_or_default()
     }

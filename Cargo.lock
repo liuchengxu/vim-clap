@@ -697,14 +697,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dumb_analyzer"
-version = "0.1.0"
-dependencies = [
- "code_tools",
- "serde_json",
-]
-
-[[package]]
 name = "dunce"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1480,7 +1472,6 @@ dependencies = [
  "colors-transform",
  "copypasta",
  "dirs 0.1.0",
- "dumb_analyzer",
  "filter",
  "futures",
  "git2 0.15.0",
@@ -1555,7 +1546,6 @@ name = "matcher"
 version = "0.1.0"
 dependencies = [
  "code_tools",
- "dumb_analyzer",
  "extracted_fzy",
  "fuzzy-matcher",
  "grep-matcher",

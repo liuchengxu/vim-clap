@@ -11,12 +11,11 @@ publish = false
 resolver = "2"
 
 members = [
-    "crates/dirs",
-    "crates/dumb_analyzer",
-    "crates/filter",
-    "crates/icon",
     "crates/cli",
     "crates/code_tools",
+    "crates/dirs",
+    "crates/filter",
+    "crates/icon",
     "crates/maple",
     "crates/maple_config",
     "crates/maple_config/doc_gen",
@@ -30,10 +29,10 @@ members = [
     "crates/printer",
     "crates/rpc",
     "crates/sublime_syntax",
-    "crates/types",
     "crates/tree_sitter",
-    "crates/utils",
+    "crates/types",
     "crates/upgrade",
+    "crates/utils",
     "crates/xtask",
 ]
 
@@ -89,7 +88,6 @@ unicode-width = "0.1.4"
 cli = { path = "crates/cli" }
 code_tools = { path = "crates/code_tools" }
 dirs = { path = "crates/dirs" }
-dumb_analyzer = { path = "crates/dumb_analyzer" }
 filter = { path = "crates/filter" }
 icon = { path = "crates/icon" }
 maple_config = { path = "crates/maple_config" }
