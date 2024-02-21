@@ -16,7 +16,7 @@ members = [
     "crates/filter",
     "crates/icon",
     "crates/cli",
-    "crates/ide",
+    "crates/code_tools",
     "crates/maple",
     "crates/maple_config",
     "crates/maple_config/doc_gen",
@@ -87,11 +87,11 @@ unicode-width = "0.1.4"
 
 # Local deps
 cli = { path = "crates/cli" }
+code_tools = { path = "crates/code_tools" }
 dirs = { path = "crates/dirs" }
 dumb_analyzer = { path = "crates/dumb_analyzer" }
 filter = { path = "crates/filter" }
 icon = { path = "crates/icon" }
-ide = { path = "crates/ide" }
 maple_config = { path = "crates/maple_config" }
 maple_core = { path = "crates/maple_core" }
 maple_derive = { path = "crates/maple_derive" }

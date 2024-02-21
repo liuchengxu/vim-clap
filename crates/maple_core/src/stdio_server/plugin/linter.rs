@@ -66,7 +66,7 @@ impl Linter {
 
         let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
 
-        let Some(workspace) = ide::linting::find_workspace(&filetype, &source_file) else {
+        let Some(workspace) = code_tools::linting::find_workspace(&filetype, &source_file) else {
             return Ok(());
         };
 
@@ -89,7 +89,7 @@ impl Linter {
 
         let (diagnostics_sender, mut diagnostics_receiver) = tokio::sync::mpsc::unbounded_channel();
 
-        ide::linting::start_linting_in_background(
+        code_tools::linting::start_linting_in_background(
             buf_info.filetype.clone(),
             buf_info.source_file.clone(),
             buf_info.workspace.clone(),
@@ -118,14 +118,14 @@ impl Linter {
 
         let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
 
-        let Some(workspace) = ide::linting::find_workspace(&filetype, &source_file) else {
+        let Some(workspace) = code_tools::linting::find_workspace(&filetype, &source_file) else {
             return Ok(());
         };
 
         let workspace = workspace.to_path_buf();
         let vim = self.vim.clone();
         tokio::spawn(async move {
-            if ide::formatting::run_rustfmt(&source_file, &workspace)
+            if code_tools::formatting::run_rustfmt(&source_file, &workspace)
                 .await
                 .is_ok()
             {

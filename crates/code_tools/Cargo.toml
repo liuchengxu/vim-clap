@@ -1,5 +1,5 @@
 [package]
-name = "ide"
+name = "code_tools"
 version.workspace = true
 edition.workspace = true
 

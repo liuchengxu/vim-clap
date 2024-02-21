@@ -1,7 +1,7 @@
 use crate::stdio_server::plugin::PluginResult;
 use crate::stdio_server::vim::{Vim, VimResult};
 use crate::types::{DiagnosticKind, Direction};
-use ide::linting::{Code, Diagnostic, DiagnosticSpan, LinterDiagnostics, Severity};
+use code_tools::linting::{Code, Diagnostic, DiagnosticSpan, LinterDiagnostics, Severity};
 use parking_lot::RwLock;
 use serde::Serialize;
 use std::cmp::Ordering as CmpOrdering;

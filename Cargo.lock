@@ -413,6 +413,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "code_tools"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "cargo_metadata",
+ "once_cell",
+ "parking_lot",
+ "paths",
+ "regex",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "which",
+]
+
+[[package]]
 name = "colorchoice"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1153,23 +1170,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ide"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "cargo_metadata",
- "once_cell",
- "parking_lot",
- "paths",
- "regex",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "which",
-]
-
-[[package]]
 name = "ident_case"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1472,6 +1472,7 @@ dependencies = [
  "chrono",
  "chrono-humanize",
  "clap",
+ "code_tools",
  "colors-transform",
  "copypasta",
  "dirs 0.1.0",
@@ -1482,7 +1483,6 @@ dependencies = [
  "grep-matcher",
  "grep-searcher",
  "icon",
- "ide",
  "ignore",
  "itertools 0.10.5",
  "maple_config",
