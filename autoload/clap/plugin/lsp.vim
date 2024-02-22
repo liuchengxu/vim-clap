@@ -93,7 +93,7 @@ endfunction
 else
 
 function! clap#plugin#lsp#listener(bufnr, start, end, added, changes) abort
-  echom string([a:bufnr, a:start, a:end, a:added, a:changes])
+  call clap#client#notify('lsp.__did_change', [a:bufnr, a:start, a:end, a:added, a:changes])
 endfunction
 
 function! clap#plugin#lsp#buf_attach(bufnr) abort

@@ -79,7 +79,7 @@ include-declaration = false
 # ```toml
 # [[plugin.lsp.language]]
 # name = "erlang"
-# filetype = ["erlang"]
+# file-types = ["erlang"]
 # root-markers = ["rebar.config"]
 # language-servers = ["erlang-ls"]
 #
