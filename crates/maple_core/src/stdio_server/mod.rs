@@ -24,6 +24,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::Instant;
+use types::PLUGIN_ACTION_SEPARATOR;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -51,8 +52,9 @@ pub enum Error {
 async fn initialize_client(vim: Vim, actions: Vec<&str>, config_err: ConfigError) -> VimResult<()> {
     config_err.notify_error(&vim)?;
 
-    let (mut other_actions, mut system_actions): (Vec<_>, Vec<_>) =
-        actions.into_iter().partition(|action| action.contains('/'));
+    let (mut other_actions, mut system_actions): (Vec<_>, Vec<_>) = actions
+        .into_iter()
+        .partition(|action| action.contains(PLUGIN_ACTION_SEPARATOR));
     other_actions.sort();
     system_actions.sort();
     let mut clap_actions = system_actions;

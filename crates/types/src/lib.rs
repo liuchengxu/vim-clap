@@ -71,6 +71,9 @@ pub trait SearchProgressUpdate<DisplayLines> {
     );
 }
 
+/// Separator for non-system plugin actions, `git.reload`.
+pub const PLUGIN_ACTION_SEPARATOR: char = '.';
+
 /// Plugin interfaces to users.
 pub trait ClapAction {
     fn id(&self) -> &'static str;
