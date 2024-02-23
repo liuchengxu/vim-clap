@@ -25,10 +25,10 @@ struct ModificationState {
   id = "git",
   actions = [
     "blame",
-    "diff-summary",
-    "hunk-modifications",
+    "diffSummary",
+    "hunkModifications",
     "permalink",
-    "open-permalink-in-browser",
+    "openPermalinkInBrowser",
     "toggle",
 ])]
 pub struct Git {

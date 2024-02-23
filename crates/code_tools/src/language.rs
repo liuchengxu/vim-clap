@@ -258,10 +258,8 @@ pub fn get_language_server_config(
     if let Some(user_config) = maple_config::config()
         .plugin
         .lsp
-        .language_server
-        .get(language_server.as_str())
+        .language_server_config(language_server.as_str())
     {
-        let user_config: serde_json::Value = serde_json::from_str(&user_config.to_string()).ok()?;
         language_server_config.update_config(user_config);
     }
 

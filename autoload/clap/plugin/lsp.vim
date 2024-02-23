@@ -68,7 +68,7 @@ endfunction
 if has('nvim')
 " [bufnr, changedtick, firstline, lastline, new_lastline]
 function! clap#plugin#lsp#on_lines(...) abort
-  call clap#client#notify('lsp.__did_change', a:000)
+  call clap#client#notify('lsp.__didChange', a:000)
 endfunction
 
 function! clap#plugin#lsp#buf_attach(bufnr) abort
@@ -93,7 +93,7 @@ endfunction
 else
 
 function! clap#plugin#lsp#listener(bufnr, start, end, added, changes) abort
-  call clap#client#notify('lsp.__did_change', [a:bufnr, a:start, a:end, a:added, a:changes])
+  call clap#client#notify('lsp.__didChange', [a:bufnr, a:start, a:end, a:added, a:changes])
 endfunction
 
 function! clap#plugin#lsp#buf_attach(bufnr) abort

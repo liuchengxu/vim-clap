@@ -92,12 +92,12 @@ impl std::fmt::Display for FileSize {
 #[clap_plugin(
   id = "syntax",
   actions = [
-    "sublime-syntax-highlight",
-    "sublime-syntax-list-themes",
-    "tree-sitter-highlight",
-    "tree-sitter-highlight-disable",
-    "tree-sitter-list-scopes",
-    "tree-sitter-props-at-cursor",
+    "sublimeSyntaxHighlight",
+    "sublimeSyntaxListThemes",
+    "treeSitterHighlight",
+    "treeSitterHighlightDisable",
+    "treeSitterListScopes",
+    "treeSitterPropsAtCursor",
     "toggle",
   ],
 )]

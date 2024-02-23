@@ -12,7 +12,7 @@ hi default link ClapCursorWordTwins ClapUnderline
 augroup VimClapCursorword
   autocmd!
 
-  autocmd ColorScheme * call clap#client#notify('cursorword.__define-highlights', [+expand('<abuf>')])
+  autocmd ColorScheme * call clap#client#notify('cursorword.__defineHighlights', [+expand('<abuf>')])
 augroup END
 
 function! clap#plugin#cursorword#add_highlights(word_highlights) abort

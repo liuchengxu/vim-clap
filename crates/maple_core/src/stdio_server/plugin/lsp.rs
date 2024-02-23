@@ -137,16 +137,16 @@ fn preprocess_text_edits(text_edits: Vec<lsp::TextEdit>) -> Vec<lsp::TextEdit> {
   actions = [
     "__reload",
     "__detach",
-    "__did_change",
+    "__didChange",
     "format",
     "rename",
-    "document-symbols",
-    "workspace-symbols",
-    "goto-definition",
-    "goto-declaration",
-    "goto-type-definition",
-    "goto-implementation",
-    "goto-reference",
+    "documentSymbols",
+    "workspaceSymbols",
+    "definition",
+    "declaration",
+    "typeDefinition",
+    "implementation",
+    "reference",
     "toggle",
   ]
 )]
@@ -188,11 +188,14 @@ impl LspPlugin {
                 match language_id_from_filetype(&filetype) {
                     Some(v) => v,
                     None => {
+                        tracing::debug!(path, "can not identify the language for buffer {bufnr}");
                         return Ok(());
                     }
                 }
             }
         };
+
+        tracing::debug!(language_id, "buffer {bufnr} attached");
 
         let language_server_config = get_language_server_config(language_id)
             .ok_or(Error::UnsupportedLanguage(language_id))?;
@@ -818,19 +821,19 @@ impl ClapPlugin for LspPlugin {
             LspAction::Rename => {
                 self.rename_symbol().await?;
             }
-            LspAction::GotoDefinition => {
+            LspAction::Definition => {
                 self.goto_impl(Goto::Definition).await?;
             }
-            LspAction::GotoDeclaration => {
+            LspAction::Declaration => {
                 self.goto_impl(Goto::Declaration).await?;
             }
-            LspAction::GotoTypeDefinition => {
+            LspAction::TypeDefinition => {
                 self.goto_impl(Goto::TypeDefinition).await?;
             }
-            LspAction::GotoImplementation => {
+            LspAction::Implementation => {
                 self.goto_impl(Goto::Implementation).await?;
             }
-            LspAction::GotoReference => {
+            LspAction::Reference => {
                 self.goto_impl(Goto::Reference).await?;
             }
             LspAction::DocumentSymbols => {

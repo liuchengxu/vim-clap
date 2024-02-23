@@ -1444,6 +1444,7 @@ dependencies = [
  "once_cell",
  "paths",
  "serde",
+ "serde_json",
  "toml",
  "types",
 ]
@@ -1454,7 +1455,6 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "base64 0.13.1",
- "bytecount",
  "chrono",
  "chrono-humanize",
  "clap",

@@ -341,6 +341,16 @@ pub struct LspPluginConfig {
     pub language_server: HashMap<String, toml::Value>,
 }
 
+impl LspPluginConfig {
+    /// Returns the custom language server config if any.
+    pub fn language_server_config(&self, language_server_name: &str) -> Option<serde_json::Value> {
+        self.language_server
+            .get(language_server_name)
+            .cloned()
+            .and_then(|v| v.try_into().ok())
+    }
+}
+
 /// Syntax plugin.
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
@@ -624,5 +634,22 @@ mod tests {
     fn test_config_deserialize() {
         let config = Config::default();
         toml::to_string_pretty(&config).expect("Deserialize config is okay");
+    }
+
+    #[test]
+    fn test_lsp_language_server_config_to_serde_value() {
+        let toml_content = r#"
+          [language-server.rust-analyzer]
+          procMacro.enable = false
+          procMacro.attributes.enable = false
+          diagnostics.disabled = [ "unresolved-proc-macro" ]
+"#;
+
+        let user_config: LspPluginConfig =
+            toml::from_str(toml_content).expect("Failed to deserialize config");
+
+        let _serde_value: serde_json::Value = user_config
+            .language_server_config("rust-analyzer")
+            .expect("Convert language server config from toml::Value to serde_json::Value");
     }
 }
