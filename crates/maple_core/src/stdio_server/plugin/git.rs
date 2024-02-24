@@ -210,8 +210,10 @@ impl Git {
 
         let lnum = self.vim.line(".").await?;
 
-        let stdout = if self.vim.bufmodified("").await? {
-            let lines = self.vim.getbufline("", 1, "$").await?;
+        let bufnr = self.vim.bufnr(filepath.display().to_string()).await?;
+
+        let stdout = if self.vim.bufmodified(bufnr).await? {
+            let lines = self.vim.getbufline(bufnr, 1, "$").await?;
             git.fetch_blame_output_with_lines(relative_path, lnum, lines)?
         } else {
             git.fetch_blame_output(relative_path, lnum)?

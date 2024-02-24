@@ -137,6 +137,13 @@ macro_rules! event_enum_with_variants {
               pub fn variants() -> &'static [&'static str] {
                   &[ $( stringify!($variant), )* ]
               }
+
+              pub fn parse(autocmd: &str) -> Option<Self> {
+                  match autocmd {
+                      $( stringify!($variant) => Some(Self::$variant), )*
+                      _ => None
+                  }
+              }
           }
     };
 }
