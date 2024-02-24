@@ -3,6 +3,7 @@
 ## [unreleased]
 
 - Change the syntax of plugin actions from `plugin/foo-action` to `plugin.fooAction` for the compatibility with tools like coc.nvim.
+- Various fixes and improvements.
 
 ### Internal
 
