@@ -6,7 +6,7 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 function! s:jump_to(location) abort
-  execute 'edit' a:location.path
+  execute 'edit!' a:location.path
   noautocmd call setpos('.', [bufnr(''), a:location.row, a:location.column, 0])
   normal! zz
 endfunction

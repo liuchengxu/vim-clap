@@ -71,7 +71,7 @@ augroup VimClap
     " Create `clap_actions` provider so that it's convenient to interact with the plugins later.
     let g:clap_provider_clap_actions = get(g:, 'clap_provider_clap_actions', {
                 \ 'source': { -> get(g:, 'clap_actions', []) },
-                \ 'sink': { line -> clap#client#notify(line, []) },
+                \ 'sink': { line -> clap#client#notify(line, [ g:clap.start.bufnr, g:clap.start.old_pos[1], g:clap.start.old_pos[2] ] ) },
                 \ 'mode': 'quick_pick',
                 \ })
 

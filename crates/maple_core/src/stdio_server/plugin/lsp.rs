@@ -10,6 +10,7 @@ use code_tools::language::{
     language_id_from_path,
 };
 use handler::LanguageServerMessageHandler;
+use itertools::Itertools;
 use lsp::Url;
 use maple_lsp::lsp;
 use std::collections::hash_map::Entry;
@@ -28,6 +29,8 @@ pub enum Error {
     BufferNotAttached(usize),
     #[error("invalid Url: {0}")]
     InvalidUrl(String),
+    #[error("invalid params: {0}")]
+    InvalidParams(String),
     #[error(transparent)]
     Vim(#[from] VimError),
     #[error(transparent)]
@@ -195,7 +198,7 @@ impl LspPlugin {
             }
         };
 
-        tracing::debug!(language_id, "buffer {bufnr} attached");
+        tracing::debug!(language_id, bufnr, "buffer attached");
 
         let language_server_config = get_language_server_config(language_id)
             .ok_or(Error::UnsupportedLanguage(language_id))?;
@@ -252,6 +255,8 @@ impl LspPlugin {
 
     fn buffer_detach(&mut self, bufnr: usize) -> Result<(), Error> {
         if let Some(buffer) = self.attached_buffers.remove(&bufnr) {
+            tracing::debug!(bufnr, "buffer detached");
+
             let client = self
                 .clients
                 .get(&buffer.language_id)
@@ -411,8 +416,28 @@ impl LspPlugin {
         Ok(Some(cursor_lsp_position))
     }
 
-    async fn goto_impl(&mut self, goto: Goto) -> Result<(), Error> {
-        let bufnr = self.vim.bufnr("").await?;
+    async fn goto_impl(&mut self, goto: Goto, params: rpc::Params) -> Result<(), Error> {
+        let (bufnr, row, column) = match params {
+            rpc::Params::Array(array) => {
+                if array.is_empty() {
+                    self.vim.get_cursor_pos().await?
+                } else {
+                    let (bufnr, row, column): (u64, u64, u64) = array
+                        .iter()
+                        .filter_map(|v| v.as_u64())
+                        .collect_tuple()
+                        .ok_or_else(|| {
+                            Error::InvalidParams(format!(
+                                "expect [usize, usize, usize], got: {array:?}"
+                            ))
+                        })?;
+
+                    (bufnr as usize, row as usize, column as usize)
+                }
+            }
+            _ => self.vim.get_cursor_pos().await?,
+        };
+
         let document = self.get_buffer(bufnr)?;
 
         let client = self
@@ -421,7 +446,6 @@ impl LspPlugin {
             .ok_or(Error::ClientNotFound)?;
 
         let path = self.vim.bufabspath(bufnr).await?;
-        let (bufnr, row, column) = self.vim.get_cursor_pos().await?;
         let position = lsp::Position {
             line: row as u32 - 1,
             character: column as u32 - 1,
@@ -822,19 +846,19 @@ impl ClapPlugin for LspPlugin {
                 self.rename_symbol().await?;
             }
             LspAction::Definition => {
-                self.goto_impl(Goto::Definition).await?;
+                self.goto_impl(Goto::Definition, params).await?;
             }
             LspAction::Declaration => {
-                self.goto_impl(Goto::Declaration).await?;
+                self.goto_impl(Goto::Declaration, params).await?;
             }
             LspAction::TypeDefinition => {
-                self.goto_impl(Goto::TypeDefinition).await?;
+                self.goto_impl(Goto::TypeDefinition, params).await?;
             }
             LspAction::Implementation => {
-                self.goto_impl(Goto::Implementation).await?;
+                self.goto_impl(Goto::Implementation, params).await?;
             }
             LspAction::Reference => {
-                self.goto_impl(Goto::Reference).await?;
+                self.goto_impl(Goto::Reference, params).await?;
             }
             LspAction::DocumentSymbols => {
                 self.document_symbols().await?;

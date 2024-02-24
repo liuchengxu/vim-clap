@@ -290,7 +290,7 @@ impl Syntax {
                 return Ok(None);
             }
 
-            tracing::debug!(
+            tracing::trace!(
                 total = new_vim_highlights.len(),
                 unchanged_lines_count = unchanged_lines.len(),
                 changed_lines_count = changed_lines.len(),
