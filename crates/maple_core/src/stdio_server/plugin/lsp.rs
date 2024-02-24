@@ -253,7 +253,7 @@ impl LspPlugin {
         Ok(())
     }
 
-    fn buffer_detach(&mut self, bufnr: usize) -> Result<(), Error> {
+    fn buffer_detach(&mut self, [bufnr]: [usize; 1]) -> Result<(), Error> {
         if let Some(buffer) = self.attached_buffers.remove(&bufnr) {
             tracing::debug!(bufnr, "buffer detached");
 
@@ -269,7 +269,7 @@ impl LspPlugin {
         Ok(())
     }
 
-    async fn reload_document(&mut self, bufnr: usize) -> Result<(), Error> {
+    async fn reload_document(&mut self, [bufnr]: [usize; 1]) -> Result<(), Error> {
         let buffer = self
             .attached_buffers
             .get_mut(&bufnr)
@@ -812,7 +812,7 @@ impl ClapPlugin for LspPlugin {
                 self.text_document_did_save(bufnr).await?;
             }
             BufDelete => {
-                self.buffer_detach(bufnr)?;
+                self.buffer_detach([bufnr])?;
             }
             CursorMoved => {
                 self.on_cursor_moved(bufnr).await?;
