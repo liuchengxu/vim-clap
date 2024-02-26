@@ -306,6 +306,9 @@ pub struct LspPluginConfig {
     /// Whether to include the declaration when invoking goto-reference.
     pub include_declaration: bool,
 
+    /// Specify the list of filetypes for which the lsp plugin will be disabled.
+    pub filetype_blocklist: Vec<String>,
+
     /// Specifies custom languages that are not built into vim-clap.
     ///
     /// If a language is not included in the default languages supported by vim-clap,

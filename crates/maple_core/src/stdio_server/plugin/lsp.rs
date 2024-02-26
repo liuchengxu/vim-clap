@@ -159,6 +159,7 @@ pub struct LspPlugin {
     clients: HashMap<LanguageId, Arc<maple_lsp::Client>>,
     /// Documents being tracked, keyed by buffer number.
     attached_buffers: HashMap<usize, Buffer>,
+    filetype_blocklist: Vec<String>,
     /// Goto request in fly.
     current_goto_request: Option<GotoRequest>,
     diagnostics_worker_msg_sender: UnboundedSender<DiagnosticsWorkerMessage>,
@@ -170,12 +171,21 @@ impl LspPlugin {
         vim: Vim,
         diagnostics_worker_msg_sender: UnboundedSender<DiagnosticsWorkerMessage>,
     ) -> Self {
+        let mut filetype_blocklist = maple_config::config().plugin.lsp.filetype_blocklist.clone();
+
+        // Inject the default blocklist.
+        filetype_blocklist.extend(["clap_input".to_string()]);
+
+        filetype_blocklist.sort();
+        filetype_blocklist.dedup();
+
         Self {
             vim,
             clients: HashMap::new(),
             attached_buffers: HashMap::new(),
             current_goto_request: None,
             diagnostics_worker_msg_sender,
+            filetype_blocklist,
             toggle: Toggle::On,
         }
     }
@@ -183,19 +193,21 @@ impl LspPlugin {
     async fn buffer_attach(&mut self, bufnr: usize) -> Result<(), Error> {
         let path = self.vim.bufabspath(bufnr).await?;
 
-        let language_id = match language_id_from_path(&path) {
-            Some(v) => v,
-            None => {
-                let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+        let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
 
-                match language_id_from_filetype(&filetype) {
-                    Some(v) => v,
-                    None => {
-                        tracing::debug!(path, "can not identify the language for buffer {bufnr}");
-                        return Ok(());
-                    }
+        if filetype.is_empty() && self.filetype_blocklist.contains(&filetype) {
+            return Ok(());
+        }
+
+        let language_id = match language_id_from_filetype(&filetype) {
+            Some(v) => v,
+            None => match language_id_from_path(&path) {
+                Some(v) => v,
+                None => {
+                    tracing::debug!(path, "can not identify the language for buffer {bufnr}");
+                    return Ok(());
                 }
-            }
+            },
         };
 
         tracing::debug!(language_id, bufnr, "buffer attached");

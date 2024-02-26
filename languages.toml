@@ -11,8 +11,10 @@ line-comments = [";"]
 
 [[language]]
 name = "cpp"
+file-types = ["cpp"]
 file-extensions = ["cc", "cpp", "h", "hpp", "cxx", "hxx", "inl"]
 line-comments = ["//"]
+language-servers = ["clangd"]
 
 [[language]]
 name = "elisp"
