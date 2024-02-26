@@ -637,7 +637,7 @@ mod tests {
     }
 
     #[test]
-    fn test_lsp_language_server_config_to_serde_value() {
+    fn test_lsp_language_server_config_to_serde_json_value() {
         let toml_content = r#"
           [language-server.rust-analyzer]
           procMacro.enable = false
@@ -648,7 +648,7 @@ mod tests {
         let user_config: LspPluginConfig =
             toml::from_str(toml_content).expect("Failed to deserialize config");
 
-        let _serde_value: serde_json::Value = user_config
+        user_config
             .language_server_config("rust-analyzer")
             .expect("Convert language server config from toml::Value to serde_json::Value");
     }

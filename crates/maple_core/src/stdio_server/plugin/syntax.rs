@@ -371,6 +371,9 @@ impl Syntax {
             } else {
                 self.vim.echo_message("tree sitter props not found")?;
             }
+        } else {
+            self.vim
+                .echo_message("tree sitter highlight not enabled for this buffer")?;
         }
 
         Ok(())

@@ -839,12 +839,6 @@ impl ClapPlugin for LspPlugin {
                 }
                 self.toggle.switch();
             }
-            LspAction::Format => {
-                self.text_document_format().await?;
-            }
-            LspAction::Rename => {
-                self.rename_symbol().await?;
-            }
             LspAction::Definition => {
                 self.goto_impl(Goto::Definition, params).await?;
             }
@@ -859,6 +853,12 @@ impl ClapPlugin for LspPlugin {
             }
             LspAction::Reference => {
                 self.goto_impl(Goto::Reference, params).await?;
+            }
+            LspAction::Format => {
+                self.text_document_format().await?;
+            }
+            LspAction::Rename => {
+                self.rename_symbol().await?;
             }
             LspAction::DocumentSymbols => {
                 self.document_symbols().await?;

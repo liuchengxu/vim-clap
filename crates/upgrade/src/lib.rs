@@ -144,7 +144,7 @@ async fn download_prebuilt_binary(
     if tmp.is_file() {
         let metadata = std::fs::metadata(&tmp)?;
         if metadata.len() == total_size {
-            println!("{} has alreay been downloaded", tmp.display());
+            println!("{} has already been downloaded", tmp.display());
             return Ok(tmp);
         } else {
             std::fs::remove_file(&tmp)?;

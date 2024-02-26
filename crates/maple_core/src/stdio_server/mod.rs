@@ -326,7 +326,7 @@ impl Backend {
     async fn do_process_notification(&self, notification: RpcNotification) -> Result<(), Error> {
         let maybe_session_id = notification.session_id();
 
-        let action_parser = |notification: RpcNotification| -> Result<ActionEvent, Error> {
+        let parse_action = |notification: RpcNotification| -> Result<ActionEvent, Error> {
             for (plugin_id, actions) in self.plugin_actions.lock().iter() {
                 if actions.contains(&notification.method) {
                     return Ok((*plugin_id, notification.into()));
@@ -335,7 +335,7 @@ impl Backend {
             Err(Error::ParseAction(notification))
         };
 
-        match Event::parse_notification(notification, action_parser)? {
+        match Event::parse_notification(notification, parse_action)? {
             Event::NewProvider(params) => {
                 let session_id = maybe_session_id.ok_or(Error::MissingSessionId)?;
                 let ctx = Context::new(params, self.vim.clone()).await?;

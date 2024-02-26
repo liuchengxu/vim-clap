@@ -105,7 +105,7 @@ impl Event {
     /// Converts the notification to an [`Event`].
     pub fn parse_notification(
         notification: RpcNotification,
-        action_parser: impl Fn(RpcNotification) -> Result<ActionEvent, Error>,
+        parse_action: impl Fn(RpcNotification) -> Result<ActionEvent, Error>,
     ) -> Result<Self, Error> {
         use KeyEventType::*;
 
@@ -129,7 +129,7 @@ impl Event {
                 Some(autocmd_event_type) => {
                     Ok(Self::Autocmd((autocmd_event_type, notification.params)))
                 }
-                None => Ok(Self::Action(action_parser(notification)?)),
+                None => Ok(Self::Action(parse_action(notification)?)),
             },
         }
     }
