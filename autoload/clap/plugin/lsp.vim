@@ -66,9 +66,15 @@ function! clap#plugin#lsp#detach(bufnr) abort
 endfunction
 
 if has('nvim')
-" [bufnr, changedtick, firstline, lastline, new_lastline]
 function! clap#plugin#lsp#on_lines(...) abort
-  call clap#client#notify('lsp.__didChange', a:000)
+  let [bufnr, changedtick, firstline, lastline, new_lastline] = a:000
+  call clap#client#notify('lsp.__didChange', {
+              \ 'bufnr': bufnr,
+              \ 'changedtick': changedtick,
+              \ 'firstline': firstline,
+              \ 'lastline': lastline,
+              \ 'new_lastline': new_lastline,
+              \ })
 endfunction
 
 function! clap#plugin#lsp#buf_attach(bufnr) abort
@@ -93,7 +99,14 @@ endfunction
 else
 
 function! clap#plugin#lsp#listener(bufnr, start, end, added, changes) abort
-  call clap#client#notify('lsp.__didChange', [a:bufnr, a:start, a:end, a:added, a:changes])
+  call clap#client#notify('lsp.__didChange', {
+              \ 'bufnr': a:bufnr,
+              \ 'start': a:start,
+              \ 'end': a:end,
+              \ 'added': a:added,
+              \ 'changes': a:changes,
+              \ 'changedtick': getbufvar(a:bufnr, 'changedtick'),
+              \ })
 endfunction
 
 function! clap#plugin#lsp#buf_attach(bufnr) abort

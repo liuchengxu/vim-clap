@@ -23,8 +23,6 @@ use tokio::sync::mpsc::UnboundedSender;
 pub enum Error {
     #[error("lsp client not found")]
     ClientNotFound,
-    #[error("language config not found: {0}")]
-    UnsupportedLanguage(LanguageId),
     #[error("buffer not attached")]
     BufferNotAttached(usize),
     #[error("invalid Url: {0}")]
@@ -166,6 +164,45 @@ pub struct LspPlugin {
     toggle: Toggle,
 }
 
+#[allow(unused)]
+#[derive(Debug, serde::Deserialize)]
+struct Change {
+    /// the first line number of the change
+    lnum: usize,
+    /// the first line below the change
+    end: usize,
+    /// number of lines added; negative if lines were deleted
+    added: i32,
+    // first column in "lnum" that was affected by
+    // the change; one if unknown or the whole line
+    // was affected; this is a byte index, first
+    // character has a value of one.
+    col: usize,
+}
+
+#[allow(unused)]
+#[derive(Debug, serde::Deserialize)]
+enum DidChangeParams {
+    /// `:h listener_add()`
+    #[serde(untagged)]
+    Vim {
+        bufnr: usize,
+        start: usize,
+        end: usize,
+        added: usize,
+        changes: Vec<Change>,
+        changedtick: i32,
+    },
+    #[serde(untagged)]
+    NeoVim {
+        bufnr: usize,
+        changedtick: i32,
+        firstline: usize,
+        lastline: usize,
+        new_lastline: usize,
+    },
+}
+
 impl LspPlugin {
     pub fn new(
         vim: Vim,
@@ -214,8 +251,10 @@ impl LspPlugin {
 
         tracing::debug!(language_id, bufnr, "buffer attached");
 
-        let language_server_config = get_language_server_config(language_id)
-            .ok_or(Error::UnsupportedLanguage(language_id))?;
+        let Some(language_server_config) = get_language_server_config(language_id) else {
+            tracing::warn!("language server config not found for {language_id}");
+            return Ok(());
+        };
 
         if let Entry::Vacant(e) = self.attached_buffers.entry(bufnr) {
             let bufname = self.vim.bufname(bufnr).await?;
@@ -312,14 +351,26 @@ impl LspPlugin {
 
     async fn text_document_did_change(
         &self,
-        (bufnr, changedtick, _firstline, _lastline, _new_lastline): (
-            usize,
-            i32,
-            usize,
-            usize,
-            usize,
-        ),
+        did_change_params: DidChangeParams,
     ) -> Result<(), Error> {
+        let (bufnr, changedtick) = match did_change_params {
+            DidChangeParams::Vim {
+                bufnr,
+                start: _,
+                end: _,
+                added: _,
+                changes: _,
+                changedtick,
+            } => (bufnr, changedtick),
+            DidChangeParams::NeoVim {
+                bufnr,
+                changedtick,
+                firstline: _,
+                lastline: _,
+                new_lastline: _,
+            } => (bufnr, changedtick),
+        };
+
         let document = self.get_buffer(bufnr)?;
 
         let client = self
@@ -342,10 +393,10 @@ impl LspPlugin {
     }
 
     async fn text_document_did_save(&mut self, bufnr: usize) -> Result<(), Error> {
-        let buffer = self
-            .attached_buffers
-            .get_mut(&bufnr)
-            .ok_or(Error::BufferNotAttached(bufnr))?;
+        let Some(buffer) = self.attached_buffers.get_mut(&bufnr) else {
+            // Buffer not attached.
+            return Ok(());
+        };
 
         let client = self
             .clients

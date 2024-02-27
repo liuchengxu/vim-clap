@@ -163,7 +163,7 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
                 }
             }
             _ => {
-                tracing::debug!("TODO: handle language server notification");
+                tracing::debug!("TODO: handle language server notification: {notification:?}");
             }
         }
 
