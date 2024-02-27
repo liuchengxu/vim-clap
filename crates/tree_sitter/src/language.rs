@@ -33,33 +33,30 @@ struct ConfigInner {
 static CONFIG: Lazy<ConfigInner> = Lazy::new(|| {
     let tree_sitter_config = include_bytes!("../tree_sitter_config.toml");
     let config: Config = toml::from_slice(tree_sitter_config).unwrap();
-    config.into_config_inner()
-});
-
-impl Config {
-    fn into_config_inner(self) -> ConfigInner {
-        ConfigInner {
-            language: self
-                .language
-                .into_iter()
-                .map(|(lang, highlight_config)| {
-                    let lang: Language = lang.parse().unwrap();
-                    let (names, groups): (Vec<_>, Vec<_>) = highlight_config
-                        .highlight_name_and_groups
-                        .into_iter()
-                        .unzip();
-                    (
-                        lang,
-                        HighlightConfigInner {
-                            highlight_names: names,
-                            highlight_groups: groups,
-                        },
-                    )
-                })
-                .collect(),
-        }
+    ConfigInner {
+        language: config
+            .language
+            .into_iter()
+            .filter_map(|(lang, highlight_config)| {
+                let Ok(lang) = lang.parse::<Language>() else {
+                    tracing::error!("Invalid language name in tree_sitter_config: {lang}");
+                    return None;
+                };
+                let (names, groups): (Vec<_>, Vec<_>) = highlight_config
+                    .highlight_name_and_groups
+                    .into_iter()
+                    .unzip();
+                Some((
+                    lang,
+                    HighlightConfigInner {
+                        highlight_names: names,
+                        highlight_groups: groups,
+                    },
+                ))
+            })
+            .collect(),
     }
-}
+});
 
 /// Small macro to generate a module, declaring the list of highlight name
 /// in tree_sitter_highlight and associated vim highlight group name.

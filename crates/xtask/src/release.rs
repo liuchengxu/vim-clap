@@ -102,6 +102,7 @@ pub fn run(sh: &Shell, dry_run: bool, project_root: PathBuf) -> Result<()> {
     Ok(())
 }
 
+// Find the target_line in the file and update the line by incrementing the version.
 fn bump_version(
     sh: &Shell,
     path: PathBuf,

@@ -2876,6 +2876,7 @@ dependencies = [
  "rand",
  "serde",
  "toml",
+ "tracing",
  "tree-sitter",
  "tree-sitter-bash",
  "tree-sitter-c",
