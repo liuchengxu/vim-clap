@@ -157,6 +157,7 @@ pub struct LspPlugin {
     clients: HashMap<LanguageId, Arc<maple_lsp::Client>>,
     /// Documents being tracked, keyed by buffer number.
     attached_buffers: HashMap<usize, Buffer>,
+    /// Skip the buffer if its filetype is in this list.
     filetype_blocklist: Vec<String>,
     /// Goto request in fly.
     current_goto_request: Option<GotoRequest>,
@@ -189,7 +190,7 @@ enum DidChangeParams {
         bufnr: usize,
         start: usize,
         end: usize,
-        added: usize,
+        added: i32,
         changes: Vec<Change>,
         changedtick: i32,
     },
@@ -230,6 +231,11 @@ impl LspPlugin {
     }
 
     async fn buffer_attach(&mut self, bufnr: usize) -> Result<(), Error> {
+        if self.attached_buffers.contains_key(&bufnr) {
+            tracing::debug!("buffer {bufnr} already attached");
+            return Ok(());
+        }
+
         let path = self.vim.bufabspath(bufnr).await?;
 
         let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
@@ -256,52 +262,50 @@ impl LspPlugin {
             return Ok(());
         };
 
-        if let Entry::Vacant(e) = self.attached_buffers.entry(bufnr) {
-            let bufname = self.vim.bufname(bufnr).await?;
-            let buffer = Buffer {
-                language_id,
-                bufname,
-                doc_id: doc_id(&path)?,
-            };
+        let bufname = self.vim.bufname(bufnr).await?;
+        let buffer = Buffer {
+            language_id,
+            bufname,
+            doc_id: doc_id(&path)?,
+        };
 
-            match self.clients.entry(language_id) {
-                Entry::Occupied(e) => {
-                    let root_uri = find_lsp_root(language_id, path.as_ref())
-                        .and_then(|p| Url::from_file_path(p).ok());
-                    let client = e.get();
-                    client.try_add_workspace(root_uri)?;
-                    open_new_doc(client, buffer.language_id, &path)?;
-                }
-                Entry::Vacant(e) => {
-                    let enable_snippets = false;
-                    let name = language_server_config.server_name();
-                    let client = maple_lsp::start_client(
-                        maple_lsp::ClientParams {
-                            language_server_config,
-                            manual_roots: vec![],
-                            enable_snippets,
-                        },
-                        name.clone(),
-                        Some(PathBuf::from(path.clone())),
-                        get_root_markers(language_id),
-                        LanguageServerMessageHandler::new(
-                            name,
-                            self.vim.clone(),
-                            self.diagnostics_worker_msg_sender.clone(),
-                        ),
-                    )
-                    .await?;
-
-                    open_new_doc(&client, buffer.language_id, &path)?;
-
-                    e.insert(client);
-                }
+        match self.clients.entry(language_id) {
+            Entry::Occupied(e) => {
+                let root_uri = find_lsp_root(language_id, path.as_ref())
+                    .and_then(|p| Url::from_file_path(p).ok());
+                let client = e.get();
+                client.try_add_workspace(root_uri)?;
+                open_new_doc(client, buffer.language_id, &path)?;
             }
+            Entry::Vacant(e) => {
+                let enable_snippets = false;
+                let name = language_server_config.server_name();
+                let client = maple_lsp::start_client(
+                    maple_lsp::ClientParams {
+                        language_server_config,
+                        manual_roots: vec![],
+                        enable_snippets,
+                    },
+                    name.clone(),
+                    Some(PathBuf::from(path.clone())),
+                    get_root_markers(language_id),
+                    LanguageServerMessageHandler::new(
+                        name,
+                        self.vim.clone(),
+                        self.diagnostics_worker_msg_sender.clone(),
+                    ),
+                )
+                .await?;
 
-            self.vim.exec("clap#plugin#lsp#buf_attach", [bufnr])?;
+                open_new_doc(&client, buffer.language_id, &path)?;
 
-            e.insert(buffer);
+                e.insert(client);
+            }
         }
+
+        self.vim.exec("clap#plugin#lsp#buf_attach", [bufnr])?;
+
+        self.attached_buffers.insert(bufnr, buffer);
 
         Ok(())
     }
