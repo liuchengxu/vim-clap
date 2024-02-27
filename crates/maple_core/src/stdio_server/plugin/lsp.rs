@@ -171,10 +171,12 @@ impl LspPlugin {
         vim: Vim,
         diagnostics_worker_msg_sender: UnboundedSender<DiagnosticsWorkerMessage>,
     ) -> Self {
+        const FILETYPE_BLOCKLIST: &[&str] = &["clap_input", "coc-explorer"];
+
         let mut filetype_blocklist = maple_config::config().plugin.lsp.filetype_blocklist.clone();
 
         // Inject the default blocklist.
-        filetype_blocklist.extend(["clap_input".to_string()]);
+        filetype_blocklist.extend(FILETYPE_BLOCKLIST.iter().map(|s| s.to_string()));
 
         filetype_blocklist.sort();
         filetype_blocklist.dedup();

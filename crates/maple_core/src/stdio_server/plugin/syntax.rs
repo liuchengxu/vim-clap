@@ -210,7 +210,7 @@ impl Syntax {
 
         let file_size = FileSize(source_code.len());
 
-        tracing::debug!(
+        tracing::trace!(
             ?language,
             highlighted_lines = raw_highlights.len(),
             %file_size,
