@@ -236,20 +236,24 @@ impl LspPlugin {
             return Ok(());
         }
 
-        let path = self.vim.bufabspath(bufnr).await?;
-
         let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
 
-        if filetype.is_empty() && self.filetype_blocklist.contains(&filetype) {
+        if filetype.is_empty() || self.filetype_blocklist.contains(&filetype) {
             return Ok(());
         }
+
+        let path = self.vim.bufabspath(bufnr).await?;
 
         let language_id = match language_id_from_filetype(&filetype) {
             Some(v) => v,
             None => match language_id_from_path(&path) {
                 Some(v) => v,
                 None => {
-                    tracing::debug!(path, "can not identify the language for buffer {bufnr}");
+                    tracing::debug!(
+                        filetype,
+                        path,
+                        "can not identify the language for buffer {bufnr}"
+                    );
                     return Ok(());
                 }
             },
