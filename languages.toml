@@ -37,7 +37,7 @@ name = "go"
 file-types = ["go"]
 line-comments = ["//"]
 root-markers = ["go.mod"]
-language-servers = [ "gopls" ]
+language-servers = ["gopls"]
 
 [[language]]
 name = "javascript"
@@ -87,7 +87,7 @@ name = "rust"
 file-types = ["rust"]
 line-comments = ["//", "///", "//!"]
 root-markers = ["Cargo.toml", "Cargo.lock"]
-language-servers = [ "rust-analyzer" ]
+language-servers = ["rust-analyzer"]
 
 [[language]]
 name = "tex"
@@ -196,11 +196,11 @@ typst-lsp = { command = "typst-lsp" }
 command = "ansible-language-server"
 args = ["--stdio"]
 
-[language-server.lua-language-server]
-command = "lua-language-server"
-
 [language-server.gopls]
 command = "gopls"
+
+[language-server.lua-language-server]
+command = "lua-language-server"
 
 [language-server.rust-analyzer]
 command = "rust-analyzer"

@@ -194,19 +194,19 @@ fn config_inner() -> &'static ConfigurationInner {
 
         let mut final_languages = language
             .into_iter()
-            .map(|c| {
-                let c = if let Some(mut config) = user_languages.remove(&c.name) {
+            .map(|mut c| {
+                if let Some(user_language_config) = user_languages.remove(&c.name) {
                     // Merge the default language config into the value specified by user.
-                    config.merge(c);
-                    config
+                    c.merge(user_language_config);
+
+                    (c.name.clone(), c)
                 } else {
-                    c
-                };
-                (c.name.clone(), c)
+                    (c.name.clone(), c)
+                }
             })
             .collect::<HashMap<_, _>>();
 
-        final_languages.extend(user_languages);
+        final_languages.extend(user_languages.into_iter().map(|(name, c)| (name, c.into())));
 
         ConfigurationInner {
             filetypes,
