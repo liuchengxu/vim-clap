@@ -1,5 +1,4 @@
 mod diagnostics_worker;
-mod winbar;
 mod input;
 mod job;
 mod plugin;
@@ -7,6 +6,7 @@ mod provider;
 mod request_handler;
 mod service;
 mod vim;
+mod winbar;
 
 pub use self::input::InputHistory;
 use self::input::{ActionEvent, Event, ProviderEvent};
@@ -90,8 +90,8 @@ struct InitializedService {
 fn initialize_service(vim: Vim) -> InitializedService {
     use self::diagnostics_worker::start_buffer_diagnostics_worker;
     use self::plugin::{
-        ActionType, ClapPlugin, ColorizerPlugin, CtagsPlugin, CursorwordPlugin, GitPlugin,
-        LinterPlugin, LspPlugin, MarkdownPlugin, SyntaxPlugin, SystemPlugin,
+        ActionType, ClapPlugin, ColorizerPlugin, CtagsPlugin, CursorwordPlugin, DiagnosticsPlugin,
+        GitPlugin, LinterPlugin, LspPlugin, MarkdownPlugin, SyntaxPlugin, SystemPlugin,
     };
 
     let mut callable_actions = Vec::new();
@@ -118,6 +118,14 @@ fn initialize_service(vim: Vim) -> InitializedService {
 
     if plugin_config.lsp.enable || plugin_config.linter.enable {
         let diagnostics_worker_msg_sender = start_buffer_diagnostics_worker(vim.clone());
+
+        register_plugin(
+            Box::new(DiagnosticsPlugin::new(
+                vim.clone(),
+                diagnostics_worker_msg_sender.clone(),
+            )),
+            None,
+        );
 
         if plugin_config.lsp.enable {
             register_plugin(

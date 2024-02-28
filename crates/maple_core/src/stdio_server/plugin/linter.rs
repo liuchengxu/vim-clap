@@ -2,7 +2,6 @@ use crate::stdio_server::diagnostics_worker::WorkerMessage;
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginError, Toggle};
 use crate::stdio_server::vim::{Vim, VimResult};
-use crate::types::{DiagnosticKind, Direction};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::sync::mpsc::UnboundedSender;
@@ -31,14 +30,6 @@ impl BufferInfo {
     "echoDiagnostics",
     "echoDiagnosticsAtCursor",
     "format",
-    "firstError",
-    "lastError",
-    "nextError",
-    "prevError",
-    "firstWarn",
-    "lastWarn",
-    "nextWarn",
-    "prevWarn",
     "debug",
     "toggle",
   ]
@@ -135,18 +126,6 @@ impl Linter {
         Ok(())
     }
 
-    async fn navigate_diagnostics(
-        &self,
-        kind: DiagnosticKind,
-        direction: Direction,
-    ) -> VimResult<()> {
-        let bufnr = self.vim.bufnr("").await?;
-        let _ = self
-            .diagnostics_worker_msg_sender
-            .send(WorkerMessage::NavigateDiagnostics((bufnr, kind, direction)));
-        Ok(())
-    }
-
     async fn on_cursor_moved(&self, bufnr: usize) -> VimResult<()> {
         let _ = self
             .diagnostics_worker_msg_sender
@@ -190,9 +169,6 @@ impl ClapPlugin for Linter {
     }
 
     async fn handle_action(&mut self, action: PluginAction) -> Result<(), PluginError> {
-        use DiagnosticKind::{Error, Warn};
-        use Direction::{First, Last, Next, Prev};
-
         let PluginAction { method, params: _ } = action;
         match self.parse_action(method)? {
             LinterAction::Toggle => {
@@ -228,30 +204,6 @@ impl ClapPlugin for Linter {
             LinterAction::Format => {
                 let bufnr = self.vim.bufnr("").await?;
                 self.format_buffer(bufnr).await?;
-            }
-            LinterAction::FirstError => {
-                self.navigate_diagnostics(Error, First).await?;
-            }
-            LinterAction::LastError => {
-                self.navigate_diagnostics(Error, Last).await?;
-            }
-            LinterAction::NextError => {
-                self.navigate_diagnostics(Error, Next).await?;
-            }
-            LinterAction::PrevError => {
-                self.navigate_diagnostics(Error, Prev).await?;
-            }
-            LinterAction::FirstWarn => {
-                self.navigate_diagnostics(Warn, First).await?;
-            }
-            LinterAction::LastWarn => {
-                self.navigate_diagnostics(Warn, Last).await?;
-            }
-            LinterAction::NextWarn => {
-                self.navigate_diagnostics(Warn, Next).await?;
-            }
-            LinterAction::PrevWarn => {
-                self.navigate_diagnostics(Warn, Prev).await?;
             }
         }
 

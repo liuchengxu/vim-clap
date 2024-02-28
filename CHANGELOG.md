@@ -4,6 +4,7 @@
 
 - Change the syntax of plugin actions from `plugin/foo-action` to `plugin.fooAction` for the compatibility with tools like coc.nvim.
 - Various fixes and improvements.
+- Added diagnostics plugin in order to conveniently inspect the collected diagnostics from both the linter and lsp plugin.
 
 ### Internal
 
