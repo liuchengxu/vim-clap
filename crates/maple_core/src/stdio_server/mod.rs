@@ -1,4 +1,5 @@
 mod diagnostics_worker;
+mod winbar;
 mod input;
 mod job;
 mod plugin;

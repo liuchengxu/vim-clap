@@ -6,7 +6,7 @@ use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginError, Toggle}
 use crate::stdio_server::vim::Vim;
 use std::collections::{BTreeMap, HashMap};
 use std::ops::Range;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tree_sitter::Language;
 
 #[allow(unused)]
@@ -127,9 +127,7 @@ impl Syntax {
 
     async fn on_buf_enter(&mut self, bufnr: usize) -> Result<(), PluginError> {
         let fpath = self.vim.bufabspath(bufnr).await?;
-        let maybe_extension = std::path::Path::new(&fpath)
-            .extension()
-            .and_then(|e| e.to_str());
+        let maybe_extension = Path::new(&fpath).extension().and_then(|e| e.to_str());
 
         if let Some(extension) = maybe_extension {
             self.sublime_bufs.insert(bufnr, extension.to_string());
@@ -172,8 +170,7 @@ impl Syntax {
         buf_modified: bool,
         maybe_language: Option<Language>,
     ) -> Result<(), PluginError> {
-        let source_file = self.vim.bufabspath(bufnr).await?;
-        let source_file = std::path::PathBuf::from(source_file);
+        let source_file = PathBuf::from(self.vim.bufabspath(bufnr).await?);
 
         let language = match maybe_language {
             Some(language) => language,
@@ -334,8 +331,7 @@ impl Syntax {
         bufnr: usize,
         language: Language,
     ) -> Result<(), PluginError> {
-        let source_file = self.vim.bufabspath(bufnr).await?;
-        let source_file = std::path::PathBuf::from(source_file);
+        let source_file = PathBuf::from(self.vim.bufabspath(bufnr).await?);
 
         let source_code = std::fs::read(&source_file)?;
 
@@ -394,6 +390,7 @@ impl From<Range<usize>> for HighlightRange {
 }
 
 impl HighlightRange {
+    /// Returns `true` if the line at specified line number should be highlighted.
     fn should_highlight(&self, line_number: usize) -> bool {
         match self {
             Self::Lines(range) => range.contains(&line_number),
