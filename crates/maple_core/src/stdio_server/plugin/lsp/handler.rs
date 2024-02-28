@@ -162,6 +162,11 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
                     }
                 }
             }
+            LanguageServerNotification::ShowMessage(params) => {
+                let _ = self
+                    .vim
+                    .echo_message(format!("[{}] {}", self.server_name, params.message));
+            }
             _ => {
                 tracing::debug!("TODO: handle language server notification: {notification:?}");
             }

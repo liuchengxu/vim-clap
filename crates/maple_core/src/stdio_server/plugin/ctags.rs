@@ -138,7 +138,7 @@ impl CtagsPlugin {
                         ("LineNr", format!(" {SEP} ")),
                         ("Include", scope_kind_icon),
                         (
-                            "ModeMsg",
+                            "LineNr",
                             shrink_text_to_fit(scope.scope.clone(), scope_max_width),
                         ),
                     ]);
@@ -148,7 +148,7 @@ impl CtagsPlugin {
                 winbar_items.extend([
                     ("LineNr", format!(" {SEP} ")),
                     ("Type", tag_kind_icon),
-                    ("ModeMsg", format!(" {}", &tag.name)),
+                    ("LineNr", format!(" {}", &tag.name)),
                 ]);
             }
         }

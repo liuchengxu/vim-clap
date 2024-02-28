@@ -2,7 +2,10 @@
 
 mod github;
 
-use crate::github::{asset_download_url, asset_name, retrieve_asset_size, retrieve_latest_release};
+use crate::github::{
+    fetch_maple_asset_size, latest_vim_clap_github_release, maple_asset_download_url,
+    maple_asset_name,
+};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::path::PathBuf;
 use tokio::io::AsyncWriteExt;
@@ -27,7 +30,7 @@ impl Upgrade {
 
     pub async fn run(&self, local_tag: &str) -> std::io::Result<()> {
         println!("Retrieving the latest remote release info...");
-        let latest_release = retrieve_latest_release().await?;
+        let latest_release = latest_vim_clap_github_release().await?;
         let latest_tag = latest_release.tag_name;
         let latest_version = extract_remote_version_number(&latest_tag);
         let local_version = extract_local_version_number(local_tag);
@@ -36,7 +39,8 @@ impl Upgrade {
             if self.download {
                 println!("New maple release {latest_tag} is available, downloading...",);
 
-                let temp_file = download_prebuilt_binary(&latest_tag, self.no_progress_bar).await?;
+                let temp_file =
+                    download_prebuilt_maple_binary(&latest_tag, self.no_progress_bar).await?;
 
                 // Only tries to upgrade if using the prebuilt binary, i.e., `bin/maple`.
                 let bin_path = get_binary_path()?;
@@ -46,7 +50,7 @@ impl Upgrade {
 
                 println!("Latest version {latest_tag} download completed");
             } else {
-                match asset_download_url(&latest_tag) {
+                match maple_asset_download_url(&latest_tag) {
                     Some(url) => {
                         println!("New maple release {latest_tag} is available, please download it from {url} or rerun with --download flag.");
                     }
@@ -122,7 +126,7 @@ fn set_executable_permission<P: AsRef<std::path::Path>>(path: P) -> std::io::Res
 /// # Arguments
 ///
 /// - `version`: "v0.13"
-async fn download_prebuilt_binary(
+async fn download_prebuilt_maple_binary(
     version: &str,
     no_progress_bar: bool,
 ) -> std::io::Result<PathBuf> {
@@ -133,19 +137,58 @@ async fn download_prebuilt_binary(
         )
     };
 
-    let asset_name = asset_name().ok_or_else(binary_unavailable)?;
+    let asset_name = maple_asset_name().ok_or_else(binary_unavailable)?;
+    let total_size = fetch_maple_asset_size(asset_name, version).await?;
+    let download_url = maple_asset_download_url(version).ok_or_else(binary_unavailable)?;
 
+    let tmp = match download_asset_file(
+        version,
+        asset_name,
+        total_size,
+        &download_url,
+        no_progress_bar,
+    )
+    .await?
+    {
+        DownloadResult::Existed(tmp) => {
+            println!("{} has already been downloaded", tmp.display());
+            tmp
+        }
+        DownloadResult::Success(tmp) => {
+            println!("Download of '{}' has been completed.", tmp.display());
+            tmp
+        }
+    };
+
+    #[cfg(unix)]
+    set_executable_permission(&tmp)?;
+
+    Ok(tmp)
+}
+
+enum DownloadResult {
+    /// File already exists in the specified path.
+    Existed(PathBuf),
+    /// File was downloaded successfully to the given path.
+    Success(PathBuf),
+}
+
+/// Download an asset file from GitHub to the local file system.
+async fn download_asset_file(
+    version: &str,
+    asset_name: &str,
+    total_size: u64,
+    asset_download_url: &str,
+    no_progress_bar: bool,
+) -> std::io::Result<DownloadResult> {
     let mut tmp = std::env::temp_dir();
     tmp.push(format!("{version}-{asset_name}"));
-
-    let total_size = retrieve_asset_size(asset_name, version).await?;
 
     // Check if there is a partially downloaded binary before.
     if tmp.is_file() {
         let metadata = std::fs::metadata(&tmp)?;
         if metadata.len() == total_size {
-            println!("{} has already been downloaded", tmp.display());
-            return Ok(tmp);
+            return Ok(DownloadResult::Existed(tmp));
         } else {
             std::fs::remove_file(&tmp)?;
         }
@@ -164,9 +207,8 @@ async fn download_prebuilt_binary(
     let to_io_error =
         |e| std::io::Error::new(std::io::ErrorKind::Other, format!("Reqwest error: {e}"));
 
-    let download_url = asset_download_url(version).ok_or_else(binary_unavailable)?;
     let mut source = reqwest::Client::new()
-        .get(download_url)
+        .get(asset_download_url)
         .send()
         .await
         .map_err(to_io_error)?;
@@ -185,12 +227,7 @@ async fn download_prebuilt_binary(
         }
     }
 
-    #[cfg(unix)]
-    set_executable_permission(&tmp)?;
-
-    println!("Download of '{}' has been completed.", tmp.display());
-
-    Ok(tmp)
+    Ok(DownloadResult::Success(tmp))
 }
 
 #[cfg(test)]
@@ -228,8 +265,8 @@ mod tests {
         }
 
         for _i in 0..20 {
-            if let Ok(latest_tag) = retrieve_latest_release().await.map(|r| r.tag_name) {
-                download_prebuilt_binary(&latest_tag, true)
+            if let Ok(latest_tag) = latest_vim_clap_github_release().await.map(|r| r.tag_name) {
+                download_prebuilt_maple_binary(&latest_tag, true)
                     .await
                     .unwrap_or_else(|err| panic!(
                         "Failed to download the prebuilt binary for {latest_tag:?} into a tempfile: {err:?}"

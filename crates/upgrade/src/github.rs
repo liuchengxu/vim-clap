@@ -4,7 +4,7 @@ use serde::Deserialize;
 const USER: &str = "liuchengxu";
 const REPO: &str = "vim-clap";
 
-pub(super) fn asset_name() -> Option<&'static str> {
+pub(super) fn maple_asset_name() -> Option<&'static str> {
     if cfg!(target_os = "macos") {
         if cfg!(target_arch = "x86_64") {
             Some("maple-x86_64-apple-darwin")
@@ -28,8 +28,8 @@ pub(super) fn asset_name() -> Option<&'static str> {
     }
 }
 
-pub(super) fn asset_download_url(version: &str) -> Option<String> {
-    asset_name().map(|asset_name| {
+pub(super) fn maple_asset_download_url(version: &str) -> Option<String> {
+    maple_asset_name().map(|asset_name| {
         format!("https://github.com/{USER}/{REPO}/releases/download/{version}/{asset_name}",)
     })
 }
@@ -38,6 +38,7 @@ pub(super) fn asset_download_url(version: &str) -> Option<String> {
 pub struct Asset {
     pub name: String,
     pub size: u64,
+    pub browser_download_url: String,
 }
 
 // https://docs.github.com/en/rest/releases/releases
@@ -63,7 +64,16 @@ async fn request<T: DeserializeOwned>(url: &str) -> std::io::Result<T> {
         .map_err(io_error)
 }
 
-pub(super) async fn retrieve_asset_size(asset_name: &str, tag: &str) -> std::io::Result<u64> {
+pub async fn latest_github_release(user: &str, repo: &str) -> std::io::Result<GitHubRelease> {
+    let url = format!("https://api.github.com/repos/{user}/{repo}/releases/latest");
+    request::<GitHubRelease>(&url).await
+}
+
+pub(super) async fn latest_vim_clap_github_release() -> std::io::Result<GitHubRelease> {
+    latest_github_release(USER, REPO).await
+}
+
+pub(super) async fn fetch_maple_asset_size(asset_name: &str, tag: &str) -> std::io::Result<u64> {
     let url = format!("https://api.github.com/repos/{USER}/{REPO}/releases/tags/{tag}");
     let release: GitHubRelease = request(&url).await?;
 
@@ -73,11 +83,6 @@ pub(super) async fn retrieve_asset_size(asset_name: &str, tag: &str) -> std::io:
         .find(|x| x.name == asset_name)
         .map(|x| x.size)
         .ok_or_else(|| panic!("Can not find the asset {asset_name} in given release {tag}"))
-}
-
-pub(super) async fn retrieve_latest_release() -> std::io::Result<GitHubRelease> {
-    let url = format!("https://api.github.com/repos/{USER}/{REPO}/releases/latest");
-    request::<GitHubRelease>(&url).await
 }
 
 #[cfg(test)]
@@ -91,8 +96,8 @@ mod tests {
         }
 
         for _i in 0..20 {
-            if let Ok(latest_tag) = retrieve_latest_release().await.map(|r| r.tag_name) {
-                retrieve_asset_size(asset_name().unwrap(), &latest_tag)
+            if let Ok(latest_tag) = latest_vim_clap_github_release().await.map(|r| r.tag_name) {
+                fetch_maple_asset_size(maple_asset_name().unwrap(), &latest_tag)
                     .await
                     .expect("Failed to retrieve the asset size for latest release");
                 return;
