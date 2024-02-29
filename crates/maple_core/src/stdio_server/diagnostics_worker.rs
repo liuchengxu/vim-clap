@@ -260,10 +260,10 @@ fn convert_lsp_diagnostic_to_diagnostic(lsp_diag: maple_lsp::lsp::Diagnostic) ->
 }
 
 pub enum WorkerMessage {
-    EchoDiagnostics(usize),
-    EchoDiagnosticsAtCursor(usize),
-    NavigateDiagnostics((usize, DiagnosticKind, Direction)),
+    ShowDiagnostics(usize),
+    ShowDiagnosticsAtCursor(usize),
     ShowDiagnosticsAtCursorInFloatWin(usize),
+    NavigateDiagnostics((usize, DiagnosticKind, Direction)),
     ResetBufferDiagnostics(usize),
     LinterDiagnostics((usize, LinterDiagnostics)),
     LspDiagnostics(maple_lsp::lsp::PublishDiagnosticsParams),
@@ -283,7 +283,7 @@ impl BufferDiagnosticsWorker {
     async fn run(mut self) -> PluginResult<()> {
         while let Some(worker_msg) = self.worker_msg_receiver.recv().await {
             match worker_msg {
-                WorkerMessage::EchoDiagnostics(bufnr) => {
+                WorkerMessage::ShowDiagnostics(bufnr) => {
                     if let Some(diagnostics) = self.buffer_diagnostics.get(&bufnr) {
                         let diagnostics = diagnostics.inner.read();
                         self.vim.echo_message(format!("{diagnostics:?}"))?;
@@ -292,7 +292,7 @@ impl BufferDiagnosticsWorker {
                             .echo_message(format!("diagnostics not found for buffer {bufnr}"))?;
                     }
                 }
-                WorkerMessage::EchoDiagnosticsAtCursor(bufnr) => {
+                WorkerMessage::ShowDiagnosticsAtCursor(bufnr) => {
                     if let Some(diagnostics) = self.buffer_diagnostics.get(&bufnr) {
                         let Ok(lnum) = self.vim.line(".").await else {
                             continue;
