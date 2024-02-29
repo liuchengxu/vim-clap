@@ -291,8 +291,10 @@ checksum = "7f2c685bad3eb3d45a01354cedb7d5faa66194d1d58ba6e267a8de788f79db38"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
+ "js-sys",
  "num-traits",
  "serde",
+ "wasm-bindgen",
  "windows-targets 0.48.5",
 ]
 
@@ -374,7 +376,7 @@ checksum = "702fc72eb24e5a1e48ce58027a675bc24edd52096d5397d4aea7c6dd9eca0bd1"
 
 [[package]]
 name = "cli"
-version = "0.1.0"
+version = "0.1.52"
 dependencies = [
  "anyhow",
  "clap",
@@ -411,7 +413,7 @@ dependencies = [
 
 [[package]]
 name = "code_tools"
-version = "0.1.0"
+version = "0.1.52"
 dependencies = [
  "cargo_metadata",
  "maple_config",
@@ -639,7 +641,7 @@ dependencies = [
 
 [[package]]
 name = "dirs"
-version = "0.1.0"
+version = "0.1.52"
 dependencies = [
  "directories",
 ]
@@ -743,11 +745,11 @@ dependencies = [
 
 [[package]]
 name = "extracted_fzy"
-version = "0.1.0"
+version = "0.1.52"
 
 [[package]]
 name = "filter"
-version = "0.1.0"
+version = "0.1.52"
 dependencies = [
  "icon",
  "matcher",
@@ -1148,7 +1150,7 @@ dependencies = [
 
 [[package]]
 name = "icon"
-version = "0.1.0"
+version = "0.1.52"
 dependencies = [
  "itertools 0.10.5",
  "pattern",
@@ -1438,9 +1440,9 @@ dependencies = [
 
 [[package]]
 name = "maple_config"
-version = "0.1.0"
+version = "0.1.52"
 dependencies = [
- "dirs 0.1.0",
+ "dirs 0.1.52",
  "once_cell",
  "paths",
  "serde",
@@ -1451,7 +1453,7 @@ dependencies = [
 
 [[package]]
 name = "maple_core"
-version = "0.1.0"
+version = "0.1.52"
 dependencies = [
  "async-trait",
  "base64 0.13.1",
@@ -1461,7 +1463,7 @@ dependencies = [
  "code_tools",
  "colors-transform",
  "copypasta",
- "dirs 0.1.0",
+ "dirs 0.1.52",
  "filter",
  "futures",
  "git2 0.15.0",
@@ -1501,7 +1503,7 @@ dependencies = [
 
 [[package]]
 name = "maple_derive"
-version = "0.1.0"
+version = "0.1.52"
 dependencies = [
  "async-trait",
  "darling",
@@ -1515,7 +1517,7 @@ dependencies = [
 
 [[package]]
 name = "maple_lsp"
-version = "0.1.0"
+version = "0.1.52"
 dependencies = [
  "futures-util",
  "lsp-types",
@@ -1533,7 +1535,7 @@ dependencies = [
 
 [[package]]
 name = "matcher"
-version = "0.1.0"
+version = "0.1.52"
 dependencies = [
  "code_tools",
  "extracted_fzy",
@@ -1798,9 +1800,9 @@ dependencies = [
 
 [[package]]
 name = "paths"
-version = "0.1.0"
+version = "0.1.52"
 dependencies = [
- "dirs 0.1.0",
+ "dirs 0.1.52",
  "dunce",
  "itertools 0.10.5",
  "serde",
@@ -1809,7 +1811,7 @@ dependencies = [
 
 [[package]]
 name = "pattern"
-version = "0.1.0"
+version = "0.1.52"
 dependencies = [
  "once_cell",
  "regex",
@@ -1895,7 +1897,7 @@ checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
 
 [[package]]
 name = "printer"
-version = "0.1.0"
+version = "0.1.52"
 dependencies = [
  "filter",
  "icon",
@@ -2139,7 +2141,7 @@ dependencies = [
 
 [[package]]
 name = "rpc"
-version = "0.1.0"
+version = "0.1.52"
 dependencies = [
  "serde",
  "serde_json",
@@ -2380,7 +2382,7 @@ checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
 name = "sublime_syntax"
-version = "0.1.0"
+version = "0.1.52"
 dependencies = [
  "colors-transform",
  "rgb2ansi256",
@@ -2868,7 +2870,7 @@ dependencies = [
 
 [[package]]
 name = "tree_sitter"
-version = "0.1.0"
+version = "0.1.52"
 dependencies = [
  "cc",
  "criterion",
@@ -2902,7 +2904,7 @@ checksum = "3528ecfd12c466c6f163363caf2d02a71161dd5e1cc6ae7b34207ea2d42d81ed"
 
 [[package]]
 name = "types"
-version = "0.1.0"
+version = "0.1.52"
 dependencies = [
  "icon",
  "pattern",
@@ -2943,7 +2945,7 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
 name = "upgrade"
-version = "0.1.0"
+version = "0.1.52"
 dependencies = [
  "indicatif",
  "reqwest",
@@ -2971,7 +2973,7 @@ checksum = "711b9620af191e0cdc7468a8d14e709c3dcdb115b36f838e601583af800a370a"
 
 [[package]]
 name = "utils"
-version = "0.1.0"
+version = "0.1.52"
 dependencies = [
  "bytecount",
  "memchr",
@@ -3447,7 +3449,7 @@ checksum = "7e2c411759b501fb9501aac2b1b2d287a6e93e5bdcf13c25306b23e1b716dd0e"
 
 [[package]]
 name = "xtask"
-version = "0.1.0"
+version = "0.1.52"
 dependencies = [
  "anyhow",
  "chrono",

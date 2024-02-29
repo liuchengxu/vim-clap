@@ -1,6 +1,6 @@
 [workspace.package]
 authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
-version = "0.1.0"
+version = "0.1.52"
 edition = "2021"
 homepage = "https://github.com/liuchengxu/vim-clap"
 repository = "https://github.com/liuchengxu/vim-clap.git"
@@ -46,7 +46,7 @@ async-trait = "0.1"
 base64 = "0.13"
 bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
 cargo_metadata = "0.18.0"
-chrono = { version = "0.4", default-features = false, features = ["serde"] }
+chrono = { version = "0.4", features = ["serde"] }
 chrono-humanize = "0.2.3"
 clap = { version = "4.2", features = ["derive"] }
 colors-transform = "0.2.11"

@@ -14,7 +14,10 @@ config-md:
 clippy:
 	cargo clippy --workspace --all-features --all-targets -- -D warnings
 
+release:
+	cargo xtask release
+
 fmt:
 	cargo +nightly fmt --all
 
-.PHONY: all maple python-dynamic-module config-md clippy
+.PHONY: all maple python-dynamic-module config-md clippy release fmt

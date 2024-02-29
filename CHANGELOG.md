@@ -2,6 +2,8 @@
 
 ## [unreleased]
 
+## [0.52] 2024-2-29
+
 ### Plugins
 
 - Change the naming convention of plugin action from `plugin/foo-action` to `plugin.fooAction` for the compatibility with tools like coc.nvim.

@@ -19,4 +19,4 @@ upgrade = { workspace = true }
 
 [build-dependencies]
 built = { package = "built", version = "0.6", features = ["git2"] }
-chrono = { workspace = true, default-features = false, features = ["clock"] }
+chrono = { workspace = true }
