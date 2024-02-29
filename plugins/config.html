@@ -246,13 +246,18 @@ enable = false
 [plugin.lsp]
 # Whether to enable this plugin.
 enable = false
-# Whether to include the declaration when invoking goto-reference.
+# Whether to include the declaration when invoking `ClapAction lsp.reference`.
 include-declaration = false
+# Specify the list of filetypes for which the lsp plugin will be disabled.
+#
+# If a filetype is included in this list, the Language Server Protocol (LSP) plugin
+# will not be activated for files with that particular type.
+filetype-blocklist = []
 # Specifies custom languages that are not built into vim-clap.
 #
-# If a language is not included in the default languages supported by vim-clap,
-# you can specify it here. Note that for languages not listed in the default
-# configuration (check out the full list of supported languages in `languages.toml`),
+# This config allows to define a new language or override the default value
+# of the built-in language config. Note that if you are defining a new language,
+# (check out the full list of supported languages by default in `languages.toml`),
 # you need to provide associated language server configurations as well.
 #
 # # Example
@@ -260,13 +265,12 @@ include-declaration = false
 # ```toml
 # [[plugin.lsp.language]]
 # name = "erlang"
-# filetype = ["erlang"]
+# file-types = ["erlang"]
 # root-markers = ["rebar.config"]
 # language-servers = ["erlang-ls"]
 #
 # [plugin.lsp.language-server.erlang-ls]
 # command = "erlang_ls"
-# args = ["--transport", "stdio"]
 # ```
 language = []
 
