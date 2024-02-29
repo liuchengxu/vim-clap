@@ -27,8 +27,6 @@ impl BufferInfo {
 #[clap_plugin(
   id = "linter",
   actions = [
-    "echoDiagnostics",
-    "echoDiagnosticsAtCursor",
     "format",
     "debug",
     "toggle",
@@ -184,18 +182,6 @@ impl ClapPlugin for Linter {
                     }
                 }
                 self.toggle.switch();
-            }
-            LinterAction::EchoDiagnostics => {
-                let bufnr = self.vim.bufnr("").await?;
-                let _ = self
-                    .diagnostics_worker_msg_sender
-                    .send(WorkerMessage::EchoDiagnostics(bufnr));
-            }
-            LinterAction::EchoDiagnosticsAtCursor => {
-                let bufnr = self.vim.bufnr("").await?;
-                let _ = self
-                    .diagnostics_worker_msg_sender
-                    .send(WorkerMessage::EchoDiagnosticsAtCursor(bufnr));
             }
             LinterAction::Debug => {
                 let bufnr = self.vim.bufnr("").await?;

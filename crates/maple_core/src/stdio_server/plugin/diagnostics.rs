@@ -10,6 +10,8 @@ use tokio::sync::mpsc::UnboundedSender;
 #[clap_plugin(
   id = "diagnostics",
   actions = [
+    "echoDiagnostics",
+    "echoDiagnosticsAtCursor",
     "firstError",
     "lastError",
     "nextError",
@@ -55,6 +57,18 @@ impl ClapPlugin for Diagnostics {
         let PluginAction { method, params: _ } = action;
 
         match self.parse_action(method)? {
+            DiagnosticsAction::EchoDiagnostics => {
+                let bufnr = self.vim.bufnr("").await?;
+                let _ = self
+                    .diagnostics_worker_msg_sender
+                    .send(WorkerMessage::EchoDiagnostics(bufnr));
+            }
+            DiagnosticsAction::EchoDiagnosticsAtCursor => {
+                let bufnr = self.vim.bufnr("").await?;
+                let _ = self
+                    .diagnostics_worker_msg_sender
+                    .send(WorkerMessage::EchoDiagnosticsAtCursor(bufnr));
+            }
             DiagnosticsAction::FirstError => {
                 self.navigate_diagnostics(Error, First).await?;
             }
