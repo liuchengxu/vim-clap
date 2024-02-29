@@ -109,7 +109,7 @@ checksum = "a66537f1bb974b254c98ed142ff995236e81b9d0fe4db0575f46612cb15eb0f9"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.38",
+ "syn 2.0.52",
 ]
 
 [[package]]
@@ -179,7 +179,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c79ad7fb2dd38f3dabd76b09c6a5a20c038fc0213ef1e9afd30eb777f120f019"
 dependencies = [
  "memchr",
- "regex-automata 0.4.3",
+ "regex-automata 0.4.5",
  "serde",
 ]
 
@@ -363,7 +363,7 @@ dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn 2.0.38",
+ "syn 2.0.52",
 ]
 
 [[package]]
@@ -605,7 +605,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "strsim",
- "syn 2.0.38",
+ "syn 2.0.52",
 ]
 
 [[package]]
@@ -616,7 +616,7 @@ checksum = "836a9bbc7ad63342d6d6e7b815ccab164bc77a2d95d84bc3117a8c0d5c98e2d5"
 dependencies = [
  "darling_core",
  "quote",
- "syn 2.0.38",
+ "syn 2.0.52",
 ]
 
 [[package]]
@@ -842,7 +842,7 @@ checksum = "53b153fd91e4b0147f4aced87be237c98248656bb01050b96bf3ee89220a8ddb"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.38",
+ "syn 2.0.52",
 ]
 
 [[package]]
@@ -970,7 +970,7 @@ dependencies = [
  "bstr",
  "grep-matcher",
  "log",
- "regex-automata 0.4.3",
+ "regex-automata 0.4.5",
  "regex-syntax 0.8.2",
 ]
 
@@ -1509,7 +1509,7 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
- "syn 2.0.38",
+ "syn 2.0.52",
  "types",
 ]
 
@@ -1555,9 +1555,9 @@ dependencies = [
 
 [[package]]
 name = "memchr"
-version = "2.6.4"
+version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f665ee40bc4a3c5590afb1e9677db74a508659dfd71e126420da8274909a0167"
+checksum = "523dc4f511e55ab87b694dc30d0f820d60906ef06413f93d4d7a1385599cc149"
 
 [[package]]
 name = "memmap2"
@@ -1911,9 +1911,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.69"
+version = "1.0.78"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "134c189feb4956b20f6f547d2cf727d4c0fe06722b20a0eec87ed445a97f92da"
+checksum = "e2422ad645d89c99f8f3e6b88a9fdeca7fabeac836b1002371c4367c8f984aae"
 dependencies = [
  "unicode-ident",
 ]
@@ -1929,9 +1929,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.33"
+version = "1.0.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5267fca4496028628a95160fc423a33e8b2e6af8a5302579e322e4b520293cae"
+checksum = "291ec9ab5efd934aaf503a6466c5d5251535d108ee747472c3977cc5acc868ef"
 dependencies = [
  "proc-macro2",
 ]
@@ -2029,13 +2029,13 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.10.2"
+version = "1.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "380b951a9c5e80ddfd6136919eef32310721aa4aacd4889a8d39124b026ab343"
+checksum = "b62dbe01f0b06f9d8dc7d49e05a0785f153b00b2c227856282f671e0318c9b15"
 dependencies = [
  "aho-corasick",
  "memchr",
- "regex-automata 0.4.3",
+ "regex-automata 0.4.5",
  "regex-syntax 0.8.2",
 ]
 
@@ -2050,9 +2050,9 @@ dependencies = [
 
 [[package]]
 name = "regex-automata"
-version = "0.4.3"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f804c7828047e88b2d32e2d7fe5a105da8ee3264f01902f796c8e067dc2483f"
+checksum = "5bb987efffd3c6d0d8f5f89510bb458559eab11e4f869acb20bf845e016259cd"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -2261,7 +2261,7 @@ checksum = "67c5609f394e5c2bd7fc51efda478004ea80ef42fee983d5c67a65e34f32c0e3"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.38",
+ "syn 2.0.52",
 ]
 
 [[package]]
@@ -2283,7 +2283,7 @@ checksum = "3081f5ffbb02284dda55132aa26daecedd7372a42417bbbab6f14ab7d6bb9145"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.38",
+ "syn 2.0.52",
 ]
 
 [[package]]
@@ -2411,9 +2411,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.38"
+version = "2.0.52"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e96b79aaa137db8f61e26363a0c9b47d8b4ec75da28b7d1d614c2303e232408b"
+checksum = "b699d15b36d1f02c3e7c69f8ffef53de37aefae075d8488d4ba1a7788d574a07"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2476,22 +2476,22 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.50"
+version = "1.0.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9a7210f5c9a7156bb50aa36aed4c95afb51df0df00713949448cf9e97d382d2"
+checksum = "1e45bcbe8ed29775f228095caf2cd67af7a4ccf756ebff23a306bf3e8b47b24b"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.50"
+version = "1.0.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "266b2e40bc00e5a6c09c3584011e08b06f123c00362c92b975ba9843aaaa14b8"
+checksum = "a953cb265bef375dae3de6663da4d3804eee9682ea80d8e2542529b73c531c81"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.38",
+ "syn 2.0.52",
 ]
 
 [[package]]
@@ -2584,7 +2584,7 @@ checksum = "5b8a1e28f2deaa14e508979454cb3a223b10b938b45af148bc0986de36f1923b"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.38",
+ "syn 2.0.52",
 ]
 
 [[package]]
@@ -2673,7 +2673,7 @@ checksum = "34704c8d6ebcbc939824180af020566b01a7c01f80641264eba0999f6c2b6be7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.38",
+ "syn 2.0.52",
 ]
 
 [[package]]
@@ -2726,13 +2726,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "tree-sitter"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "705bf7c0958d0171dd7d3a6542f2f4f21d87ed5f1dc8db52919d3a6bed9a359a"
+dependencies = [
+ "cc",
+ "regex",
+]
+
+[[package]]
 name = "tree-sitter-bash"
 version = "0.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "096f57b3b44c04bfc7b21a4da44bfa16adf1f88aba18993b8478a091076d0968"
 dependencies = [
  "cc",
- "tree-sitter",
+ "tree-sitter 0.20.10",
 ]
 
 [[package]]
@@ -2742,7 +2752,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "30b03bdf218020057abee831581a74bff8c298323d6c6cd1a70556430ded9f4b"
 dependencies = [
  "cc",
- "tree-sitter",
+ "tree-sitter 0.20.10",
 ]
 
 [[package]]
@@ -2752,7 +2762,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23b4b625f46a7370544b9cf0545532c26712ae49bfc02eb09825db358b9f79e1"
 dependencies = [
  "cc",
- "tree-sitter",
+ "tree-sitter 0.20.10",
 ]
 
 [[package]]
@@ -2761,7 +2771,7 @@ version = "0.1.0"
 source = "git+https://github.com/liuchengxu/tree-sitter-dockerfile?rev=be454233564871db713aab035e9cdc4c3ec572dc#be454233564871db713aab035e9cdc4c3ec572dc"
 dependencies = [
  "cc",
- "tree-sitter",
+ "tree-sitter 0.20.10",
 ]
 
 [[package]]
@@ -2771,7 +2781,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ad6d11f19441b961af2fda7f12f5d0dac325f6d6de83836a1d3750018cc5114"
 dependencies = [
  "cc",
- "tree-sitter",
+ "tree-sitter 0.20.10",
 ]
 
 [[package]]
@@ -2782,7 +2792,7 @@ checksum = "042342584c5a7a0b833d9fc4e2bdab3f9868ddc6c4b339a1e01451c6720868bc"
 dependencies = [
  "regex",
  "thiserror",
- "tree-sitter",
+ "tree-sitter 0.20.10",
 ]
 
 [[package]]
@@ -2792,7 +2802,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "edbc663376bdd294bd1f0a6daf859aedb9aa5bdb72217d7ad8ba2d5314102cf7"
 dependencies = [
  "cc",
- "tree-sitter",
+ "tree-sitter 0.20.10",
 ]
 
 [[package]]
@@ -2802,7 +2812,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "50d82d2e33ee675dc71289e2ace4f8f9cf96d36d81400e9dae5ea61edaf5dea6"
 dependencies = [
  "cc",
- "tree-sitter",
+ "tree-sitter 0.20.10",
 ]
 
 [[package]]
@@ -2812,7 +2822,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c20d3ef8d202430b644a307e6299d84bf8ed87fa1b796e4638f8805a595060c"
 dependencies = [
  "cc",
- "tree-sitter",
+ "tree-sitter 0.20.10",
 ]
 
 [[package]]
@@ -2822,7 +2832,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6c93b1b1fbd0d399db3445f51fd3058e43d0b4dcff62ddbdb46e66550978aa5"
 dependencies = [
  "cc",
- "tree-sitter",
+ "tree-sitter 0.20.10",
 ]
 
 [[package]]
@@ -2832,19 +2842,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0832309b0b2b6d33760ce5c0e818cb47e1d72b468516bfe4134408926fa7594"
 dependencies = [
  "cc",
- "tree-sitter",
+ "tree-sitter 0.20.10",
 ]
 
 [[package]]
 name = "tree-sitter-tags"
-version = "0.20.2"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccb3f1376219530a37a809751ecf65aa35fd8b9c1c4ab6d4faf5f6a9eeda2c05"
+checksum = "907696c4a3fc662288c3e7f6231c604a637e5a969f8791b49a7f9dd33da25f2c"
 dependencies = [
  "memchr",
  "regex",
  "thiserror",
- "tree-sitter",
+ "tree-sitter 0.21.0",
 ]
 
 [[package]]
@@ -2854,7 +2864,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca517f578a98b23d20780247cc2688407fa81effad5b627a5a364ec3339b53e8"
 dependencies = [
  "cc",
- "tree-sitter",
+ "tree-sitter 0.20.10",
 ]
 
 [[package]]
@@ -2863,7 +2873,7 @@ version = "0.3.1-dev.0"
 source = "git+https://github.com/liuchengxu/tree-sitter-vim?rev=a001587c17ab24fdade5403eb6c4763460d6814c#a001587c17ab24fdade5403eb6c4763460d6814c"
 dependencies = [
  "cc",
- "tree-sitter",
+ "tree-sitter 0.20.10",
 ]
 
 [[package]]
@@ -2877,7 +2887,7 @@ dependencies = [
  "serde",
  "toml",
  "tracing",
- "tree-sitter",
+ "tree-sitter 0.20.10",
  "tree-sitter-bash",
  "tree-sitter-c",
  "tree-sitter-cpp",
@@ -3036,7 +3046,7 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
- "syn 2.0.38",
+ "syn 2.0.52",
  "wasm-bindgen-shared",
 ]
 
@@ -3070,7 +3080,7 @@ checksum = "c5353b8dab669f5e10f5bd76df26a9360c748f054f862ff5f3f8aae0c7fb3907"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.38",
+ "syn 2.0.52",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
