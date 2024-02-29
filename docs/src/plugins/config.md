@@ -74,9 +74,9 @@ include-declaration = false
 filetype-blocklist = []
 # Specifies custom languages that are not built into vim-clap.
 #
-# If a language is not included in the default languages supported by vim-clap,
-# you can specify it here. Note that for languages not listed in the default
-# configuration (check out the full list of supported languages in `languages.toml`),
+# This config allows to define a new language or override the default value
+# of the built-in language config. Note that if you are defining a new language,
+# (check out the full list of supported languages by default in `languages.toml`),
 # you need to provide associated language server configurations as well.
 #
 # # Example
