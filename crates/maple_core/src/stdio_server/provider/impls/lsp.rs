@@ -1,5 +1,6 @@
 use crate::stdio_server::provider::hooks::PreviewTarget;
 use crate::stdio_server::provider::{ClapProvider, Context, ProviderResult as Result};
+use crate::types::Goto;
 use maple_lsp::lsp;
 use matcher::MatchScope;
 use once_cell::sync::Lazy;
@@ -14,6 +15,7 @@ use types::{ClapItem, FuzzyText, Query};
 pub enum LspSource {
     DocumentSymbols((lsp::Url, Vec<lsp::SymbolInformation>)),
     WorkspaceSymbols(Vec<lsp::SymbolInformation>),
+    Locations((Goto, Vec<lsp::Location>)),
     Empty,
 }
 
@@ -84,6 +86,53 @@ fn to_kind_str(kind: lsp::SymbolKind) -> &'static str {
         lsp::SymbolKind::OPERATOR => SYMBOL_KINDS[25],
         lsp::SymbolKind::TYPE_PARAMETER => SYMBOL_KINDS[26],
         _ => SYMBOL_KINDS[0],
+    }
+}
+
+#[derive(Debug)]
+pub struct LocationItem {
+    pub file_path: String,
+    pub output_text: String,
+}
+
+impl LocationItem {
+    fn from_location(location: &lsp::Location, project_root: &str) -> Option<Self> {
+        let file_path = location
+            .uri
+            .to_file_path()
+            .ok()?
+            .to_string_lossy()
+            .to_string();
+        let start_line = location.range.start.line;
+        let start_character = location.range.start.character;
+        let line = utils::read_line_at(&file_path, start_line as usize)
+            .ok()
+            .flatten()?;
+
+        let path = file_path
+            .strip_prefix(project_root)
+            .unwrap_or(file_path.as_str());
+        let path = path.strip_prefix(std::path::MAIN_SEPARATOR).unwrap_or(path);
+        let output_text = format!("{path}:{start_line}:{start_character}:{line}");
+
+        Some(Self {
+            file_path,
+            output_text,
+        })
+    }
+}
+
+impl ClapItem for LocationItem {
+    fn raw_text(&self) -> &str {
+        &self.output_text
+    }
+
+    fn output_text(&self) -> Cow<'_, str> {
+        Cow::Borrowed(&self.output_text)
+    }
+
+    fn icon(&self, _icon: icon::Icon) -> Option<icon::IconType> {
+        Some(icon::file_icon(&self.file_path))
     }
 }
 
@@ -190,6 +239,7 @@ impl ClapItem for WorkspaceItem {
 enum SourceItems {
     Document((lsp::Url, Vec<Arc<dyn ClapItem>>)),
     Workspace(Vec<Arc<dyn ClapItem>>),
+    Locations((Goto, Vec<Arc<dyn ClapItem>>)),
     Empty,
 }
 
@@ -227,6 +277,18 @@ impl LspProvider {
 
                 SourceItems::Workspace(items)
             }
+            LspSource::Locations((goto, ref locations)) => {
+                let root = ctx.cwd.as_str();
+                let items = locations
+                    .iter()
+                    .filter_map(|location| {
+                        LocationItem::from_location(location, root)
+                            .map(|item| Arc::new(item) as Arc<dyn ClapItem>)
+                    })
+                    .collect::<Vec<_>>();
+
+                SourceItems::Locations((goto, items))
+            }
             LspSource::Empty => SourceItems::Empty,
         };
 
@@ -242,6 +304,7 @@ impl LspProvider {
         let items = match &self.source_items {
             SourceItems::Document((_uri, ref items)) => items,
             SourceItems::Workspace(ref items) => items,
+            SourceItems::Locations((_goto, ref items)) => items,
             SourceItems::Empty => {
                 return Ok(());
             }
@@ -317,6 +380,19 @@ impl ClapProvider for LspProvider {
                         path: path.into(),
                         line_number: lnum.parse::<usize>().ok()?,
                     })
+                })
+            }
+            SourceItems::Locations(_) => {
+                let curline = ctx.vim.display_getcurline().await?;
+                let Some((fpath, lnum, _col, _cache_line)) =
+                    pattern::extract_grep_position(&curline)
+                else {
+                    return Ok(());
+                };
+
+                Some(PreviewTarget::LineInFile {
+                    path: fpath.into(),
+                    line_number: lnum + 1,
                 })
             }
             SourceItems::Empty => return Ok(()),

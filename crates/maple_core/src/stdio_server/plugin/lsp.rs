@@ -5,6 +5,7 @@ use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginError, Toggle};
 use crate::stdio_server::provider::lsp::{set_lsp_source, LspSource};
 use crate::stdio_server::vim::{Vim, VimError, VimResult};
+use crate::types::{Goto, GotoLocationsUI};
 use code_tools::language::{
     find_lsp_root, get_language_server_config, get_root_markers, language_id_from_filetype,
     language_id_from_path,
@@ -54,15 +55,6 @@ struct FileLocation {
     /// 1-based
     column: u32,
     text: String,
-}
-
-#[derive(Debug)]
-enum Goto {
-    Definition,
-    Declaration,
-    TypeDefinition,
-    Implementation,
-    Reference,
 }
 
 #[derive(Debug, Clone)]
@@ -578,32 +570,47 @@ impl LspPlugin {
             return Ok(());
         }
 
-        let locations = locations
-            .into_iter()
-            .map(|loc| {
-                let path = loc.uri.path();
-                let row = loc.range.start.line + 1;
-                let column = loc.range.start.character + 1;
-                let text = utils::read_line_at(path, row as usize)
-                    .ok()
-                    .flatten()
-                    .unwrap_or_default();
-
-                FileLocation {
-                    path: path.to_string(),
-                    row,
-                    column,
-                    text,
-                }
-            })
-            .collect::<Vec<_>>();
-
-        self.vim.exec(
-            "clap#plugin#lsp#handle_locations",
-            (format!("{goto:?}"), locations),
-        )?;
         self.vim.update_lsp_status("rust-analyzer")?;
         self.current_goto_request.take();
+
+        if locations.len() == 1 {
+            self.vim.exec("clap#plugin#lsp#jump_to", [&locations[0]])?;
+            return Ok(());
+        }
+
+        let mode = GotoLocationsUI::ClapProvider;
+
+        match mode {
+            GotoLocationsUI::Quickfix => {
+                let locations = locations
+                    .into_iter()
+                    .map(|loc| {
+                        let path = loc.uri.path();
+                        let row = loc.range.start.line + 1;
+                        let column = loc.range.start.character + 1;
+                        let text = utils::read_line_at(path, row as usize)
+                            .ok()
+                            .flatten()
+                            .unwrap_or_default();
+
+                        FileLocation {
+                            path: path.to_string(),
+                            row,
+                            column,
+                            text,
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+                self.vim.exec(
+                    "clap#plugin#lsp#populate_quickfix",
+                    (format!("{goto:?}"), locations),
+                )?;
+            }
+            GotoLocationsUI::ClapProvider => {
+                self.open_picker(LspSource::Locations((goto, locations)))?;
+            }
+        }
 
         Ok(())
     }
@@ -612,6 +619,13 @@ impl LspPlugin {
         let title = match lsp_source {
             LspSource::DocumentSymbols(_) => "documentSymbols",
             LspSource::WorkspaceSymbols(_) => "workspaceSymbols",
+            LspSource::Locations((goto, _)) => match goto {
+                Goto::Reference => "references",
+                Goto::Declaration => "declarations",
+                Goto::Definition => "definitions",
+                Goto::TypeDefinition => "typeDefinitions",
+                Goto::Implementation => "implementations",
+            },
             LspSource::Empty => unreachable!("source must not be empty to open"),
         };
         set_lsp_source(lsp_source);

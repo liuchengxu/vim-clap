@@ -229,7 +229,12 @@ function! s:highlight_span(bufnr, span, hl_group) abort
   if length < 0
     let length = 1
   endif
-  call prop_add(a:span.line_start, a:span.column_start, { 'type': a:hl_group, 'length': length, 'bufnr': a:bufnr })
+  try
+    call prop_add(a:span.line_start, a:span.column_start, { 'type': a:hl_group, 'length': length, 'bufnr': a:bufnr })
+  catch
+    " Span may be invalid at this moment since the buffer has been changed.
+    return
+  endtry
 endfunction
 
 function! clap#plugin#linter#close_top_right() abort
