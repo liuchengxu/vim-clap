@@ -46,17 +46,30 @@ pub fn load_config_on_startup(
 
     CONFIG_FILE
         .set(config_file)
-        .expect("Failed to initialize Config file");
+        .expect("Failed to initialize Config file on startup");
 
     CONFIG
         .set(loaded_config)
-        .expect("Failed to initialize Config");
+        .expect("Failed to initialize Config on startup");
 
     (config(), maybe_config_err)
 }
 
+/// [`Config`] is a global singleton, which will be explicitly initialized using
+/// the interface [`load_config_on_startup`] with an optional custom config file
+/// location when the program is started from CLI, otherwise it will be initialized
+/// from the default config file location, which is useful when the config is read
+/// from the test code.
 pub fn config() -> &'static Config {
-    CONFIG.get_or_init(|| load_config(None).0)
+    CONFIG.get_or_init(|| {
+        let (loaded_config, config_file, _) = load_config(None);
+
+        CONFIG_FILE
+            .set(config_file)
+            .expect("Failed to initialize Config file");
+
+        loaded_config
+    })
 }
 
 pub fn config_file() -> &'static PathBuf {
