@@ -5,8 +5,8 @@ scriptencoding utf-8
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-function! s:jump_to(location) abort
-  execute 'edit' a:location.path
+function! clap#plugin#lsp#jump_to(location) abort
+  execute 'edit!' a:location.path
   noautocmd call setpos('.', [bufnr(''), a:location.row, a:location.column, 0])
   normal! zz
 endfunction
@@ -15,26 +15,9 @@ function! s:to_quickfix_entry(location) abort
   return { 'filename': a:location.path, 'lnum': a:location.row, 'col': a:location.column, 'text': a:location.text }
 endfunction
 
-function! clap#plugin#lsp#handle_locations(id, locations) abort
-  if len(a:locations) == 1
-    call s:jump_to(a:locations[0])
-    return
-  endif
-
-  let mode = 'quickfix'
-
-  if mode ==# 'quickfix'
-    let entries = map(a:locations, 's:to_quickfix_entry(v:val)')
-    call clap#sink#open_quickfix(entries)
-  else
-    let provider = {
-          \ 'id': a:id,
-          \ 'source': map(a:locations, 'printf("%s:%s:%s", v:val["path"], v:val["row"], v:val["column"])'),
-          \ 'sink': 'e',
-          \ }
-
-    call clap#run(provider)
-  endif
+function! clap#plugin#lsp#populate_quickfix(id, locations) abort
+  let entries = map(a:locations, 's:to_quickfix_entry(v:val)')
+  call clap#sink#open_quickfix(entries)
 endfunction
 
 function! clap#plugin#lsp#open_picker(title) abort
@@ -66,9 +49,15 @@ function! clap#plugin#lsp#detach(bufnr) abort
 endfunction
 
 if has('nvim')
-" [bufnr, changedtick, firstline, lastline, new_lastline]
 function! clap#plugin#lsp#on_lines(...) abort
-  call clap#client#notify('lsp.__did_change', a:000)
+  let [bufnr, changedtick, firstline, lastline, new_lastline] = a:000
+  call clap#client#notify('lsp.__didChange', {
+              \ 'bufnr': bufnr,
+              \ 'changedtick': changedtick,
+              \ 'firstline': firstline,
+              \ 'lastline': lastline,
+              \ 'new_lastline': new_lastline,
+              \ })
 endfunction
 
 function! clap#plugin#lsp#buf_attach(bufnr) abort
@@ -93,7 +82,14 @@ endfunction
 else
 
 function! clap#plugin#lsp#listener(bufnr, start, end, added, changes) abort
-  echom string([a:bufnr, a:start, a:end, a:added, a:changes])
+  call clap#client#notify('lsp.__didChange', {
+              \ 'bufnr': a:bufnr,
+              \ 'start': a:start,
+              \ 'end': a:end,
+              \ 'added': a:added,
+              \ 'changes': a:changes,
+              \ 'changedtick': getbufvar(a:bufnr, 'changedtick'),
+              \ })
 endfunction
 
 function! clap#plugin#lsp#buf_attach(bufnr) abort

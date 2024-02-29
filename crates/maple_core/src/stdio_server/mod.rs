@@ -6,6 +6,7 @@ mod provider;
 mod request_handler;
 mod service;
 mod vim;
+mod winbar;
 
 pub use self::input::InputHistory;
 use self::input::{ActionEvent, Event, ProviderEvent};
@@ -24,6 +25,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::Instant;
+use types::PLUGIN_ACTION_SEPARATOR;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -51,8 +53,9 @@ pub enum Error {
 async fn initialize_client(vim: Vim, actions: Vec<&str>, config_err: ConfigError) -> VimResult<()> {
     config_err.notify_error(&vim)?;
 
-    let (mut other_actions, mut system_actions): (Vec<_>, Vec<_>) =
-        actions.into_iter().partition(|action| action.contains('/'));
+    let (mut other_actions, mut system_actions): (Vec<_>, Vec<_>) = actions
+        .into_iter()
+        .partition(|action| action.contains(PLUGIN_ACTION_SEPARATOR));
     other_actions.sort();
     system_actions.sort();
     let mut clap_actions = system_actions;
@@ -87,8 +90,8 @@ struct InitializedService {
 fn initialize_service(vim: Vim) -> InitializedService {
     use self::diagnostics_worker::start_buffer_diagnostics_worker;
     use self::plugin::{
-        ActionType, ClapPlugin, ColorizerPlugin, CtagsPlugin, CursorwordPlugin, GitPlugin,
-        LinterPlugin, LspPlugin, MarkdownPlugin, SyntaxPlugin, SystemPlugin,
+        ActionType, ClapPlugin, ColorizerPlugin, CtagsPlugin, CursorwordPlugin, DiagnosticsPlugin,
+        GitPlugin, LinterPlugin, LspPlugin, MarkdownPlugin, SyntaxPlugin, SystemPlugin,
     };
 
     let mut callable_actions = Vec::new();
@@ -115,6 +118,14 @@ fn initialize_service(vim: Vim) -> InitializedService {
 
     if plugin_config.lsp.enable || plugin_config.linter.enable {
         let diagnostics_worker_msg_sender = start_buffer_diagnostics_worker(vim.clone());
+
+        register_plugin(
+            Box::new(DiagnosticsPlugin::new(
+                vim.clone(),
+                diagnostics_worker_msg_sender.clone(),
+            )),
+            None,
+        );
 
         if plugin_config.lsp.enable {
             register_plugin(
@@ -324,7 +335,7 @@ impl Backend {
     async fn do_process_notification(&self, notification: RpcNotification) -> Result<(), Error> {
         let maybe_session_id = notification.session_id();
 
-        let action_parser = |notification: RpcNotification| -> Result<ActionEvent, Error> {
+        let parse_action = |notification: RpcNotification| -> Result<ActionEvent, Error> {
             for (plugin_id, actions) in self.plugin_actions.lock().iter() {
                 if actions.contains(&notification.method) {
                     return Ok((*plugin_id, notification.into()));
@@ -333,7 +344,7 @@ impl Backend {
             Err(Error::ParseAction(notification))
         };
 
-        match Event::parse_notification(notification, action_parser)? {
+        match Event::parse_notification(notification, parse_action)? {
             Event::NewProvider(params) => {
                 let session_id = maybe_session_id.ok_or(Error::MissingSessionId)?;
                 let ctx = Context::new(params, self.vim.clone()).await?;

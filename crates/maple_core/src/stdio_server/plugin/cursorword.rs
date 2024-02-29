@@ -114,7 +114,7 @@ async fn define_highlights(vim: &Vim) -> Result<(), PluginError> {
 }
 
 #[derive(Debug, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "cursorword", actions = ["__define-highlights"])]
+#[clap_plugin(id = "cursorword", actions = ["__defineHighlights"])]
 pub struct Cursorword {
     vim: Vim,
     bufs: HashMap<usize, PathBuf>,

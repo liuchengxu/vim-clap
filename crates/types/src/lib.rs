@@ -71,6 +71,9 @@ pub trait SearchProgressUpdate<DisplayLines> {
     );
 }
 
+/// Separator for non-system plugin actions, `git.reload`.
+pub const PLUGIN_ACTION_SEPARATOR: char = '.';
+
 /// Plugin interfaces to users.
 pub trait ClapAction {
     fn id(&self) -> &'static str;
@@ -133,6 +136,13 @@ macro_rules! event_enum_with_variants {
               /// Returns the list of all variants in string literal.
               pub fn variants() -> &'static [&'static str] {
                   &[ $( stringify!($variant), )* ]
+              }
+
+              pub fn parse(autocmd: &str) -> Option<Self> {
+                  match autocmd {
+                      $( stringify!($variant) => Some(Self::$variant), )*
+                      _ => None
+                  }
               }
           }
     };

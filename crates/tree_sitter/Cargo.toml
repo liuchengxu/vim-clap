@@ -12,6 +12,7 @@ tree-sitter-highlight = "0.20"
 once_cell = { workspace = true }
 serde = { workspace = true, features = [ "derive" ] }
 toml = { workspace = true }
+tracing = { workspace = true }
 # tree-sitter-traversal = "0.1"
 
 # Languages

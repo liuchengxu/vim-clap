@@ -5,11 +5,13 @@ use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginError, Toggle};
 use crate::stdio_server::provider::lsp::{set_lsp_source, LspSource};
 use crate::stdio_server::vim::{Vim, VimError, VimResult};
+use crate::types::{Goto, GotoLocationsUI};
 use code_tools::language::{
     find_lsp_root, get_language_server_config, get_root_markers, language_id_from_filetype,
     language_id_from_path,
 };
 use handler::LanguageServerMessageHandler;
+use itertools::Itertools;
 use lsp::Url;
 use maple_lsp::lsp;
 use std::collections::hash_map::Entry;
@@ -22,12 +24,12 @@ use tokio::sync::mpsc::UnboundedSender;
 pub enum Error {
     #[error("lsp client not found")]
     ClientNotFound,
-    #[error("language config not found: {0}")]
-    UnsupportedLanguage(LanguageId),
     #[error("buffer not attached")]
     BufferNotAttached(usize),
     #[error("invalid Url: {0}")]
     InvalidUrl(String),
+    #[error("invalid params: {0}")]
+    InvalidParams(String),
     #[error(transparent)]
     Vim(#[from] VimError),
     #[error(transparent)]
@@ -53,15 +55,6 @@ struct FileLocation {
     /// 1-based
     column: u32,
     text: String,
-}
-
-#[derive(Debug)]
-enum Goto {
-    Definition,
-    Declaration,
-    TypeDefinition,
-    Implementation,
-    Reference,
 }
 
 #[derive(Debug, Clone)]
@@ -137,16 +130,16 @@ fn preprocess_text_edits(text_edits: Vec<lsp::TextEdit>) -> Vec<lsp::TextEdit> {
   actions = [
     "__reload",
     "__detach",
-    "__did_change",
+    "__didChange",
     "format",
     "rename",
-    "document-symbols",
-    "workspace-symbols",
-    "goto-definition",
-    "goto-declaration",
-    "goto-type-definition",
-    "goto-implementation",
-    "goto-reference",
+    "documentSymbols",
+    "workspaceSymbols",
+    "definition",
+    "declaration",
+    "typeDefinition",
+    "implementation",
+    "reference",
     "toggle",
   ]
 )]
@@ -156,10 +149,51 @@ pub struct LspPlugin {
     clients: HashMap<LanguageId, Arc<maple_lsp::Client>>,
     /// Documents being tracked, keyed by buffer number.
     attached_buffers: HashMap<usize, Buffer>,
+    /// Skip the buffer if its filetype is in this list.
+    filetype_blocklist: Vec<String>,
     /// Goto request in fly.
     current_goto_request: Option<GotoRequest>,
     diagnostics_worker_msg_sender: UnboundedSender<DiagnosticsWorkerMessage>,
     toggle: Toggle,
+}
+
+#[allow(unused)]
+#[derive(Debug, serde::Deserialize)]
+struct Change {
+    /// the first line number of the change
+    lnum: usize,
+    /// the first line below the change
+    end: usize,
+    /// number of lines added; negative if lines were deleted
+    added: i32,
+    // first column in "lnum" that was affected by
+    // the change; one if unknown or the whole line
+    // was affected; this is a byte index, first
+    // character has a value of one.
+    col: usize,
+}
+
+#[allow(unused)]
+#[derive(Debug, serde::Deserialize)]
+enum DidChangeParams {
+    /// `:h listener_add()`
+    #[serde(untagged)]
+    Vim {
+        bufnr: usize,
+        start: usize,
+        end: usize,
+        added: i32,
+        changes: Vec<Change>,
+        changedtick: i32,
+    },
+    #[serde(untagged)]
+    NeoVim {
+        bufnr: usize,
+        changedtick: i32,
+        firstline: usize,
+        lastline: usize,
+        new_lastline: usize,
+    },
 }
 
 impl LspPlugin {
@@ -167,88 +201,115 @@ impl LspPlugin {
         vim: Vim,
         diagnostics_worker_msg_sender: UnboundedSender<DiagnosticsWorkerMessage>,
     ) -> Self {
+        const FILETYPE_BLOCKLIST: &[&str] = &["clap_input", "coc-explorer"];
+
+        let mut filetype_blocklist = maple_config::config().plugin.lsp.filetype_blocklist.clone();
+
+        // Inject the default blocklist.
+        filetype_blocklist.extend(FILETYPE_BLOCKLIST.iter().map(|s| s.to_string()));
+
+        filetype_blocklist.sort();
+        filetype_blocklist.dedup();
+
         Self {
             vim,
             clients: HashMap::new(),
             attached_buffers: HashMap::new(),
             current_goto_request: None,
             diagnostics_worker_msg_sender,
+            filetype_blocklist,
             toggle: Toggle::On,
         }
     }
 
     async fn buffer_attach(&mut self, bufnr: usize) -> Result<(), Error> {
+        if self.attached_buffers.contains_key(&bufnr) {
+            tracing::debug!("buffer {bufnr} already attached");
+            return Ok(());
+        }
+
+        let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+
+        if filetype.is_empty() || self.filetype_blocklist.contains(&filetype) {
+            return Ok(());
+        }
+
         let path = self.vim.bufabspath(bufnr).await?;
 
-        let language_id = match language_id_from_path(&path) {
+        let language_id = match language_id_from_filetype(&filetype) {
             Some(v) => v,
-            None => {
-                let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
-
-                match language_id_from_filetype(&filetype) {
-                    Some(v) => v,
-                    None => {
-                        return Ok(());
-                    }
+            None => match language_id_from_path(&path) {
+                Some(v) => v,
+                None => {
+                    tracing::debug!(
+                        filetype,
+                        path,
+                        "can not identify the language for buffer {bufnr}"
+                    );
+                    return Ok(());
                 }
-            }
+            },
         };
 
-        let language_server_config = get_language_server_config(language_id)
-            .ok_or(Error::UnsupportedLanguage(language_id))?;
+        tracing::debug!(language_id, bufnr, "buffer attached");
 
-        if let Entry::Vacant(e) = self.attached_buffers.entry(bufnr) {
-            let bufname = self.vim.bufname(bufnr).await?;
-            let buffer = Buffer {
-                language_id,
-                bufname,
-                doc_id: doc_id(&path)?,
-            };
+        let Some(language_server_config) = get_language_server_config(language_id) else {
+            tracing::warn!("language server config not found for {language_id}");
+            return Ok(());
+        };
 
-            match self.clients.entry(language_id) {
-                Entry::Occupied(e) => {
-                    let root_uri = find_lsp_root(language_id, path.as_ref())
-                        .and_then(|p| Url::from_file_path(p).ok());
-                    let client = e.get();
-                    client.try_add_workspace(root_uri)?;
-                    open_new_doc(client, buffer.language_id, &path)?;
-                }
-                Entry::Vacant(e) => {
-                    let enable_snippets = false;
-                    let name = language_server_config.server_name();
-                    let client = maple_lsp::start_client(
-                        maple_lsp::ClientParams {
-                            language_server_config,
-                            manual_roots: vec![],
-                            enable_snippets,
-                        },
-                        name.clone(),
-                        Some(PathBuf::from(path.clone())),
-                        get_root_markers(language_id),
-                        LanguageServerMessageHandler::new(
-                            name,
-                            self.vim.clone(),
-                            self.diagnostics_worker_msg_sender.clone(),
-                        ),
-                    )
-                    .await?;
+        let bufname = self.vim.bufname(bufnr).await?;
+        let buffer = Buffer {
+            language_id,
+            bufname,
+            doc_id: doc_id(&path)?,
+        };
 
-                    open_new_doc(&client, buffer.language_id, &path)?;
-
-                    e.insert(client);
-                }
+        match self.clients.entry(language_id) {
+            Entry::Occupied(e) => {
+                let root_uri = find_lsp_root(language_id, path.as_ref())
+                    .and_then(|p| Url::from_file_path(p).ok());
+                let client = e.get();
+                client.try_add_workspace(root_uri)?;
+                open_new_doc(client, buffer.language_id, &path)?;
             }
+            Entry::Vacant(e) => {
+                let enable_snippets = false;
+                let name = language_server_config.server_name();
+                let client = maple_lsp::start_client(
+                    maple_lsp::ClientParams {
+                        language_server_config,
+                        manual_roots: vec![],
+                        enable_snippets,
+                    },
+                    name.clone(),
+                    Some(PathBuf::from(path.clone())),
+                    get_root_markers(language_id),
+                    LanguageServerMessageHandler::new(
+                        name,
+                        self.vim.clone(),
+                        self.diagnostics_worker_msg_sender.clone(),
+                    ),
+                )
+                .await?;
 
-            self.vim.exec("clap#plugin#lsp#buf_attach", [bufnr])?;
+                open_new_doc(&client, buffer.language_id, &path)?;
 
-            e.insert(buffer);
+                e.insert(client);
+            }
         }
+
+        self.vim.exec("clap#plugin#lsp#buf_attach", [bufnr])?;
+
+        self.attached_buffers.insert(bufnr, buffer);
 
         Ok(())
     }
 
-    fn buffer_detach(&mut self, bufnr: usize) -> Result<(), Error> {
+    fn buffer_detach(&mut self, [bufnr]: [usize; 1]) -> Result<(), Error> {
         if let Some(buffer) = self.attached_buffers.remove(&bufnr) {
+            tracing::debug!(bufnr, "buffer detached");
+
             let client = self
                 .clients
                 .get(&buffer.language_id)
@@ -261,7 +322,7 @@ impl LspPlugin {
         Ok(())
     }
 
-    async fn reload_document(&mut self, bufnr: usize) -> Result<(), Error> {
+    async fn reload_document(&mut self, [bufnr]: [usize; 1]) -> Result<(), Error> {
         let buffer = self
             .attached_buffers
             .get_mut(&bufnr)
@@ -290,14 +351,26 @@ impl LspPlugin {
 
     async fn text_document_did_change(
         &self,
-        (bufnr, changedtick, _firstline, _lastline, _new_lastline): (
-            usize,
-            i32,
-            usize,
-            usize,
-            usize,
-        ),
+        did_change_params: DidChangeParams,
     ) -> Result<(), Error> {
+        let (bufnr, changedtick) = match did_change_params {
+            DidChangeParams::Vim {
+                bufnr,
+                start: _,
+                end: _,
+                added: _,
+                changes: _,
+                changedtick,
+            } => (bufnr, changedtick),
+            DidChangeParams::NeoVim {
+                bufnr,
+                changedtick,
+                firstline: _,
+                lastline: _,
+                new_lastline: _,
+            } => (bufnr, changedtick),
+        };
+
         let document = self.get_buffer(bufnr)?;
 
         let client = self
@@ -320,10 +393,10 @@ impl LspPlugin {
     }
 
     async fn text_document_did_save(&mut self, bufnr: usize) -> Result<(), Error> {
-        let buffer = self
-            .attached_buffers
-            .get_mut(&bufnr)
-            .ok_or(Error::BufferNotAttached(bufnr))?;
+        let Some(buffer) = self.attached_buffers.get_mut(&bufnr) else {
+            // Buffer not attached.
+            return Ok(());
+        };
 
         let client = self
             .clients
@@ -408,8 +481,28 @@ impl LspPlugin {
         Ok(Some(cursor_lsp_position))
     }
 
-    async fn goto_impl(&mut self, goto: Goto) -> Result<(), Error> {
-        let bufnr = self.vim.bufnr("").await?;
+    async fn goto_impl(&mut self, goto: Goto, params: rpc::Params) -> Result<(), Error> {
+        let (bufnr, row, column) = match params {
+            rpc::Params::Array(array) => {
+                if array.is_empty() {
+                    self.vim.get_cursor_pos().await?
+                } else {
+                    let (bufnr, row, column): (u64, u64, u64) = array
+                        .iter()
+                        .filter_map(|v| v.as_u64())
+                        .collect_tuple()
+                        .ok_or_else(|| {
+                            Error::InvalidParams(format!(
+                                "expect [usize, usize, usize], got: {array:?}"
+                            ))
+                        })?;
+
+                    (bufnr as usize, row as usize, column as usize)
+                }
+            }
+            _ => self.vim.get_cursor_pos().await?,
+        };
+
         let document = self.get_buffer(bufnr)?;
 
         let client = self
@@ -418,7 +511,6 @@ impl LspPlugin {
             .ok_or(Error::ClientNotFound)?;
 
         let path = self.vim.bufabspath(bufnr).await?;
-        let (bufnr, row, column) = self.vim.get_cursor_pos().await?;
         let position = lsp::Position {
             line: row as u32 - 1,
             character: column as u32 - 1,
@@ -478,32 +570,47 @@ impl LspPlugin {
             return Ok(());
         }
 
-        let locations = locations
-            .into_iter()
-            .map(|loc| {
-                let path = loc.uri.path();
-                let row = loc.range.start.line + 1;
-                let column = loc.range.start.character + 1;
-                let text = utils::read_line_at(path, row as usize)
-                    .ok()
-                    .flatten()
-                    .unwrap_or_default();
-
-                FileLocation {
-                    path: path.to_string(),
-                    row,
-                    column,
-                    text,
-                }
-            })
-            .collect::<Vec<_>>();
-
-        self.vim.exec(
-            "clap#plugin#lsp#handle_locations",
-            (format!("{goto:?}"), locations),
-        )?;
         self.vim.update_lsp_status("rust-analyzer")?;
         self.current_goto_request.take();
+
+        if locations.len() == 1 {
+            self.vim.exec("clap#plugin#lsp#jump_to", [&locations[0]])?;
+            return Ok(());
+        }
+
+        let mode = GotoLocationsUI::ClapProvider;
+
+        match mode {
+            GotoLocationsUI::Quickfix => {
+                let locations = locations
+                    .into_iter()
+                    .map(|loc| {
+                        let path = loc.uri.path();
+                        let row = loc.range.start.line + 1;
+                        let column = loc.range.start.character + 1;
+                        let text = utils::read_line_at(path, row as usize)
+                            .ok()
+                            .flatten()
+                            .unwrap_or_default();
+
+                        FileLocation {
+                            path: path.to_string(),
+                            row,
+                            column,
+                            text,
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+                self.vim.exec(
+                    "clap#plugin#lsp#populate_quickfix",
+                    (format!("{goto:?}"), locations),
+                )?;
+            }
+            GotoLocationsUI::ClapProvider => {
+                self.open_picker(LspSource::Locations((goto, locations)))?;
+            }
+        }
 
         Ok(())
     }
@@ -512,6 +619,13 @@ impl LspPlugin {
         let title = match lsp_source {
             LspSource::DocumentSymbols(_) => "documentSymbols",
             LspSource::WorkspaceSymbols(_) => "workspaceSymbols",
+            LspSource::Locations((goto, _)) => match goto {
+                Goto::Reference => "references",
+                Goto::Declaration => "declarations",
+                Goto::Definition => "definitions",
+                Goto::TypeDefinition => "typeDefinitions",
+                Goto::Implementation => "implementations",
+            },
             LspSource::Empty => unreachable!("source must not be empty to open"),
         };
         set_lsp_source(lsp_source);
@@ -785,7 +899,7 @@ impl ClapPlugin for LspPlugin {
                 self.text_document_did_save(bufnr).await?;
             }
             BufDelete => {
-                self.buffer_detach(bufnr)?;
+                self.buffer_detach([bufnr])?;
             }
             CursorMoved => {
                 self.on_cursor_moved(bufnr).await?;
@@ -812,26 +926,26 @@ impl ClapPlugin for LspPlugin {
                 }
                 self.toggle.switch();
             }
+            LspAction::Definition => {
+                self.goto_impl(Goto::Definition, params).await?;
+            }
+            LspAction::Declaration => {
+                self.goto_impl(Goto::Declaration, params).await?;
+            }
+            LspAction::TypeDefinition => {
+                self.goto_impl(Goto::TypeDefinition, params).await?;
+            }
+            LspAction::Implementation => {
+                self.goto_impl(Goto::Implementation, params).await?;
+            }
+            LspAction::Reference => {
+                self.goto_impl(Goto::Reference, params).await?;
+            }
             LspAction::Format => {
                 self.text_document_format().await?;
             }
             LspAction::Rename => {
                 self.rename_symbol().await?;
-            }
-            LspAction::GotoDefinition => {
-                self.goto_impl(Goto::Definition).await?;
-            }
-            LspAction::GotoDeclaration => {
-                self.goto_impl(Goto::Declaration).await?;
-            }
-            LspAction::GotoTypeDefinition => {
-                self.goto_impl(Goto::TypeDefinition).await?;
-            }
-            LspAction::GotoImplementation => {
-                self.goto_impl(Goto::Implementation).await?;
-            }
-            LspAction::GotoReference => {
-                self.goto_impl(Goto::Reference).await?;
             }
             LspAction::DocumentSymbols => {
                 self.document_symbols().await?;

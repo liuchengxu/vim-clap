@@ -11,12 +11,10 @@ description = "CLI for vim-clap Rust backend"
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true }
-futures = { workspace = true }
 itertools = { workspace = true }
 num_cpus = { workspace = true }
 tokio = { workspace = true, features = ["fs", "rt", "process", "macros", "rt-multi-thread", "sync", "time"] }
 rayon = { workspace = true }
-regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 subprocess = { workspace = true }
@@ -29,7 +27,6 @@ icon = { workspace = true }
 matcher = { workspace = true }
 maple_config = { workspace = true }
 maple_core = { workspace = true }
-pattern = { workspace = true }
 printer = { workspace = true }
 types = { workspace = true }
 utils = { workspace = true }

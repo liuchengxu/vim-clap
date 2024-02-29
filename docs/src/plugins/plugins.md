@@ -49,6 +49,10 @@ By default this plugin utilizes `Normal` guibg as the primary color. It then lig
 and darkens it for `ClapCursorWordTwins`. You can manually adjust them in case the default highlights does not meet your
 expectations.
 
+## diagnostics
+
+This plugin does not do any substantial work but used to provide an interface to interact with the diagnostics provided by the linter and lsp plugin.
+
 ## git
 
 ```toml

@@ -9,7 +9,7 @@ let s:default_priority = 10
 if has('nvim')
   let s:tree_sitter_ns_id = nvim_create_namespace('clap_tree_sitter_highlight')
 else
-  let s:ts_types = []
+  let s:ts_prop_types = []
 endif
 
 if has('nvim')
@@ -163,8 +163,8 @@ endfunction
 function! clap#highlighter#disable_tree_sitter(bufnr) abort
   if has('nvim')
     call nvim_buf_clear_namespace(a:bufnr, s:tree_sitter_ns_id, 0, -1)
-  elseif !empty(s:ts_types)
-    call prop_remove({ 'types': s:ts_types, 'all': v:true, 'bufnr': a:bufnr } )
+  elseif !empty(s:ts_prop_types)
+    call prop_remove({ 'types': s:ts_prop_types, 'all': v:true, 'bufnr': a:bufnr } )
   endif
 endfunction
 
@@ -178,13 +178,13 @@ function! clap#highlighter#add_ts_highlights(bufnr, to_replace_line_ranges, high
         call nvim_buf_clear_namespace(a:bufnr, s:tree_sitter_ns_id, start, end)
       endfor
     endif
-  elseif !empty(s:ts_types)
+  elseif !empty(s:ts_prop_types)
     if empty(a:to_replace_line_ranges)
-      call prop_remove({ 'types': s:ts_types, 'all': v:true, 'bufnr': a:bufnr } )
+      call prop_remove({ 'types': s:ts_prop_types, 'all': v:true, 'bufnr': a:bufnr } )
     else
       for [start, end] in a:to_replace_line_ranges
         " start is 0-based
-        call prop_remove({ 'types': s:ts_types, 'all': v:true, 'bufnr': a:bufnr }, start+1, end)
+        call prop_remove({ 'types': s:ts_prop_types, 'bufnr': a:bufnr }, start+1, end)
       endfor
     endif
   endif
@@ -192,9 +192,9 @@ function! clap#highlighter#add_ts_highlights(bufnr, to_replace_line_ranges, high
   for [line_number, highlights] in a:highlights
     for [column_start, length, group_name] in highlights
       if !has('nvim')
-          if index(s:ts_types, group_name) == -1
-            call add(s:ts_types, group_name)
-            call prop_type_add(group_name, {'highlight': group_name})
+        if index(s:ts_prop_types, group_name) == -1
+          call add(s:ts_prop_types, group_name)
+          call prop_type_add(group_name, {'highlight': group_name})
         endif
       endif
       call s:add_ts_highlight_at(a:bufnr, line_number, column_start, length, group_name)

@@ -5,10 +5,8 @@ edition.workspace = true
 
 [dependencies]
 colors-transform = { workspace = true }
-once_cell = { workspace = true }
 rgb2ansi256 = { workspace = true }
 serde = { workspace = true,  features = ["derive"] }
 syntect = { workspace = true }
-tracing = { workspace = true }
 
 utils = { workspace = true }

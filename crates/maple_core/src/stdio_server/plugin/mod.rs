@@ -1,6 +1,7 @@
 mod colorizer;
 mod ctags;
 mod cursorword;
+mod diagnostics;
 mod git;
 mod linter;
 mod lsp;
@@ -16,6 +17,7 @@ use std::fmt::Debug;
 pub use self::colorizer::ColorizerPlugin;
 pub use self::ctags::CtagsPlugin;
 pub use self::cursorword::Cursorword as CursorwordPlugin;
+pub use self::diagnostics::Diagnostics as DiagnosticsPlugin;
 pub use self::git::Git as GitPlugin;
 pub use self::linter::Linter as LinterPlugin;
 pub use self::lsp::LspPlugin;

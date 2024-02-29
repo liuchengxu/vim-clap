@@ -28,9 +28,7 @@ pub struct GrepProvider {
 
 impl GrepProvider {
     pub async fn new(ctx: &Context) -> Result<Self> {
-        tracing::debug!("================== [grep] ctx: {ctx:?}");
         let GrepArgs { base, paths } = ctx.parse_provider_args().await?;
-        tracing::debug!("================== [grep] base: {base:?}, paths: {paths:?}");
         Ok(Self {
             args: GrepArgs {
                 base,

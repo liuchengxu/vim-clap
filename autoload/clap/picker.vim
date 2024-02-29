@@ -48,6 +48,7 @@ function! clap#picker#update(update_info) abort
   call clap#indicator#update(update_info.matched, update_info.processed)
 
   if update_info.matched == 0
+    call g:clap.display.clear_highlight()
     call g:clap.display.set_lines([g:clap_no_matches_msg])
     call g:clap.preview.clear()
     if exists('g:__clap_lines_truncated_map')

@@ -167,7 +167,7 @@ function! s:move_manager.scroll_up(winid) abort
   call win_execute(a:winid, 'noautocmd call clap#navigation#scroll("up")')
 endfunction
 
-" noautocmd is neccessary in that too many plugins use redir, otherwise we'll
+" noautocmd is necessary in that too many plugins use redir, otherwise we'll
 " see E930: Cannot use :redir inside execute().
 let s:move_manager["\<C-A>"] = s:move_manager.ctrl_a
 let s:move_manager["\<C-B>"] = s:move_manager.ctrl_b
@@ -231,7 +231,7 @@ function! s:move_manager.printable(key) abort
   " Always hold a delay before reacting actually.
   "
   " FIXME
-  " If the slow renderring of vim job is resolved, this delay could be removed.
+  " If the slow rendering of vim job is resolved, this delay could be removed.
   "
   " apply_input should happen earlier than mock_input
   " call s:apply_input('')

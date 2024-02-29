@@ -11,7 +11,6 @@ description = "Core of vim-clap Rust backend"
 [dependencies]
 async-trait = { workspace = true }
 base64 = { workspace = true }
-bytecount = { workspace = true }
 chrono = { workspace = true }
 chrono-humanize = { workspace = true }
 clap = { workspace = true }

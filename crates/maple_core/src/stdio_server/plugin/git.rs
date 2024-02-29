@@ -25,10 +25,10 @@ struct ModificationState {
   id = "git",
   actions = [
     "blame",
-    "diff-summary",
-    "hunk-modifications",
+    "diffSummary",
+    "hunkModifications",
     "permalink",
-    "open-permalink-in-browser",
+    "openPermalinkInBrowser",
     "toggle",
 ])]
 pub struct Git {
@@ -205,13 +205,14 @@ impl Git {
         &self,
         git: &GitRepo,
         filepath: &Path,
+        lnum: usize,
     ) -> Result<Option<String>, PluginError> {
         let relative_path = filepath.strip_prefix(&git.repo)?;
 
-        let lnum = self.vim.line(".").await?;
+        let bufnr = self.vim.bufnr(filepath.display().to_string()).await?;
 
-        let stdout = if self.vim.bufmodified("").await? {
-            let lines = self.vim.getbufline("", 1, "$").await?;
+        let stdout = if self.vim.bufmodified(bufnr).await? {
+            let lines = self.vim.getbufline(bufnr, 1, "$").await?;
             git.fetch_blame_output_with_lines(relative_path, lnum, lines)?
         } else {
             git.fetch_blame_output(relative_path, lnum)?
@@ -233,7 +234,8 @@ impl Git {
 
     async fn show_curline_line_blame(&self, bufnr: usize) -> Result<(), PluginError> {
         if let Some((filepath, git)) = self.bufs.get(&bufnr) {
-            let maybe_blame_info = self.cursor_line_blame_info(git, filepath).await?;
+            let lnum = self.vim.line(".").await?;
+            let maybe_blame_info = self.cursor_line_blame_info(git, filepath, lnum).await?;
             if let Some(blame_info) = maybe_blame_info {
                 self.vim.exec(
                     "clap#plugin#git#show_cursor_blame_info",
@@ -252,8 +254,9 @@ impl Git {
             return Ok(());
         };
 
+        let lnum = self.vim.line(".").await?;
         if let Ok(Some(blame_info)) = self
-            .cursor_line_blame_info(&GitRepo::init(git_root.to_path_buf())?, &filepath)
+            .cursor_line_blame_info(&GitRepo::init(git_root.to_path_buf())?, &filepath, lnum)
             .await
         {
             self.vim.echo_info(blame_info)?;

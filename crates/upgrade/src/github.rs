@@ -1,43 +1,14 @@
+use indicatif::{ProgressBar, ProgressStyle};
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
-
-const USER: &str = "liuchengxu";
-const REPO: &str = "vim-clap";
-
-pub(super) fn asset_name() -> Option<&'static str> {
-    if cfg!(target_os = "macos") {
-        if cfg!(target_arch = "x86_64") {
-            Some("maple-x86_64-apple-darwin")
-        } else if cfg!(target_arch = "aarch64") {
-            Some("maple-aarch64-apple-darwin")
-        } else {
-            None
-        }
-    } else if cfg!(target_os = "linux") {
-        if cfg!(target_arch = "x86_64") {
-            Some("maple-x86_64-unknown-linux-musl")
-        } else if cfg!(target_arch = "aarch64") {
-            Some("maple-aarch64-unknown-linux-gnu")
-        } else {
-            None
-        }
-    } else if cfg!(target_os = "windows") {
-        Some("maple-x86_64-pc-windows-msvc")
-    } else {
-        None
-    }
-}
-
-pub(super) fn asset_download_url(version: &str) -> Option<String> {
-    asset_name().map(|asset_name| {
-        format!("https://github.com/{USER}/{REPO}/releases/download/{version}/{asset_name}",)
-    })
-}
+use std::path::PathBuf;
+use tokio::io::AsyncWriteExt;
 
 #[derive(Debug, Deserialize)]
 pub struct Asset {
     pub name: String,
     pub size: u64,
+    pub browser_download_url: String,
 }
 
 // https://docs.github.com/en/rest/releases/releases
@@ -47,14 +18,14 @@ pub struct GitHubRelease {
     pub assets: Vec<Asset>,
 }
 
-async fn request<T: DeserializeOwned>(url: &str) -> std::io::Result<T> {
+pub async fn request<T: DeserializeOwned>(url: &str, user_agent: &str) -> std::io::Result<T> {
     let io_error =
         |e| std::io::Error::new(std::io::ErrorKind::Other, format!("Reqwest error: {e}"));
 
     reqwest::Client::new()
         .get(url)
         .header("Accept", "application/vnd.github.v3+json")
-        .header("User-Agent", USER)
+        .header("User-Agent", user_agent)
         .send()
         .await
         .map_err(io_error)?
@@ -63,43 +34,71 @@ async fn request<T: DeserializeOwned>(url: &str) -> std::io::Result<T> {
         .map_err(io_error)
 }
 
-pub(super) async fn retrieve_asset_size(asset_name: &str, tag: &str) -> std::io::Result<u64> {
-    let url = format!("https://api.github.com/repos/{USER}/{REPO}/releases/tags/{tag}");
-    let release: GitHubRelease = request(&url).await?;
-
-    release
-        .assets
-        .iter()
-        .find(|x| x.name == asset_name)
-        .map(|x| x.size)
-        .ok_or_else(|| panic!("Can not find the asset {asset_name} in given release {tag}"))
+pub async fn latest_github_release(user: &str, repo: &str) -> std::io::Result<GitHubRelease> {
+    let url = format!("https://api.github.com/repos/{user}/{repo}/releases/latest");
+    request::<GitHubRelease>(&url, user).await
 }
 
-pub(super) async fn retrieve_latest_release() -> std::io::Result<GitHubRelease> {
-    let url = format!("https://api.github.com/repos/{USER}/{REPO}/releases/latest");
-    request::<GitHubRelease>(&url).await
+pub enum DownloadResult {
+    /// File already exists in the specified path.
+    Existed(PathBuf),
+    /// File was downloaded successfully to the given path.
+    Success(PathBuf),
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+/// Download an asset file from GitHub to the local file system.
+pub async fn download_asset_file(
+    version: &str,
+    asset_name: &str,
+    total_size: u64,
+    asset_download_url: &str,
+    no_progress_bar: bool,
+) -> std::io::Result<DownloadResult> {
+    let mut tmp = std::env::temp_dir();
+    tmp.push(format!("{version}-{asset_name}"));
 
-    #[tokio::test]
-    async fn test_retrieve_asset_size() {
-        if crate::tests::is_commit_associated_with_a_tag() {
-            return;
+    // Check if there is a partially downloaded binary before.
+    if tmp.is_file() {
+        let metadata = std::fs::metadata(&tmp)?;
+        if metadata.len() == total_size {
+            return Ok(DownloadResult::Existed(tmp));
+        } else {
+            std::fs::remove_file(&tmp)?;
         }
-
-        for _i in 0..20 {
-            if let Ok(latest_tag) = retrieve_latest_release().await.map(|r| r.tag_name) {
-                retrieve_asset_size(asset_name().unwrap(), &latest_tag)
-                    .await
-                    .expect("Failed to retrieve the asset size for latest release");
-                return;
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-        }
-
-        panic!("Failed to retrieve the asset size for latest release");
     }
+
+    let mut maybe_progress_bar = if no_progress_bar {
+        None
+    } else {
+        let progress_bar = ProgressBar::new(total_size);
+        progress_bar.set_style(ProgressStyle::default_bar()
+                       .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})")
+                       .progress_chars("#>-"));
+        Some(progress_bar)
+    };
+
+    let to_io_error =
+        |e| std::io::Error::new(std::io::ErrorKind::Other, format!("Reqwest error: {e}"));
+
+    let mut source = reqwest::Client::new()
+        .get(asset_download_url)
+        .send()
+        .await
+        .map_err(to_io_error)?;
+
+    let mut dest = tokio::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&tmp.as_path())
+        .await?;
+
+    while let Some(chunk) = source.chunk().await.map_err(to_io_error)? {
+        dest.write_all(&chunk).await?;
+
+        if let Some(ref mut progress_bar) = maybe_progress_bar {
+            progress_bar.inc(chunk.len() as u64);
+        }
+    }
+
+    Ok(DownloadResult::Success(tmp))
 }

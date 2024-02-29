@@ -6,7 +6,7 @@ use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginError, Toggle}
 use crate::stdio_server::vim::Vim;
 use std::collections::{BTreeMap, HashMap};
 use std::ops::Range;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tree_sitter::Language;
 
 #[allow(unused)]
@@ -92,12 +92,12 @@ impl std::fmt::Display for FileSize {
 #[clap_plugin(
   id = "syntax",
   actions = [
-    "sublime-syntax-highlight",
-    "sublime-syntax-list-themes",
-    "tree-sitter-highlight",
-    "tree-sitter-highlight-disable",
-    "tree-sitter-list-scopes",
-    "tree-sitter-props-at-cursor",
+    "sublimeSyntaxHighlight",
+    "sublimeSyntaxListThemes",
+    "treeSitterHighlight",
+    "treeSitterHighlightDisable",
+    "treeSitterListScopes",
+    "treeSitterPropsAtCursor",
     "toggle",
   ],
 )]
@@ -127,9 +127,7 @@ impl Syntax {
 
     async fn on_buf_enter(&mut self, bufnr: usize) -> Result<(), PluginError> {
         let fpath = self.vim.bufabspath(bufnr).await?;
-        let maybe_extension = std::path::Path::new(&fpath)
-            .extension()
-            .and_then(|e| e.to_str());
+        let maybe_extension = Path::new(&fpath).extension().and_then(|e| e.to_str());
 
         if let Some(extension) = maybe_extension {
             self.sublime_bufs.insert(bufnr, extension.to_string());
@@ -172,8 +170,7 @@ impl Syntax {
         buf_modified: bool,
         maybe_language: Option<Language>,
     ) -> Result<(), PluginError> {
-        let source_file = self.vim.bufabspath(bufnr).await?;
-        let source_file = std::path::PathBuf::from(source_file);
+        let source_file = PathBuf::from(self.vim.bufabspath(bufnr).await?);
 
         let language = match maybe_language {
             Some(language) => language,
@@ -210,7 +207,7 @@ impl Syntax {
 
         let file_size = FileSize(source_code.len());
 
-        tracing::debug!(
+        tracing::trace!(
             ?language,
             highlighted_lines = raw_highlights.len(),
             %file_size,
@@ -290,7 +287,7 @@ impl Syntax {
                 return Ok(None);
             }
 
-            tracing::debug!(
+            tracing::trace!(
                 total = new_vim_highlights.len(),
                 unchanged_lines_count = unchanged_lines.len(),
                 changed_lines_count = changed_lines.len(),
@@ -334,8 +331,7 @@ impl Syntax {
         bufnr: usize,
         language: Language,
     ) -> Result<(), PluginError> {
-        let source_file = self.vim.bufabspath(bufnr).await?;
-        let source_file = std::path::PathBuf::from(source_file);
+        let source_file = PathBuf::from(self.vim.bufabspath(bufnr).await?);
 
         let source_code = std::fs::read(&source_file)?;
 
@@ -371,6 +367,9 @@ impl Syntax {
             } else {
                 self.vim.echo_message("tree sitter props not found")?;
             }
+        } else {
+            self.vim
+                .echo_message("tree sitter highlight not enabled for this buffer")?;
         }
 
         Ok(())
@@ -391,6 +390,7 @@ impl From<Range<usize>> for HighlightRange {
 }
 
 impl HighlightRange {
+    /// Returns `true` if the line at specified line number should be highlighted.
     fn should_highlight(&self, line_number: usize) -> bool {
         match self {
             Self::Lines(range) => range.contains(&line_number),

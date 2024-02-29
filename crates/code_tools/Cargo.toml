@@ -4,10 +4,8 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-async-trait = { workspace = true }
 cargo_metadata = { workspace = true }
 once_cell = { workspace = true }
-parking_lot = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

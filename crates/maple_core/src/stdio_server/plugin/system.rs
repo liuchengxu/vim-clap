@@ -11,12 +11,12 @@ use std::collections::HashMap;
 #[clap_plugin(
   id = "system",
   actions = [
-    "__note_recent_files",
-    "__copy-to-clipboard",
-    "__configure-vim-which-key",
-    "__did-you-mean",
-    "open-config",
-    "list-plugins",
+    "__noteRecentFiles",
+    "__copyToClipboard",
+    "__configureVimWhichKey",
+    "__didYouMean",
+    "openConfig",
+    "listPlugins",
   ]
 )]
 pub struct System {

@@ -7,10 +7,8 @@ description = "Generate config markdown document from the inline docs"
 [dependencies]
 inflections = "1.1.1"
 maple_config = { path = "../" }
-maple_core = { path = "../../maple_core" }
 toml = "0.5"
 syn = { version = "1", features = ["full"] }
 quote = "1"
-proc-macro2 = "1.0"
 itertools = "0.12.0"
 toml_edit = { version = "0.21.0", features = [ "parse" ] }

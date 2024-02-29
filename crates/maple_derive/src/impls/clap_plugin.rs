@@ -2,12 +2,13 @@ use std::collections::HashSet;
 use std::sync::Mutex;
 
 use darling::FromMeta;
-use inflections::case::to_pascal_case;
+use inflections::case::{is_camel_case, to_kebab_case, to_pascal_case};
 use once_cell::sync::Lazy;
 use proc_macro::{self, TokenStream};
 use proc_macro2::Span;
 use quote::quote;
 use syn::{DeriveInput, Error, Expr, Ident, LitStr};
+use types::PLUGIN_ACTION_SEPARATOR;
 
 static PLUGINS: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| Mutex::new(HashSet::new()));
 
@@ -16,9 +17,6 @@ struct Plugin {
     id: LitStr,
     actions: Option<Expr>,
 }
-
-/// Separator for non-system plugin actions, `git.reload`.
-const SEP: char = '.';
 
 pub fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
     let mut maybe_plugin_id = None;
@@ -83,7 +81,7 @@ pub fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
 
     let mut used_actions = HashSet::new();
 
-    // Generate constants from the attribute values
+    // Parse actions
     let constants = actions_parsed.iter().map(|action| {
         let action_name = action.as_str();
 
@@ -106,17 +104,17 @@ pub fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
             };
 
         let check_operation_validity = |operation: &str| {
-            let is_valid = operation
-                .chars()
-                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
+            if !operation.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+                return Some(Error::new(
+                    Span::call_site(),
+                    format!("Invalid character in {action_name}: expect only ASCII alphanumeric character or [-]"),
+                ));
+            }
 
-            if is_valid {
+            if is_camel_case(operation) {
                 None
             } else {
-                Some(Error::new(
-                    Span::call_site(),
-                    format!("Invalid character in {action_name}: expect only ASCII alphanumeric character or [-_]"),
-                ))
+                Some(Error::new(Span::call_site(), format!("{action_name} is not in camelCase")))
             }
         };
 
@@ -127,19 +125,21 @@ pub fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
 
         raw_actions.push(action_name);
 
-        let action_name = action_name.replace('-', "_");
+        // __internalAction => __internal-action => __internal_action
+        let action_name = to_kebab_case(action_name).replace('-', "_");
 
+        // __INTERNAL_ACTION
         let uppercase_action = action_name.to_uppercase();
         let action_lit = Ident::new(&uppercase_action, ident.span());
         let action_var = Ident::new(&format!("ACTION_{uppercase_action}"), ident.span());
 
         actions_list.push(action_var.clone());
 
-        // No prefix for system plugin.
+        // No plugin_id prefix for system plugin.
         let namespaced_action = if plugin_id == "system" {
             action.clone()
         } else {
-            format!("{plugin_id}{SEP}{action}")
+            format!("{plugin_id}{PLUGIN_ACTION_SEPARATOR}{action}")
         };
 
         if is_callable {
@@ -168,11 +168,11 @@ pub fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
     let action_variants = raw_actions
         .iter()
         .map(|arg| {
-            // "__note-recent-files", "cursorword.__define-highlights"
+            // "__noteRecentFiles", "cursorword.__defineHighlights"
             let method = if plugin_id == "system" {
                 arg.to_string()
             } else {
-                format!("{plugin_id}{SEP}{arg}")
+                format!("{plugin_id}{PLUGIN_ACTION_SEPARATOR}{arg}")
             };
             let pascal_name = if let Some(name) = arg.strip_prefix("__") {
                 format!("__{}", to_pascal_case(name))

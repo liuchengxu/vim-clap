@@ -46,17 +46,30 @@ pub fn load_config_on_startup(
 
     CONFIG_FILE
         .set(config_file)
-        .expect("Failed to initialize Config file");
+        .expect("Failed to initialize Config file on startup");
 
     CONFIG
         .set(loaded_config)
-        .expect("Failed to initialize Config");
+        .expect("Failed to initialize Config on startup");
 
     (config(), maybe_config_err)
 }
 
+/// [`Config`] is a global singleton, which will be explicitly initialized using
+/// the interface [`load_config_on_startup`] with an optional custom config file
+/// location when the program is started from CLI, otherwise it will be initialized
+/// from the default config file location, which is useful when the config is read
+/// from the test code.
 pub fn config() -> &'static Config {
-    CONFIG.get_or_init(|| load_config(None).0)
+    CONFIG.get_or_init(|| {
+        let (loaded_config, config_file, _) = load_config(None);
+
+        CONFIG_FILE
+            .set(config_file)
+            .expect("Failed to initialize Config file");
+
+        loaded_config
+    })
 }
 
 pub fn config_file() -> &'static PathBuf {
@@ -246,6 +259,52 @@ pub struct LinterPluginConfig {
     pub enable: bool,
 }
 
+/// Defines a new language config or overrides the default config of a language.
+#[derive(Clone, Serialize, Deserialize, Debug, Default, PartialEq)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub struct UserLanguageConfig {
+    /// c-sharp, rust, tsx
+    pub name: String,
+
+    /// List of filetypes corresponding to this language.
+    ///
+    /// Overrides the default value of the corresponding language configuration if it exists.
+    pub file_types: Option<Vec<String>>,
+
+    /// List of file extensions corresponding to this language.
+    ///
+    /// Overrides the default value of the corresponding language configuration if it exists.
+    pub file_extensions: Option<Vec<String>>,
+
+    /// List of line comment tokens for this language.
+    ///
+    /// Overrides the default value of the corresponding language configuration if it exists.
+    pub line_comments: Option<Vec<String>>,
+
+    /// List of markers indicating project roots for this language. Examples include ".git" and "Cargo.toml".
+    ///
+    /// Overrides the default value of the corresponding language configuration if it exists.
+    pub root_markers: Option<Vec<String>>,
+
+    /// List of language servers associated with this language.
+    ///
+    /// Overrides the default value of the corresponding language configuration if it exists.
+    pub language_servers: Option<Vec<String>>,
+}
+
+impl From<UserLanguageConfig> for LanguageConfig {
+    fn from(c: UserLanguageConfig) -> Self {
+        Self {
+            name: c.name,
+            file_types: c.file_types.unwrap_or_default(),
+            file_extensions: c.file_extensions.unwrap_or_default(),
+            line_comments: c.line_comments.unwrap_or_default(),
+            root_markers: c.root_markers.unwrap_or_default(),
+            language_servers: c.language_servers.unwrap_or_default(),
+        }
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize, Debug, Default, PartialEq)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LanguageConfig {
@@ -256,7 +315,7 @@ pub struct LanguageConfig {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub file_types: Vec<String>,
 
-    /// List of `&filetype` corresponding to this language.
+    /// List of file extensions corresponding to this language.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub file_extensions: Vec<String>,
 
@@ -272,27 +331,34 @@ pub struct LanguageConfig {
 }
 
 impl LanguageConfig {
-    pub fn merge(&mut self, other: Self) {
-        let merge_vec = |v: &mut Vec<String>, other: Vec<String>| {
-            v.extend(other);
+    pub fn merge(&mut self, user_language_config: UserLanguageConfig) {
+        let UserLanguageConfig {
+            name,
+            file_types: maybe_file_types,
+            file_extensions: maybe_file_extensions,
+            line_comments: maybe_line_comments,
+            root_markers: maybe_root_markers,
+            language_servers: maybe_language_servers,
+        } = user_language_config;
+
+        if self.name != name {
+            return;
+        }
+
+        let merge_user_config = |v: &mut Vec<String>, maybe_user_config: Option<Vec<String>>| {
+            if let Some(user_config) = maybe_user_config {
+                *v = user_config;
+            }
+
             v.sort();
             v.dedup();
         };
 
-        let Self {
-            file_types,
-            file_extensions,
-            line_comments,
-            root_markers,
-            language_servers,
-            ..
-        } = other;
-
-        merge_vec(&mut self.file_types, file_types);
-        merge_vec(&mut self.file_extensions, file_extensions);
-        merge_vec(&mut self.line_comments, line_comments);
-        merge_vec(&mut self.root_markers, root_markers);
-        merge_vec(&mut self.language_servers, language_servers);
+        merge_user_config(&mut self.file_types, maybe_file_types);
+        merge_user_config(&mut self.file_extensions, maybe_file_extensions);
+        merge_user_config(&mut self.line_comments, maybe_line_comments);
+        merge_user_config(&mut self.root_markers, maybe_root_markers);
+        merge_user_config(&mut self.language_servers, maybe_language_servers);
     }
 }
 
@@ -303,14 +369,20 @@ pub struct LspPluginConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
 
-    /// Whether to include the declaration when invoking goto-reference.
+    /// Whether to include the declaration when invoking `ClapAction lsp.reference`.
     pub include_declaration: bool,
+
+    /// Specify the list of filetypes for which the lsp plugin will be disabled.
+    ///
+    /// If a filetype is included in this list, the Language Server Protocol (LSP) plugin
+    /// will not be activated for files with that particular type.
+    pub filetype_blocklist: Vec<String>,
 
     /// Specifies custom languages that are not built into vim-clap.
     ///
-    /// If a language is not included in the default languages supported by vim-clap,
-    /// you can specify it here. Note that for languages not listed in the default
-    /// configuration (check out the full list of supported languages in `languages.toml`),
+    /// This config allows to define a new language or override the default value
+    /// of the built-in language config. Note that if you are defining a new language,
+    /// (check out the full list of supported languages by default in `languages.toml`),
     /// you need to provide associated language server configurations as well.
     ///
     /// # Example
@@ -324,9 +396,8 @@ pub struct LspPluginConfig {
     ///
     /// [plugin.lsp.language-server.erlang-ls]
     /// command = "erlang_ls"
-    /// args = ["--transport", "stdio"]
     /// ```
-    pub language: Vec<LanguageConfig>,
+    pub language: Vec<UserLanguageConfig>,
 
     /// Specify language server configurations.
     ///
@@ -339,6 +410,16 @@ pub struct LspPluginConfig {
     /// diagnostics.disabled = [ "unresolved-proc-macro" ]
     /// ```
     pub language_server: HashMap<String, toml::Value>,
+}
+
+impl LspPluginConfig {
+    /// Returns the custom language server config if any.
+    pub fn language_server_config(&self, language_server_name: &str) -> Option<serde_json::Value> {
+        self.language_server
+            .get(language_server_name)
+            .cloned()
+            .and_then(|v| v.try_into().ok())
+    }
 }
 
 /// Syntax plugin.
@@ -624,5 +705,22 @@ mod tests {
     fn test_config_deserialize() {
         let config = Config::default();
         toml::to_string_pretty(&config).expect("Deserialize config is okay");
+    }
+
+    #[test]
+    fn test_lsp_language_server_config_to_serde_json_value() {
+        let toml_content = r#"
+          [language-server.rust-analyzer]
+          procMacro.enable = false
+          procMacro.attributes.enable = false
+          diagnostics.disabled = [ "unresolved-proc-macro" ]
+"#;
+
+        let user_config: LspPluginConfig =
+            toml::from_str(toml_content).expect("Failed to deserialize config");
+
+        user_config
+            .language_server_config("rust-analyzer")
+            .expect("Convert language server config from toml::Value to serde_json::Value");
     }
 }

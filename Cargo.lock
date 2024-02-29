@@ -380,17 +380,14 @@ dependencies = [
  "clap",
  "criterion",
  "filter",
- "futures",
  "icon",
  "itertools 0.10.5",
  "maple_config",
  "maple_core",
  "matcher",
  "num_cpus",
- "pattern",
  "printer",
  "rayon",
- "regex",
  "serde",
  "serde_json",
  "subprocess",
@@ -416,12 +413,10 @@ dependencies = [
 name = "code_tools"
 version = "0.1.0"
 dependencies = [
- "async-trait",
  "cargo_metadata",
  "maple_config",
  "maple_lsp",
  "once_cell",
- "parking_lot",
  "paths",
  "regex",
  "serde",
@@ -688,8 +683,6 @@ dependencies = [
  "inflections",
  "itertools 0.12.1",
  "maple_config",
- "maple_core",
- "proc-macro2",
  "quote",
  "syn 1.0.109",
  "toml",
@@ -759,16 +752,13 @@ dependencies = [
  "icon",
  "matcher",
  "parking_lot",
- "pattern",
  "printer",
  "rayon",
- "serde",
  "serde_json",
  "subprocess",
  "thiserror",
  "tracing",
  "types",
- "utils",
 ]
 
 [[package]]
@@ -1454,6 +1444,7 @@ dependencies = [
  "once_cell",
  "paths",
  "serde",
+ "serde_json",
  "toml",
  "types",
 ]
@@ -1464,7 +1455,6 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "base64 0.13.1",
- "bytecount",
  "chrono",
  "chrono-humanize",
  "clap",
@@ -2393,11 +2383,9 @@ name = "sublime_syntax"
 version = "0.1.0"
 dependencies = [
  "colors-transform",
- "once_cell",
  "rgb2ansi256",
  "serde",
  "syntect",
- "tracing",
  "utils",
 ]
 
@@ -2888,6 +2876,7 @@ dependencies = [
  "rand",
  "serde",
  "toml",
+ "tracing",
  "tree-sitter",
  "tree-sitter-bash",
  "tree-sitter-c",
@@ -2959,7 +2948,6 @@ dependencies = [
  "indicatif",
  "reqwest",
  "serde",
- "serde_json",
  "tokio",
 ]
 
@@ -2988,7 +2976,6 @@ dependencies = [
  "bytecount",
  "memchr",
  "simdutf8",
- "types",
 ]
 
 [[package]]

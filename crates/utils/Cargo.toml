@@ -8,5 +8,3 @@ edition.workspace = true
 bytecount = { workspace = true }
 memchr = { workspace = true }
 simdutf8 = { workspace = true }
-
-types = { workspace = true }

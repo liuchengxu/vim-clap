@@ -105,9 +105,8 @@ impl Event {
     /// Converts the notification to an [`Event`].
     pub fn parse_notification(
         notification: RpcNotification,
-        action_parser: impl Fn(RpcNotification) -> Result<ActionEvent, Error>,
+        parse_action: impl Fn(RpcNotification) -> Result<ActionEvent, Error>,
     ) -> Result<Self, Error> {
-        use AutocmdEventType::*;
         use KeyEventType::*;
 
         match notification.method.as_str() {
@@ -126,17 +125,12 @@ impl Event {
             "shift-up" => Ok(Self::Key((ShiftUp, notification.params))),
             "shift-down" => Ok(Self::Key((ShiftDown, notification.params))),
             "backspace" => Ok(Self::Key((Backspace, notification.params))),
-            "CursorMoved" => Ok(Self::Autocmd((CursorMoved, notification.params))),
-            "InsertEnter" => Ok(Self::Autocmd((InsertEnter, notification.params))),
-            "BufEnter" => Ok(Self::Autocmd((BufEnter, notification.params))),
-            "BufLeave" => Ok(Self::Autocmd((BufLeave, notification.params))),
-            "BufDelete" => Ok(Self::Autocmd((BufDelete, notification.params))),
-            "BufWritePost" => Ok(Self::Autocmd((BufWritePost, notification.params))),
-            "BufWinEnter" => Ok(Self::Autocmd((BufWinEnter, notification.params))),
-            "BufWinLeave" => Ok(Self::Autocmd((BufWinLeave, notification.params))),
-            "TextChanged" => Ok(Self::Autocmd((TextChanged, notification.params))),
-            "TextChangedI" => Ok(Self::Autocmd((TextChangedI, notification.params))),
-            _ => Ok(Self::Action(action_parser(notification)?)),
+            autocmd_or_action => match AutocmdEventType::parse(autocmd_or_action) {
+                Some(autocmd_event_type) => {
+                    Ok(Self::Autocmd((autocmd_event_type, notification.params)))
+                }
+                None => Ok(Self::Action(parse_action(notification)?)),
+            },
         }
     }
 }
