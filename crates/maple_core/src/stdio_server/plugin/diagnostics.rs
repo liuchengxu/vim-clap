@@ -53,6 +53,7 @@ impl ClapPlugin for Diagnostics {
         use Direction::{First, Last, Next, Prev};
 
         let PluginAction { method, params: _ } = action;
+
         match self.parse_action(method)? {
             DiagnosticsAction::FirstError => {
                 self.navigate_diagnostics(Error, First).await?;

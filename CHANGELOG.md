@@ -2,9 +2,11 @@
 
 ## [unreleased]
 
-- Change the syntax of plugin actions from `plugin/foo-action` to `plugin.fooAction` for the compatibility with tools like coc.nvim.
+- [plugin] Change the syntax of plugin actions from `plugin/foo-action` to `plugin.fooAction` for the compatibility with tools like coc.nvim.
+- [plugin] Use different highlight groups for error and warn diagnostics.
+- [plugin] Added diagnostics plugin in order to conveniently inspect the collected diagnostics from both the linter and lsp plugin.
+  You now should use `:ClapAction diagnostics.firstError` instead of `:ClapAction linter.firstError` to jump to the position of first error.
 - Various fixes and improvements.
-- Added diagnostics plugin in order to conveniently inspect the collected diagnostics from both the linter and lsp plugin.
 
 ### Internal
 
