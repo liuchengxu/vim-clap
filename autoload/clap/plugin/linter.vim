@@ -13,7 +13,8 @@ let s:severity_icons = {
       \ 'other': '  ',
       \ }
 
-hi ClapDiagnosticUnderline cterm=underline,bold gui=undercurl,italic,bold ctermfg=173 guifg=#e18254
+hi ClapDiagnosticUnderlineWarn  cterm=underline,bold gui=undercurl,italic,bold ctermfg=173 guifg=#e18254
+hi ClapDiagnosticUnderlineError cterm=underline,bold gui=undercurl,italic,bold ctermfg=196 guifg=#f2241f
 
 hi DiagnosticWarn ctermfg=136 guifg=#b1951d
 
@@ -153,9 +154,9 @@ function! clap#plugin#linter#display_top_right(current_diagnostics) abort
   endif
 endfunction
 
-function! s:highlight_span(bufnr, span) abort
+function! s:highlight_span(bufnr, span, hl_group) abort
   try
-    call nvim_buf_add_highlight(a:bufnr, s:linter_spans_highlight_ns_id, 'ClapDiagnosticUnderline', a:span.line_start - 1, a:span.column_start - 1, a:span.column_end - 1)
+    call nvim_buf_add_highlight(a:bufnr, s:linter_spans_highlight_ns_id, a:hl_group, a:span.line_start - 1, a:span.column_start - 1, a:span.column_end - 1)
   catch
     " Span may be invalid at this moment since the buffer has been changed.
     return
@@ -222,13 +223,13 @@ endfunction
 
 else
 
-function! s:highlight_span(bufnr, span) abort
+function! s:highlight_span(bufnr, span, hl_group) abort
   let length = a:span.column_end - a:span.column_start
   " It's possible that the span across multiple lines and this can be negative.
   if length < 0
     let length = 1
   endif
-  call prop_add(a:span.line_start, a:span.column_start, { 'type': 'ClapDiagnosticUnderline', 'length': length, 'bufnr': a:bufnr })
+  call prop_add(a:span.line_start, a:span.column_start, { 'type': a:hl_group, 'length': length, 'bufnr': a:bufnr })
 endfunction
 
 function! clap#plugin#linter#close_top_right() abort
@@ -284,17 +285,20 @@ function! clap#plugin#linter#display_top_right(current_diagnostics) abort
   endif
 endfunction
 
-call prop_type_add('ClapDiagnosticUnderline', {'highlight': 'ClapDiagnosticUnderline'})
+call prop_type_add('ClapDiagnosticUnderlineWarn', {'highlight': 'ClapDiagnosticUnderlineWarn'})
+call prop_type_add('ClapDiagnosticUnderlineError', {'highlight': 'ClapDiagnosticUnderlineError'})
 
 function! clap#plugin#linter#delete_highlights(bufnr) abort
-  call prop_remove({ 'type': 'ClapDiagnosticUnderline', 'bufnr': a:bufnr } )
+  call prop_remove({ 'type': 'ClapDiagnosticUnderlineWarn', 'bufnr': a:bufnr } )
+  call prop_remove({ 'type': 'ClapDiagnosticUnderlineError', 'bufnr': a:bufnr } )
 endfunction
 
 endif
 
 function! clap#plugin#linter#add_highlights(bufnr, diagnostics) abort
   for diagnostic in a:diagnostics
-    call map(diagnostic.spans, 's:highlight_span(a:bufnr, v:val)')
+    let hl_group = diagnostic.severity ==# 'Error' ? 'ClapDiagnosticUnderlineError' : 'ClapDiagnosticUnderlineWarn'
+    call map(diagnostic.spans, 's:highlight_span(a:bufnr, v:val, hl_group)')
   endfor
 endfunction
 
