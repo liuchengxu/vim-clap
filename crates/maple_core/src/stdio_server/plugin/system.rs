@@ -28,6 +28,10 @@ impl System {
         Self { vim }
     }
 
+    pub fn is_list_plugins(plugin_id: &str, action: &PluginAction) -> bool {
+        plugin_id == "system" && action.method == "listPlugins"
+    }
+
     async fn configure_vim_which_key_map(
         &self,
         variable_name: &str,
@@ -163,7 +167,8 @@ impl ClapPlugin for System {
                     .exec("execute", format!("edit {}", config_file.display()))?;
             }
             SystemAction::ListPlugins => {
-                unreachable!("action list-plugins has been handled upper level")
+                self.vim
+                    .echo_warn("action listPlugins should have been handled upper level, please report this as an error")?;
             }
         }
 

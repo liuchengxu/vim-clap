@@ -375,7 +375,7 @@ impl Backend {
                 self.service_manager.lock().notify_plugins(autocmd_event);
             }
             Event::Action((plugin_id, plugin_action)) => {
-                if plugin_id == "system" && plugin_action.method == "list-plugins" {
+                if plugin::SystemPlugin::is_list_plugins(plugin_id, &plugin_action) {
                     let lines = self
                         .service_manager
                         .lock()

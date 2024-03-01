@@ -448,6 +448,7 @@ impl ServiceManager {
     pub fn notify_plugin_action(&mut self, plugin_id: PluginId, plugin_action: PluginAction) {
         if let Entry::Occupied(v) = self.plugins.entry(plugin_id) {
             if v.get().1.send(PluginEvent::Action(plugin_action)).is_err() {
+                tracing::error!("plugin {plugin_id} exited");
                 v.remove_entry();
             }
         }
