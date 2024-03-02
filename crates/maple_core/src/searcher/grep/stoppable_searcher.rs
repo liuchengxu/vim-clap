@@ -349,3 +349,53 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
         "Searching is complete in {elapsed:?}ms"
     );
 }
+
+pub async fn search_all(
+    query: String,
+    matcher: Matcher,
+    paths: Vec<PathBuf>,
+    stop_signal: Arc<AtomicBool>,
+) {
+    let (sender, mut receiver) = unbounded_channel();
+
+    std::thread::Builder::new()
+        .name("grep-worker".into())
+        .spawn({
+            let stop_signal = stop_signal.clone();
+            move || StoppableSearchImpl::new(paths, matcher, sender, stop_signal).run()
+        })
+        .expect("Failed to spawn grep-worker thread");
+
+    let mut matches = Vec::with_capacity(1000);
+
+    let mut total_matched = 0usize;
+    let mut total_processed = 0usize;
+
+    let now = std::time::Instant::now();
+    while let Some(searcher_message) = receiver.recv().await {
+        if stop_signal.load(Ordering::SeqCst) {
+            return;
+        }
+
+        match searcher_message {
+            SearcherMessage::Match(file_result) => {
+                total_matched += 1;
+                total_processed += 1;
+
+                matches.push(file_result);
+            }
+            SearcherMessage::ProcessedOne => {
+                total_processed += 1;
+            }
+        }
+    }
+
+    let elapsed = now.elapsed().as_millis();
+
+    tracing::debug!(
+        total_processed,
+        total_matched,
+        ?query,
+        "Searching is complete in {elapsed:?}ms"
+    );
+}

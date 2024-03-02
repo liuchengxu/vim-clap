@@ -22,5 +22,6 @@ pub enum Goto {
 #[allow(dead_code)]
 pub enum GotoLocationsUI {
     Quickfix,
+    Sidebar,
     ClapProvider,
 }

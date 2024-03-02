@@ -578,7 +578,16 @@ impl LspPlugin {
             return Ok(());
         }
 
-        let mode = GotoLocationsUI::ClapProvider;
+        let fetch_location_text = |loc: &lsp::Location| {
+            let path = loc.uri.path();
+            let row = loc.range.start.line + 1;
+            utils::read_line_at(path, row as usize)
+                .ok()
+                .flatten()
+                .unwrap_or_default()
+        };
+
+        let mode = GotoLocationsUI::Sidebar;
 
         match mode {
             GotoLocationsUI::Quickfix => {
@@ -588,10 +597,7 @@ impl LspPlugin {
                         let path = loc.uri.path();
                         let row = loc.range.start.line + 1;
                         let column = loc.range.start.character + 1;
-                        let text = utils::read_line_at(path, row as usize)
-                            .ok()
-                            .flatten()
-                            .unwrap_or_default();
+                        let text = fetch_location_text(&loc);
 
                         FileLocation {
                             path: path.to_string(),
@@ -606,6 +612,31 @@ impl LspPlugin {
                     "clap#plugin#lsp#populate_quickfix",
                     (format!("{goto:?}"), locations),
                 )?;
+            }
+            GotoLocationsUI::Sidebar => {
+                let mut grouped_locations: HashMap<_, Vec<_>> = HashMap::new();
+                locations.into_iter().for_each(|loc| {
+                    grouped_locations
+                        .entry(loc.uri.clone())
+                        .and_modify(|v| v.push(loc.clone()))
+                        .or_insert_with(|| vec![loc]);
+                });
+
+                let mut lines = Vec::new();
+                for (uri, locations) in grouped_locations.into_iter() {
+                    let Ok(file_path) = uri.to_file_path() else {
+                        continue;
+                    };
+                    lines.push(format!("{} [{}]", file_path.display(), locations.len()));
+                    for loc in locations {
+                        let row = loc.range.start.line + 1;
+                        let column = loc.range.start.character + 1;
+                        lines.push(format!("{row}:{column}:{}", fetch_location_text(&loc)));
+                    }
+                }
+
+                self.vim
+                    .exec("clap#plugin#lsp#open_sidebar", (format!("{goto:?}"), lines))?;
             }
             GotoLocationsUI::ClapProvider => {
                 self.open_picker(LspSource::Locations((goto, locations)))?;

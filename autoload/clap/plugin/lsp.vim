@@ -20,13 +20,35 @@ function! clap#plugin#lsp#populate_quickfix(id, locations) abort
   call clap#sink#open_quickfix(entries)
 endfunction
 
+function! clap#plugin#lsp#open_sidebar(location_type, lines) abort
+  let open = 'vertical botright 80 50new'
+
+  if get(g:, 'vista_sidebar_keepalt', 0)
+    silent execute 'keepalt '.open a:location_type
+  else
+    silent execute open a:location_type
+  endif
+
+  execute 'setlocal buftype=nofile bufhidden=wipe noswapfile filetype=clap_locations'
+
+  nnoremap <silent> <buffer> q :quit<CR>
+
+  call append(0, a:lines)
+  call cursor(1, 1)
+endfunction
+
+function! s:lsp_picker_sink(line) abort
+  let line = a:line[4:]
+  execute 'edit' line
+endfunction
+
 function! clap#plugin#lsp#open_picker(title) abort
   let provider = {
         \ 'id': 'lsp',
         \ 'title': a:title,
         \ 'on_typed': { -> clap#client#notify_provider('on_typed') },
         \ 'on_move': { -> clap#client#notify_provider('on_move') },
-        \ 'sink': 'e',
+        \ 'sink': function('s:lsp_picker_sink'),
         \ 'icon': 'lsp',
         \ }
   call clap#run(provider)
