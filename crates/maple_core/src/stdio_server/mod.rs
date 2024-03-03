@@ -23,7 +23,7 @@ use std::collections::HashMap;
 use std::io::{BufReader, BufWriter};
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::mpsc::UnboundedReceiver;
+use tokio::sync::mpsc::{Receiver, UnboundedReceiver};
 use tokio::time::Instant;
 use types::PLUGIN_ACTION_SEPARATOR;
 
@@ -213,8 +213,13 @@ pub async fn start(config_err: ConfigError) {
 
     let vim = Vim::new(rpc_client);
 
+    let (config_reload_signal_sender, config_reload_signal_receiver) =
+        tokio::sync::mpsc::channel(1);
+
+    maple_config::monitor::watch(config_reload_signal_sender);
+
     Backend::new(vim, config_err)
-        .run(vim_message_receiver)
+        .run(vim_message_receiver, config_reload_signal_receiver)
         .await;
 }
 
@@ -253,7 +258,11 @@ impl Backend {
     /// Entry of the bridge between Vim and Rust.
     ///
     /// Handle the messages actively initiated from Vim.
-    async fn run(self, mut rx: UnboundedReceiver<VimMessage>) {
+    async fn run(
+        self,
+        mut rx: UnboundedReceiver<VimMessage>,
+        mut config_reload_signal_receiver: Receiver<()>,
+    ) {
         // If the debounce timer isn't active, it will be set to expire "never",
         // which is actually just 1 year in the future.
         const NEVER: Duration = Duration::from_secs(365 * 24 * 60 * 60);
@@ -266,6 +275,16 @@ impl Backend {
 
         loop {
             tokio::select! {
+                maybe_config_reloaded = config_reload_signal_receiver.recv() => {
+                    tracing::debug!("======================== Recv {maybe_config_reloaded:?}");
+                    match maybe_config_reloaded {
+                        Some(_) => {
+                            tracing::debug!("======================== Config file reloaded");
+                            self.service_manager.lock().notify_config_reloaded();
+                        },
+                      _ => continue, // channel has closed
+                    }
+                }
                 maybe_call = rx.recv() => {
                     match maybe_call {
                         Some(call) => {

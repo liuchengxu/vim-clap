@@ -6,9 +6,13 @@ edition.workspace = true
 [dependencies]
 dirs = { workspace = true }
 once_cell = { workspace = true }
+parking_lot = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 toml = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true, features = ["sync"] }
 
 paths = { workspace = true }
 types = { workspace = true }
+notify = "6.1.1"

@@ -120,6 +120,10 @@ pub trait ClapPlugin: ClapAction + Debug + Send + Sync + 'static {
     }
 
     async fn handle_action(&mut self, action: PluginAction) -> Result<(), PluginError>;
+
+    async fn handle_config_reloaded(&mut self) -> Result<(), PluginError> {
+        Ok(())
+    }
 }
 
 #[cfg(test)]

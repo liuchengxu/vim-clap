@@ -1,3 +1,5 @@
+pub mod monitor;
+
 use dirs::Dirs;
 use once_cell::sync::OnceCell;
 use paths::AbsPathBuf;
@@ -7,6 +9,7 @@ use std::path::PathBuf;
 use types::RankCriterion;
 
 static CONFIG_FILE: OnceCell<PathBuf> = OnceCell::new();
+
 // TODO: reload-config
 static CONFIG: OnceCell<Config> = OnceCell::new();
 

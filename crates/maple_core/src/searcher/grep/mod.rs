@@ -1,6 +1,6 @@
 mod stoppable_searcher;
 
-pub use self::stoppable_searcher::search;
+pub use self::stoppable_searcher::{search, search_all};
 use self::stoppable_searcher::{FileResult, SearcherMessage, StoppableSearchImpl, UPDATE_INTERVAL};
 use matcher::Matcher;
 use std::path::PathBuf;

@@ -267,6 +267,22 @@ impl PluginSession {
         plugin_event_sender
     }
 
+    async fn handle_plugin_event(&mut self, plugin_event: PluginEvent) {
+        let res = match plugin_event.clone() {
+            PluginEvent::Autocmd(autocmd) => self.plugin.handle_autocmd(autocmd).await,
+            PluginEvent::Action(action) => self.plugin.handle_action(action).await,
+            PluginEvent::ConfigReloaded => self.plugin.handle_config_reloaded().await,
+        };
+
+        if let Err(err) = res {
+            tracing::error!(
+                ?err,
+                "[{}] Failed to process {plugin_event:?}",
+                self.plugin.id()
+            );
+        }
+    }
+
     fn start_event_loop_without_debounce(mut self) {
         tracing::debug!(id = ?self.plugin.id(), debounce = false, "Starting a new plugin service");
 
@@ -275,13 +291,7 @@ impl PluginSession {
                 tokio::select! {
                   maybe_plugin_event = self.plugin_events.recv() => {
                       if let Some(plugin_event) = maybe_plugin_event {
-                          let res = match plugin_event.clone() {
-                              PluginEvent::Autocmd(autocmd) => self.plugin.handle_autocmd(autocmd).await,
-                              PluginEvent::Action(action) => self.plugin.handle_action(action).await,
-                          };
-                          if let Err(err) = res {
-                              tracing::error!(?err, id = self.plugin.id(), "Failed to process {plugin_event:?}");
-                          }
+                          self.handle_plugin_event(plugin_event).await;
                       } else {
                           break;
                       }
@@ -318,13 +328,7 @@ impl PluginSession {
                                     notification_dirty = true;
                                     notification_timer.as_mut().reset(Instant::now() + event_delay);
                                 } else {
-                                    let res = match plugin_event.clone() {
-                                        PluginEvent::Autocmd(autocmd) => self.plugin.handle_autocmd(autocmd).await,
-                                        PluginEvent::Action(action) => self.plugin.handle_action(action).await,
-                                    };
-                                    if let Err(err) = res {
-                                        tracing::error!(?err, id, "Failed to process {plugin_event:?}");
-                                    }
+                                   self.handle_plugin_event(plugin_event).await;
                                 }
                             }
                             None => break, // channel has closed.
@@ -335,13 +339,7 @@ impl PluginSession {
                         notification_timer.as_mut().reset(Instant::now() + NEVER);
 
                         if let Some(autocmd) = pending_plugin_event.take() {
-                            let res = match autocmd.clone() {
-                                PluginEvent::Autocmd(autocmd) => self.plugin.handle_autocmd(autocmd).await,
-                                PluginEvent::Action(action) => self.plugin.handle_action(action).await,
-                            };
-                            if let Err(err) = res {
-                                tracing::error!(?err, id, "Failed to process {autocmd:?}");
-                            }
+                            self.handle_plugin_event(autocmd).await;
                         }
                     }
                 }
@@ -430,6 +428,14 @@ impl ServiceManager {
         let plugin_event_sender = PluginSession::create(plugin, None);
         self.plugins
             .insert(plugin_id, (subscriptions, plugin_event_sender));
+    }
+
+    /// Notify all plugins that the config file has been reloaded.
+    pub fn notify_config_reloaded(&mut self) {
+        self.plugins
+            .retain(|_plugin_id, (_subscriptions, plugin_sender)| {
+                plugin_sender.send(PluginEvent::ConfigReloaded).is_ok()
+            });
     }
 
     /// Sends event message to all plugins.
