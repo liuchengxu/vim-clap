@@ -8,14 +8,22 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use types::RankCriterion;
 
-static CONFIG_FILE: OnceCell<PathBuf> = OnceCell::new();
-
 // TODO: reload-config
-static CONFIG: OnceCell<Config> = OnceCell::new();
+static CONFIG: OnceCell<ConfigInner> = OnceCell::new();
 
-fn load_config(
-    specified_config_file: Option<PathBuf>,
-) -> (Config, PathBuf, Option<toml::de::Error>) {
+#[derive(Debug)]
+struct ConfigInner {
+    config: Config,
+    file_path: PathBuf,
+}
+
+struct LoadedConfig {
+    config: Config,
+    file_path: PathBuf,
+    maybe_error: Option<toml::de::Error>,
+}
+
+fn load_config(specified_config_file: Option<PathBuf>) -> LoadedConfig {
     let config_file = specified_config_file.unwrap_or_else(|| {
         // Linux: ~/.config/vimclap/config.toml
         // macOS: ~/Library/Application\ Support/org.vim.Vim-Clap/config.toml
@@ -30,7 +38,7 @@ fn load_config(
     });
 
     let mut maybe_config_err = None;
-    let loaded_config = std::fs::read_to_string(&config_file)
+    let config = std::fs::read_to_string(&config_file)
         .and_then(|contents| {
             toml::from_str(&contents).map_err(|err| {
                 maybe_config_err.replace(err);
@@ -39,23 +47,30 @@ fn load_config(
         })
         .unwrap_or_default();
 
-    (loaded_config, config_file, maybe_config_err)
+    LoadedConfig {
+        config,
+        file_path: config_file,
+        maybe_error: maybe_config_err,
+    }
 }
 
 pub fn load_config_on_startup(
     specified_config_file: Option<PathBuf>,
 ) -> (&'static Config, Option<toml::de::Error>) {
-    let (loaded_config, config_file, maybe_config_err) = load_config(specified_config_file);
-
-    CONFIG_FILE
-        .set(config_file)
-        .expect("Failed to initialize Config file on startup");
+    let LoadedConfig {
+        config: loaded_config,
+        file_path,
+        maybe_error,
+    } = load_config(specified_config_file);
 
     CONFIG
-        .set(loaded_config)
-        .expect("Failed to initialize Config on startup");
+        .set(ConfigInner {
+            config: loaded_config,
+            file_path,
+        })
+        .expect("Failed to initialize Config file on startup");
 
-    (config(), maybe_config_err)
+    (config(), maybe_error)
 }
 
 /// [`Config`] is a global singleton, which will be explicitly initialized using
@@ -64,19 +79,19 @@ pub fn load_config_on_startup(
 /// from the default config file location, which is useful when the config is read
 /// from the test code.
 pub fn config() -> &'static Config {
-    CONFIG.get_or_init(|| {
-        let (loaded_config, config_file, _) = load_config(None);
+    &CONFIG
+        .get_or_init(|| {
+            let LoadedConfig {
+                config, file_path, ..
+            } = load_config(None);
 
-        CONFIG_FILE
-            .set(config_file)
-            .expect("Failed to initialize Config file");
-
-        loaded_config
-    })
+            ConfigInner { config, file_path }
+        })
+        .config
 }
 
 pub fn config_file() -> &'static PathBuf {
-    CONFIG_FILE.get().expect("Config file uninitialized")
+    &CONFIG.get().expect("Config file uninitialized").file_path
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
