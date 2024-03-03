@@ -276,10 +276,8 @@ impl Backend {
         loop {
             tokio::select! {
                 maybe_config_reloaded = config_reload_signal_receiver.recv() => {
-                    tracing::debug!("======================== Recv {maybe_config_reloaded:?}");
                     match maybe_config_reloaded {
                         Some(_) => {
-                            tracing::debug!("======================== Config file reloaded");
                             self.service_manager.lock().notify_config_reloaded();
                         },
                       _ => continue, // channel has closed

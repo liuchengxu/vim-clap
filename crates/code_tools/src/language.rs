@@ -183,14 +183,18 @@ fn config_inner() -> &'static ConfigurationInner {
             })
             .collect::<HashMap<_, _>>();
 
-        let mut user_languages = maple_config::config()
-            .plugin
-            .lsp
-            .language
-            .clone()
-            .into_iter()
-            .map(|c| (c.name.clone(), c))
-            .collect::<HashMap<_, _>>();
+        let mut user_languages = maple_config::config_checked()
+            .map(|config| {
+                config
+                    .plugin
+                    .lsp
+                    .language
+                    .clone()
+                    .into_iter()
+                    .map(|c| (c.name.clone(), c))
+                    .collect::<HashMap<_, _>>()
+            })
+            .unwrap_or_default();
 
         let mut final_languages = language
             .into_iter()

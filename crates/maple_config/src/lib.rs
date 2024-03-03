@@ -83,8 +83,8 @@ fn reload_config(config_file: PathBuf) {
     // Safety: This violates the principle that a `static mut` is safe in a synchronized fashion
     // (e.g., write once and read all), however, the data race is not a big deal in our case.
     // Accessing the CONFIG while `reload_config()` is executing may read the old config value,
-    // but that's okay since the ConfigReload event will be sent all the receivers and the
-    // receivers will handle that immediately.
+    // but that's okay since the ConfigReload event will be sent to all the receivers and the
+    // receivers will handle that immediately anyway.
     unsafe {
         let LoadedConfig {
             config, file_path, ..
@@ -103,13 +103,12 @@ pub fn config() -> &'static Config {
     unsafe { &CONFIG.as_ref().expect("Config uninitialized").config }
 }
 
+pub fn config_checked() -> Option<&'static Config> {
+    unsafe { CONFIG.as_ref().map(|c| &c.config) }
+}
+
 pub fn config_file() -> &'static PathBuf {
-    unsafe {
-        &CONFIG
-            .as_ref()
-            .expect("Config file uninitialized")
-            .file_path
-    }
+    unsafe { &CONFIG.as_ref().expect("Config uninitialized").file_path }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
