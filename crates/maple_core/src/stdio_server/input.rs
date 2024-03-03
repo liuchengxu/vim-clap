@@ -16,7 +16,7 @@ pub type AutocmdEvent = (AutocmdEventType, Params);
 pub enum PluginEvent {
     Autocmd(AutocmdEvent),
     Action(PluginAction),
-    ConfigReloaded,
+    ConfigReload,
 }
 
 impl PluginEvent {

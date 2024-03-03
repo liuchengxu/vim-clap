@@ -171,4 +171,10 @@ impl ClapPlugin for CtagsPlugin {
 
         Ok(())
     }
+
+    async fn handle_config_reload(&mut self) -> Result<(), PluginError> {
+        let bufnr = self.vim.bufnr("").await?;
+        update_winbar(&self.vim, bufnr, self.last_cursor_tag.as_ref()).await?;
+        Ok(())
+    }
 }

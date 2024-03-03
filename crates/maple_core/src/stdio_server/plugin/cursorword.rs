@@ -119,7 +119,7 @@ pub struct Cursorword {
     vim: Vim,
     bufs: HashMap<usize, PathBuf>,
     cursor_highlights: Option<CursorHighlights>,
-    ignore_extensions: Vec<&'static str>,
+    ignore_extensions: Vec<String>,
     ignore_file_names: Vec<&'static str>,
 }
 
@@ -141,6 +141,11 @@ impl Cursorword {
                 }
             }
         });
+
+        let ignore_extensions = ignore_extensions
+            .into_iter()
+            .map(|s| s.chars().skip(2).collect::<String>())
+            .collect();
 
         Self {
             vim,
@@ -253,10 +258,7 @@ impl Cursorword {
             return Ok(());
         };
 
-        if self
-            .ignore_extensions
-            .iter()
-            .any(|s| &s[2..] == file_extension)
+        if self.ignore_extensions.iter().any(|s| s == file_extension)
             || self.ignore_file_names.contains(&file_name)
         {
             return Ok(());

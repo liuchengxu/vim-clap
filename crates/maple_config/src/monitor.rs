@@ -105,6 +105,7 @@ pub fn watch(sender: Sender<()>) {
                                 .flat_map(|event| event.paths.into_iter())
                                 .any(|modified_path| modified_path.eq(&path))
                             {
+                                crate::reload_config(path.clone());
                                 // Always reload the primary configuration file.
                                 let _ = sender.try_send(());
                             }

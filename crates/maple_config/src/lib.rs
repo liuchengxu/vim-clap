@@ -1,15 +1,15 @@
 pub mod monitor;
 
 use dirs::Dirs;
-use once_cell::sync::OnceCell;
 use paths::AbsPathBuf;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Once;
 use types::RankCriterion;
 
-// TODO: reload-config
-static CONFIG: OnceCell<ConfigInner> = OnceCell::new();
+static mut CONFIG: Option<ConfigInner> = None;
+static INIT: Once = Once::new();
 
 #[derive(Debug)]
 struct ConfigInner {
@@ -63,14 +63,35 @@ pub fn load_config_on_startup(
         maybe_error,
     } = load_config(specified_config_file);
 
-    CONFIG
-        .set(ConfigInner {
-            config: loaded_config,
-            file_path,
-        })
-        .expect("Failed to initialize Config file on startup");
+    // Safety: The `CONFIG` static variable is accessed in a thread-safe manner using `INIT.call_once`.
+    // The `INIT` static variable ensures that initialization is performed only once.
+    unsafe {
+        INIT.call_once(|| {
+            // Initialize the global configuration lazily
+            CONFIG.replace(ConfigInner {
+                config: loaded_config,
+                file_path,
+            });
+        });
+    }
 
     (config(), maybe_error)
+}
+
+// Function to reload the configuration from file
+fn reload_config(config_file: PathBuf) {
+    // Safety: This violates the principle that a `static mut` is safe in a synchronized fashion
+    // (e.g., write once and read all), however, the data race is not a big deal in our case.
+    // Accessing the CONFIG while `reload_config()` is executing may read the old config value,
+    // but that's okay since the ConfigReload event will be sent all the receivers and the
+    // receivers will handle that immediately.
+    unsafe {
+        let LoadedConfig {
+            config, file_path, ..
+        } = load_config(Some(config_file));
+
+        CONFIG.replace(ConfigInner { config, file_path });
+    }
 }
 
 /// [`Config`] is a global singleton, which will be explicitly initialized using
@@ -79,19 +100,16 @@ pub fn load_config_on_startup(
 /// from the default config file location, which is useful when the config is read
 /// from the test code.
 pub fn config() -> &'static Config {
-    &CONFIG
-        .get_or_init(|| {
-            let LoadedConfig {
-                config, file_path, ..
-            } = load_config(None);
-
-            ConfigInner { config, file_path }
-        })
-        .config
+    unsafe { &CONFIG.as_ref().expect("Config uninitialized").config }
 }
 
 pub fn config_file() -> &'static PathBuf {
-    &CONFIG.get().expect("Config file uninitialized").file_path
+    unsafe {
+        &CONFIG
+            .as_ref()
+            .expect("Config file uninitialized")
+            .file_path
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]

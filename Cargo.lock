@@ -1505,7 +1505,6 @@ version = "0.1.52"
 dependencies = [
  "dirs 0.1.52",
  "notify",
- "once_cell",
  "parking_lot",
  "paths",
  "serde",
