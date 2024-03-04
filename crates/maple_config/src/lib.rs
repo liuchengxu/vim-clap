@@ -1,21 +1,17 @@
 pub mod monitor;
 
+use arc_swap::ArcSwap;
 use dirs::Dirs;
+use once_cell::sync::OnceCell;
 use paths::AbsPathBuf;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Once;
+use std::sync::Arc;
 use types::RankCriterion;
 
-static mut CONFIG: Option<ConfigInner> = None;
-static INIT: Once = Once::new();
-
-#[derive(Debug)]
-struct ConfigInner {
-    config: Config,
-    file_path: PathBuf,
-}
+static CONFIGURATION: OnceCell<ArcSwap<Config>> = OnceCell::new();
+static CONFIG_FILE: OnceCell<PathBuf> = OnceCell::new();
 
 struct LoadedConfig {
     config: Config,
@@ -56,59 +52,51 @@ fn load_config(specified_config_file: Option<PathBuf>) -> LoadedConfig {
 
 pub fn load_config_on_startup(
     specified_config_file: Option<PathBuf>,
-) -> (&'static Config, Option<toml::de::Error>) {
+) -> (LogConfig, Option<toml::de::Error>) {
     let LoadedConfig {
         config: loaded_config,
         file_path,
         maybe_error,
     } = load_config(specified_config_file);
 
-    // Safety: The `CONFIG` static variable is accessed in a thread-safe manner using `INIT.call_once`.
-    // The `INIT` static variable ensures that initialization is performed only once.
-    unsafe {
-        INIT.call_once(|| {
-            // Initialize the global configuration lazily
-            CONFIG.replace(ConfigInner {
-                config: loaded_config,
-                file_path,
-            });
-        });
-    }
+    CONFIGURATION
+        .set(ArcSwap::new(Arc::new(loaded_config.clone())))
+        .expect("Config must be uninitialized on startup; qed");
 
-    (config(), maybe_error)
+    CONFIG_FILE
+        .set(file_path)
+        .expect("Config must be uninitialized on startup; qed");
+
+    (config().log.clone(), maybe_error)
 }
 
-// Function to reload the configuration from file
+// Reload the configuration from file.
 fn reload_config(config_file: PathBuf) {
-    // Safety: This violates the principle that a `static mut` is safe in a synchronized fashion
-    // (e.g., write once and read all), however, the data race is not a big deal in our case.
-    // Accessing the CONFIG while `reload_config()` is executing may read the old config value,
-    // but that's okay since the ConfigReload event will be sent to all the receivers and the
-    // receivers will handle that immediately anyway.
-    unsafe {
-        let LoadedConfig {
-            config, file_path, ..
-        } = load_config(Some(config_file));
+    let LoadedConfig { config, .. } = load_config(Some(config_file));
 
-        CONFIG.replace(ConfigInner { config, file_path });
-    }
+    CONFIGURATION
+        .get()
+        .expect("Config must be initialized before reloading; qed")
+        .store(Arc::new(config.clone()));
 }
 
 /// [`Config`] is a global singleton, which will be explicitly initialized using
 /// the interface [`load_config_on_startup`] with an optional custom config file
-/// location when the program is started from CLI, otherwise it will be initialized
+/// location when the program is started from CLI. Use [`config_checked`] if the
+/// initialization is possibly not
+/// to be done
 /// from the default config file location, which is useful when the config is read
 /// from the test code.
-pub fn config() -> &'static Config {
-    unsafe { &CONFIG.as_ref().expect("Config uninitialized").config }
+pub fn config() -> arc_swap::Guard<Arc<Config>> {
+    CONFIGURATION.get().expect("Config uninitialized").load()
 }
 
-pub fn config_checked() -> Option<&'static Config> {
-    unsafe { CONFIG.as_ref().map(|c| &c.config) }
+pub fn config_checked() -> Option<arc_swap::Guard<Arc<Config>>> {
+    CONFIGURATION.get().map(|c| c.load())
 }
 
 pub fn config_file() -> &'static PathBuf {
-    unsafe { &CONFIG.as_ref().expect("Config uninitialized").file_path }
+    CONFIG_FILE.get().expect("Config uninitialized")
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

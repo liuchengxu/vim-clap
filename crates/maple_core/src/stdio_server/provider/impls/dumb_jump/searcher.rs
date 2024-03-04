@@ -180,11 +180,13 @@ fn filter_usages(
         git_tracked_only,
         ignore_file_path_pattern,
         ..
-    } = maple_config::config().ignore_config("dumb_jump", cwd);
+    } = maple_config::config()
+        .ignore_config("dumb_jump", cwd)
+        .clone();
 
     let mut addressable_usages = addressable_usages;
 
-    if *git_tracked_only && utils::is_git_repo(cwd) {
+    if git_tracked_only && utils::is_git_repo(cwd) {
         let files = addressable_usages
             .iter()
             .map(|x| x.path.as_str())

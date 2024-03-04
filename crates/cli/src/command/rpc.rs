@@ -11,7 +11,7 @@ pub struct Rpc;
 
 impl Rpc {
     pub async fn run(&self, args: Args) -> Result<()> {
-        let (config, maybe_toml_err) =
+        let (log_config, maybe_toml_err) =
             maple_config::load_config_on_startup(args.config_file.clone());
 
         let maybe_log = if let Some(log_path) = args.log {
@@ -21,7 +21,7 @@ impl Rpc {
         {
             Some(log_path)
         } else {
-            config.log.log_file.as_ref().map(std::path::PathBuf::from)
+            log_config.log_file.as_ref().map(std::path::PathBuf::from)
         };
 
         if let Some(log_path) = maybe_log {
@@ -43,15 +43,14 @@ impl Rpc {
             let file_appender = tracing_appender::rolling::never(directory, file_name);
             let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
-            let max_level = config
-                .log
+            let max_level = log_config
                 .max_level
                 .parse()
                 .unwrap_or(tracing::Level::DEBUG);
 
             let mut env_filter = EnvFilter::from_default_env();
             let mut log_target_err = String::new();
-            let log_target = &config.log.log_target;
+            let log_target = &log_config.log_target;
             if !log_target.is_empty() {
                 // `maple_core::stdio_server=debug,rpc=trace`
                 for target in log_target.split(',') {

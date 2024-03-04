@@ -77,7 +77,11 @@ fn walk_parallel(paths: Vec<PathBuf>, walk_config: WalkConfig, provider_id: &str
     let search_root = paths[0].clone();
 
     let maybe_ignore_config = AbsPathBuf::try_from(search_root)
-        .map(|project_dir| maple_config::config().ignore_config(provider_id, &project_dir))
+        .map(|project_dir| {
+            maple_config::config()
+                .ignore_config(provider_id, &project_dir)
+                .clone()
+        })
         .ok();
 
     // TODO: smarter paths to search the parent directory of path first?
@@ -105,7 +109,7 @@ fn walk_parallel(paths: Vec<PathBuf>, walk_config: WalkConfig, provider_id: &str
                 return false;
             }
 
-            if let Some(ignore_config) = maybe_ignore_config {
+            if let Some(ignore_config) = &maybe_ignore_config {
                 if let Some(file_name) = file_name.to_str() {
                     if ignore_config
                         .ignore_file_name_pattern

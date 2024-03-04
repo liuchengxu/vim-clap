@@ -120,17 +120,23 @@ pub struct Cursorword {
     bufs: HashMap<usize, PathBuf>,
     cursor_highlights: Option<CursorHighlights>,
     ignore_extensions: Vec<String>,
-    ignore_file_names: Vec<&'static str>,
+    ignore_file_names: Vec<String>,
 }
 
 impl Cursorword {
     pub fn new(vim: Vim) -> Self {
-        let (ignore_extensions, ignore_file_names): (Vec<_>, Vec<_>) = maple_config::config()
+        let config = maple_config::config();
+        let (ignore_extensions, ignore_file_names): (Vec<_>, Vec<_>) = config
             .plugin
             .cursorword
             .ignore_files
             .split(',')
             .partition(|s| s.starts_with("*."));
+
+        let ignore_extensions = ignore_extensions
+            .into_iter()
+            .map(|s| s.chars().skip(2).collect::<String>())
+            .collect();
 
         tokio::spawn({
             let vim = vim.clone();
@@ -142,17 +148,12 @@ impl Cursorword {
             }
         });
 
-        let ignore_extensions = ignore_extensions
-            .into_iter()
-            .map(|s| s.chars().skip(2).collect::<String>())
-            .collect();
-
         Self {
             vim,
             bufs: HashMap::new(),
             cursor_highlights: None,
             ignore_extensions,
-            ignore_file_names,
+            ignore_file_names: ignore_file_names.into_iter().map(Into::into).collect(),
         }
     }
 
@@ -259,7 +260,7 @@ impl Cursorword {
         };
 
         if self.ignore_extensions.iter().any(|s| s == file_extension)
-            || self.ignore_file_names.contains(&file_name)
+            || self.ignore_file_names.iter().any(|s| s == file_name)
         {
             return Ok(());
         }
