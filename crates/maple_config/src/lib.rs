@@ -60,7 +60,7 @@ pub fn load_config_on_startup(
     } = load_config(specified_config_file);
 
     CONFIGURATION
-        .set(ArcSwap::new(Arc::new(loaded_config.clone())))
+        .set(ArcSwap::new(Arc::new(loaded_config)))
         .expect("Config must be uninitialized on startup; qed");
 
     CONFIG_FILE
@@ -77,16 +77,13 @@ fn reload_config(config_file: PathBuf) {
     CONFIGURATION
         .get()
         .expect("Config must be initialized before reloading; qed")
-        .store(Arc::new(config.clone()));
+        .store(Arc::new(config));
 }
 
 /// [`Config`] is a global singleton, which will be explicitly initialized using
 /// the interface [`load_config_on_startup`] with an optional custom config file
 /// location when the program is started from CLI. Use [`config_checked`] if the
-/// initialization is possibly not
-/// to be done
-/// from the default config file location, which is useful when the config is read
-/// from the test code.
+/// initialization may not be finished.
 pub fn config() -> arc_swap::Guard<Arc<Config>> {
     CONFIGURATION.get().expect("Config uninitialized").load()
 }

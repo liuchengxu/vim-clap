@@ -13,6 +13,7 @@ use code_tools::language::{
 use handler::LanguageServerMessageHandler;
 use itertools::Itertools;
 use lsp::Url;
+use maple_config::LspPluginConfig;
 use maple_lsp::lsp;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -145,6 +146,7 @@ fn preprocess_text_edits(text_edits: Vec<lsp::TextEdit>) -> Vec<lsp::TextEdit> {
 )]
 pub struct LspPlugin {
     vim: Vim,
+    config: LspPluginConfig,
     /// Active language server clients.
     clients: HashMap<LanguageId, Arc<maple_lsp::Client>>,
     /// Documents being tracked, keyed by buffer number.
@@ -203,7 +205,9 @@ impl LspPlugin {
     ) -> Self {
         const FILETYPE_BLOCKLIST: &[&str] = &["clap_input", "coc-explorer"];
 
-        let mut filetype_blocklist = maple_config::config().plugin.lsp.filetype_blocklist.clone();
+        let config = maple_config::config().plugin.lsp.clone();
+
+        let mut filetype_blocklist = config.filetype_blocklist.clone();
 
         // Inject the default blocklist.
         filetype_blocklist.extend(FILETYPE_BLOCKLIST.iter().map(|s| s.to_string()));
@@ -213,6 +217,7 @@ impl LspPlugin {
 
         Self {
             vim,
+            config,
             clients: HashMap::new(),
             attached_buffers: HashMap::new(),
             current_goto_request: None,
@@ -253,7 +258,8 @@ impl LspPlugin {
 
         tracing::debug!(language_id, bufnr, "buffer attached");
 
-        let Some(language_server_config) = get_language_server_config(language_id) else {
+        let Some(language_server_config) = get_language_server_config(&self.config, language_id)
+        else {
             tracing::warn!("language server config not found for {language_id}");
             return Ok(());
         };
@@ -540,7 +546,7 @@ impl LspPlugin {
                     .await
             }
             Goto::Reference => {
-                let include_declaration = maple_config::config().plugin.lsp.include_declaration;
+                let include_declaration = self.config.include_declaration;
                 client
                     .goto_reference(text_document, position, include_declaration, None)
                     .await
@@ -986,6 +992,11 @@ impl ClapPlugin for LspPlugin {
             }
         }
 
+        Ok(())
+    }
+
+    async fn refresh_config(&mut self) -> Result<(), PluginError> {
+        self.config = maple_config::config().plugin.lsp.clone();
         Ok(())
     }
 }

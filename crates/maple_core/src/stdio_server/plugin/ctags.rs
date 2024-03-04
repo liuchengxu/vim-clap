@@ -4,6 +4,7 @@ use crate::stdio_server::vim::Vim;
 use crate::stdio_server::winbar::update_winbar;
 use crate::tools::ctags::{BufferTag, Scope};
 use icon::IconType;
+use maple_config::WinbarConfig;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -31,6 +32,7 @@ impl<'a> ScopeRef<'a> {
 #[clap_plugin(id = "ctags")]
 pub struct CtagsPlugin {
     vim: Vim,
+    winbar_config: WinbarConfig,
     enable_winbar: Option<bool>,
     last_cursor_tag: Option<BufferTag>,
     buf_tags: HashMap<usize, Vec<BufferTag>>,
@@ -39,9 +41,11 @@ pub struct CtagsPlugin {
 
 impl CtagsPlugin {
     pub fn new(vim: Vim) -> Self {
-        let ctags_config = &maple_config::config().plugin.ctags;
+        let max_file_size = maple_config::config().plugin.ctags.max_file_size;
+        let winbar_config = maple_config::config().winbar.clone();
         Self {
             vim,
+            winbar_config,
             enable_winbar: if !maple_config::config().winbar.enable {
                 Some(false)
             } else {
@@ -49,8 +53,16 @@ impl CtagsPlugin {
             },
             last_cursor_tag: None,
             buf_tags: HashMap::new(),
-            file_size_checker: SizeChecker::new(ctags_config.max_file_size),
+            file_size_checker: SizeChecker::new(max_file_size),
         }
+    }
+
+    async fn update_winbar(
+        &self,
+        bufnr: usize,
+        tag: Option<&BufferTag>,
+    ) -> Result<(), PluginError> {
+        update_winbar(&self.winbar_config, &self.vim, bufnr, tag).await
     }
 
     // Update states if there is no symbol found at current position.
@@ -63,7 +75,7 @@ impl CtagsPlugin {
 
         let should_reset_winbar = self.last_cursor_tag.take().is_some();
         if winbar_enabled && should_reset_winbar {
-            update_winbar(&self.vim, bufnr, None).await?;
+            self.update_winbar(bufnr, None).await?;
 
             // Redraw the statusline to reflect the latest tag.
             self.vim.exec("execute", ["redrawstatus"])?;
@@ -121,7 +133,7 @@ impl CtagsPlugin {
             )?;
 
             if winbar_enabled {
-                update_winbar(&self.vim, bufnr, Some(tag)).await?;
+                self.update_winbar(bufnr, Some(tag)).await?;
             }
 
             // Redraw the statusline to reflect the latest tag.
@@ -172,9 +184,30 @@ impl ClapPlugin for CtagsPlugin {
         Ok(())
     }
 
-    async fn handle_config_reload(&mut self) -> Result<(), PluginError> {
+    async fn refresh_config(&mut self) -> Result<(), PluginError> {
+        let max_file_size = maple_config::config().plugin.ctags.max_file_size;
+
+        if self.file_size_checker.size_limit() != max_file_size {
+            self.file_size_checker = SizeChecker::new(max_file_size);
+        }
+
+        self.enable_winbar = if !maple_config::config().winbar.enable {
+            Some(false)
+        } else {
+            None
+        };
+
         let bufnr = self.vim.bufnr("").await?;
-        update_winbar(&self.vim, bufnr, self.last_cursor_tag.as_ref()).await?;
+
+        self.update_winbar(bufnr, self.last_cursor_tag.as_ref())
+            .await?;
+
+        let winbar_config = maple_config::config().winbar.clone();
+
+        if self.winbar_config != winbar_config {
+            self.winbar_config = winbar_config;
+        }
+
         Ok(())
     }
 }

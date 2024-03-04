@@ -271,7 +271,7 @@ impl PluginSession {
         let res = match plugin_event.clone() {
             PluginEvent::Autocmd(autocmd) => self.plugin.handle_autocmd(autocmd).await,
             PluginEvent::Action(action) => self.plugin.handle_action(action).await,
-            PluginEvent::ConfigReload => self.plugin.handle_config_reload().await,
+            PluginEvent::RefreshConfig => self.plugin.refresh_config().await,
         };
 
         if let Err(err) = res {
@@ -431,10 +431,10 @@ impl ServiceManager {
     }
 
     /// Notify all plugins that the config file has been reloaded.
-    pub fn notify_config_reloaded(&mut self) {
+    pub fn notify_refresh_config(&mut self) {
         self.plugins
             .retain(|_plugin_id, (_subscriptions, plugin_sender)| {
-                plugin_sender.send(PluginEvent::ConfigReload).is_ok()
+                plugin_sender.send(PluginEvent::RefreshConfig).is_ok()
             });
     }
 

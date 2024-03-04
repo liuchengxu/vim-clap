@@ -52,6 +52,10 @@ impl SizeChecker {
         Self(byte_size_limit)
     }
 
+    pub fn size_limit(&self) -> u64 {
+        self.0
+    }
+
     /// Checks if the file size exceeds the specified limit.
     pub fn is_too_large<P: AsRef<Path>>(&self, path: P) -> Result<bool> {
         let file = File::open(path.as_ref())?;

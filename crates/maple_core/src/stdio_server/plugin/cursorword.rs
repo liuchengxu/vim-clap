@@ -2,6 +2,7 @@ use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType, PluginAction};
 use crate::stdio_server::plugin::{ClapPlugin, PluginError};
 use crate::stdio_server::vim::{Vim, VimError};
 use colors_transform::Color;
+use maple_config::CursorWordConfig;
 use matcher::WordMatcher;
 use rgb2ansi256::rgb_to_ansi256;
 use std::collections::HashMap;
@@ -121,14 +122,35 @@ pub struct Cursorword {
     cursor_highlights: Option<CursorHighlights>,
     ignore_extensions: Vec<String>,
     ignore_file_names: Vec<String>,
+    ignore_comment_line: bool,
 }
 
 impl Cursorword {
     pub fn new(vim: Vim) -> Self {
-        let config = maple_config::config();
-        let (ignore_extensions, ignore_file_names): (Vec<_>, Vec<_>) = config
-            .plugin
-            .cursorword
+        let mut plugin = Self {
+            vim: vim.clone(),
+            bufs: HashMap::new(),
+            cursor_highlights: None,
+            ignore_extensions: Vec::new(),
+            ignore_file_names: Vec::new(),
+            ignore_comment_line: false,
+        };
+
+        plugin.apply_config(maple_config::config().plugin.cursorword.clone());
+
+        tokio::spawn({
+            async move {
+                if let Err(err) = define_highlights(&vim).await {
+                    tracing::error!(?err, "[cursorword] Failed to define highlights");
+                }
+            }
+        });
+
+        plugin
+    }
+
+    fn apply_config(&mut self, cursorword_config: CursorWordConfig) {
+        let (ignore_extensions, ignore_file_names): (Vec<_>, Vec<_>) = cursorword_config
             .ignore_files
             .split(',')
             .partition(|s| s.starts_with("*."));
@@ -138,23 +160,9 @@ impl Cursorword {
             .map(|s| s.chars().skip(2).collect::<String>())
             .collect();
 
-        tokio::spawn({
-            let vim = vim.clone();
-
-            async move {
-                if let Err(err) = define_highlights(&vim).await {
-                    tracing::error!(?err, "[cursorword] Failed to define highlights");
-                }
-            }
-        });
-
-        Self {
-            vim,
-            bufs: HashMap::new(),
-            cursor_highlights: None,
-            ignore_extensions,
-            ignore_file_names: ignore_file_names.into_iter().map(Into::into).collect(),
-        }
+        self.ignore_extensions = ignore_extensions;
+        self.ignore_file_names = ignore_file_names.into_iter().map(Into::into).collect();
+        self.ignore_comment_line = cursorword_config.ignore_comment_line;
     }
 
     async fn create_new_highlights(
@@ -176,7 +184,7 @@ impl Cursorword {
         let [_bufnum, curlnum, col, _off] = self.vim.getpos(".").await?;
         let curline = self.vim.getbufoneline(bufnr, curlnum).await?;
 
-        if maple_config::config().plugin.cursorword.ignore_comment_line {
+        if self.ignore_comment_line {
             if let Some(ext) = source_file.extension().and_then(|s| s.to_str()) {
                 if code_tools::language::is_comment(curline.as_str(), ext) {
                     return Ok(None);
@@ -307,6 +315,11 @@ impl ClapPlugin for Cursorword {
             event => return Err(PluginError::UnhandledEvent(event)),
         }
 
+        Ok(())
+    }
+
+    async fn refresh_config(&mut self) -> Result<(), PluginError> {
+        self.apply_config(maple_config::config().plugin.cursorword.clone());
         Ok(())
     }
 }

@@ -278,7 +278,7 @@ impl Backend {
                 maybe_config_reloaded = config_reload_signal_receiver.recv() => {
                     match maybe_config_reloaded {
                         Some(_) => {
-                            self.service_manager.lock().notify_config_reloaded();
+                            self.service_manager.lock().notify_refresh_config();
                         },
                       _ => continue, // channel has closed
                     }

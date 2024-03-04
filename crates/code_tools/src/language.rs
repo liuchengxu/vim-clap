@@ -1,4 +1,4 @@
-use maple_config::LanguageConfig;
+use maple_config::{LanguageConfig, LspPluginConfig};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
@@ -247,6 +247,7 @@ pub fn get_root_markers(language_name: LanguageId) -> Vec<String> {
 }
 
 pub fn get_language_server_config(
+    lsp_config: &LspPluginConfig,
     language_name: LanguageId,
 ) -> Option<maple_lsp::LanguageServerConfig> {
     let config = config_inner();
@@ -259,11 +260,7 @@ pub fn get_language_server_config(
     let mut language_server_config = config.language_servers.get(language_server).cloned()?;
 
     // Update custom language server config specified in config.toml.
-    if let Some(user_config) = maple_config::config()
-        .plugin
-        .lsp
-        .language_server_config(language_server.as_str())
-    {
+    if let Some(user_config) = lsp_config.language_server_config(language_server.as_str()) {
         language_server_config.update_config(user_config);
     }
 

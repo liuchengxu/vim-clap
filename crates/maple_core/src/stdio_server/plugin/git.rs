@@ -411,4 +411,8 @@ impl ClapPlugin for Git {
 
         Ok(())
     }
+
+    async fn refresh_config(&mut self) -> Result<(), PluginError> {
+        Ok(())
+    }
 }

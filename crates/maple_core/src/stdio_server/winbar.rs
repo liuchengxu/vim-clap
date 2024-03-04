@@ -2,7 +2,7 @@ use crate::stdio_server::plugin::PluginError;
 use crate::stdio_server::vim::Vim;
 use crate::tools::ctags::BufferTag;
 use itertools::Itertools;
-use maple_config::FilePathStyle;
+use maple_config::{FilePathStyle, WinbarConfig};
 
 fn shrink_text_to_fit(path: String, max_width: usize) -> String {
     if path.len() < max_width {
@@ -20,6 +20,7 @@ fn shrink_text_to_fit(path: String, max_width: usize) -> String {
 }
 
 pub async fn update_winbar(
+    winbar_config: &WinbarConfig,
     vim: &Vim,
     bufnr: usize,
     tag: Option<&BufferTag>,
@@ -33,7 +34,7 @@ pub async fn update_winbar(
 
     let mut winbar_items = Vec::new();
 
-    let path_style = &maple_config::config().winbar.file_path_style;
+    let path_style = &winbar_config.file_path_style;
 
     match path_style {
         FilePathStyle::OneSegmentPerComponent => {
