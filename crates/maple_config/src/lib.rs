@@ -111,7 +111,7 @@ pub fn config_file() -> &'static PathBuf {
     unsafe { &CONFIG.as_ref().expect("Config uninitialized").file_path }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct MatcherConfig {
     /// Specify how the results are sorted.
@@ -135,7 +135,7 @@ impl MatcherConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct LogConfig {
     /// Specify the log file path.
@@ -168,7 +168,7 @@ impl Default for LogConfig {
 }
 
 /// Cursorword plugin.
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct CursorWordConfig {
     /// Whether to enable this plugin.
@@ -192,14 +192,14 @@ impl Default for CursorWordConfig {
 }
 
 /// Markdown plugin.
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct MarkdownPluginConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub enum FilePathStyle {
     /// Display each component in path in one segment.
@@ -215,7 +215,7 @@ pub enum FilePathStyle {
 }
 
 /// Winbar config. (Neovim only)
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct WinbarConfig {
     /// Whether to enable the winbar.
@@ -235,7 +235,7 @@ impl Default for WinbarConfig {
 }
 
 /// Ctags plugin.
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct CtagsPluginConfig {
     /// Whether to enable this plugin.
@@ -257,7 +257,7 @@ impl Default for CtagsPluginConfig {
 }
 
 /// Git plugin.
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct GitPluginConfig {
     /// Whether to enable this plugin.
@@ -279,7 +279,7 @@ impl Default for GitPluginConfig {
 }
 
 /// Colorizer plugin.
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct ColorizerPluginConfig {
     /// Whether to enable this plugin.
@@ -287,7 +287,7 @@ pub struct ColorizerPluginConfig {
 }
 
 /// Linter plugin.
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct LinterPluginConfig {
     /// Whether to enable this plugin.
@@ -295,7 +295,7 @@ pub struct LinterPluginConfig {
 }
 
 /// Defines a new language config or overrides the default config of a language.
-#[derive(Clone, Serialize, Deserialize, Debug, Default, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct UserLanguageConfig {
     /// c-sharp, rust, tsx
@@ -340,7 +340,7 @@ impl From<UserLanguageConfig> for LanguageConfig {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, Default, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LanguageConfig {
     /// c-sharp, rust, tsx
@@ -398,7 +398,7 @@ impl LanguageConfig {
 }
 
 /// LSP plugin.
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct LspPluginConfig {
     /// Whether to enable this plugin.
@@ -458,7 +458,7 @@ impl LspPluginConfig {
 }
 
 /// Syntax plugin.
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct SyntaxPluginConfig {
     /// Specify the strategy of tree-sitter rendering.
@@ -481,7 +481,7 @@ pub struct SyntaxPluginConfig {
     pub render_strategy: RenderStrategy,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(
     tag = "strategy",
     content = "file-size-limit",
@@ -507,7 +507,7 @@ impl Default for RenderStrategy {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct PluginConfig {
     pub colorizer: ColorizerPluginConfig,
@@ -521,7 +521,7 @@ pub struct PluginConfig {
 }
 
 /// Represents configuration options for ignoring certain files/folders/patterns when searching.
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct IgnoreConfig {
     /// Whether to ignore the comment line when applicable.
@@ -553,7 +553,7 @@ pub struct IgnoreConfig {
     pub ignore_file_path_pattern: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct ProviderConfig {
     /// Whether to share the input history among providers.
@@ -601,7 +601,7 @@ pub struct ProviderConfig {
     pub debounce: HashMap<String, u64>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub enum HighlightEngine {
     SublimeSyntax,
@@ -610,7 +610,7 @@ pub enum HighlightEngine {
     Vim,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
     /// Log configuration.
