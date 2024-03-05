@@ -56,7 +56,7 @@ function! s:handle_no_matches() abort
   endif
 endfunction
 
-function! s:provider_sink() abort
+function! s:local_sink() abort
   " This could be more robust by checking the exact matches count, but this should also be enough.
   if empty(g:clap.display.getcurline())
         \ || g:clap.display.get_lines() == [g:clap_no_matches_msg]
@@ -89,6 +89,20 @@ function! s:provider_sink() abort
     call g:clap.provider.on_exit()
     silent doautocmd <nomodeline> User ClapOnExit
   endtry
+endfunction
+
+function! s:provider_sink() abort
+  if has_key(g:clap.provider._(), 'remote_sink')
+    let g:__clap_remote_sink_triggered = v:true
+    " All the state needed for remote_sink should be shipped in the params as
+    " the provider will be closed immediately after sending the request.
+    call clap#client#notify_provider('remote_sink', { 'line_numbers': clap#selection#line_numbers() })
+    call s:internal_exit()
+    call g:clap.provider.on_exit()
+    silent doautocmd <nomodeline> User ClapOnExit
+  else
+    call s:local_sink()
+  endif
 endfunction
 
 " Similar to s:provider_sink() but using a custom Sink function and without

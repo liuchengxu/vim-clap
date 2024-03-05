@@ -574,7 +574,18 @@ impl LspPlugin {
         self.current_goto_request.take();
 
         if locations.len() == 1 {
-            self.vim.exec("clap#plugin#lsp#jump_to", [&locations[0]])?;
+            let loc = &locations[0];
+            let path = loc.uri.path();
+            let row = loc.range.start.line + 1;
+            let column = loc.range.start.character + 1;
+            self.vim.exec(
+                "clap#plugin#lsp#jump_to",
+                serde_json::json!({
+                  "path": path,
+                  "row": row,
+                  "column": column
+                }),
+            )?;
             return Ok(());
         }
 

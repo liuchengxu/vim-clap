@@ -6,6 +6,7 @@ use crate::stdio_server::input::{
 };
 use crate::stdio_server::plugin::{ActionType, ClapPlugin, PluginId};
 use crate::stdio_server::provider::{ClapProvider, Context, ProviderId};
+use rpc::Params;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -114,10 +115,6 @@ impl ProviderSession {
                                         }
                                     }
                                 }
-                                ProviderEvent::Exit => {
-                                    self.provider.on_terminate(&mut self.ctx, self.provider_session_id);
-                                    break;
-                                }
                                 ProviderEvent::OnMove(_params) => {
                                     on_move_dirty = true;
                                     on_move_timer.as_mut().reset(Instant::now() + on_move_delay);
@@ -130,6 +127,14 @@ impl ProviderSession {
                                     if let Err(err) = self.provider.on_key_event(&mut self.ctx, key_event).await {
                                         tracing::error!(?err, "Failed to process key_event");
                                     }
+                                }
+                                ProviderEvent::Exit => {
+                                    self.handle_exit();
+                                    return;
+                                }
+                                ProviderEvent::RemoteSink(params) => {
+                                    self.handle_remote_sink(params).await;
+                                    return;
                                 }
                             }
                           }
@@ -170,11 +175,6 @@ impl ProviderSession {
                         break;
                     }
                 }
-                ProviderEvent::Exit => {
-                    self.provider
-                        .on_terminate(&mut self.ctx, self.provider_session_id);
-                    break;
-                }
                 ProviderEvent::OnMove(_params) => {
                     if let Err(err) = self.provider.on_move(&mut self.ctx).await {
                         tracing::debug!(?err, "Failed to process OnMove");
@@ -191,8 +191,48 @@ impl ProviderSession {
                         tracing::error!(?err, "Failed to process key_event");
                     }
                 }
+                ProviderEvent::Exit => {
+                    self.handle_exit();
+                    break;
+                }
+                ProviderEvent::RemoteSink(params) => {
+                    self.handle_remote_sink(params).await;
+                    break;
+                }
             }
         }
+    }
+
+    fn handle_exit(&mut self) {
+        self.provider
+            .on_terminate(&mut self.ctx, self.provider_session_id);
+    }
+
+    async fn handle_remote_sink(&mut self, params: Params) {
+        #[derive(serde::Deserialize)]
+        struct RemoteSinkParams {
+            line_numbers: Vec<usize>,
+        }
+
+        let RemoteSinkParams { line_numbers } = match params.parse() {
+            Ok(v) => v,
+            Err(err) => {
+                tracing::error!(
+                    ?err,
+                    "Failed to parse RemoteSink params, provider terminated"
+                );
+                self.provider
+                    .on_terminate(&mut self.ctx, self.provider_session_id);
+                return;
+            }
+        };
+
+        if let Err(err) = self.provider.remote_sink(&mut self.ctx, line_numbers).await {
+            tracing::error!(?err, "Failed to process remote_sink");
+        }
+
+        self.provider
+            .on_terminate(&mut self.ctx, self.provider_session_id);
     }
 
     /// Handles the internal provider event, returns an optional new debounce delay when the
@@ -213,10 +253,7 @@ impl ProviderSession {
                     Ok(()) => {
                         // Try to fulfill the preview window
                         if let Err(err) = self.provider.on_move(&mut self.ctx).await {
-                            tracing::debug!(
-                                ?err,
-                                "Failed to preview after on_initialize completed"
-                            );
+                            tracing::debug!(?err, "Preview after on_initialize failure");
                         }
                     }
                     Err(err) => {
@@ -268,7 +305,7 @@ impl PluginSession {
     }
 
     fn start_event_loop_without_debounce(mut self) {
-        tracing::debug!(id = ?self.plugin.id(), debounce = false, "Starting a new plugin service");
+        tracing::debug!(debounce = false, id = ?self.plugin.id(), "starting a new plugin");
 
         tokio::spawn(async move {
             loop {
@@ -294,7 +331,7 @@ impl PluginSession {
     fn start_event_loop(mut self, event_delay: Duration) {
         let id = self.plugin.id();
 
-        tracing::debug!(?id, debounce = ?event_delay, "Starting a new plugin service");
+        tracing::debug!(debounce = ?event_delay, ?id, "starting a new plugin");
 
         tokio::spawn(async move {
             // If the debounce timer isn't active, it will be set to expire "never",

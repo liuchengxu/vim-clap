@@ -5,7 +5,7 @@ use maple_lsp::lsp;
 use matcher::MatchScope;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
-use printer::Printer;
+use printer::{DisplayLines, Printer};
 use std::borrow::Cow;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -103,7 +103,8 @@ impl LocationItem {
             .ok()?
             .to_string_lossy()
             .to_string();
-        let start_line = location.range.start.line;
+        // location is 0-based.
+        let start_line = location.range.start.line + 1;
         let start_character = location.range.start.character;
         let line = utils::read_line_at(&file_path, start_line as usize)
             .ok()
@@ -247,6 +248,7 @@ enum SourceItems {
 pub struct LspProvider {
     printer: Printer,
     source_items: SourceItems,
+    current_display_lines: DisplayLines,
 }
 
 impl LspProvider {
@@ -295,12 +297,11 @@ impl LspProvider {
         Self {
             printer,
             source_items,
+            current_display_lines: Default::default(),
         }
     }
 
     fn process_query(&mut self, query: String, ctx: &Context) -> Result<()> {
-        let matcher = ctx.matcher_builder().build(Query::from(&query));
-
         let items = match &self.source_items {
             SourceItems::Document((_uri, ref items)) => items,
             SourceItems::Workspace(ref items) => items,
@@ -310,7 +311,7 @@ impl LspProvider {
             }
         };
 
-        let processed = items.len();
+        let matcher = ctx.matcher_builder().build(Query::from(&query));
 
         let mut ranked = filter::par_filter_items(items, &matcher);
 
@@ -319,19 +320,18 @@ impl LspProvider {
         // Only display the top 200 items.
         ranked.truncate(200);
 
-        let mut display_lines = self.printer.to_display_lines(ranked);
-
-        // The indices are empty on the empty query.
-        display_lines.indices.retain(|i| !i.is_empty());
+        let display_lines = self.printer.to_display_lines(ranked);
 
         let update_info = printer::PickerUpdateInfo {
             matched,
-            processed,
+            processed: items.len(),
             display_lines,
             ..Default::default()
         };
 
-        ctx.vim.exec("clap#picker#update", update_info)?;
+        ctx.vim.exec("clap#picker#update", &update_info)?;
+
+        self.current_display_lines = update_info.display_lines;
 
         Ok(())
     }
@@ -384,7 +384,7 @@ impl ClapProvider for LspProvider {
             }
             SourceItems::Locations(_) => {
                 let curline = ctx.vim.display_getcurline().await?;
-                let Some((fpath, lnum, _col, _cache_line)) =
+                let Some((fpath, line_number, _col, _cache_line)) =
                     pattern::extract_grep_position(&curline)
                 else {
                     return Ok(());
@@ -392,12 +392,34 @@ impl ClapProvider for LspProvider {
 
                 Some(PreviewTarget::LineInFile {
                     path: fpath.into(),
-                    line_number: lnum + 1,
+                    line_number,
                 })
             }
             SourceItems::Empty => return Ok(()),
         };
         ctx.update_preview(preview_target).await
+    }
+
+    async fn remote_sink(&mut self, ctx: &mut Context, line_numbers: Vec<usize>) -> Result<()> {
+        tracing::debug!("=============== line_numbers: {line_numbers:?}");
+        if line_numbers.len() == 1 {
+            let line = self.current_display_lines.get_line(line_numbers[0]);
+            let Some((fpath, line_number, column, _cache_line)) =
+                pattern::extract_grep_position(line)
+            else {
+                return Ok(());
+            };
+            ctx.vim.exec(
+                "clap#plugin#lsp#jump_to",
+                serde_json::json!({
+                  "path": &fpath[4..],
+                  "row": line_number,
+                  "column": column
+                }),
+            )?;
+        } else {
+        }
+        Ok(())
     }
 
     fn on_terminate(&mut self, ctx: &mut Context, session_id: u64) {

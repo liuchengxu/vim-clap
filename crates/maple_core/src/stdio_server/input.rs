@@ -40,6 +40,7 @@ impl PluginEvent {
 pub enum ProviderEvent {
     OnMove(Params),
     OnTyped(Params),
+    RemoteSink(Params),
     Exit,
     Key(KeyEvent),
     /// Signal fired internally.
@@ -112,6 +113,9 @@ impl Event {
         match notification.method.as_str() {
             "new_provider" => Ok(Self::NewProvider(notification.params)),
             "exit_provider" => Ok(Self::ProviderWorker(ProviderEvent::Exit)),
+            "remote_sink" => Ok(Self::ProviderWorker(ProviderEvent::RemoteSink(
+                notification.params,
+            ))),
             "on_move" => Ok(Self::ProviderWorker(ProviderEvent::OnMove(
                 notification.params,
             ))),

@@ -78,6 +78,13 @@ impl DisplayLines {
         }
     }
 
+    // line_number is 1-based.
+    pub fn get_line(&self, line_number: usize) -> &str {
+        self.truncated_map
+            .get(&line_number)
+            .unwrap_or_else(|| &self.lines[line_number - 1])
+    }
+
     pub fn print_json(&self, total: usize) {
         let Self {
             lines,
@@ -211,7 +218,13 @@ impl Printer {
             Default::default()
         };
 
-        convert_truncated_matched_items_to_display_lines(matched_items, *icon, truncated_map)
+        let mut display_lines =
+            convert_truncated_matched_items_to_display_lines(matched_items, *icon, truncated_map);
+
+        // The indices are empty on the empty query.
+        display_lines.indices.retain(|i| !i.is_empty());
+
+        display_lines
     }
 }
 

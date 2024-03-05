@@ -157,7 +157,10 @@ endfunction
 
 function! clap#_exit_provider() abort
   call g:clap.provider.jobstop()
-  call clap#maple#notify_exit_provider()
+  " The provider backend will be terminated automatically if remote_sink is invoked.
+  if !get(g:, '__clap_remote_sink_triggered', v:false)
+    call clap#maple#notify_exit_provider()
+  endif
 
   noautocmd call g:clap.close_win()
   call g:clap.preview.clear()
@@ -209,8 +212,10 @@ endfunction
 
 function! s:validate_provider(registration_info) abort
   " Every provider should specify the sink option.
-  if !has_key(a:registration_info, 'sink') && !has_key(get(a:registration_info, 'mappings', {}), "<CR>")
-    call clap#helper#echo_error('A valid provider must provide either sink or <CR> mapping')
+  if !has_key(a:registration_info, 'sink')
+        \ && !has_key(a:registration_info, 'remote_sink')
+        \ && !has_key(get(a:registration_info, 'mappings', {}), "<CR>")
+    call clap#helper#echo_error('A valid provider must provide either sink/remote_sink or <CR> mapping')
     return v:false
   endif
   if has_key(a:registration_info, 'source')

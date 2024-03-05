@@ -827,6 +827,15 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
 
     async fn on_typed(&mut self, ctx: &mut Context) -> ProviderResult<()>;
 
+    /// Handle the sink on the Rust side instead of the Vim side.
+    async fn remote_sink(
+        &mut self,
+        _ctx: &mut Context,
+        _line_numbers: Vec<usize>,
+    ) -> ProviderResult<()> {
+        Ok(())
+    }
+
     /// On receiving the Terminate event.
     ///
     /// Sets the running signal to false, in case of the forerunner thread is still working.
