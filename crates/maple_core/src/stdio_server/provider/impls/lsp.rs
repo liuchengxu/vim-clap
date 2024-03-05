@@ -353,9 +353,11 @@ impl ClapProvider for LspProvider {
             return Ok(());
         }
         ctx.preview_manager.reset_scroll();
+
+        let line_number = ctx.vim.display_getcurlnum().await?;
+        let curline = self.current_display_lines.get_line(line_number);
         let preview_target = match &self.source_items {
             SourceItems::Document((uri, _)) => {
-                let curline = ctx.vim.display_getcurline().await?;
                 let Some(line_number) = curline
                     .split_whitespace()
                     .last()
@@ -370,7 +372,6 @@ impl ClapProvider for LspProvider {
                 })
             }
             SourceItems::Workspace(_) => {
-                let curline = ctx.vim.display_getcurline().await?;
                 let Some(path_and_lnum) = curline.split_whitespace().last() else {
                     return Ok(());
                 };
@@ -383,7 +384,6 @@ impl ClapProvider for LspProvider {
                 })
             }
             SourceItems::Locations(_) => {
-                let curline = ctx.vim.display_getcurline().await?;
                 let Some((fpath, line_number, _col, _cache_line)) =
                     pattern::extract_grep_position(&curline)
                 else {
@@ -401,7 +401,6 @@ impl ClapProvider for LspProvider {
     }
 
     async fn remote_sink(&mut self, ctx: &mut Context, line_numbers: Vec<usize>) -> Result<()> {
-        tracing::debug!("=============== line_numbers: {line_numbers:?}");
         if line_numbers.len() == 1 {
             let line = self.current_display_lines.get_line(line_numbers[0]);
             let Some((fpath, line_number, column, _cache_line)) =

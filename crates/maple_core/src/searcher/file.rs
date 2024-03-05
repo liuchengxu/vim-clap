@@ -155,6 +155,6 @@ pub async fn search(
         total_processed,
         total_matched,
         ?query,
-        "Searching is complete in {elapsed:?}ms"
+        "Searching completed in {elapsed:?}ms"
     );
 }

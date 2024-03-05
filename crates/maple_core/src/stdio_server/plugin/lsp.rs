@@ -201,7 +201,7 @@ impl LspPlugin {
         vim: Vim,
         diagnostics_worker_msg_sender: UnboundedSender<DiagnosticsWorkerMessage>,
     ) -> Self {
-        const FILETYPE_BLOCKLIST: &[&str] = &["clap_input", "coc-explorer"];
+        const FILETYPE_BLOCKLIST: &[&str] = &["coc-explorer"];
 
         let mut filetype_blocklist = maple_config::config().plugin.lsp.filetype_blocklist.clone();
 
@@ -230,7 +230,11 @@ impl LspPlugin {
 
         let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
 
-        if filetype.is_empty() || self.filetype_blocklist.contains(&filetype) {
+        if filetype.is_empty()
+            || self.filetype_blocklist.contains(&filetype)
+            // Ignore all clap related filetypes.
+            || filetype.starts_with("clap_")
+        {
             return Ok(());
         }
 
@@ -910,6 +914,7 @@ impl ClapPlugin for LspPlugin {
                 self.text_document_did_save(bufnr).await?;
             }
             BufDelete => {
+                tracing::debug!("==================== Recv BufDelete, detaching buffer");
                 self.buffer_detach([bufnr])?;
             }
             CursorMoved => {

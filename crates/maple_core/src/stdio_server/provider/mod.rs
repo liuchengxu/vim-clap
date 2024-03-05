@@ -135,6 +135,7 @@ pub struct ProviderEnvironment {
 }
 
 impl ProviderEnvironment {
+    /// Returns `true` if the scrollbar should be added to the preview window.
     pub fn should_add_scrollbar(&self, total: usize) -> bool {
         self.is_nvim && self.preview_direction.is_left_right() && total > 0
     }
@@ -320,9 +321,9 @@ impl Context {
 
         let display_winwidth = vim.winwidth(display.winid).await?;
         let display_winheight = vim.winheight(display.winid).await?;
-        let is_nvim: usize = vim.call("has", ["nvim"]).await?;
-        let has_nvim_09: usize = vim.call("has", ["nvim-0.9"]).await?;
-        let preview_enabled: usize = vim.bare_call("clap#preview#is_enabled").await?;
+        let is_nvim = vim.call::<usize>("has", ["nvim"]).await? == 1;
+        let has_nvim_09 = vim.call::<usize>("has", ["nvim-0.9"]).await? == 1;
+        let preview_enabled = vim.bare_call::<usize>("clap#preview#is_enabled").await? == 1;
         let preview_direction = {
             let preview_direction: String = vim.bare_call("clap#preview#direction").await?;
             match preview_direction.to_uppercase().as_str() {
@@ -334,22 +335,21 @@ impl Context {
         let popup_border: String = vim.eval("g:clap_popup_border").await?;
 
         // Sign column occupies 2 spaces.
-        let display_line_width = display_winwidth - 2;
-        let display_line_width = match provider_id.as_str() {
-            "grep" => display_line_width - 2,
-            _ => display_line_width,
-        };
+        let mut display_line_width = display_winwidth - 2;
+        if provider_id.as_str() == "grep" {
+            display_line_width -= 2;
+        }
 
         let env = ProviderEnvironment {
-            is_nvim: is_nvim == 1,
-            has_nvim_09: has_nvim_09 == 1,
+            is_nvim,
+            has_nvim_09,
             provider_id,
             start,
             input,
             display,
             no_cache,
             source_is_list,
-            preview_enabled: preview_enabled == 1,
+            preview_enabled,
             preview_border_enabled: popup_border != "nil",
             preview_direction,
             start_buffer_path,
@@ -381,20 +381,6 @@ impl Context {
             provider_event_sender: OnceCell::new(),
         })
     }
-
-    // let root_markers = vec![".root".to_string(), ".git".to_string(), ".git/".to_string()];
-    // let cwd = if start_buffer_path.exists() {
-    // match paths::find_project_root(&start_buffer_path, &root_markers) {
-    // Some(project_root) => project_root
-    // .to_path_buf()
-    // .try_into()
-    // .expect("project_root must be absolute path; qed"),
-    // None => vim.bare_call("getcwd").await?,
-    // }
-    // } else {
-    // vim.bare_call("getcwd").await?
-    // };
-    // vim.set_var("g:__clap_provider_cwd", serde_json::json!([&cwd]))?;
 
     pub fn provider_id(&self) -> &str {
         self.env.provider_id.as_str()
