@@ -102,6 +102,9 @@ enable = true
 This plugin aims to implement the language server protocol. It's still pretty experimental and only a handful
 features are supported at present.
 
+- Goto reference/definition/declaration/typeDefinition/implementation/reference
+- Open documentSymbols/workspaceSymbols
+
 ## markdown
 
 ```toml

@@ -298,7 +298,7 @@ impl Syntax {
             );
 
             // Keep the changed highlights only.
-            let diff_highlights = new_vim_highlights
+            let highlights_diff = new_vim_highlights
                 .iter()
                 .filter(|item| changed_lines.contains(&item.0))
                 .collect::<Vec<_>>();
@@ -313,7 +313,7 @@ impl Syntax {
 
             self.vim.exec(
                 "clap#highlighter#add_ts_highlights",
-                (bufnr, changed_ranges, diff_highlights),
+                (bufnr, changed_ranges, highlights_diff),
             )?;
         } else {
             self.vim.exec(

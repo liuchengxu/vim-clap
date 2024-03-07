@@ -442,6 +442,8 @@ impl ClapProvider for LspProvider {
                 }),
             )?;
         } else {
+            ctx.vim
+                .echo_message("unimplemented remote sink for multiple selections")?;
         }
         Ok(())
     }
