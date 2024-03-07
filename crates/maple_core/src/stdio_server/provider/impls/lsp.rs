@@ -93,14 +93,13 @@ fn to_kind_str(kind: lsp::SymbolKind) -> &'static str {
 
 #[derive(Debug)]
 pub struct LocationItem {
-    pub index: usize,
     pub file_path: String,
     pub output_text: String,
     pub location: lsp::Location,
 }
 
 impl LocationItem {
-    fn from_location(index: usize, location: lsp::Location, project_root: &str) -> Option<Self> {
+    fn from_location(location: lsp::Location, project_root: &str) -> Option<Self> {
         let file_path = location
             .uri
             .to_file_path()
@@ -121,7 +120,6 @@ impl LocationItem {
         let output_text = format!("{path}:{start_line}:{start_character}:{line}");
 
         Some(Self {
-            index,
             file_path,
             output_text,
             location,
@@ -290,9 +288,8 @@ impl LspProvider {
                 let root = ctx.cwd.as_str();
                 let items = locations
                     .iter()
-                    .enumerate()
-                    .filter_map(|(index, location)| {
-                        LocationItem::from_location(index, location.clone(), root)
+                    .filter_map(|location| {
+                        LocationItem::from_location(location.clone(), root)
                             .map(|item| Arc::new(item) as Arc<dyn ClapItem>)
                     })
                     .collect::<Vec<_>>();
