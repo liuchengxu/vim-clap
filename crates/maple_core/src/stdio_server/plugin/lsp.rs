@@ -510,12 +510,16 @@ impl LspPlugin {
             _ => self.vim.get_cursor_pos().await?,
         };
 
-        let document = self.get_buffer(bufnr)?;
+        let Ok(document) = self.get_buffer(bufnr) else {
+            self.vim.echo_message("LSP service not available")?;
+            return Ok(());
+        };
 
-        let client = self
-            .clients
-            .get(&document.language_id)
-            .ok_or(Error::ClientNotFound)?;
+        let Some(client) = self.clients.get(&document.language_id) else {
+            self.vim
+                .echo_message("Language server not found for this buffer")?;
+            return Ok(());
+        };
 
         let position = lsp::Position {
             line: row as u32 - 1,
@@ -820,7 +824,11 @@ impl LspPlugin {
         }
 
         let bufnr = self.vim.bufnr("").await?;
-        let buffer = self.get_buffer(bufnr)?;
+
+        let Ok(buffer) = self.get_buffer(bufnr) else {
+            self.vim.echo_message("LSP service not available")?;
+            return Ok(());
+        };
 
         let client = self
             .clients
@@ -870,7 +878,10 @@ impl LspPlugin {
         }
 
         let bufnr = self.vim.bufnr("").await?;
-        let buffer = self.get_buffer(bufnr)?;
+        let Ok(buffer) = self.get_buffer(bufnr) else {
+            self.vim.echo_message("LSP service not available")?;
+            return Ok(());
+        };
 
         let client = self
             .clients
@@ -918,7 +929,6 @@ impl ClapPlugin for LspPlugin {
                 self.text_document_did_save(bufnr).await?;
             }
             BufDelete => {
-                tracing::debug!("==================== Recv BufDelete, detaching buffer");
                 self.buffer_detach([bufnr])?;
             }
             CursorMoved => {
