@@ -32,6 +32,8 @@ pub use self::impls::{create_provider, lsp};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProviderError {
+    #[error("can not find the item at line_number {line_number}")]
+    PreviewItemNotFound { line_number: usize },
     #[error("can not scroll the preview as preview target does not exist")]
     PreviewTargetNotFound,
     #[error("preview scroll is only available for the file preview target")]
