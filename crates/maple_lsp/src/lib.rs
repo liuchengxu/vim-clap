@@ -607,6 +607,10 @@ impl Client {
         Ok(client)
     }
 
+    pub fn name(&self) -> &str {
+        &self._name
+    }
+
     pub fn try_add_workspace(&self, root_uri: Option<lsp::Url>) -> Result<(), Error> {
         let workspace_exists = root_uri
             .clone()
