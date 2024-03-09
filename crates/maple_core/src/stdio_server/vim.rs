@@ -1,7 +1,6 @@
 use crate::stdio_server::provider::ProviderId;
 use once_cell::sync::{Lazy, OnceCell};
 use paths::AbsPathBuf;
-use printer::DisplayLines;
 use rpc::vim::RpcClient;
 use rpc::Id;
 use serde::de::DeserializeOwned;
@@ -11,9 +10,7 @@ use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::ops::Deref;
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use types::SearchProgressUpdate;
 
 static FILENAME_SYNTAX_MAP: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     HashMap::from([
@@ -164,66 +161,6 @@ impl PreviewConfig {
                 .unwrap_or_else(|| map.get("*").copied().unwrap_or(Self::DEFAULT_PREVIEW_SIZE))
                 as usize,
         }
-    }
-}
-
-pub struct SearchProgressor {
-    vim: Vim,
-    stopped: Arc<AtomicBool>,
-}
-
-impl SearchProgressor {
-    pub fn new(vim: Vim, stopped: Arc<AtomicBool>) -> Self {
-        Self { vim, stopped }
-    }
-}
-
-impl SearchProgressUpdate<DisplayLines> for SearchProgressor {
-    fn quick_update(&self, total_matched: usize, total_processed: usize) {
-        if self.stopped.load(Ordering::Relaxed) {
-            return;
-        }
-
-        let _ = self.vim.exec(
-            "clap#picker#process_progress",
-            [total_matched, total_processed],
-        );
-    }
-
-    fn update_all(
-        &self,
-        display_lines: &DisplayLines,
-        total_matched: usize,
-        total_processed: usize,
-    ) {
-        if self.stopped.load(Ordering::Relaxed) {
-            return;
-        }
-        let update_info = printer::PickerUpdateInfoRef {
-            matched: total_matched,
-            processed: total_processed,
-            display_lines,
-            display_syntax: None,
-        };
-        let _ = self.vim.exec("clap#picker#update", update_info);
-    }
-
-    fn on_finished(
-        &self,
-        display_lines: DisplayLines,
-        total_matched: usize,
-        total_processed: usize,
-    ) {
-        if self.stopped.load(Ordering::Relaxed) {
-            return;
-        }
-        let update_info = printer::PickerUpdateInfo {
-            matched: total_matched,
-            processed: total_processed,
-            display_lines,
-            ..Default::default()
-        };
-        let _ = self.vim.exec("clap#picker#update", update_info);
     }
 }
 
