@@ -48,7 +48,7 @@ bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
 cargo_metadata = "0.18.0"
 chrono = { version = "0.4", features = ["serde"] }
 chrono-humanize = "0.2.3"
-clap = { version = "4.2", features = ["derive"] }
+clap = { version = "4.5", features = ["derive"] }
 colors-transform = "0.2.11"
 criterion = "0.5"
 directories = "4.0"
