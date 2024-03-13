@@ -116,7 +116,7 @@ impl BufferDiagnostics {
         }
     }
 
-    async fn display_diagnostics_at_cursor(&self, vim: &Vim) -> VimResult<()> {
+    async fn display_diagnostics_under_cursor(&self, vim: &Vim) -> VimResult<()> {
         let lnum = vim.line(".").await?;
         let col = vim.col(".").await?;
 
@@ -210,7 +210,9 @@ fn update_buffer_diagnostics(
         let vim = vim.clone();
 
         async move {
-            let _ = buffer_diagnostics.display_diagnostics_at_cursor(&vim).await;
+            let _ = buffer_diagnostics
+                .display_diagnostics_under_cursor(&vim)
+                .await;
         }
     });
 
@@ -261,8 +263,8 @@ fn convert_lsp_diagnostic_to_diagnostic(lsp_diag: maple_lsp::lsp::Diagnostic) ->
 
 pub enum WorkerMessage {
     ShowDiagnostics(usize),
-    ShowDiagnosticsAtCursor(usize),
-    ShowDiagnosticsAtCursorInFloatWin(usize),
+    ShowDiagnosticsUnderCursor(usize),
+    ShowDiagnosticsUnderCursorInFloatWin(usize),
     NavigateDiagnostics((usize, DiagnosticKind, Direction)),
     ResetBufferDiagnostics(usize),
     LinterDiagnostics((usize, LinterDiagnostics)),
@@ -292,7 +294,7 @@ impl BufferDiagnosticsWorker {
                             .echo_message(format!("diagnostics not found for buffer {bufnr}"))?;
                     }
                 }
-                WorkerMessage::ShowDiagnosticsAtCursor(bufnr) => {
+                WorkerMessage::ShowDiagnosticsUnderCursor(bufnr) => {
                     if let Some(diagnostics) = self.buffer_diagnostics.get(&bufnr) {
                         let Ok(lnum) = self.vim.line(".").await else {
                             continue;
@@ -320,9 +322,11 @@ impl BufferDiagnosticsWorker {
                         }
                     }
                 }
-                WorkerMessage::ShowDiagnosticsAtCursorInFloatWin(bufnr) => {
+                WorkerMessage::ShowDiagnosticsUnderCursorInFloatWin(bufnr) => {
                     if let Some(diagnostics) = self.buffer_diagnostics.get(&bufnr) {
-                        diagnostics.display_diagnostics_at_cursor(&self.vim).await?;
+                        diagnostics
+                            .display_diagnostics_under_cursor(&self.vim)
+                            .await?;
                     }
                 }
                 WorkerMessage::ResetBufferDiagnostics(bufnr) => {

@@ -161,6 +161,7 @@ impl FromStr for Language {
         let language = match s.to_ascii_lowercase().as_str() {
             "bash" => Self::Bash,
             "c" => Self::C,
+            "cpp" => Self::Cpp,
             "dockerfile" => Self::Dockerfile,
             "go" => Self::Go,
             "javascript" => Self::Javascript,
