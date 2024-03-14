@@ -52,13 +52,8 @@ pub struct ShellCheck;
 impl Linter for ShellCheck {
     const EXE: &'static str = "shellcheck";
 
-    fn linter_command(
-        base_cmd: tokio::process::Command,
-        source_file: &Path,
-    ) -> tokio::process::Command {
-        let mut cmd = base_cmd;
+    fn add_args(cmd: &mut tokio::process::Command, source_file: &Path) {
         cmd.arg("--format=json").arg(source_file);
-        cmd
     }
 
     async fn lint_file(

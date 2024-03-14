@@ -69,7 +69,7 @@ impl ClapPlugin for Diagnostics {
                 let bufnr = self.vim.bufnr("").await?;
                 let _ = self
                     .diagnostics_worker_msg_sender
-                    .send(WorkerMessage::ShowDiagnosticsAtCursor(bufnr));
+                    .send(WorkerMessage::ShowDiagnosticsUnderCursor(bufnr));
             }
             DiagnosticsAction::FirstError => {
                 self.navigate_diagnostics(Error, First).await?;

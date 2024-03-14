@@ -14,7 +14,7 @@ use matcher::{Bonus, MatchScope, Matcher, MatcherBuilder};
 use once_cell::sync::OnceCell;
 use parking_lot::RwLock;
 use paths::AbsPathBuf;
-use printer::Printer;
+use printer::{DisplayLines, Printer};
 use rpc::Params;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -25,13 +25,15 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
-use types::{ClapItem, MatchedItem};
+use types::{ClapItem, MatchedItem, SearchProgressUpdate};
 
 pub use self::impls::filer::read_dir_entries;
 pub use self::impls::{create_provider, lsp};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProviderError {
+    #[error("can not find the item at line_number {line_number}")]
+    PreviewItemNotFound { line_number: usize },
     #[error("can not scroll the preview as preview target does not exist")]
     PreviewTargetNotFound,
     #[error("preview scroll is only available for the file preview target")]
@@ -135,6 +137,7 @@ pub struct ProviderEnvironment {
 }
 
 impl ProviderEnvironment {
+    /// Returns `true` if the scrollbar should be added to the preview window.
     pub fn should_add_scrollbar(&self, total: usize) -> bool {
         self.is_nvim && self.preview_direction.is_left_right() && total > 0
     }
@@ -265,6 +268,66 @@ impl PreviewManager {
     }
 }
 
+pub struct SearchProgressor {
+    vim: Vim,
+    stopped: Arc<AtomicBool>,
+}
+
+impl SearchProgressor {
+    pub fn new(vim: Vim, stopped: Arc<AtomicBool>) -> Self {
+        Self { vim, stopped }
+    }
+}
+
+impl SearchProgressUpdate<DisplayLines> for SearchProgressor {
+    fn quick_update(&self, total_matched: usize, total_processed: usize) {
+        if self.stopped.load(Ordering::Relaxed) {
+            return;
+        }
+
+        let _ = self.vim.exec(
+            "clap#picker#process_progress",
+            [total_matched, total_processed],
+        );
+    }
+
+    fn update_all(
+        &self,
+        display_lines: &DisplayLines,
+        total_matched: usize,
+        total_processed: usize,
+    ) {
+        if self.stopped.load(Ordering::Relaxed) {
+            return;
+        }
+        let update_info = printer::PickerUpdateInfoRef {
+            matched: total_matched,
+            processed: total_processed,
+            display_lines,
+            display_syntax: None,
+        };
+        let _ = self.vim.exec("clap#picker#update", update_info);
+    }
+
+    fn on_finished(
+        &self,
+        display_lines: DisplayLines,
+        total_matched: usize,
+        total_processed: usize,
+    ) {
+        if self.stopped.load(Ordering::Relaxed) {
+            return;
+        }
+        let update_info = printer::PickerUpdateInfo {
+            matched: total_matched,
+            processed: total_processed,
+            display_lines,
+            ..Default::default()
+        };
+        let _ = self.vim.exec("clap#picker#update", update_info);
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Context {
     pub cwd: AbsPathBuf,
@@ -320,9 +383,9 @@ impl Context {
 
         let display_winwidth = vim.winwidth(display.winid).await?;
         let display_winheight = vim.winheight(display.winid).await?;
-        let is_nvim: usize = vim.call("has", ["nvim"]).await?;
-        let has_nvim_09: usize = vim.call("has", ["nvim-0.9"]).await?;
-        let preview_enabled: usize = vim.bare_call("clap#preview#is_enabled").await?;
+        let is_nvim = vim.call::<usize>("has", ["nvim"]).await? == 1;
+        let has_nvim_09 = vim.call::<usize>("has", ["nvim-0.9"]).await? == 1;
+        let preview_enabled = vim.bare_call::<usize>("clap#preview#is_enabled").await? == 1;
         let preview_direction = {
             let preview_direction: String = vim.bare_call("clap#preview#direction").await?;
             match preview_direction.to_uppercase().as_str() {
@@ -334,22 +397,21 @@ impl Context {
         let popup_border: String = vim.eval("g:clap_popup_border").await?;
 
         // Sign column occupies 2 spaces.
-        let display_line_width = display_winwidth - 2;
-        let display_line_width = match provider_id.as_str() {
-            "grep" => display_line_width - 2,
-            _ => display_line_width,
-        };
+        let mut display_line_width = display_winwidth - 2;
+        if provider_id.as_str() == "grep" {
+            display_line_width -= 2;
+        }
 
         let env = ProviderEnvironment {
-            is_nvim: is_nvim == 1,
-            has_nvim_09: has_nvim_09 == 1,
+            is_nvim,
+            has_nvim_09,
             provider_id,
             start,
             input,
             display,
             no_cache,
             source_is_list,
-            preview_enabled: preview_enabled == 1,
+            preview_enabled,
             preview_border_enabled: popup_border != "nil",
             preview_direction,
             start_buffer_path,
@@ -381,20 +443,6 @@ impl Context {
             provider_event_sender: OnceCell::new(),
         })
     }
-
-    // let root_markers = vec![".root".to_string(), ".git".to_string(), ".git/".to_string()];
-    // let cwd = if start_buffer_path.exists() {
-    // match paths::find_project_root(&start_buffer_path, &root_markers) {
-    // Some(project_root) => project_root
-    // .to_path_buf()
-    // .try_into()
-    // .expect("project_root must be absolute path; qed"),
-    // None => vim.bare_call("getcwd").await?,
-    // }
-    // } else {
-    // vim.bare_call("getcwd").await?
-    // };
-    // vim.set_var("g:__clap_provider_cwd", serde_json::json!([&cwd]))?;
 
     pub fn provider_id(&self) -> &str {
         self.env.provider_id.as_str()
@@ -826,6 +874,15 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
     }
 
     async fn on_typed(&mut self, ctx: &mut Context) -> ProviderResult<()>;
+
+    /// Handle the sink on the Rust side instead of the Vim side.
+    async fn remote_sink(
+        &mut self,
+        _ctx: &mut Context,
+        _line_numbers: Vec<usize>,
+    ) -> ProviderResult<()> {
+        Ok(())
+    }
 
     /// On receiving the Terminate event.
     ///

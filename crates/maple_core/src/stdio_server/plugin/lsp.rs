@@ -59,6 +59,7 @@ struct FileLocation {
 
 #[derive(Debug, Clone)]
 struct GotoRequest {
+    ty: Goto,
     bufnr: usize,
     language_id: LanguageId,
     cursor_pos: (usize, usize),
@@ -147,16 +148,17 @@ pub struct LspPlugin {
     vim: Vim,
     /// Active language server clients.
     clients: HashMap<LanguageId, Arc<maple_lsp::Client>>,
-    /// Documents being tracked, keyed by buffer number.
+    /// Track the documents with LSP function enabled, keyed by the buffer number.
     attached_buffers: HashMap<usize, Buffer>,
-    /// Skip the buffer if its filetype is in this list.
+    /// Ignore the buffer if its filetype is in this list.
     filetype_blocklist: Vec<String>,
-    /// Goto request in fly.
-    current_goto_request: Option<GotoRequest>,
+    /// Global goto request in fly.
+    goto_request_inflight: Option<GotoRequest>,
     diagnostics_worker_msg_sender: UnboundedSender<DiagnosticsWorkerMessage>,
     toggle: Toggle,
 }
 
+// Vim change.
 #[allow(unused)]
 #[derive(Debug, serde::Deserialize)]
 struct Change {
@@ -201,7 +203,7 @@ impl LspPlugin {
         vim: Vim,
         diagnostics_worker_msg_sender: UnboundedSender<DiagnosticsWorkerMessage>,
     ) -> Self {
-        const FILETYPE_BLOCKLIST: &[&str] = &["clap_input", "coc-explorer"];
+        const FILETYPE_BLOCKLIST: &[&str] = &["coc-explorer"];
 
         let mut filetype_blocklist = maple_config::config().plugin.lsp.filetype_blocklist.clone();
 
@@ -215,7 +217,7 @@ impl LspPlugin {
             vim,
             clients: HashMap::new(),
             attached_buffers: HashMap::new(),
-            current_goto_request: None,
+            goto_request_inflight: None,
             diagnostics_worker_msg_sender,
             filetype_blocklist,
             toggle: Toggle::On,
@@ -230,7 +232,11 @@ impl LspPlugin {
 
         let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
 
-        if filetype.is_empty() || self.filetype_blocklist.contains(&filetype) {
+        if filetype.is_empty()
+            || self.filetype_blocklist.contains(&filetype)
+            // Ignore all clap related filetypes.
+            || filetype.starts_with("clap_")
+        {
             return Ok(());
         }
 
@@ -251,12 +257,12 @@ impl LspPlugin {
             },
         };
 
-        tracing::debug!(language_id, bufnr, "buffer attached");
-
         let Some(language_server_config) = get_language_server_config(language_id) else {
-            tracing::warn!("language server config not found for {language_id}");
+            tracing::warn!(language_id, "language server config not found");
             return Ok(());
         };
+
+        tracing::debug!(language_id, bufnr, "buffer attached");
 
         let bufname = self.vim.bufname(bufnr).await?;
         let buffer = Buffer {
@@ -425,13 +431,14 @@ impl LspPlugin {
     }
 
     async fn on_cursor_moved(&mut self, bufnr: usize) -> VimResult<()> {
-        if let Some(request_in_fly) = self.current_goto_request.take() {
+        if let Some(request_inflight) = self.goto_request_inflight.take() {
             let (_bufnr, row, column) = self.vim.get_cursor_pos().await?;
-            if request_in_fly.bufnr == bufnr && request_in_fly.cursor_pos != (row, column) {
-                self.vim.update_lsp_status("cancelling request")?;
+            if request_inflight.bufnr == bufnr && request_inflight.cursor_pos != (row, column) {
+                self.vim
+                    .update_lsp_status(format!("cancelling {:?} request", request_inflight.ty))?;
                 tokio::spawn({
                     let vim = self.vim.clone();
-                    let language_id = request_in_fly.language_id;
+                    let language_id = request_inflight.language_id;
                     async move {
                         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
                         let _ = vim.update_lsp_status(language_id);
@@ -503,24 +510,29 @@ impl LspPlugin {
             _ => self.vim.get_cursor_pos().await?,
         };
 
-        let document = self.get_buffer(bufnr)?;
+        let Ok(document) = self.get_buffer(bufnr) else {
+            self.vim.echo_message("LSP service not available")?;
+            return Ok(());
+        };
 
-        let client = self
-            .clients
-            .get(&document.language_id)
-            .ok_or(Error::ClientNotFound)?;
+        let Some(client) = self.clients.get(&document.language_id) else {
+            self.vim
+                .echo_message("Language server not found for this buffer")?;
+            return Ok(());
+        };
 
-        let path = self.vim.bufabspath(bufnr).await?;
         let position = lsp::Position {
             line: row as u32 - 1,
             character: column as u32 - 1,
         };
+        let path = self.vim.bufabspath(bufnr).await?;
         let text_document = doc_id(&path)?;
 
-        tracing::debug!(bufnr, doc = ?text_document, "Calling goto, position: {position:?}");
+        tracing::debug!(bufnr, doc = ?text_document, ?position, "requesting {goto:?}");
 
         self.vim.update_lsp_status(format!("requesting {goto:?}"))?;
-        self.current_goto_request.replace(GotoRequest {
+        self.goto_request_inflight.replace(GotoRequest {
+            ty: goto,
             bufnr,
             language_id: document.language_id,
             cursor_pos: (row, column),
@@ -560,7 +572,7 @@ impl LspPlugin {
 
         let (_bufnr, new_row, new_column) = self.vim.get_cursor_pos().await?;
         if (new_row, new_column) != (row, column) {
-            self.current_goto_request.take();
+            self.goto_request_inflight.take();
             self.vim.update_lsp_status("cancelling request")?;
             return Ok(());
         }
@@ -570,11 +582,22 @@ impl LspPlugin {
             return Ok(());
         }
 
-        self.vim.update_lsp_status("rust-analyzer")?;
-        self.current_goto_request.take();
+        self.vim.update_lsp_status(client.name())?;
+        self.goto_request_inflight.take();
 
         if locations.len() == 1 {
-            self.vim.exec("clap#plugin#lsp#jump_to", [&locations[0]])?;
+            let loc = &locations[0];
+            let path = loc.uri.path();
+            let row = loc.range.start.line + 1;
+            let column = loc.range.start.character + 1;
+            self.vim.exec(
+                "clap#plugin#lsp#jump_to",
+                serde_json::json!({
+                  "path": path,
+                  "row": row,
+                  "column": column
+                }),
+            )?;
             return Ok(());
         }
 
@@ -801,7 +824,11 @@ impl LspPlugin {
         }
 
         let bufnr = self.vim.bufnr("").await?;
-        let buffer = self.get_buffer(bufnr)?;
+
+        let Ok(buffer) = self.get_buffer(bufnr) else {
+            self.vim.echo_message("LSP service not available")?;
+            return Ok(());
+        };
 
         let client = self
             .clients
@@ -851,7 +878,10 @@ impl LspPlugin {
         }
 
         let bufnr = self.vim.bufnr("").await?;
-        let buffer = self.get_buffer(bufnr)?;
+        let Ok(buffer) = self.get_buffer(bufnr) else {
+            self.vim.echo_message("LSP service not available")?;
+            return Ok(());
+        };
 
         let client = self
             .clients

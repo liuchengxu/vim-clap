@@ -346,6 +346,6 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
         total_processed,
         total_matched,
         ?query,
-        "Searching is complete in {elapsed:?}ms"
+        "Searching completed in {elapsed:?}ms"
     );
 }

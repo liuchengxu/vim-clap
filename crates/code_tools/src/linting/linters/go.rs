@@ -44,13 +44,8 @@ pub struct Gopls;
 impl Linter for Gopls {
     const EXE: &'static str = "gopls";
 
-    fn linter_command(
-        base_cmd: tokio::process::Command,
-        source_file: &Path,
-    ) -> tokio::process::Command {
-        let mut cmd = base_cmd;
+    fn add_args(cmd: &mut tokio::process::Command, source_file: &Path) {
         cmd.arg("check").arg(source_file);
-        cmd
     }
 
     fn parse_line(&self, line: &[u8]) -> Option<Diagnostic> {

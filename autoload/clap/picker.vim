@@ -192,6 +192,7 @@ function! clap#picker#clear_state_pre() abort
         \ 'g:__clap_provider_cwd',
         \ 'g:__clap_provider_did_sink',
         \ 'g:__clap_forerunner_result',
+        \ 'g:__clap_remote_sink_triggered',
         \ 'g:__clap_match_scope_enum',
         \ 'g:__clap_recent_files_dyn_tmp',
         \ 'g:__clap_forerunner_tempfile',

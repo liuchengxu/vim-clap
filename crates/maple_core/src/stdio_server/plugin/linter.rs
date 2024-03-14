@@ -127,7 +127,7 @@ impl Linter {
     async fn on_cursor_moved(&self, bufnr: usize) -> VimResult<()> {
         let _ = self
             .diagnostics_worker_msg_sender
-            .send(WorkerMessage::ShowDiagnosticsAtCursorInFloatWin(bufnr));
+            .send(WorkerMessage::ShowDiagnosticsUnderCursorInFloatWin(bufnr));
 
         Ok(())
     }

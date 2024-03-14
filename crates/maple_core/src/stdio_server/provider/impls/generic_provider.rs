@@ -2,7 +2,7 @@ use crate::stdio_server::provider::hooks::{initialize_provider, CachedPreviewImp
 use crate::stdio_server::provider::{
     BaseArgs, ClapProvider, Context, ProviderError, ProviderResult as Result, ProviderSource,
 };
-use crate::stdio_server::vim::SearchProgressor;
+use crate::stdio_server::SearchProgressor;
 use filter::{FilterContext, ParallelSource};
 use parking_lot::Mutex;
 use printer::Printer;

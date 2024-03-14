@@ -42,13 +42,8 @@ pub struct Vint;
 impl Linter for Vint {
     const EXE: &'static str = "vint";
 
-    fn linter_command(
-        base_cmd: tokio::process::Command,
-        source_file: &Path,
-    ) -> tokio::process::Command {
-        let mut cmd = base_cmd;
+    fn add_args(cmd: &mut tokio::process::Command, source_file: &Path) {
         cmd.arg("-j").arg(source_file);
-        cmd
     }
 
     async fn lint_file(

@@ -97,7 +97,7 @@ impl std::fmt::Display for FileSize {
     "treeSitterHighlight",
     "treeSitterHighlightDisable",
     "treeSitterListScopes",
-    "treeSitterPropsAtCursor",
+    "treeSitterPropsUnderCursor",
     "toggle",
   ],
 )]
@@ -298,7 +298,7 @@ impl Syntax {
             );
 
             // Keep the changed highlights only.
-            let diff_highlights = new_vim_highlights
+            let highlights_diff = new_vim_highlights
                 .iter()
                 .filter(|item| changed_lines.contains(&item.0))
                 .collect::<Vec<_>>();
@@ -313,7 +313,7 @@ impl Syntax {
 
             self.vim.exec(
                 "clap#highlighter#add_ts_highlights",
-                (bufnr, changed_ranges, diff_highlights),
+                (bufnr, changed_ranges, highlights_diff),
             )?;
         } else {
             self.vim.exec(
@@ -354,7 +354,7 @@ impl Syntax {
         Ok(())
     }
 
-    async fn tree_sitter_props_at_cursor(&mut self) -> Result<(), PluginError> {
+    async fn tree_sitter_props_under_cursor(&mut self) -> Result<(), PluginError> {
         let (bufnr, row, column) = self.vim.get_cursor_pos().await?;
 
         if let Some(ts_info) = self.ts_bufs.get(&bufnr) {
@@ -511,8 +511,8 @@ impl ClapPlugin for Syntax {
                     self.vim.echo_message(format!("{highlight_scopes:?}"))?;
                 }
             }
-            SyntaxAction::TreeSitterPropsAtCursor => {
-                self.tree_sitter_props_at_cursor().await?;
+            SyntaxAction::TreeSitterPropsUnderCursor => {
+                self.tree_sitter_props_under_cursor().await?;
             }
             SyntaxAction::SublimeSyntaxHighlight => {
                 let bufnr = self.vim.bufnr("").await?;

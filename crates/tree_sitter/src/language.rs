@@ -161,6 +161,7 @@ impl FromStr for Language {
         let language = match s.to_ascii_lowercase().as_str() {
             "bash" => Self::Bash,
             "c" => Self::C,
+            "cpp" => Self::Cpp,
             "dockerfile" => Self::Dockerfile,
             "go" => Self::Go,
             "javascript" => Self::Javascript,
@@ -272,7 +273,8 @@ impl Language {
             ),
             Language::Cpp => HighlightConfiguration::new(
                 tree_sitter_cpp::language(),
-                tree_sitter_cpp::HIGHLIGHT_QUERY,
+                // Use the local highlights.scm as tree_sitter_cpp::HIGHLIGHT_QUERY is relatively unpolished.
+                include_str!("../queries/cpp/highlights.scm"),
                 "",
                 "",
             ),

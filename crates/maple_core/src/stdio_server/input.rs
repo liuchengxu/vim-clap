@@ -40,6 +40,7 @@ impl PluginEvent {
 pub enum ProviderEvent {
     OnMove(Params),
     OnTyped(Params),
+    RemoteSink(Params),
     Exit,
     Key(KeyEvent),
     /// Signal fired internally.
@@ -112,6 +113,9 @@ impl Event {
         match notification.method.as_str() {
             "new_provider" => Ok(Self::NewProvider(notification.params)),
             "exit_provider" => Ok(Self::ProviderWorker(ProviderEvent::Exit)),
+            "remote_sink" => Ok(Self::ProviderWorker(ProviderEvent::RemoteSink(
+                notification.params,
+            ))),
             "on_move" => Ok(Self::ProviderWorker(ProviderEvent::OnMove(
                 notification.params,
             ))),
@@ -215,20 +219,20 @@ impl InputRecorder {
     }
 
     pub fn try_record(&mut self, new: String) {
-        let new = new.trim();
+        let trimmed_new = new.trim();
 
-        if new.is_empty() || self.inputs.iter().any(|s| s == new) {
+        if trimmed_new.is_empty() || self.inputs.iter().any(|s| s == trimmed_new) {
             return;
         }
 
-        // New input is part of some old input.
-        if self.inputs.iter().any(|old| old.starts_with(new)) {
+        // trimmed_new input is part of some old input.
+        if self.inputs.iter().any(|old| old.starts_with(trimmed_new)) {
             return;
         }
 
         // Prune the last input if the consecutive input is extending it.
         // Avoid recording the partial incomplete list, e.g., `i, in, inp, inpu, input`.
-        if new.starts_with(&self.last_input) {
+        if trimmed_new.starts_with(&self.last_input) {
             if let Some(pos) = self
                 .inputs
                 .iter()
@@ -244,8 +248,8 @@ impl InputRecorder {
         if !self.inputs.is_empty() {
             self.current_index += 1;
         }
-        self.inputs.push_back(new.to_string());
-        self.last_input = new.to_string();
+        self.inputs.push_back(new.clone());
+        self.last_input = new;
 
         if self.inputs.len() > Self::MAX_INPUTS {
             self.inputs.pop_front();

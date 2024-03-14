@@ -1,11 +1,13 @@
 use crate::stdio_server::provider::hooks::PreviewTarget;
-use crate::stdio_server::provider::{ClapProvider, Context, ProviderResult as Result};
+use crate::stdio_server::provider::{
+    ClapProvider, Context, ProviderError, ProviderResult as Result,
+};
 use crate::types::Goto;
 use maple_lsp::lsp;
 use matcher::MatchScope;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
-use printer::Printer;
+use printer::{DisplayLines, Printer};
 use std::borrow::Cow;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -93,17 +95,19 @@ fn to_kind_str(kind: lsp::SymbolKind) -> &'static str {
 pub struct LocationItem {
     pub file_path: String,
     pub output_text: String,
+    pub location: lsp::Location,
 }
 
 impl LocationItem {
-    fn from_location(location: &lsp::Location, project_root: &str) -> Option<Self> {
+    fn from_location(location: lsp::Location, project_root: &str) -> Option<Self> {
         let file_path = location
             .uri
             .to_file_path()
             .ok()?
             .to_string_lossy()
             .to_string();
-        let start_line = location.range.start.line;
+        // location is 0-based.
+        let start_line = location.range.start.line + 1;
         let start_character = location.range.start.character;
         let line = utils::read_line_at(&file_path, start_line as usize)
             .ok()
@@ -118,6 +122,7 @@ impl LocationItem {
         Some(Self {
             file_path,
             output_text,
+            location,
         })
     }
 }
@@ -247,6 +252,8 @@ enum SourceItems {
 pub struct LspProvider {
     printer: Printer,
     source_items: SourceItems,
+    current_items: Vec<Arc<dyn ClapItem>>,
+    current_display_lines: DisplayLines,
 }
 
 impl LspProvider {
@@ -282,7 +289,7 @@ impl LspProvider {
                 let items = locations
                     .iter()
                     .filter_map(|location| {
-                        LocationItem::from_location(location, root)
+                        LocationItem::from_location(location.clone(), root)
                             .map(|item| Arc::new(item) as Arc<dyn ClapItem>)
                     })
                     .collect::<Vec<_>>();
@@ -295,12 +302,54 @@ impl LspProvider {
         Self {
             printer,
             source_items,
+            current_items: Vec::new(),
+            current_display_lines: Default::default(),
+        }
+    }
+
+    fn fetch_location_at(&self, line_number: usize) -> Option<FileLocation> {
+        match &self.source_items {
+            SourceItems::Document((uri, _)) => {
+                let doc_item = self
+                    .current_items
+                    .get(line_number - 1)
+                    .and_then(|item| item.as_any().downcast_ref::<DocumentItem>())?;
+
+                Some(FileLocation {
+                    path: uri.path().to_string(),
+                    row: doc_item.location.range.start.line as usize + 1,
+                    column: doc_item.location.range.start.character as usize + 1,
+                })
+            }
+            SourceItems::Workspace(_) => {
+                let workspace_item = self
+                    .current_items
+                    .get(line_number - 1)
+                    .and_then(|item| item.as_any().downcast_ref::<WorkspaceItem>())?;
+
+                Some(FileLocation {
+                    path: workspace_item.path.clone(),
+                    row: workspace_item.location.range.start.line as usize + 1,
+                    column: workspace_item.location.range.start.character as usize + 1,
+                })
+            }
+            SourceItems::Locations(_) => {
+                let location_item = self
+                    .current_items
+                    .get(line_number - 1)
+                    .and_then(|item| item.as_any().downcast_ref::<LocationItem>())?;
+
+                Some(FileLocation {
+                    path: location_item.file_path.clone(),
+                    row: location_item.location.range.start.line as usize + 1,
+                    column: location_item.location.range.start.character as usize + 1,
+                })
+            }
+            SourceItems::Empty => None,
         }
     }
 
     fn process_query(&mut self, query: String, ctx: &Context) -> Result<()> {
-        let matcher = ctx.matcher_builder().build(Query::from(&query));
-
         let items = match &self.source_items {
             SourceItems::Document((_uri, ref items)) => items,
             SourceItems::Workspace(ref items) => items,
@@ -310,7 +359,7 @@ impl LspProvider {
             }
         };
 
-        let processed = items.len();
+        let matcher = ctx.matcher_builder().build(Query::from(&query));
 
         let mut ranked = filter::par_filter_items(items, &matcher);
 
@@ -319,21 +368,38 @@ impl LspProvider {
         // Only display the top 200 items.
         ranked.truncate(200);
 
-        let mut display_lines = self.printer.to_display_lines(ranked);
-
-        // The indices are empty on the empty query.
-        display_lines.indices.retain(|i| !i.is_empty());
+        self.current_items = ranked.iter().map(|r| r.item.clone()).collect();
+        let display_lines = self.printer.to_display_lines(ranked);
 
         let update_info = printer::PickerUpdateInfo {
             matched,
-            processed,
+            processed: items.len(),
             display_lines,
             ..Default::default()
         };
 
-        ctx.vim.exec("clap#picker#update", update_info)?;
+        ctx.vim.exec("clap#picker#update", &update_info)?;
+
+        self.current_display_lines = update_info.display_lines;
 
         Ok(())
+    }
+}
+
+struct FileLocation {
+    path: String,
+    // 1-based
+    row: usize,
+    // 1-based
+    column: usize,
+}
+
+impl FileLocation {
+    fn into_preview_target(self) -> PreviewTarget {
+        PreviewTarget::LineInFile {
+            path: PathBuf::from(self.path),
+            line_number: self.row,
+        }
     }
 }
 
@@ -353,51 +419,33 @@ impl ClapProvider for LspProvider {
             return Ok(());
         }
         ctx.preview_manager.reset_scroll();
-        let preview_target = match &self.source_items {
-            SourceItems::Document((uri, _)) => {
-                let curline = ctx.vim.display_getcurline().await?;
-                let Some(line_number) = curline
-                    .split_whitespace()
-                    .last()
-                    .and_then(|n| n.parse::<usize>().ok())
-                else {
-                    return Ok(());
-                };
 
-                Some(PreviewTarget::LineInFile {
-                    path: PathBuf::from(uri.path()),
-                    line_number,
-                })
-            }
-            SourceItems::Workspace(_) => {
-                let curline = ctx.vim.display_getcurline().await?;
-                let Some(path_and_lnum) = curline.split_whitespace().last() else {
-                    return Ok(());
-                };
+        let line_number = ctx.vim.display_getcurlnum().await?;
+        let loc = self
+            .fetch_location_at(line_number)
+            .ok_or(ProviderError::PreviewItemNotFound { line_number })?;
+        ctx.update_preview(Some(loc.into_preview_target())).await
+    }
 
-                path_and_lnum.split_once(':').and_then(|(path, lnum)| {
-                    Some(PreviewTarget::LineInFile {
-                        path: path.into(),
-                        line_number: lnum.parse::<usize>().ok()?,
-                    })
-                })
-            }
-            SourceItems::Locations(_) => {
-                let curline = ctx.vim.display_getcurline().await?;
-                let Some((fpath, lnum, _col, _cache_line)) =
-                    pattern::extract_grep_position(&curline)
-                else {
-                    return Ok(());
-                };
-
-                Some(PreviewTarget::LineInFile {
-                    path: fpath.into(),
-                    line_number: lnum + 1,
-                })
-            }
-            SourceItems::Empty => return Ok(()),
-        };
-        ctx.update_preview(preview_target).await
+    async fn remote_sink(&mut self, ctx: &mut Context, line_numbers: Vec<usize>) -> Result<()> {
+        if line_numbers.len() == 1 {
+            let line_number = line_numbers[0];
+            let loc = self
+                .fetch_location_at(line_number)
+                .ok_or(ProviderError::PreviewItemNotFound { line_number })?;
+            ctx.vim.exec(
+                "clap#plugin#lsp#jump_to",
+                serde_json::json!({
+                  "path": loc.path,
+                  "row": loc.row,
+                  "column": loc.column
+                }),
+            )?;
+        } else {
+            ctx.vim
+                .echo_message("unimplemented remote sink for multiple selections")?;
+        }
+        Ok(())
     }
 
     fn on_terminate(&mut self, ctx: &mut Context, session_id: u64) {

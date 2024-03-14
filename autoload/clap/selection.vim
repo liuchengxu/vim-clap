@@ -21,6 +21,11 @@ function! clap#selection#get_sink_or_sink_star_params() abort
   return [Sink, sink_args]
 endfunction
 
+function! clap#selection#line_numbers() abort
+  let selected = clap#sign#get()
+  return s:multi_select_enabled && !empty(selected) ? selected : [g:clap.display.getcurlnum()]
+endfunction
+
 function! clap#selection#get_action_or_action_star_params() abort
   let selected = clap#sign#get()
   if len(selected) > 1

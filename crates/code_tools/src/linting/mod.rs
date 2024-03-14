@@ -159,20 +159,16 @@ trait Linter {
     }
 
     /// Append the linter-specific args to the linter executable.
-    fn linter_command(
-        base_cmd: tokio::process::Command,
-        source_file: &Path,
-    ) -> tokio::process::Command;
+    fn add_args(base_cmd: &mut tokio::process::Command, source_file: &Path);
 
     /// Constructs the final linter command.
     fn command(
         source_file: &Path,
         workspace_root: &Path,
     ) -> std::io::Result<tokio::process::Command> {
-        Ok(Self::linter_command(
-            Self::base_command(workspace_root)?,
-            source_file,
-        ))
+        let mut cmd = Self::base_command(workspace_root)?;
+        Self::add_args(&mut cmd, source_file);
+        Ok(cmd)
     }
 
     /// Parses the diagnostic message from linter in a line-wise manner.

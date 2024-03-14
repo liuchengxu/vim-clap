@@ -26,7 +26,7 @@ function! clap#plugin#lsp#open_picker(title) abort
         \ 'title': a:title,
         \ 'on_typed': { -> clap#client#notify_provider('on_typed') },
         \ 'on_move': { -> clap#client#notify_provider('on_move') },
-        \ 'sink': 'e',
+        \ 'remote_sink': v:true,
         \ 'icon': 'lsp',
         \ }
   call clap#run(provider)
