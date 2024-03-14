@@ -16,7 +16,7 @@ tracing = { workspace = true }
 # tree-sitter-traversal = "0.1"
 
 # Languages
-tree-sitter-bash = "0.20"
+tree-sitter-bash = "0.21"
 tree-sitter-c = "0.20"
 tree-sitter-cpp = "0.20"
 tree-sitter-go = "0.20"
