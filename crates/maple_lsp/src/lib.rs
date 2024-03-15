@@ -14,7 +14,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, Stdio};
+use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::sync::mpsc::error::SendError;
@@ -473,29 +473,6 @@ fn spawn_task_stdin(stdin: ChildStdin) -> UnboundedSender<RpcMessage> {
     payload_sender
 }
 
-fn spawn_task_stderr(stderr: ChildStderr, server_name: String) {
-    tokio::task::spawn_blocking(move || {
-        let mut reader = Box::new(BufReader::new(stderr));
-
-        loop {
-            let mut line = String::new();
-            match reader.read_line(&mut line) {
-                Ok(n) => {
-                    if n == 0 {
-                        // Stream closed.
-                        return;
-                    }
-                    tracing::error!("[{server_name}] error: {}", line.trim_end());
-                }
-                Err(err) => {
-                    tracing::error!("Error occurred at reading child stderr: {err:?}");
-                    return;
-                }
-            }
-        }
-    });
-}
-
 #[derive(Debug)]
 pub struct Client {
     id: AtomicU64,
@@ -523,22 +500,34 @@ impl Client {
         let cmd =
             which::which(cmd).map_err(|_| Error::ServerExecutableNotFound(cmd.to_string()))?;
 
+        // Redir the server stderr info to a log file, which will be truncated if
+        // it exists beforehand.
+        let server_log_dir = dirs::Dirs::base()
+            .data_dir()
+            .join("vimclap")
+            .join("logs")
+            .join("language_server_stderr");
+
+        if !server_log_dir.exists() {
+            std::fs::create_dir_all(&server_log_dir).ok();
+        }
+
+        let log_path = server_log_dir.join(format!("{name}.log"));
+        let server_stderr_log = std::fs::File::create(log_path)?;
+
         let mut process = Command::new(cmd)
             .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
+            .stderr(server_stderr_log)
             // Make sure the process is reaped on drop.
             // .kill_on_drop(true)
             .spawn()?;
 
         let stdin = process.stdin.take().expect("Failed to open stdin");
         let stdout = process.stdout.take().expect("Failed to open stdout");
-        let stderr = process.stderr.take().expect("Failed to open stderr");
 
         let payload_sender = spawn_task_stdin(stdin);
-
-        spawn_task_stderr(stderr, name.clone());
 
         let (response_sender_tx, response_sender_rx): (
             UnboundedSender<(Id, oneshot::Sender<RpcResponse>)>,
