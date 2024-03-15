@@ -348,7 +348,7 @@ function! s:init_provider() abort
   endfunction
 
   function! provider.support_multi_select() abort
-    return has_key(self._(), 'sink*') || has_key(get(self._(), 'mappings', {}), "<Tab>")
+    return has_key(self._(), 'multi_select') || has_key(self._(), 'sink*') || has_key(get(self._(), 'mappings', {}), "<Tab>")
   endfunction
 
   function! provider.support_open_action() abort

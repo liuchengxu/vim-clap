@@ -442,8 +442,20 @@ impl ClapProvider for LspProvider {
                 }),
             )?;
         } else {
-            ctx.vim
-                .echo_message("unimplemented remote sink for multiple selections")?;
+            let locs = line_numbers
+                .into_iter()
+                .filter_map(|line_number| self.fetch_location_at(line_number))
+                .filter_map(|loc| {
+                    let text = utils::read_line_at(&loc.path, loc.row).ok().flatten()?;
+                    Some(serde_json::json!({
+                      "filename": loc.path,
+                      "lnum": loc.row,
+                      "col": loc.column,
+                      "text": text
+                    }))
+                })
+                .collect::<Vec<_>>();
+            ctx.vim.exec("clap#sink#open_quickfix", [locs])?;
         }
         Ok(())
     }
