@@ -3,6 +3,7 @@
 ## [unreleased]
 
 - Introduce `remote_sink` in provider in order to implement the sink function on the Rust side, particularly useful for the providers with static list of source like lsp.
+- Add `multi_select` property explicitly in provider, useful for the provider lsp.
 
 ## [0.52] 2024-2-29
 
