@@ -43,7 +43,7 @@ default-members = ["crates/maple"]
 [workspace.dependencies]
 anyhow = "1.0"
 async-trait = "0.1"
-base64 = "0.13"
+base64 = "0.21"
 bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
 cargo_metadata = "0.18.0"
 chrono = { version = "0.4", features = ["serde"] }
