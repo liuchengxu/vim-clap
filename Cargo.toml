@@ -78,7 +78,7 @@ syntect = "5.0.0"
 subprocess = { git = "https://github.com/hniksic/rust-subprocess" }
 thiserror = "1.0"
 tokio = "1.36"
-toml = "0.5"
+toml = "0.8"
 tracing = "0.1"
 tracing-appender = "0.2"
 tracing-subscriber = "0.3"
