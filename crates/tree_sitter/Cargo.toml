@@ -23,7 +23,7 @@ tree-sitter-go = "0.20"
 tree-sitter-javascript = "0.20"
 tree-sitter-json = "0.20"
 tree-sitter-md = "0.1.7"
-tree-sitter-python = "0.20"
+tree-sitter-python = "0.21"
 tree-sitter-rust = "0.20"
 tree-sitter-toml = "0.20"
 
