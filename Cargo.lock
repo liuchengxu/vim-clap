@@ -1473,7 +1473,7 @@ dependencies = [
  "rpc",
  "serde",
  "serde_json",
- "strsim 0.10.0",
+ "strsim 0.11.0",
  "sublime_syntax",
  "subprocess",
  "thiserror",
