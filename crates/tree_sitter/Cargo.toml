@@ -8,7 +8,7 @@ cc = "*"
 
 [dependencies]
 tree-sitter-core = { package = "tree-sitter", version = "0.20" }
-tree-sitter-highlight = "0.20"
+tree-sitter-highlight = "0.22"
 once_cell = { workspace = true }
 serde = { workspace = true, features = [ "derive" ] }
 toml = { workspace = true }
