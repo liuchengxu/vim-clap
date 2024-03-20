@@ -23,9 +23,7 @@ impl TagfilesProvider {
 
     fn process_query(&mut self, query: String, ctx: &Context) {
         if let Some(control) = self.searcher_control.take() {
-            tokio::task::spawn_blocking(move || {
-                control.kill();
-            });
+            control.kill_in_background();
         }
 
         let matcher = ctx.matcher_builder().build(Query::from(&query));
@@ -81,8 +79,7 @@ impl ClapProvider for TagfilesProvider {
 
     fn on_terminate(&mut self, ctx: &mut Context, session_id: u64) {
         if let Some(control) = self.searcher_control.take() {
-            // NOTE: The kill operation can not block current task.
-            tokio::task::spawn_blocking(move || control.kill());
+            control.kill_in_background();
         }
         ctx.signify_terminated(session_id);
     }

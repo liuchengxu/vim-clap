@@ -81,9 +81,14 @@ struct SearcherControl {
 }
 
 impl SearcherControl {
-    fn kill(self) {
-        self.stop_signal.store(true, Ordering::SeqCst);
-        self.join_handle.abort();
+    fn kill_in_background(self) {
+        if !self.join_handle.is_finished() {
+            // NOTE: The kill operation may take some time, using `spawn_block` to not block current thread.
+            tokio::task::spawn_blocking(move || {
+                self.stop_signal.store(true, Ordering::SeqCst);
+                self.join_handle.abort();
+            });
+        }
     }
 }
 

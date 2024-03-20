@@ -30,17 +30,13 @@ impl Grepper {
 
     fn kill_last_searcher(&mut self) {
         if let Some(control) = self.searcher_control.take() {
-            tokio::task::spawn_blocking(move || {
-                control.kill();
-            });
+            control.kill_in_background();
         }
     }
 
     fn grep(&mut self, query: String, path: PathBuf, ctx: &Context) {
         if let Some(control) = self.searcher_control.take() {
-            tokio::task::spawn_blocking(move || {
-                control.kill();
-            });
+            control.kill_in_background();
         }
 
         let matcher = ctx

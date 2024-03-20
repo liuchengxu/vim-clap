@@ -53,12 +53,13 @@ impl RpcClient {
             _,
         ) = unbounded_channel();
 
-        // A blocking task is necessary!
-        tokio::task::spawn_blocking(move || {
-            if let Err(error) = loop_read(reader, response_sender_rx, &sink) {
-                tracing::error!(?error, "Thread stdio-reader exited");
-            }
-        });
+        std::thread::Builder::new()
+            .name("stdio-reader".to_string())
+            .spawn(move || {
+                if let Err(error) = loop_read(reader, response_sender_rx, &sink) {
+                    tracing::error!(?error, "Thread stdio-reader exited");
+                }
+            });
 
         let (writer_sender, io_writer_receiver) = unbounded_channel();
         // No blocking task.
