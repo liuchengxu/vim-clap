@@ -16,4 +16,5 @@ toml = { workspace = true }
 tracing = { workspace = true }
 which = { workspace = true }
 
+dirs = { workspace = true }
 paths = { workspace = true }

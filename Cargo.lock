@@ -1504,6 +1504,7 @@ dependencies = [
 name = "maple_lsp"
 version = "0.1.52"
 dependencies = [
+ "dirs 0.1.52",
  "futures-util",
  "lsp-types",
  "parking_lot",
