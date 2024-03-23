@@ -142,7 +142,6 @@ function! clap#picker#update_preview(preview) abort
 
     if has_key(a:preview, 'highlight_line')
       let highlight_line = a:preview.highlight_line
-      echom string(highlight_line)
       if has_key(highlight_line, 'column_range')
         call g:clap.preview.add_highlight(highlight_line)
       else

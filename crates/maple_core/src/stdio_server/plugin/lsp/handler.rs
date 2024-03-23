@@ -46,6 +46,23 @@ impl LanguageServerMessageHandler {
         }
     }
 
+    fn handle_message(&self, show_message: bool, msg_type: lsp::MessageType, message: String) {
+        let msg_type = match msg_type {
+            lsp::MessageType::ERROR => "ERROR",
+            lsp::MessageType::WARNING => "WARN",
+            lsp::MessageType::INFO => "INFO",
+            lsp::MessageType::LOG => "LOG",
+            _ => return,
+        };
+        if show_message {
+            let _ = self
+                .vim
+                .echo_message(format!("[{}] [{msg_type}] {message}", self.server_name));
+        } else {
+            tracing::debug!("[{}] [{msg_type}] {message}", self.server_name);
+        }
+    }
+
     fn handle_progress_message(
         &mut self,
         params: lsp::ProgressParams,
@@ -162,10 +179,11 @@ impl HandleLanguageServerMessage for LanguageServerMessageHandler {
                     }
                 }
             }
-            LanguageServerNotification::ShowMessage(params) => {
-                let _ = self
-                    .vim
-                    .echo_message(format!("[{}] {}", self.server_name, params.message));
+            LanguageServerNotification::ShowMessage(lsp::ShowMessageParams { typ, message }) => {
+                self.handle_message(true, typ, message);
+            }
+            LanguageServerNotification::LogMessage(lsp::LogMessageParams { typ, message }) => {
+                self.handle_message(false, typ, message);
             }
             _ => {
                 tracing::debug!("TODO: handle language server notification: {notification:?}");
