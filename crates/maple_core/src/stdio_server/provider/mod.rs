@@ -237,10 +237,10 @@ impl PreviewManager {
             .as_ref()
             .ok_or(ProviderError::PreviewTargetNotFound)?
         {
-            PreviewTarget::LineInFile { path, line_number } => {
-                self.prepare_scroll_file_info(*line_number, path.clone())?
-            }
-            PreviewTarget::File(path) => self.prepare_scroll_file_info(0, path.clone())?,
+            PreviewTarget::LocationInFile {
+                path, line_number, ..
+            } => self.prepare_scroll_file_info(*line_number, path.clone())?,
+            PreviewTarget::StartOfFile(path) => self.prepare_scroll_file_info(0, path.clone())?,
             _ => return Err(ProviderError::OnlyFilePreviewScrollSupported),
         };
 
@@ -264,10 +264,7 @@ impl PreviewManager {
             new_line_number
         };
 
-        let new_target = PreviewTarget::LineInFile {
-            path,
-            line_number: new_line_number as usize,
-        };
+        let new_target = PreviewTarget::location_in_file(path, new_line_number as usize);
 
         Ok(new_target)
     }

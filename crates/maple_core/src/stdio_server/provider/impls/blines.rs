@@ -168,10 +168,8 @@ impl ClapProvider for BlinesProvider {
         let Some(line_number) = pattern::extract_blines_lnum(&curline) else {
             return Ok(());
         };
-        let preview_target = PreviewTarget::LineInFile {
-            path: self.preview_file.clone(),
-            line_number,
-        };
+        let preview_target =
+            PreviewTarget::location_in_file(self.preview_file.clone(), line_number);
         ctx.update_preview(Some(preview_target)).await
     }
 

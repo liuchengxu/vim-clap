@@ -16,7 +16,7 @@ pub struct FilePreview {
     pub end: usize,
     /// Total lines in the source file.
     pub total: usize,
-    /// Line number of the line that should be highlighted in the preview window.
+    /// 0-based line number of the line that should be highlighted in the preview window.
     pub highlight_lnum: usize,
     /// [start, end] of the source file.
     pub lines: Vec<String>,

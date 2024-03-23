@@ -9,6 +9,7 @@ use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use printer::{DisplayLines, Printer};
 use std::borrow::Cow;
+use std::ops::Range;
 use std::path::PathBuf;
 use std::sync::Arc;
 use types::{ClapItem, FuzzyText, Query};
@@ -307,42 +308,51 @@ impl LspProvider {
         }
     }
 
-    fn fetch_location_at(&self, line_number: usize) -> Option<FileLocation> {
+    fn fetch_location_at(&self, item_index: usize) -> Option<FileLocation> {
         match &self.source_items {
             SourceItems::Document((uri, _)) => {
                 let doc_item = self
                     .current_items
-                    .get(line_number - 1)
+                    .get(item_index)
                     .and_then(|item| item.as_any().downcast_ref::<DocumentItem>())?;
 
                 Some(FileLocation {
                     path: uri.path().to_string(),
                     row: doc_item.location.range.start.line as usize + 1,
-                    column: doc_item.location.range.start.character as usize + 1,
+                    column_range: Range {
+                        start: doc_item.location.range.start.character as usize + 1,
+                        end: doc_item.location.range.end.character as usize + 1,
+                    },
                 })
             }
             SourceItems::Workspace(_) => {
                 let workspace_item = self
                     .current_items
-                    .get(line_number - 1)
+                    .get(item_index)
                     .and_then(|item| item.as_any().downcast_ref::<WorkspaceItem>())?;
 
                 Some(FileLocation {
                     path: workspace_item.path.clone(),
                     row: workspace_item.location.range.start.line as usize + 1,
-                    column: workspace_item.location.range.start.character as usize + 1,
+                    column_range: Range {
+                        start: workspace_item.location.range.start.character as usize + 1,
+                        end: workspace_item.location.range.end.character as usize + 1,
+                    },
                 })
             }
             SourceItems::Locations(_) => {
                 let location_item = self
                     .current_items
-                    .get(line_number - 1)
+                    .get(item_index)
                     .and_then(|item| item.as_any().downcast_ref::<LocationItem>())?;
 
                 Some(FileLocation {
                     path: location_item.file_path.clone(),
                     row: location_item.location.range.start.line as usize + 1,
-                    column: location_item.location.range.start.character as usize + 1,
+                    column_range: Range {
+                        start: location_item.location.range.start.character as usize + 1,
+                        end: location_item.location.range.end.character as usize + 1,
+                    },
                 })
             }
             SourceItems::Empty => None,
@@ -386,19 +396,21 @@ impl LspProvider {
     }
 }
 
+#[derive(Debug)]
 struct FileLocation {
     path: String,
     // 1-based
     row: usize,
     // 1-based
-    column: usize,
+    column_range: Range<usize>,
 }
 
 impl FileLocation {
     fn into_preview_target(self) -> PreviewTarget {
-        PreviewTarget::LineInFile {
+        PreviewTarget::LocationInFile {
             path: PathBuf::from(self.path),
             line_number: self.row,
+            column_range: Some(self.column_range),
         }
     }
 }
@@ -422,7 +434,7 @@ impl ClapProvider for LspProvider {
 
         let line_number = ctx.vim.display_getcurlnum().await?;
         let loc = self
-            .fetch_location_at(line_number)
+            .fetch_location_at(line_number - 1)
             .ok_or(ProviderError::PreviewItemNotFound { line_number })?;
         ctx.update_preview(Some(loc.into_preview_target())).await
     }
@@ -431,26 +443,26 @@ impl ClapProvider for LspProvider {
         if line_numbers.len() == 1 {
             let line_number = line_numbers[0];
             let loc = self
-                .fetch_location_at(line_number)
+                .fetch_location_at(line_number - 1)
                 .ok_or(ProviderError::PreviewItemNotFound { line_number })?;
             ctx.vim.exec(
                 "clap#plugin#lsp#jump_to",
                 serde_json::json!({
                   "path": loc.path,
                   "row": loc.row,
-                  "column": loc.column
+                  "column": loc.column_range.start
                 }),
             )?;
         } else {
             let locs = line_numbers
                 .into_iter()
-                .filter_map(|line_number| self.fetch_location_at(line_number))
+                .filter_map(|line_number| self.fetch_location_at(line_number - 1))
                 .filter_map(|loc| {
                     let text = utils::read_line_at(&loc.path, loc.row).ok().flatten()?;
                     Some(serde_json::json!({
                       "filename": loc.path,
                       "lnum": loc.row,
-                      "col": loc.column,
+                      "col": loc.column_range.start,
                       "text": text
                     }))
                 })

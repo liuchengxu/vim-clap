@@ -130,7 +130,7 @@ impl FilerProvider {
             self.goto_dir(target_dir, ctx)?;
             self.preview_current_entry(ctx).await?;
         } else if target_dir.is_file() {
-            let preview_target = PreviewTarget::File(target_dir);
+            let preview_target = PreviewTarget::StartOfFile(target_dir);
             self.update_preview(preview_target, ctx).await?;
         }
 
@@ -186,7 +186,7 @@ impl FilerProvider {
         let preview_target = if target_dir.is_dir() {
             PreviewTarget::Directory(target_dir)
         } else if target_dir.is_file() {
-            PreviewTarget::File(target_dir)
+            PreviewTarget::StartOfFile(target_dir)
         } else {
             return Ok(());
         };
