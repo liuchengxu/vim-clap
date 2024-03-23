@@ -59,7 +59,8 @@ impl RpcClient {
                 if let Err(error) = loop_read(reader, response_sender_rx, &sink) {
                     tracing::error!(?error, "Thread stdio-reader exited");
                 }
-            });
+            })
+            .expect("Failed to spawn stdio-reader thread");
 
         let (writer_sender, io_writer_receiver) = unbounded_channel();
         // No blocking task.
