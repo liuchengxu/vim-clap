@@ -68,9 +68,9 @@ endfunction
 if has('nvim')
 
 let s:diagnostic_winhl = 'Normal:Pmenu'
-let s:linter_eol_ns_id = nvim_create_namespace('clap_linter_eol')
-let s:linter_spans_highlight_ns_id = nvim_create_namespace('clap_linter_spans_highlight')
-let s:linter_msg_highlight_ns_id = nvim_create_namespace('clap_linter_msg_highlight')
+let s:diagnostic_eol_ns_id = nvim_create_namespace('clap_diagnostics_eol')
+let s:diagnostic_spans_highlight_ns_id = nvim_create_namespace('clap_diagnostics_spans_highlight')
+let s:diagnostic_msg_highlight_ns_id = nvim_create_namespace('clap_diagnostics_msg_highlight')
 
 function! s:render_on_top_right(lines, line_highlights) abort
   if !exists('s:diagnostic_msg_buffer') || !nvim_buf_is_valid(s:diagnostic_msg_buffer)
@@ -80,8 +80,10 @@ function! s:render_on_top_right(lines, line_highlights) abort
 
   let max_text_len = max(map(copy(a:lines), 'strlen(v:val)'))
 
-  if max_text_len > &columns
-    let width = &columns / 2
+  let container_width = winwidth(0)
+
+  if max_text_len > container_width
+    let width = container_width / 2
     let height = len(a:lines) + max_text_len / width
   else
     let width = max_text_len
@@ -119,7 +121,7 @@ function! s:render_on_top_right(lines, line_highlights) abort
       call nvim_win_set_config(s:diagnostic_msg_winid, config)
     else
       " Make sure the invalid window is closed and create a new one.
-      call clap#plugin#linter#close_top_right()
+      call clap#plugin#diagnostics#close_top_right()
 
       silent let s:diagnostic_msg_winid = nvim_open_win(buffer, v:false, config)
       call setwinvar(s:diagnostic_msg_winid, '&spell', 0)
@@ -133,21 +135,21 @@ function! s:render_on_top_right(lines, line_highlights) abort
   let line = 0
   for line_highlight in a:line_highlights
     for [highlight_group, col_start, col_end] in line_highlight
-      call nvim_buf_add_highlight(buffer, s:linter_msg_highlight_ns_id, highlight_group, line, col_start, col_end)
+      call nvim_buf_add_highlight(buffer, s:diagnostic_msg_highlight_ns_id, highlight_group, line, col_start, col_end)
     endfor
     let line += 1
   endfor
 endfunction
 
-function! clap#plugin#linter#close_top_right() abort
+function! clap#plugin#diagnostics#close_top_right() abort
   if exists('s:diagnostic_msg_winid')
     call nvim_win_close(s:diagnostic_msg_winid, v:true)
-    call nvim_buf_clear_namespace(s:diagnostic_msg_buffer, s:linter_msg_highlight_ns_id, 0, -1)
+    call nvim_buf_clear_namespace(s:diagnostic_msg_buffer, s:diagnostic_msg_highlight_ns_id, 0, -1)
     unlet s:diagnostic_msg_winid
   endif
 endfunction
 
-function! clap#plugin#linter#display_top_right(current_diagnostics) abort
+function! clap#plugin#diagnostics#display_top_right(current_diagnostics) abort
   if !empty(a:current_diagnostics)
     let [lines, line_highlights] = s:convert_diagnostics_to_lines(a:current_diagnostics)
     call s:render_on_top_right(lines, line_highlights)
@@ -156,7 +158,7 @@ endfunction
 
 function! s:highlight_span(bufnr, span, hl_group) abort
   try
-    call nvim_buf_add_highlight(a:bufnr, s:linter_spans_highlight_ns_id, a:hl_group, a:span.line_start - 1, a:span.column_start - 1, a:span.column_end - 1)
+    call nvim_buf_add_highlight(a:bufnr, s:diagnostic_spans_highlight_ns_id, a:hl_group, a:span.line_start - 1, a:span.column_start - 1, a:span.column_end - 1)
   catch
     " Span may be invalid at this moment since the buffer has been changed.
     return
@@ -182,7 +184,7 @@ function! s:render_eol(bufnr, diagnostics) abort
       endif
 
       let opts = { 'virt_text': [[message, highlight]], 'virt_text_pos': 'eol' }
-      let id = nvim_buf_set_extmark(a:bufnr, s:linter_eol_ns_id, diagnostic.line_start - 1, diagnostic.column_end - 1, opts)
+      let id = nvim_buf_set_extmark(a:bufnr, s:diagnostic_eol_ns_id, diagnostic.line_start - 1, diagnostic.column_end - 1, opts)
       call add(extmark_ids, id)
 
     " Suppress error: Invalid 'col': out of range
@@ -197,28 +199,28 @@ endfunction
 function! s:add_eol(bufnr, diagnostics) abort
   let extmark_ids = s:render_eol(a:bufnr, a:diagnostics)
 
-  let clap_linter = getbufvar(a:bufnr, 'clap_linter', {})
-  if has_key(clap_linter, 'extmark_ids')
-    call extend(clap_linter.extmark_ids, extmark_ids)
-    call setbufvar(a:bufnr, 'clap_linter', clap_linter)
+  let clap_diagnostics = getbufvar(a:bufnr, 'clap_diagnostics', {})
+  if has_key(clap_diagnostics, 'extmark_ids')
+    call extend(clap_diagnostics.extmark_ids, extmark_ids)
+    call setbufvar(a:bufnr, 'clap_diagnostics', clap_diagnostics)
   endif
 endfunction
 
 function! s:refresh_eol(bufnr, diagnostics) abort
   let extmark_ids = s:render_eol(a:bufnr, a:diagnostics)
-  call setbufvar(a:bufnr, 'clap_linter', { 'extmark_ids': extmark_ids })
+  call setbufvar(a:bufnr, 'clap_diagnostics', { 'extmark_ids': extmark_ids })
 endfunction
 
 function! s:delete_eol(bufnr) abort
-  let clap_linter = getbufvar(a:bufnr, 'clap_linter', {})
-  for id in get(clap_linter, 'extmark_ids', [])
-    call nvim_buf_del_extmark(a:bufnr, s:linter_eol_ns_id, id)
+  let clap_diagnostics = getbufvar(a:bufnr, 'clap_diagnostics', {})
+  for id in get(clap_diagnostics, 'extmark_ids', [])
+    call nvim_buf_del_extmark(a:bufnr, s:diagnostic_eol_ns_id, id)
   endfor
-  call setbufvar(a:bufnr, 'clap_linter', {})
+  call setbufvar(a:bufnr, 'clap_diagnostics', {})
 endfunction
 
-function! clap#plugin#linter#delete_highlights(bufnr) abort
-  call nvim_buf_clear_namespace(a:bufnr, s:linter_spans_highlight_ns_id, 0, -1)
+function! clap#plugin#diagnostics#delete_highlights(bufnr) abort
+  call nvim_buf_clear_namespace(a:bufnr, s:diagnostic_spans_highlight_ns_id, 0, -1)
 endfunction
 
 else
@@ -237,14 +239,14 @@ function! s:highlight_span(bufnr, span, hl_group) abort
   endtry
 endfunction
 
-function! clap#plugin#linter#close_top_right() abort
+function! clap#plugin#diagnostics#close_top_right() abort
   if exists('s:diagnostic_msg_winid')
     call popup_close(s:diagnostic_msg_winid)
     unlet s:diagnostic_msg_winid
   endif
 endfunction
 
-function! clap#plugin#linter#display_top_right(current_diagnostics) abort
+function! clap#plugin#diagnostics#display_top_right(current_diagnostics) abort
   if !empty(a:current_diagnostics)
     let [lines, line_highlights] = s:convert_diagnostics_to_lines(a:current_diagnostics)
 
@@ -271,7 +273,7 @@ function! clap#plugin#linter#display_top_right(current_diagnostics) abort
       call popup_setoptions(s:diagnostic_msg_winid, { 'minheight': len(lines), 'col': col })
       call popup_settext(s:diagnostic_msg_winid, lines)
     else
-      call clap#plugin#linter#close_top_right()
+      call clap#plugin#diagnostics#close_top_right()
 
       silent let s:diagnostic_msg_winid = popup_create(lines, {
             \ 'zindex': 100,
@@ -293,28 +295,28 @@ endfunction
 call prop_type_add('ClapDiagnosticUnderlineWarn', {'highlight': 'ClapDiagnosticUnderlineWarn'})
 call prop_type_add('ClapDiagnosticUnderlineError', {'highlight': 'ClapDiagnosticUnderlineError'})
 
-function! clap#plugin#linter#delete_highlights(bufnr) abort
+function! clap#plugin#diagnostics#delete_highlights(bufnr) abort
   call prop_remove({ 'type': 'ClapDiagnosticUnderlineWarn', 'bufnr': a:bufnr } )
   call prop_remove({ 'type': 'ClapDiagnosticUnderlineError', 'bufnr': a:bufnr } )
 endfunction
 
 endif
 
-function! clap#plugin#linter#add_highlights(bufnr, diagnostics) abort
+function! clap#plugin#diagnostics#add_highlights(bufnr, diagnostics) abort
   for diagnostic in a:diagnostics
     let hl_group = diagnostic.severity ==# 'Error' ? 'ClapDiagnosticUnderlineError' : 'ClapDiagnosticUnderlineWarn'
     call map(diagnostic.spans, 's:highlight_span(a:bufnr, v:val, hl_group)')
   endfor
 endfunction
 
-function! clap#plugin#linter#refresh_highlights(bufnr, diagnostics) abort
-  call clap#plugin#linter#delete_highlights(a:bufnr)
-  call clap#plugin#linter#add_highlights(a:bufnr, a:diagnostics)
+function! clap#plugin#diagnostics#refresh_highlights(bufnr, diagnostics) abort
+  call clap#plugin#diagnostics#delete_highlights(a:bufnr)
+  call clap#plugin#diagnostics#add_highlights(a:bufnr, a:diagnostics)
 endfunction
 
-function! clap#plugin#linter#toggle_off(bufnr) abort
-  call clap#plugin#linter#delete_highlights(a:bufnr)
-  call clap#plugin#linter#close_top_right()
+function! clap#plugin#diagnostics#toggle_off(bufnr) abort
+  call clap#plugin#diagnostics#delete_highlights(a:bufnr)
+  call clap#plugin#diagnostics#close_top_right()
 endfunction
 
 let &cpoptions = s:save_cpo

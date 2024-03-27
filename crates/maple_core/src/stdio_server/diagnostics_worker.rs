@@ -128,7 +128,7 @@ impl BufferDiagnostics {
             .collect::<Vec<_>>();
 
         if current_diagnostics.is_empty() {
-            vim.bare_exec("clap#plugin#linter#close_top_right")?;
+            vim.bare_exec("clap#plugin#diagnostics#close_top_right")?;
         } else {
             let diagnostic_at_cursor = current_diagnostics
                 .iter()
@@ -143,12 +143,12 @@ impl BufferDiagnostics {
             // otherwise display all the diagnostics in this line.
             if diagnostic_at_cursor.is_empty() {
                 vim.exec(
-                    "clap#plugin#linter#display_top_right",
+                    "clap#plugin#diagnostics#display_top_right",
                     [current_diagnostics],
                 )?;
             } else {
                 vim.exec(
-                    "clap#plugin#linter#display_top_right",
+                    "clap#plugin#diagnostics#display_top_right",
                     [diagnostic_at_cursor],
                 )?;
             }
@@ -174,7 +174,7 @@ fn update_buffer_diagnostics(
 
     let new_stats = if is_first_result {
         let _ = vim.exec(
-            "clap#plugin#linter#refresh_highlights",
+            "clap#plugin#diagnostics#refresh_highlights",
             (bufnr, &new_diagnostics),
         );
 
@@ -195,7 +195,7 @@ fn update_buffer_diagnostics(
 
         if !followup_diagnostics.is_empty() {
             let _ = vim.exec(
-                "clap#plugin#linter#add_highlights",
+                "clap#plugin#diagnostics#add_highlights",
                 (bufnr, &followup_diagnostics),
             );
         }
@@ -336,7 +336,7 @@ impl BufferDiagnosticsWorker {
                         .or_insert_with(BufferDiagnostics::new);
                     self.vim
                         .setbufvar(bufnr, "clap_diagnostics", Stats::default())?;
-                    self.vim.exec("clap#plugin#linter#toggle_off", [bufnr])?;
+                    self.vim.exec("clap#plugin#diagnostics#toggle_off", [bufnr])?;
                 }
                 WorkerMessage::LinterDiagnostics((bufnr, linter_diagnostics)) => {
                     tracing::trace!(bufnr, "Recv linter diagnostics: {linter_diagnostics:?}");

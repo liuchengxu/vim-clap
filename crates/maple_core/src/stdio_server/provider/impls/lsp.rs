@@ -309,6 +309,18 @@ impl LspProvider {
     }
 
     fn fetch_location_at(&self, item_index: usize) -> Option<FileLocation> {
+        let to_column_range = |range: &lsp::Range| {
+            // Range of DocumentItem may span over multiple lines.
+            if range.start.line == range.end.line {
+                Some(Range {
+                    start: range.start.character as usize + 1,
+                    end: range.end.character as usize + 1,
+                })
+            } else {
+                None
+            }
+        };
+
         match &self.source_items {
             SourceItems::Document((uri, _)) => {
                 let doc_item = self
@@ -319,10 +331,7 @@ impl LspProvider {
                 Some(FileLocation {
                     path: uri.path().to_string(),
                     row: doc_item.location.range.start.line as usize + 1,
-                    column_range: Range {
-                        start: doc_item.location.range.start.character as usize + 1,
-                        end: doc_item.location.range.end.character as usize + 1,
-                    },
+                    column_range: to_column_range(&doc_item.location.range),
                 })
             }
             SourceItems::Workspace(_) => {
@@ -334,10 +343,7 @@ impl LspProvider {
                 Some(FileLocation {
                     path: workspace_item.path.clone(),
                     row: workspace_item.location.range.start.line as usize + 1,
-                    column_range: Range {
-                        start: workspace_item.location.range.start.character as usize + 1,
-                        end: workspace_item.location.range.end.character as usize + 1,
-                    },
+                    column_range: to_column_range(&workspace_item.location.range),
                 })
             }
             SourceItems::Locations(_) => {
@@ -349,10 +355,7 @@ impl LspProvider {
                 Some(FileLocation {
                     path: location_item.file_path.clone(),
                     row: location_item.location.range.start.line as usize + 1,
-                    column_range: Range {
-                        start: location_item.location.range.start.character as usize + 1,
-                        end: location_item.location.range.end.character as usize + 1,
-                    },
+                    column_range: to_column_range(&location_item.location.range),
                 })
             }
             SourceItems::Empty => None,
@@ -402,7 +405,7 @@ struct FileLocation {
     // 1-based
     row: usize,
     // 1-based
-    column_range: Range<usize>,
+    column_range: Option<Range<usize>>,
 }
 
 impl FileLocation {
@@ -410,7 +413,7 @@ impl FileLocation {
         PreviewTarget::LocationInFile {
             path: PathBuf::from(self.path),
             line_number: self.row,
-            column_range: Some(self.column_range),
+            column_range: self.column_range,
         }
     }
 }
@@ -450,7 +453,7 @@ impl ClapProvider for LspProvider {
                 serde_json::json!({
                   "path": loc.path,
                   "row": loc.row,
-                  "column": loc.column_range.start
+                  "column": loc.column_range.map(|r| r.start).unwrap_or(1)
                 }),
             )?;
         } else {
@@ -462,7 +465,7 @@ impl ClapProvider for LspProvider {
                     Some(serde_json::json!({
                       "filename": loc.path,
                       "lnum": loc.row,
-                      "col": loc.column_range.start,
+                      "col": loc.column_range.map(|r|r.start).unwrap_or(1),
                       "text": text
                     }))
                 })

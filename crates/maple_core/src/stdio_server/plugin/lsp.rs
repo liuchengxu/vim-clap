@@ -234,8 +234,8 @@ impl LspPlugin {
 
         if filetype.is_empty()
             || self.filetype_blocklist.contains(&filetype)
-            // Ignore all clap related filetypes.
-            || filetype.starts_with("clap_")
+            // Ignore all known plugin related filetypes.
+            || ["_", "ale", "clap"].iter().any(|known_plugin| filetype.starts_with(known_plugin))
         {
             return Ok(());
         }
