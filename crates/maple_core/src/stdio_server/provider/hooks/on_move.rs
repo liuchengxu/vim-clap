@@ -734,13 +734,8 @@ async fn find_code_context(
     path: &Path,
 ) -> Option<CodeContext> {
     // Some checks against the latest preview line.
-    let Some(line) = lines.get(highlight_lnum - 1) else {
-        return None;
-    };
-
-    let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
-        return None;
-    };
+    let line = lines.get(highlight_lnum - 1)?;
+    let ext = path.extension().and_then(|e| e.to_str())?;
 
     let skip_context_tag = {
         const BLACK_LIST: &[&str] = &["log", "txt", "lock", "toml", "yaml", "mod", "conf"];
