@@ -53,6 +53,14 @@ impl VimSyntaxInfo {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct HighlightLine {
+    /// Number of line (1-based) highlighted in the preview window.
+    pub line_number: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub column_range: Option<Range<usize>>,
+}
+
 /// Preview content.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Preview {
@@ -77,7 +85,7 @@ pub struct Preview {
     pub tree_sitter_highlights: TsHighlights,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub hi_lnum: Option<usize>,
+    pub highlight_line: Option<HighlightLine>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scrollbar: Option<(usize, usize)>,
@@ -129,9 +137,13 @@ pub enum PreviewTarget {
     /// List the entries under a directory.
     Directory(PathBuf),
     /// Start from the beginning of a file.
-    File(PathBuf),
+    StartOfFile(PathBuf),
     /// Represents a specific location in a file identified by its path and line number.
-    LineInFile { path: PathBuf, line_number: usize },
+    LocationInFile {
+        path: PathBuf,
+        line_number: usize,
+        column_range: Option<Range<usize>>,
+    },
     /// Represents a Git commit revision specified by its commit hash.
     GitCommit(String),
     /// Specifically for the `help_tags` provider.
@@ -143,10 +155,22 @@ pub enum PreviewTarget {
 }
 
 impl PreviewTarget {
+    pub fn location_in_file(path: PathBuf, line_number: usize) -> Self {
+        Self::LocationInFile {
+            path,
+            line_number,
+            column_range: None,
+        }
+    }
+}
+
+impl PreviewTarget {
     /// Returns the path associated with the enum variant, or `None` if no path exists.
     pub fn path(&self) -> Option<&Path> {
         match self {
-            Self::File(path) | Self::Directory(path) | Self::LineInFile { path, .. } => Some(path),
+            Self::Directory(path) | Self::StartOfFile(path) | Self::LocationInFile { path, .. } => {
+                Some(path)
+            }
             _ => None,
         }
     }
@@ -172,15 +196,15 @@ fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget
     let mut line_content = None;
 
     let preview_target = match ctx.provider_id() {
-        "files" | "git_files" => PreviewTarget::File(ctx.cwd.join(&curline)),
-        "recent_files" => PreviewTarget::File(PathBuf::from(&curline)),
+        "files" | "git_files" => PreviewTarget::StartOfFile(ctx.cwd.join(&curline)),
+        "recent_files" => PreviewTarget::StartOfFile(PathBuf::from(&curline)),
         "history" => {
             let path = if curline.starts_with('~') {
                 expand_tilde(curline)
             } else {
                 ctx.cwd.join(&curline)
             };
-            PreviewTarget::File(path)
+            PreviewTarget::StartOfFile(path)
         }
         "coc_location" | "grep" | "live_grep" | "igrep" => {
             let mut try_extract_file_path = |line: &str| {
@@ -197,28 +221,28 @@ fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget
 
             let (path, line_number) = try_extract_file_path(&curline)?;
 
-            PreviewTarget::LineInFile { path, line_number }
+            PreviewTarget::location_in_file(path, line_number)
         }
         "dumb_jump" => {
             let (_def_kind, fpath, line_number, _col) =
                 extract_jump_line_info(&curline).ok_or_else(err)?;
             let path = ctx.cwd.join(fpath);
-            PreviewTarget::LineInFile { path, line_number }
+            PreviewTarget::location_in_file(path, line_number)
         }
         "blines" => {
             let line_number = extract_blines_lnum(&curline).ok_or_else(err)?;
             let path = ctx.env.start_buffer_path.clone();
-            PreviewTarget::LineInFile { path, line_number }
+            PreviewTarget::location_in_file(path, line_number)
         }
         "tags" => {
             let line_number = extract_buf_tags_lnum(&curline).ok_or_else(err)?;
             let path = ctx.env.start_buffer_path.clone();
-            PreviewTarget::LineInFile { path, line_number }
+            PreviewTarget::location_in_file(path, line_number)
         }
         "proj_tags" => {
             let (line_number, p) = extract_proj_tags(&curline).ok_or_else(err)?;
             let path = ctx.cwd.join(p);
-            PreviewTarget::LineInFile { path, line_number }
+            PreviewTarget::location_in_file(path, line_number)
         }
         "commits" | "bcommits" => {
             let rev = extract_commit_rev(&curline).ok_or_else(err)?;
@@ -301,10 +325,14 @@ impl<'a> CachedPreviewImpl<'a> {
 
         let preview = match &self.preview_target {
             PreviewTarget::Directory(path) => self.preview_directory(path)?,
-            PreviewTarget::File(path) => self.preview_file(path)?,
-            PreviewTarget::LineInFile { path, line_number } => {
+            PreviewTarget::StartOfFile(path) => self.preview_file(path)?,
+            PreviewTarget::LocationInFile {
+                path,
+                line_number,
+                column_range,
+            } => {
                 let container_width = self.ctx.preview_winwidth().await?;
-                self.preview_file_at(path, *line_number, container_width)
+                self.preview_file_at(path, *line_number, column_range.clone(), container_width)
                     .await
             }
             PreviewTarget::GitCommit(rev) => self.preview_commits(rev)?,
@@ -348,7 +376,10 @@ impl<'a> CachedPreviewImpl<'a> {
                 .collect::<Vec<_>>();
             Preview {
                 lines,
-                hi_lnum: Some(1),
+                highlight_line: Some(HighlightLine {
+                    line_number: 1,
+                    ..Default::default()
+                }),
                 vim_syntax_info: VimSyntaxInfo::syntax("help".into()),
                 ..Default::default()
             }
@@ -454,7 +485,13 @@ impl<'a> CachedPreviewImpl<'a> {
         Ok(preview)
     }
 
-    async fn preview_file_at(&self, path: &Path, lnum: usize, container_width: usize) -> Preview {
+    async fn preview_file_at(
+        &self,
+        path: &Path,
+        lnum: usize,
+        column_range: Option<Range<usize>>,
+        container_width: usize,
+    ) -> Preview {
         tracing::debug!(path = ?path.display(), lnum, "Previewing file");
 
         let fname = path.display().to_string();
@@ -524,7 +561,10 @@ impl<'a> CachedPreviewImpl<'a> {
 
                 let mut preview = Preview {
                     lines,
-                    hi_lnum: Some(highlight_lnum),
+                    highlight_line: Some(HighlightLine {
+                        line_number: highlight_lnum + 1,
+                        column_range,
+                    }),
                     scrollbar,
                     ..Default::default()
                 };
@@ -694,13 +734,8 @@ async fn find_code_context(
     path: &Path,
 ) -> Option<CodeContext> {
     // Some checks against the latest preview line.
-    let Some(line) = lines.get(highlight_lnum - 1) else {
-        return None;
-    };
-
-    let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
-        return None;
-    };
+    let line = lines.get(highlight_lnum - 1)?;
+    let ext = path.extension().and_then(|e| e.to_str())?;
 
     let skip_context_tag = {
         const BLACK_LIST: &[&str] = &["log", "txt", "lock", "toml", "yaml", "mod", "conf"];

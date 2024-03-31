@@ -14,6 +14,10 @@ use tokio::sync::mpsc::UnboundedSender;
     "buffer",
     // Show the diagnostics in the cursor line.
     "cursor",
+    "first",
+    "last",
+    "next",
+    "prev",
     "firstError",
     "lastError",
     "nextError",
@@ -22,6 +26,10 @@ use tokio::sync::mpsc::UnboundedSender;
     "lastWarn",
     "nextWarn",
     "prevWarn",
+    "firstHint",
+    "lastHint",
+    "nextHint",
+    "prevHint",
   ]
 )]
 pub struct Diagnostics {
@@ -53,7 +61,7 @@ impl Diagnostics {
 #[async_trait::async_trait]
 impl ClapPlugin for Diagnostics {
     async fn handle_action(&mut self, action: PluginAction) -> Result<(), PluginError> {
-        use DiagnosticKind::{Error, Warn};
+        use DiagnosticKind::{All, Error, Hint, Warn};
         use Direction::{First, Last, Next, Prev};
 
         let PluginAction { method, params: _ } = action;
@@ -70,6 +78,18 @@ impl ClapPlugin for Diagnostics {
                 let _ = self
                     .diagnostics_worker_msg_sender
                     .send(WorkerMessage::ShowDiagnosticsUnderCursor(bufnr));
+            }
+            DiagnosticsAction::First => {
+                self.navigate_diagnostics(All, First).await?;
+            }
+            DiagnosticsAction::Last => {
+                self.navigate_diagnostics(All, Last).await?;
+            }
+            DiagnosticsAction::Next => {
+                self.navigate_diagnostics(All, Next).await?;
+            }
+            DiagnosticsAction::Prev => {
+                self.navigate_diagnostics(All, Prev).await?;
             }
             DiagnosticsAction::FirstError => {
                 self.navigate_diagnostics(Error, First).await?;
@@ -94,6 +114,18 @@ impl ClapPlugin for Diagnostics {
             }
             DiagnosticsAction::PrevWarn => {
                 self.navigate_diagnostics(Warn, Prev).await?;
+            }
+            DiagnosticsAction::FirstHint => {
+                self.navigate_diagnostics(Hint, First).await?;
+            }
+            DiagnosticsAction::LastHint => {
+                self.navigate_diagnostics(Hint, Last).await?;
+            }
+            DiagnosticsAction::NextHint => {
+                self.navigate_diagnostics(Hint, Next).await?;
+            }
+            DiagnosticsAction::PrevHint => {
+                self.navigate_diagnostics(Hint, Prev).await?;
             }
         }
 

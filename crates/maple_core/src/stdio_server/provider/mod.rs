@@ -81,9 +81,14 @@ struct SearcherControl {
 }
 
 impl SearcherControl {
-    fn kill(self) {
-        self.stop_signal.store(true, Ordering::SeqCst);
-        self.join_handle.abort();
+    fn kill_in_background(self) {
+        if !self.join_handle.is_finished() {
+            // NOTE: The kill operation may take some time, using `spawn_block` to not block current thread.
+            tokio::task::spawn_blocking(move || {
+                self.stop_signal.store(true, Ordering::SeqCst);
+                self.join_handle.abort();
+            });
+        }
     }
 }
 
@@ -232,10 +237,10 @@ impl PreviewManager {
             .as_ref()
             .ok_or(ProviderError::PreviewTargetNotFound)?
         {
-            PreviewTarget::LineInFile { path, line_number } => {
-                self.prepare_scroll_file_info(*line_number, path.clone())?
-            }
-            PreviewTarget::File(path) => self.prepare_scroll_file_info(0, path.clone())?,
+            PreviewTarget::LocationInFile {
+                path, line_number, ..
+            } => self.prepare_scroll_file_info(*line_number, path.clone())?,
+            PreviewTarget::StartOfFile(path) => self.prepare_scroll_file_info(0, path.clone())?,
             _ => return Err(ProviderError::OnlyFilePreviewScrollSupported),
         };
 
@@ -259,10 +264,7 @@ impl PreviewManager {
             new_line_number
         };
 
-        let new_target = PreviewTarget::LineInFile {
-            path,
-            line_number: new_line_number as usize,
-        };
+        let new_target = PreviewTarget::location_in_file(path, new_line_number as usize);
 
         Ok(new_target)
     }

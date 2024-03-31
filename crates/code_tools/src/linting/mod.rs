@@ -99,6 +99,10 @@ impl Diagnostic {
     pub fn is_warn(&self) -> bool {
         matches!(self.severity, Severity::Warning)
     }
+
+    pub fn is_hint(&self) -> bool {
+        matches!(self.severity, Severity::Hint)
+    }
 }
 
 #[derive(Debug, Clone)]

@@ -43,6 +43,7 @@ struct PathContext {
 #[non_exhaustive]
 enum Context {
     File(FileContext),
+    #[allow(unused)]
     Path(PathContext),
 }
 

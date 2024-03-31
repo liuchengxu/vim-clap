@@ -88,9 +88,7 @@ impl BlinesProvider {
 
     fn process_query_on_local_file(&mut self, query: String, ctx: &Context, source_file: PathBuf) {
         if let Some(control) = self.searcher_control.take() {
-            tokio::task::spawn_blocking(move || {
-                control.kill();
-            });
+            control.kill_in_background();
         }
 
         let matcher_builder = ctx.matcher_builder().match_scope(MatchScope::Full);
@@ -170,10 +168,8 @@ impl ClapProvider for BlinesProvider {
         let Some(line_number) = pattern::extract_blines_lnum(&curline) else {
             return Ok(());
         };
-        let preview_target = PreviewTarget::LineInFile {
-            path: self.preview_file.clone(),
-            line_number,
-        };
+        let preview_target =
+            PreviewTarget::location_in_file(self.preview_file.clone(), line_number);
         ctx.update_preview(Some(preview_target)).await
     }
 
@@ -189,8 +185,7 @@ impl ClapProvider for BlinesProvider {
 
     fn on_terminate(&mut self, ctx: &mut Context, session_id: u64) {
         if let Some(control) = self.searcher_control.take() {
-            // NOTE: The kill operation can not block current task.
-            tokio::task::spawn_blocking(move || control.kill());
+            control.kill_in_background();
         }
         if let BufferSource::ModifiedBuffer(_) = self.source {
             let _ = std::fs::remove_file(&self.preview_file);

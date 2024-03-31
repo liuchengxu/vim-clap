@@ -485,7 +485,7 @@ fn spawn_task_stderr(stderr: ChildStderr, server_name: String) {
                         // Stream closed.
                         return;
                     }
-                    tracing::error!("[{server_name}] error: {}", line.trim_end());
+                    tracing::debug!("[{server_name}] error: {}", line.trim_end());
                 }
                 Err(err) => {
                     tracing::error!("Error occurred at reading child stderr: {err:?}");
@@ -536,9 +536,9 @@ impl Client {
         let stdout = process.stdout.take().expect("Failed to open stdout");
         let stderr = process.stderr.take().expect("Failed to open stderr");
 
-        let payload_sender = spawn_task_stdin(stdin);
-
         spawn_task_stderr(stderr, name.clone());
+
+        let payload_sender = spawn_task_stdin(stdin);
 
         let (response_sender_tx, response_sender_rx): (
             UnboundedSender<(Id, oneshot::Sender<RpcResponse>)>,

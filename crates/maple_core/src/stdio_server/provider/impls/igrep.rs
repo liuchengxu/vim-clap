@@ -30,17 +30,13 @@ impl Grepper {
 
     fn kill_last_searcher(&mut self) {
         if let Some(control) = self.searcher_control.take() {
-            tokio::task::spawn_blocking(move || {
-                control.kill();
-            });
+            control.kill_in_background();
         }
     }
 
     fn grep(&mut self, query: String, path: PathBuf, ctx: &Context) {
         if let Some(control) = self.searcher_control.take() {
-            tokio::task::spawn_blocking(move || {
-                control.kill();
-            });
+            control.kill_in_background();
         }
 
         let matcher = ctx
@@ -150,7 +146,7 @@ impl Explorer {
             self.goto_dir(target_dir, ctx)?;
             self.preview_current_line(ctx).await?;
         } else if target_dir.is_file() {
-            let preview_target = PreviewTarget::File(target_dir);
+            let preview_target = PreviewTarget::StartOfFile(target_dir);
             self.update_preview_with_target(preview_target, ctx).await?;
         }
         Ok(())
@@ -239,7 +235,7 @@ impl Explorer {
         let preview_target = if target_dir.is_dir() {
             PreviewTarget::Directory(target_dir)
         } else {
-            PreviewTarget::File(target_dir)
+            PreviewTarget::StartOfFile(target_dir)
         };
 
         self.update_preview_with_target(preview_target, ctx).await
@@ -432,10 +428,7 @@ impl IgrepProvider {
             let fpath = fpath.strip_prefix("./").unwrap_or(fpath);
             let path = self.explorer.current_dir.join(fpath);
 
-            let preview_target = PreviewTarget::LineInFile {
-                path,
-                line_number: lnum,
-            };
+            let preview_target = PreviewTarget::location_in_file(path, lnum);
 
             ctx.update_preview(Some(preview_target)).await?;
         }

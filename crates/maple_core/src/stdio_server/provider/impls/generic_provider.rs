@@ -143,7 +143,7 @@ impl GenericProvider {
                 let mut iter = res.into_iter();
                 let path = iter.next().expect("Element must exist").into();
                 let line_number = iter.next().expect("Element must exist").parse::<usize>()?;
-                Some(PreviewTarget::LineInFile { path, line_number })
+                Some(PreviewTarget::location_in_file(path, line_number))
             }
             _ => None,
         };

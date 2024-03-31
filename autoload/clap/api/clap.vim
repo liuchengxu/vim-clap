@@ -348,7 +348,7 @@ function! s:init_provider() abort
   endfunction
 
   function! provider.support_multi_select() abort
-    return has_key(self._(), 'sink*') || has_key(get(self._(), 'mappings', {}), "<Tab>")
+    return has_key(self._(), 'multi_select') || has_key(self._(), 'sink*') || has_key(get(self._(), 'mappings', {}), "<Tab>")
   endfunction
 
   function! provider.support_open_action() abort
@@ -417,11 +417,19 @@ function! s:inject_base_api(dict) abort
   let dict.setbufvar_batch = function('s:_setbufvar_batch')
 endfunction
 
-function! s:matchaddpos(lnum) abort
+function! s:matchaddpos(highlight_line) abort
   if exists('w:clap_preview_hi_id')
     call matchdelete(w:clap_preview_hi_id)
   endif
-  let w:clap_preview_hi_id = matchaddpos('Search', [[a:lnum]])
+  if type(a:highlight_line) == v:t_number
+    let w:clap_preview_hi_id = matchaddpos('Search', [[a:highlight_line]])
+  else
+    if has_key(a:highlight_line, 'column_range')
+      let w:clap_preview_hi_id = matchaddpos('Search', [[a:highlight_line.line_number, a:highlight_line.column_range.start, a:highlight_line.column_range.end - a:highlight_line.column_range.start]])
+    else
+      let w:clap_preview_hi_id = matchaddpos('Search', [[a:highlight_line.line_number]])
+    endif
+  endif
 endfunction
 
 function! clap#api#clap#init() abort
@@ -456,13 +464,13 @@ function! clap#api#clap#init() abort
   endfunction
 
   if exists('*win_execute')
-    function! g:clap.preview.add_highlight(lnum) abort
-      call win_execute(g:clap.preview.winid, 'noautocmd call s:matchaddpos(a:lnum)')
+    function! g:clap.preview.add_highlight(highlight_line) abort
+      call win_execute(g:clap.preview.winid, 'noautocmd call s:matchaddpos(a:highlight_line)')
     endfunction
   else
-    function! g:clap.preview.add_highlight(lnum) abort
+    function! g:clap.preview.add_highlight(highlight_line) abort
       noautocmd call win_gotoid(g:clap.preview.winid)
-      call s:matchaddpos(a:lnum)
+      call s:matchaddpos(a:highlight_line)
       noautocmd call win_gotoid(g:clap.input.winid)
     endfunction
   endif

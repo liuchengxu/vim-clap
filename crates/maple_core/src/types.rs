@@ -6,8 +6,10 @@ pub enum Direction {
 }
 
 pub enum DiagnosticKind {
+    All,
     Error,
     Warn,
+    Hint,
 }
 
 #[derive(Clone, Copy, Debug)]
