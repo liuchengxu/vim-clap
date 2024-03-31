@@ -14,6 +14,7 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 struct Stats {
     error: usize,
     warn: usize,
+    hint: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -58,6 +59,8 @@ impl BufferDiagnostics {
                 stats.error += 1;
             } else if d.is_warn() {
                 stats.warn += 1;
+            } else if d.is_hint() {
+                stats.hint += 1;
             }
         }
 
@@ -79,7 +82,7 @@ impl BufferDiagnostics {
         direction: Direction,
     ) -> Option<(usize, usize)> {
         use CmpOrdering::{Greater, Less};
-        use DiagnosticKind::{Error, Warn};
+        use DiagnosticKind::{All, Error, Hint, Warn};
         use Direction::{First, Last, Next, Prev};
 
         let diagnostics = self.inner.read();
@@ -96,6 +99,12 @@ impl BufferDiagnostics {
                 .filter_map(|d| if d.is_warn() { d.spans.first() } else { None })
         };
 
+        let hints = || {
+            diagnostics
+                .iter()
+                .filter_map(|d| if d.is_hint() { d.spans.first() } else { None })
+        };
+
         let check_span = |span: &DiagnosticSpan, ordering: CmpOrdering| {
             if span.line_start.cmp(&from_line_number) == ordering {
                 Some(span.start_pos())
@@ -104,7 +113,13 @@ impl BufferDiagnostics {
             }
         };
 
+        let spans = || diagnostics.iter().filter_map(|d| d.spans.first());
+
         match (kind, direction) {
+            (All, First) => spans().next().map(|span| span.start_pos()),
+            (All, Last) => spans().last().map(|span| span.start_pos()),
+            (All, Next) => spans().find_map(|span| check_span(span, Greater)),
+            (All, Prev) => spans().rev().find_map(|span| check_span(span, Less)),
             (Error, First) => errors().next().map(|span| span.start_pos()),
             (Error, Last) => errors().last().map(|span| span.start_pos()),
             (Error, Next) => errors().find_map(|span| check_span(span, Greater)),
@@ -113,6 +128,10 @@ impl BufferDiagnostics {
             (Warn, Last) => warnings().last().map(|span| span.start_pos()),
             (Warn, Next) => warnings().find_map(|span| check_span(span, Greater)),
             (Warn, Prev) => warnings().rev().find_map(|span| check_span(span, Less)),
+            (Hint, First) => hints().next().map(|span| span.start_pos()),
+            (Hint, Last) => hints().last().map(|span| span.start_pos()),
+            (Hint, Next) => hints().find_map(|span| check_span(span, Greater)),
+            (Hint, Prev) => hints().rev().find_map(|span| check_span(span, Less)),
         }
     }
 
@@ -307,6 +326,7 @@ impl BufferDiagnosticsWorker {
                             .collect::<Vec<_>>();
 
                         for diagnostic in current_diagnostics {
+                            tracing::debug!("cursor_diagnostic: {diagnostic:?}");
                             self.vim.echo_info(diagnostic.human_message())?;
                         }
                     }
@@ -336,7 +356,8 @@ impl BufferDiagnosticsWorker {
                         .or_insert_with(BufferDiagnostics::new);
                     self.vim
                         .setbufvar(bufnr, "clap_diagnostics", Stats::default())?;
-                    self.vim.exec("clap#plugin#diagnostics#toggle_off", [bufnr])?;
+                    self.vim
+                        .exec("clap#plugin#diagnostics#toggle_off", [bufnr])?;
                 }
                 WorkerMessage::LinterDiagnostics((bufnr, linter_diagnostics)) => {
                     tracing::trace!(bufnr, "Recv linter diagnostics: {linter_diagnostics:?}");

@@ -173,7 +173,8 @@ impl ClapPlugin for Linter {
                 match self.toggle {
                     Toggle::On => {
                         for bufnr in self.bufs.keys() {
-                            self.vim.exec("clap#plugin#diagnostics#toggle_off", [bufnr])?;
+                            self.vim
+                                .exec("clap#plugin#diagnostics#toggle_off", [bufnr])?;
                         }
                     }
                     Toggle::Off => {
