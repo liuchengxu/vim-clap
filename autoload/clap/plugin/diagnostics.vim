@@ -199,24 +199,24 @@ endfunction
 function! s:add_eol(bufnr, diagnostics) abort
   let extmark_ids = s:render_eol(a:bufnr, a:diagnostics)
 
-  let clap_diagnostics = getbufvar(a:bufnr, 'clap_diagnostics', {})
-  if has_key(clap_diagnostics, 'extmark_ids')
-    call extend(clap_diagnostics.extmark_ids, extmark_ids)
-    call setbufvar(a:bufnr, 'clap_diagnostics', clap_diagnostics)
+  let __clap_diagnostics = getbufvar(a:bufnr, '__clap_diagnostics', {})
+  if has_key(__clap_diagnostics, 'extmark_ids')
+    call extend(__clap_diagnostics.extmark_ids, extmark_ids)
+    call setbufvar(a:bufnr, '__clap_diagnostics', __clap_diagnostics)
   endif
 endfunction
 
 function! s:refresh_eol(bufnr, diagnostics) abort
   let extmark_ids = s:render_eol(a:bufnr, a:diagnostics)
-  call setbufvar(a:bufnr, 'clap_diagnostics', { 'extmark_ids': extmark_ids })
+  call setbufvar(a:bufnr, '__clap_diagnostics', { 'extmark_ids': extmark_ids })
 endfunction
 
 function! s:delete_eol(bufnr) abort
-  let clap_diagnostics = getbufvar(a:bufnr, 'clap_diagnostics', {})
-  for id in get(clap_diagnostics, 'extmark_ids', [])
+  let __clap_diagnostics = getbufvar(a:bufnr, '__clap_diagnostics', {})
+  for id in get(__clap_diagnostics, 'extmark_ids', [])
     call nvim_buf_del_extmark(a:bufnr, s:diagnostic_eol_ns_id, id)
   endfor
-  call setbufvar(a:bufnr, 'clap_diagnostics', {})
+  call setbufvar(a:bufnr, '__clap_diagnostics', {})
 endfunction
 
 function! clap#plugin#diagnostics#delete_highlights(bufnr) abort
