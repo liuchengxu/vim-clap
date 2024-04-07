@@ -114,6 +114,7 @@ enable = true
 
 - Features
     - Generate/Update/Delete toc
+    - Open preview in browser
 
 ## syntax
 
