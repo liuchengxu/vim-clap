@@ -22,7 +22,7 @@ members = [
     "crates/maple_core",
     "crates/maple_derive",
     "crates/maple_lsp",
-    "crates/markdown",
+    "crates/maple_markdown",
     "crates/matcher",
     "crates/matcher/extracted_fzy",
     "crates/paths",
@@ -98,7 +98,7 @@ maple_config = { path = "crates/maple_config" }
 maple_core = { path = "crates/maple_core" }
 maple_derive = { path = "crates/maple_derive" }
 maple_lsp = { path = "crates/maple_lsp" }
-maple_markdown = { path = "crates/markdown" }
+maple_markdown = { path = "crates/maple_markdown" }
 matcher = { path = "crates/matcher" }
 paths = { path = "crates/paths" }
 pattern = { path = "crates/pattern" }

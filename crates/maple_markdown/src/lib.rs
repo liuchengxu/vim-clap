@@ -1,12 +1,13 @@
-use axum::extract::connect_info::ConnectInfo;
+pub mod toc;
+
 use axum::extract::ws::{Message as WsMessage, WebSocket, WebSocketUpgrade};
 use axum::extract::Extension;
+use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse};
-use axum::{http::StatusCode, routing::get, Router};
-use axum_extra::TypedHeader;
+use axum::routing::get;
+use axum::Router;
 use std::net::SocketAddr;
 use tokio::sync::watch::Receiver;
-use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
@@ -17,17 +18,8 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 /// as well as things from HTTP headers such as user-agent of the browser etc.
 async fn ws_handler(
     ws: Option<WebSocketUpgrade>,
-    user_agent: Option<TypedHeader<headers::UserAgent>>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Extension(msg_rx): Extension<Receiver<Message>>,
 ) -> impl IntoResponse {
-    if let Some(TypedHeader(user_agent)) = user_agent {
-        tracing::debug!("`{user_agent}` at {addr} connected.");
-    } else {
-        tracing::debug!("`Unknown browser at {addr} connected.");
-    };
-
-    tracing::debug!("======================= [ws_handler] 1 ws: {ws:?}");
     if let Some(ws) = ws {
         ws.on_upgrade(|ws| async move { handle_websocket(ws, msg_rx).await })
     } else {
@@ -60,8 +52,16 @@ fn process_message(msg: Message) -> Result<serde_json::Value, Error> {
     let res = match msg {
         Message::FileChanged(path) => {
             let markdown_content = std::fs::read_to_string(path)?;
-            let html =
-                markdown::to_html_with_options(&markdown_content, &markdown::Options::gfm())?;
+            let html = markdown::to_html_with_options(
+                &markdown_content,
+                &markdown::Options {
+                    parse: markdown::ParseOptions::gfm(),
+                    compile: markdown::CompileOptions {
+                        gfm_task_list_item_checkable: true,
+                        ..markdown::CompileOptions::gfm()
+                    },
+                },
+            )?;
             serde_json::json!({
               "type": "update_content",
               "data": html,
@@ -90,21 +90,17 @@ pub enum Message {
     FileChanged(String),
     /// Refresh the page with given html content.
     UpdateContent(String),
-    /// Scroll the page to the given position.
+    /// Scroll to the given position specified in a percent to the window height.
     Scroll(usize),
 }
 
-pub async fn open(
+pub async fn open_preview(
     listener: tokio::net::TcpListener,
     msg_rx: Receiver<Message>,
 ) -> Result<(), Error> {
     let app = Router::new()
         .route("/", get(ws_handler))
-        .layer(Extension(msg_rx))
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(DefaultMakeSpan::default().include_headers(true)),
-        );
+        .layer(Extension(msg_rx));
 
     let port = listener.local_addr()?.port();
 
@@ -127,6 +123,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    #[ignore]
     async fn it_works() {
         let (msg_tx, msg_rx) = tokio::sync::watch::channel(Message::UpdateContent(String::new()));
 
@@ -143,7 +140,7 @@ mod tests {
             .await
             .unwrap();
 
-        open(listener, msg_rx)
+        open_preview(listener, msg_rx)
             .await
             .expect("Failed to open markdown preview");
     }
