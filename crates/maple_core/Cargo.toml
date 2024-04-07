@@ -23,6 +23,7 @@ grep-matcher = { workspace = true }
 ignore = { workspace = true }
 itertools = { workspace = true }
 tokio = { workspace = true, features = ["fs", "rt", "process", "macros", "rt-multi-thread", "sync", "time"] }
+markdown = { workspace = true }
 once_cell = { workspace = true }
 parking_lot = { workspace = true }
 percent-encoding = { workspace = true }
@@ -42,6 +43,7 @@ code_tools = { workspace = true }
 dirs = { workspace = true }
 maple_config = { workspace = true }
 maple_derive = { workspace = true }
+maple_markdown = { workspace = true }
 filter = { workspace = true }
 icon = { workspace = true }
 maple_lsp = { workspace = true }

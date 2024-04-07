@@ -66,7 +66,7 @@ augroup VimClap
     autocmd BufWinLeave  * call clap#client#notify('BufWinLeave',  [+expand('<abuf>')])
     " Are these really needed?
     " autocmd TextChanged  * call clap#client#notify('TextChanged',  [+expand('<abuf>')])
-    " autocmd TextChangedI * call clap#client#notify('TextChangedI', [+expand('<abuf>')])
+    autocmd TextChangedI * call clap#client#notify('TextChangedI', [+expand('<abuf>')])
 
     " Create `clap_actions` provider so that it's convenient to interact with the plugins later.
     let g:clap_provider_clap_actions = get(g:, 'clap_provider_clap_actions', {

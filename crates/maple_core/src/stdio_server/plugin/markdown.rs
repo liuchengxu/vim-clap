@@ -3,11 +3,12 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType, PluginAction};
 use crate::stdio_server::plugin::{ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::vim::Vim;
+use maple_markdown::Message;
 use once_cell::sync::Lazy;
 use percent_encoding::{percent_encode, CONTROLS};
 use regex::Regex;
 use serde_json::json;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::path::Path;
 use std::str::FromStr;
 
@@ -198,10 +199,18 @@ fn find_toc_range(input_file: impl AsRef<Path>) -> std::io::Result<Option<(usize
     Ok(None)
 }
 
-#[derive(Debug, Clone, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "markdown", actions = ["generateToc", "updateToc", "deleteToc"])]
+#[derive(Debug, maple_derive::ClapPlugin)]
+#[clap_plugin(
+  id = "markdown",
+  actions = [
+    "generateToc",
+    "updateToc",
+    "deleteToc",
+    "previewInBrowser",
+])]
 pub struct Markdown {
     vim: Vim,
+    bufs: HashMap<usize, tokio::sync::watch::Sender<Message>>,
     toggle: Toggle,
 }
 
@@ -209,7 +218,8 @@ impl Markdown {
     pub fn new(vim: Vim) -> Self {
         Self {
             vim,
-            toggle: Toggle::Off,
+            bufs: HashMap::new(),
+            toggle: Toggle::On,
         }
     }
 
@@ -228,13 +238,51 @@ impl Markdown {
 
 #[async_trait::async_trait]
 impl ClapPlugin for Markdown {
-    fn subscriptions(&self) -> &[AutocmdEventType] {
-        &[]
-    }
+    #[maple_derive::subscriptions]
+    async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<(), PluginError> {
+        use AutocmdEventType::{BufDelete, BufWritePost, CursorMoved, TextChangedI};
 
-    async fn handle_autocmd(&mut self, _autocmd: AutocmdEvent) -> Result<(), PluginError> {
         if self.toggle.is_off() {
             return Ok(());
+        }
+
+        if self.bufs.is_empty() {
+            return Ok(());
+        }
+
+        let (event_type, params) = autocmd;
+        let bufnr = params.parse_bufnr()?;
+
+        match event_type {
+            CursorMoved => {
+                let scroll_persent = self.vim.line(".").await? * 100 / self.vim.line("$").await?;
+                if let Some(msg_tx) = self.bufs.get(&bufnr) {
+                    msg_tx.send_replace(Message::Scroll(scroll_persent));
+                }
+            }
+            BufWritePost => {
+                for (bufnr, msg_tx) in self.bufs.iter() {
+                    let path = self.vim.bufabspath(bufnr).await?;
+                    msg_tx.send_replace(Message::FileChanged(path));
+                }
+            }
+            TextChangedI => {
+                let lines = self.vim.getbufline(bufnr, 1, "$").await?;
+                let markdown_content = lines.join("\n");
+                let html =
+                    markdown::to_html_with_options(&markdown_content, &markdown::Options::gfm())
+                        .map_err(PluginError::Other)?;
+                if let Some(msg_tx) = self.bufs.get(&bufnr) {
+                    msg_tx.send_replace(Message::UpdateContent(html));
+                }
+            }
+            BufDelete => {
+                if let Some(msg_tx) = self.bufs.remove(&bufnr) {
+                    // Drop the markdown worker message sender to exit the markdown preview task.
+                    drop(msg_tx);
+                }
+            }
+            event => return Err(PluginError::UnhandledEvent(event)),
         }
 
         Ok(())
@@ -265,6 +313,24 @@ impl ClapPlugin for Markdown {
                 if let Some((start, end)) = find_toc_range(file)? {
                     self.vim.deletebufline(bufnr, start + 1, end + 1).await?;
                 }
+            }
+            MarkdownAction::PreviewInBrowser => {
+                let (msg_tx, msg_rx) =
+                    tokio::sync::watch::channel(Message::UpdateContent(String::new()));
+
+                let addr = format!("127.0.0.1:0");
+                let listener = tokio::net::TcpListener::bind(&addr).await?;
+
+                tokio::spawn(async move {
+                    if let Err(err) = maple_markdown::open(listener, msg_rx).await {
+                        tracing::error!(?err, "Failed to open markdown preview in browser");
+                    }
+                });
+
+                let bufnr = self.vim.bufnr("").await?;
+                let path = self.vim.bufabspath(bufnr).await?;
+                msg_tx.send_replace(Message::FileChanged(path));
+                self.bufs.insert(bufnr, msg_tx);
             }
         }
 
