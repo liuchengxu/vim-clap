@@ -79,9 +79,7 @@ impl ClapPlugin for Markdown {
                 // TODO: incremental update?
                 let lines = self.vim.getbufline(bufnr, 1, "$").await?;
                 let markdown_content = lines.join("\n");
-                let html =
-                    markdown::to_html_with_options(&markdown_content, &markdown::Options::gfm())
-                        .map_err(PluginError::Other)?;
+                let html = maple_markdown::to_html(&markdown_content)?;
                 if let Some(msg_tx) = self.bufs.get(&bufnr) {
                     msg_tx.send_replace(Message::UpdateContent(html));
                 }
@@ -135,8 +133,10 @@ impl ClapPlugin for Markdown {
                 let bufnr = self.vim.bufnr("").await?;
 
                 tokio::spawn(async move {
-                    if let Err(err) = maple_markdown::open_preview(listener, msg_rx).await {
-                        tracing::error!(?err, "Failed to open markdown preview in browser");
+                    if let Err(err) =
+                        maple_markdown::open_preview_in_browser(listener, msg_rx).await
+                    {
+                        tracing::error!(?err, "Failed to open markdown preview");
                     }
                     tracing::debug!(bufnr, "markdown preview exited");
                 });

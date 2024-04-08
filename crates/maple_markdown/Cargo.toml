@@ -11,9 +11,9 @@ publish.workspace = true
 [dependencies]
 axum = { version = "0.7.5", features = ["ws"] }
 axum-extra = { version = "0.9.3", features = ["typed-header"] }
-markdown = { workspace = true }
 once_cell = { workspace = true }
 percent-encoding = { workspace = true }
+pulldown-cmark = { workspace = true }
 regex = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["full"] }

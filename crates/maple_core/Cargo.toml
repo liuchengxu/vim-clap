@@ -23,7 +23,6 @@ grep-matcher = { workspace = true }
 ignore = { workspace = true }
 itertools = { workspace = true }
 tokio = { workspace = true, features = ["fs", "rt", "process", "macros", "rt-multi-thread", "sync", "time"] }
-markdown = { workspace = true }
 once_cell = { workspace = true }
 parking_lot = { workspace = true }
 rayon = { workspace = true }

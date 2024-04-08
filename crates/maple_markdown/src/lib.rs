@@ -48,20 +48,20 @@ async fn handle_websocket(mut socket: WebSocket, mut msg_rx: Receiver<Message>) 
     let _ = socket.send(WsMessage::Close(None)).await;
 }
 
+pub fn to_html(markdown_content: &str) -> Result<String, Error> {
+    let parser = pulldown_cmark::Parser::new(markdown_content);
+
+    let mut html_output = String::new();
+    pulldown_cmark::html::push_html(&mut html_output, parser);
+
+    Ok(html_output)
+}
+
 fn process_message(msg: Message) -> Result<serde_json::Value, Error> {
     let res = match msg {
         Message::FileChanged(path) => {
             let markdown_content = std::fs::read_to_string(path)?;
-            let html = markdown::to_html_with_options(
-                &markdown_content,
-                &markdown::Options {
-                    parse: markdown::ParseOptions::gfm(),
-                    compile: markdown::CompileOptions {
-                        gfm_task_list_item_checkable: true,
-                        ..markdown::CompileOptions::gfm()
-                    },
-                },
-            )?;
+            let html = to_html(&markdown_content)?;
             serde_json::json!({
               "type": "update_content",
               "data": html,
@@ -83,7 +83,7 @@ fn process_message(msg: Message) -> Result<serde_json::Value, Error> {
     Ok(res)
 }
 
-// Message type between the server and ws clients.
+// Worker message that the websocket server deals with.
 #[derive(Debug, Clone)]
 pub enum Message {
     /// Markdown file was modified.
@@ -94,7 +94,7 @@ pub enum Message {
     Scroll(usize),
 }
 
-pub async fn open_preview(
+pub async fn open_preview_in_browser(
     listener: tokio::net::TcpListener,
     msg_rx: Receiver<Message>,
 ) -> Result<(), Error> {
@@ -104,11 +104,10 @@ pub async fn open_preview(
 
     let port = listener.local_addr()?.port();
 
-    if let Err(err) = webbrowser::open(&format!("http://127.0.0.1:{port}")) {
-        tracing::error!("Error serving connection: {:?}", err);
-    }
+    webbrowser::open(&format!("http://127.0.0.1:{port}"))?;
 
     tracing::debug!("Listening on {listener:?}");
+
     axum::serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
@@ -140,7 +139,7 @@ mod tests {
             .await
             .unwrap();
 
-        open_preview(listener, msg_rx)
+        open_preview_in_browser(listener, msg_rx)
             .await
             .expect("Failed to open markdown preview");
     }
