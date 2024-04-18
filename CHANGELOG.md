@@ -6,6 +6,7 @@
 - Add `multi_select` property explicitly in provider, useful for the provider lsp.
 - Add `:ClapAction diagnostics.{first,last,next,prev}` for navigating between all kinds of the diagnostics.
 - Add `:ClapAction diagnostics.{firstHint,lastHint,nextHint,prevHint}` for navigating between the Hint diagnostics.
+- Optimize the grep search performance by 20+%.
 
 ## [0.52] 2024-2-29
 
