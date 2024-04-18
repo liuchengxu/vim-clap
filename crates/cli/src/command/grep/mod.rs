@@ -24,23 +24,31 @@ pub struct Grep {
     #[clap(index = 1)]
     grep_query: String,
 
-    /// Read input from a cached grep tempfile, only absolute file path is supported.
+    /// Read input from a cached grep tempfile.
+    ///
+    /// Only absolute file path is supported.
     #[clap(long, value_parser)]
     input: Option<PathBuf>,
 
-    /// Specify the working directory of CMD
+    /// Specify the working directory of CMD.
     #[clap(long, value_parser)]
     cmd_dir: Option<PathBuf>,
 
-    /// Recreate the cache, only intended for the test purpose.
+    /// Recreate the grep cache.
+    ///
+    /// Only intended for the test purpose.
     #[clap(long)]
     refresh_cache: bool,
 
+    /// Run the filter in parallel.
+    ///
+    /// Deprecated.
     #[clap(long)]
     par_run: bool,
 
+    /// Use the builtin searching implementation on top of libripgrep instead of the rg executable.
     #[clap(long)]
-    ripgrep: bool,
+    lib_ripgrep: bool,
 }
 
 impl Grep {
@@ -55,7 +63,7 @@ impl Grep {
             return Ok(());
         }
 
-        if self.ripgrep {
+        if self.lib_ripgrep {
             let dir = match self.cmd_dir {
                 Some(ref dir) => dir.clone(),
                 None => std::env::current_dir()?,

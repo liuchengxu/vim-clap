@@ -162,6 +162,10 @@ impl Default for CursorWordConfig {
 pub struct MarkdownPluginConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
+    /// Specify the port number for the preview page in browser.
+    ///
+    /// A random port will be used each time if not specified.
+    pub preview_port: usize,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq)]

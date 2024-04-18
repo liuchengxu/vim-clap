@@ -48,27 +48,24 @@ impl GrepProvider {
             .match_scope(MatchScope::Full) // Force using MatchScope::Full.
             .build(Query::from(&query));
 
-        let new_control = {
-            let stop_signal = Arc::new(AtomicBool::new(false));
+        let vim = ctx.vim.clone();
+        let stop_signal = Arc::new(AtomicBool::new(false));
+        let mut search_context = ctx.search_context(stop_signal.clone());
+        // cwd + extra paths
+        if self.args.base.no_cwd {
+            search_context.paths = self.args.paths.clone();
+        } else {
+            search_context.paths.extend_from_slice(&self.args.paths);
+        }
+        let join_handle = tokio::spawn(async move {
+            let _ = vim.bare_exec("clap#spinner#set_busy");
+            crate::searcher::grep::search(query, matcher, search_context).await;
+            let _ = vim.bare_exec("clap#spinner#set_idle");
+        });
 
-            let vim = ctx.vim.clone();
-            let mut search_context = ctx.search_context(stop_signal.clone());
-            // cwd + extra paths
-            if self.args.base.no_cwd {
-                search_context.paths = self.args.paths.clone();
-            } else {
-                search_context.paths.extend_from_slice(&self.args.paths);
-            }
-            let join_handle = tokio::spawn(async move {
-                let _ = vim.bare_exec("clap#spinner#set_busy");
-                crate::searcher::grep::search(query, matcher, search_context).await;
-                let _ = vim.bare_exec("clap#spinner#set_idle");
-            });
-
-            SearcherControl {
-                stop_signal,
-                join_handle,
-            }
+        let new_control = SearcherControl {
+            stop_signal,
+            join_handle,
         };
 
         self.searcher_control.replace(new_control);

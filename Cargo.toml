@@ -22,6 +22,7 @@ members = [
     "crates/maple_core",
     "crates/maple_derive",
     "crates/maple_lsp",
+    "crates/maple_markdown",
     "crates/matcher",
     "crates/matcher/extracted_fzy",
     "crates/paths",
@@ -64,8 +65,9 @@ lsp = { package = "lsp-types", version = "0.94" }
 memchr = "2.5"
 num_cpus = "1.13"
 once_cell = "1.7"
-percent-encoding = "2.2.0"
 parking_lot = "0.12"
+percent-encoding = "2.2.0"
+pulldown-cmark = "0.10.2"
 rayon = "1.5"
 regex = "1"
 rgb2ansi256 = "0.1.1"
@@ -96,6 +98,7 @@ maple_config = { path = "crates/maple_config" }
 maple_core = { path = "crates/maple_core" }
 maple_derive = { path = "crates/maple_derive" }
 maple_lsp = { path = "crates/maple_lsp" }
+maple_markdown = { path = "crates/maple_markdown" }
 matcher = { path = "crates/matcher" }
 paths = { path = "crates/paths" }
 pattern = { path = "crates/pattern" }

@@ -96,9 +96,8 @@ impl StoppableSearchImpl {
                     return WalkState::Quit;
                 }
 
-                let entry = match entry {
-                    Ok(entry) => entry,
-                    Err(_) => return WalkState::Continue,
+                let Ok(entry) = entry else {
+                    return WalkState::Continue;
                 };
 
                 // TODO: Add search syntax for filtering path
@@ -109,6 +108,11 @@ impl StoppableSearchImpl {
                     _ => return WalkState::Continue,
                 };
 
+                let relative_path = entry
+                    .path()
+                    .strip_prefix(&search_root)
+                    .unwrap_or_else(|_| entry.path());
+
                 let result = searcher.search_path(
                     &MatchEverything,
                     entry.path(),
@@ -118,14 +122,10 @@ impl StoppableSearchImpl {
                             return Ok(sender.send(SearcherMessage::ProcessedOne).is_ok());
                         }
 
-                        let path = entry
-                            .path()
-                            .strip_prefix(&search_root)
-                            .unwrap_or_else(|_| entry.path());
                         let line = line.trim();
                         let maybe_file_result =
                             matcher
-                                .match_file_result(path, line)
+                                .match_file_result(relative_path, line)
                                 .map(|matched| FileResult {
                                     path: entry.path().to_path_buf(),
                                     line_number,
@@ -147,7 +147,7 @@ impl StoppableSearchImpl {
                 );
 
                 if let Err(err) = result {
-                    tracing::error!("Global search error: {}, {}", entry.path().display(), err);
+                    tracing::error!(?err, path = ?entry.path(), "Global search error");
                 }
 
                 WalkState::Continue
@@ -289,7 +289,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
                         .expect("Max capacity is non-zero; qed");
 
                     let new = file_result;
-                    if let std::cmp::Ordering::Greater = new.rank.cmp(&last.rank) {
+                    if new.rank > last.rank {
                         *last = new;
                         best_results.sort();
                     }
