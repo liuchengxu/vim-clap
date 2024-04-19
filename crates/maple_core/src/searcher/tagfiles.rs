@@ -1,4 +1,4 @@
-use crate::searcher::{SearchContext, SearcherMessage};
+use crate::searcher::SearchContext;
 use crate::stdio_server::SearchProgressor;
 use dirs::Dirs;
 use filter::BestItems;
@@ -8,11 +8,11 @@ use std::borrow::Cow;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Result};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
-use types::{ClapItem, SearchProgressUpdate};
+use types::{ClapItem, MatchedItem, SearchProgressUpdate};
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -248,7 +248,7 @@ fn read_tag_file<'a>(
                 if input.starts_with("!_TAG") {
                     None
                 } else if let Ok(mut tag) = TagItem::parse(parent_dir, &input) {
-                    // TODO: dispaly text can be lazy evalulated.
+                    // TODO: display text can be lazy evalulated.
                     tag.display.replace(tag.format(cwd, winwidth));
                     Some(tag)
                 } else {
@@ -264,7 +264,8 @@ fn search_tagfiles(
     winwidth: usize,
     matcher: Matcher,
     stop_signal: Arc<AtomicBool>,
-    item_sender: UnboundedSender<SearcherMessage>,
+    item_sender: UnboundedSender<MatchedItem>,
+    total_processed: Arc<AtomicUsize>,
 ) -> Result<()> {
     let _ = tagfiles
         .iter()
@@ -275,13 +276,11 @@ fn search_tagfiles(
                 return Err(());
             }
 
-            let msg = if let Some(matched_item) = matcher.match_item(Arc::new(tag_item)) {
-                SearcherMessage::Match(matched_item)
-            } else {
-                SearcherMessage::ProcessedOne
-            };
+            total_processed.fetch_add(1, Ordering::Relaxed);
 
-            item_sender.send(msg).map_err(|_| ())?;
+            if let Some(matched_item) = matcher.match_item(Arc::new(tag_item)) {
+                item_sender.send(matched_item).map_err(|_| ())?;
+            }
 
             Ok(())
         });
@@ -311,36 +310,42 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
 
     let (sender, mut receiver) = unbounded_channel();
 
-    std::thread::Builder::new()
-        .name("tagfiles-worker".into())
-        .spawn({
-            let stop_signal = stop_signal.clone();
-            let tagfiles = paths.into_iter().map(|p| p.join("tags")).collect();
-            move || search_tagfiles(tagfiles, cwd, line_width, matcher, stop_signal, sender)
-        })
-        .expect("Failed to spawn tagfiles worker thread");
+    let total_processed = Arc::new(AtomicUsize::new(0));
+
+    {
+        let total_processed = total_processed.clone();
+
+        std::thread::Builder::new()
+            .name("tagfiles-worker".into())
+            .spawn({
+                let stop_signal = stop_signal.clone();
+                let tagfiles = paths.into_iter().map(|p| p.join("tags")).collect();
+                move || {
+                    search_tagfiles(
+                        tagfiles,
+                        cwd,
+                        line_width,
+                        matcher,
+                        stop_signal,
+                        sender,
+                        total_processed,
+                    )
+                }
+            })
+            .expect("Failed to spawn tagfiles worker thread");
+    }
 
     let mut total_matched = 0usize;
-    let mut total_processed = 0usize;
 
     let now = std::time::Instant::now();
 
-    while let Some(searcher_message) = receiver.recv().await {
+    while let Some(matched_item) = receiver.recv().await {
         if stop_signal.load(Ordering::SeqCst) {
             return;
         }
-
-        match searcher_message {
-            SearcherMessage::Match(matched_item) => {
-                total_matched += 1;
-                total_processed += 1;
-
-                best_items.on_new_match(matched_item, total_matched, total_processed);
-            }
-            SearcherMessage::ProcessedOne => {
-                total_processed += 1;
-            }
-        }
+        total_matched += 1;
+        let total_processed = total_processed.load(Ordering::Relaxed);
+        best_items.on_new_match(matched_item, total_matched, total_processed);
     }
 
     let elapsed = now.elapsed().as_millis();
@@ -353,6 +358,7 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
     } = best_items;
 
     let display_lines = printer.to_display_lines(items);
+    let total_processed = total_processed.load(Ordering::SeqCst);
 
     progressor.on_finished(display_lines, total_matched, total_processed);
 

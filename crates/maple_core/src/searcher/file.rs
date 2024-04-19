@@ -1,4 +1,4 @@
-use crate::searcher::{SearchContext, SearcherMessage};
+use crate::searcher::SearchContext;
 use crate::stdio_server::SearchProgressor;
 use filter::BestItems;
 use matcher::{MatchResult, Matcher};
@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
-use types::{ClapItem, SearchProgressUpdate};
+use types::{ClapItem, MatchedItem, SearchProgressUpdate};
 
 #[derive(Debug)]
 pub struct BlinesItem {
@@ -44,7 +44,8 @@ fn search_lines(
     source_file: PathBuf,
     matcher: Matcher,
     stop_signal: Arc<AtomicBool>,
-    item_sender: UnboundedSender<SearcherMessage>,
+    item_sender: UnboundedSender<MatchedItem>,
+    total_processed: Arc<AtomicUsize>,
 ) -> Result<()> {
     let source_file = std::fs::File::open(source_file)?;
 
@@ -58,22 +59,17 @@ fn search_lines(
 
             if let Ok(line) = maybe_line {
                 let index = index.fetch_add(1, Ordering::SeqCst);
-                if line.trim().is_empty() {
-                    item_sender
-                        .send(SearcherMessage::ProcessedOne)
-                        .map_err(|_| ())?;
-                } else {
+                total_processed.fetch_add(1, Ordering::Relaxed);
+
+                if !line.trim().is_empty() {
                     let item: Arc<dyn ClapItem> = Arc::new(BlinesItem {
                         raw: line,
                         line_number: index + 1,
                     });
 
-                    let msg = if let Some(matched_item) = matcher.match_item(item) {
-                        SearcherMessage::Match(matched_item)
-                    } else {
-                        SearcherMessage::ProcessedOne
-                    };
-                    item_sender.send(msg).map_err(|_| ())?;
+                    if let Some(matched_item) = matcher.match_item(item) {
+                        item_sender.send(matched_item).map_err(|_| ())?;
+                    }
                 }
             }
 
@@ -107,35 +103,30 @@ pub async fn search(
 
     let (sender, mut receiver) = unbounded_channel();
 
-    std::thread::Builder::new()
-        .name("blines-worker".into())
-        .spawn({
-            let stop_signal = stop_signal.clone();
-            || search_lines(source_file, matcher, stop_signal, sender)
-        })
-        .expect("Failed to spawn blines worker thread");
+    let total_processed = Arc::new(AtomicUsize::new(0));
+
+    {
+        let total_processed = total_processed.clone();
+        std::thread::Builder::new()
+            .name("blines-worker".into())
+            .spawn({
+                let stop_signal = stop_signal.clone();
+                || search_lines(source_file, matcher, stop_signal, sender, total_processed)
+            })
+            .expect("Failed to spawn blines worker thread");
+    }
 
     let mut total_matched = 0usize;
-    let mut total_processed = 0usize;
 
     let now = std::time::Instant::now();
 
-    while let Some(searcher_message) = receiver.recv().await {
+    while let Some(matched_item) = receiver.recv().await {
         if stop_signal.load(Ordering::SeqCst) {
             return;
         }
-
-        match searcher_message {
-            SearcherMessage::Match(matched_item) => {
-                total_matched += 1;
-                total_processed += 1;
-
-                best_items.on_new_match(matched_item, total_matched, total_processed);
-            }
-            SearcherMessage::ProcessedOne => {
-                total_processed += 1;
-            }
-        }
+        total_matched += 1;
+        let total_processed = total_processed.load(Ordering::Relaxed);
+        best_items.on_new_match(matched_item, total_matched, total_processed);
     }
 
     let elapsed = now.elapsed().as_millis();
@@ -148,6 +139,7 @@ pub async fn search(
     } = best_items;
 
     let display_lines = printer.to_display_lines(items);
+    let total_processed = total_processed.load(Ordering::SeqCst);
 
     progressor.on_finished(display_lines, total_matched, total_processed);
 
