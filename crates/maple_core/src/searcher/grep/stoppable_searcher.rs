@@ -329,6 +329,10 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
         }
     }
 
+    if stop_signal.load(Ordering::SeqCst) {
+        return;
+    }
+
     let elapsed = now.elapsed().as_millis();
 
     let display_lines = to_display_lines(&best_results.results, icon);

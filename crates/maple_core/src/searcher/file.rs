@@ -129,6 +129,10 @@ pub async fn search(
         best_items.on_new_match(matched_item, total_matched, total_processed);
     }
 
+    if stop_signal.load(Ordering::SeqCst) {
+        return;
+    }
+
     let elapsed = now.elapsed().as_millis();
 
     let BestItems {
