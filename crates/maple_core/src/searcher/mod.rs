@@ -11,13 +11,6 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
-use types::MatchedItem;
-
-#[derive(Debug)]
-enum SearcherMessage<T = MatchedItem> {
-    Match(T),
-    ProcessedOne,
-}
 
 #[derive(Debug, Clone)]
 pub struct SearchContext {

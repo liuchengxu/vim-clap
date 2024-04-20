@@ -1,10 +1,10 @@
 mod stoppable_searcher;
 
 pub use self::stoppable_searcher::search;
-use self::stoppable_searcher::{FileResult, SearcherMessage, StoppableSearchImpl, UPDATE_INTERVAL};
+use self::stoppable_searcher::{FileResult, StoppableSearchImpl, UPDATE_INTERVAL};
 use matcher::Matcher;
 use std::path::PathBuf;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::mpsc::unbounded_channel;
@@ -21,28 +21,27 @@ pub async fn cli_search(paths: Vec<PathBuf>, matcher: Matcher) -> SearchResult {
 
     let stop_signal = Arc::new(AtomicBool::new(false));
 
-    std::thread::Builder::new()
-        .name("searcher-worker".into())
-        .spawn(move || StoppableSearchImpl::new(paths, matcher, sender, stop_signal).run())
-        .expect("Failed to spawn searcher worker thread");
+    let total_processed = Arc::new(AtomicUsize::new(0));
+
+    {
+        let total_processed = total_processed.clone();
+        std::thread::Builder::new()
+            .name("searcher-worker".into())
+            .spawn(move || {
+                StoppableSearchImpl::new(paths, matcher, sender, stop_signal).run(total_processed)
+            })
+            .expect("Failed to spawn searcher worker thread");
+    }
 
     let mut matches = Vec::new();
     let mut total_matched = 0;
-    let mut total_processed = 0;
 
     let mut past = Instant::now();
 
-    while let Some(searcher_message) = receiver.recv().await {
-        match searcher_message {
-            SearcherMessage::Match(file_result) => {
-                matches.push(file_result);
-                total_matched += 1;
-                total_processed += 1;
-            }
-            SearcherMessage::ProcessedOne => {
-                total_processed += 1;
-            }
-        }
+    while let Some(file_result) = receiver.recv().await {
+        matches.push(file_result);
+        total_matched += 1;
+        let total_processed = total_processed.load(std::sync::atomic::Ordering::Relaxed);
 
         if total_matched % 16 == 0 || total_processed % 16 == 0 {
             let now = Instant::now();
@@ -52,6 +51,8 @@ pub async fn cli_search(paths: Vec<PathBuf>, matcher: Matcher) -> SearchResult {
             }
         }
     }
+
+    let total_processed = total_processed.load(std::sync::atomic::Ordering::SeqCst) as u64;
 
     SearchResult {
         matches,
