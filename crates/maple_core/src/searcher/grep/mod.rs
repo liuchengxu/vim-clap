@@ -4,7 +4,7 @@ pub use self::stoppable_searcher::search;
 use self::stoppable_searcher::{FileResult, StoppableSearchImpl, UPDATE_INTERVAL};
 use matcher::Matcher;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicUsize};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::mpsc::unbounded_channel;
@@ -23,9 +23,7 @@ pub async fn cli_search(paths: Vec<PathBuf>, matcher: Matcher) -> SearchResult {
 
     let stop_signal = Arc::new(AtomicBool::new(false));
 
-    let search_info = SearchInfo {
-        total_processed: Arc::new(AtomicUsize::new(0)),
-    };
+    let search_info = SearchInfo::new();
 
     {
         let search_info = search_info.clone();
@@ -45,9 +43,7 @@ pub async fn cli_search(paths: Vec<PathBuf>, matcher: Matcher) -> SearchResult {
     while let Some(file_result) = receiver.recv().await {
         matches.push(file_result);
         total_matched += 1;
-        let total_processed = search_info
-            .total_processed
-            .load(std::sync::atomic::Ordering::Relaxed);
+        let total_processed = search_info.total_processed.load(Ordering::Relaxed);
 
         if total_matched % 16 == 0 || total_processed % 16 == 0 {
             let now = Instant::now();
@@ -58,9 +54,7 @@ pub async fn cli_search(paths: Vec<PathBuf>, matcher: Matcher) -> SearchResult {
         }
     }
 
-    let total_processed = search_info
-        .total_processed
-        .load(std::sync::atomic::Ordering::SeqCst) as u64;
+    let total_processed = search_info.total_processed.load(Ordering::SeqCst) as u64;
 
     SearchResult {
         matches,
