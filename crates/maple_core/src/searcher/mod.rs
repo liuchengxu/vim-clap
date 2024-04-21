@@ -15,7 +15,7 @@ use std::sync::Arc;
 use types::Rank;
 
 // Shareable searching info.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct SearchInfo {
     pub lowest_rank: Arc<RwLock<Rank>>,
     pub total_matched: Arc<AtomicUsize>,
@@ -24,11 +24,7 @@ pub struct SearchInfo {
 
 impl SearchInfo {
     pub fn new() -> Self {
-        Self {
-            lowest_rank: Arc::new(RwLock::new(Rank::default())),
-            total_matched: Arc::new(AtomicUsize::new(0)),
-            total_processed: Arc::new(AtomicUsize::new(0)),
-        }
+        Self::default()
     }
 }
 

@@ -32,14 +32,7 @@ pub fn parse_criteria(text: &str) -> Option<RankCriterion> {
 }
 
 /// The greater, the better.
-#[derive(Clone, Debug, Copy, Eq, PartialEq, PartialOrd, Ord, Default)]
-pub struct Rank([Score; 4]);
-
-impl From<[Score; 4]> for Rank {
-    fn from(inner: [Score; 4]) -> Self {
-        Self(inner)
-    }
-}
+pub type Rank = [Score; 4];
 
 #[derive(Debug, Clone)]
 pub struct RankCalculator {
@@ -93,7 +86,7 @@ impl RankCalculator {
             rank[index] = value;
         }
 
-        rank.into()
+        rank
     }
 }
 
