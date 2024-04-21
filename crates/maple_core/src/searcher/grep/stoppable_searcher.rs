@@ -1,4 +1,4 @@
-use crate::searcher::{walk_parallel, SearchContext, WalkConfig};
+use crate::searcher::{walk_parallel, SearchContext, SearchInfo, WalkConfig};
 use crate::stdio_server::SearchProgressor;
 use filter::MatchedItem;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
@@ -69,7 +69,7 @@ impl StoppableSearchImpl {
         }
     }
 
-    pub(super) fn run(self, total_processed: Arc<AtomicUsize>) {
+    pub(super) fn run(self, search_info: SearchInfo) {
         let Self {
             paths,
             matcher,
@@ -89,7 +89,7 @@ impl StoppableSearchImpl {
             let sender = sender.clone();
             let stop_signal = stop_signal.clone();
             let search_root = search_root.clone();
-            let total_processed = total_processed.clone();
+            let search_info = search_info.clone();
             Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
                 if stop_signal.load(Ordering::SeqCst) {
                     return WalkState::Quit;
@@ -116,7 +116,7 @@ impl StoppableSearchImpl {
                     &MatchEverything,
                     entry.path(),
                     sinks::Lossy(|line_number, line| {
-                        total_processed.fetch_add(1, Ordering::Relaxed);
+                        search_info.total_processed.fetch_add(1, Ordering::Relaxed);
 
                         if line.is_empty() {
                             return Ok(true);
@@ -202,16 +202,16 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
 
     let (sender, mut receiver) = unbounded_channel();
 
-    let total_processed = Arc::new(AtomicUsize::new(0));
+    let search_info = SearchInfo {
+        total_processed: Arc::new(AtomicUsize::new(0)),
+    };
 
     std::thread::Builder::new()
         .name("grep-worker".into())
         .spawn({
             let stop_signal = stop_signal.clone();
-            let total_processed = total_processed.clone();
-            move || {
-                StoppableSearchImpl::new(paths, matcher, sender, stop_signal).run(total_processed)
-            }
+            let search_info = search_info.clone();
+            move || StoppableSearchImpl::new(paths, matcher, sender, stop_signal).run(search_info)
         })
         .expect("Failed to spawn grep-worker thread");
 
@@ -274,8 +274,6 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
 
         total_matched += 1;
 
-        let total_processed = total_processed.load(Ordering::Relaxed);
-
         if best_results.results.len() <= best_results.max_capacity {
             best_results.results.push(file_result);
             best_results.sort();
@@ -283,6 +281,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
             let now = Instant::now();
             if now > best_results.past + UPDATE_INTERVAL {
                 let display_lines = to_display_lines(&best_results.results, icon);
+                let total_processed = search_info.total_processed.load(Ordering::Relaxed);
                 progressor.update_all(&display_lines, total_matched, total_processed);
                 best_results.last_lines = display_lines.lines;
                 best_results.past = now;
@@ -298,6 +297,8 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
                 *last = new;
                 best_results.sort();
             }
+
+            let total_processed = search_info.total_processed.load(Ordering::Relaxed);
 
             if total_matched % 16 == 0 || total_processed % 16 == 0 {
                 let now = Instant::now();
@@ -340,7 +341,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
 
     let display_lines = to_display_lines(&best_results.results, icon);
 
-    let total_processed = total_processed.load(Ordering::SeqCst);
+    let total_processed = search_info.total_processed.load(Ordering::SeqCst);
     progressor.on_finished(display_lines, total_matched, total_processed);
 
     tracing::debug!(

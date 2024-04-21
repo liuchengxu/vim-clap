@@ -1,7 +1,5 @@
-use nucleo_matcher::{
-    pattern::{AtomKind, CaseMatching, Normalization, Pattern},
-    Config, Matcher, Utf32Str,
-};
+use nucleo_matcher::pattern::{AtomKind, CaseMatching, Normalization, Pattern};
+use nucleo_matcher::{Config, Matcher, Utf32Str};
 use types::{MatchResult, Score};
 
 /// Make the arguments order same to Skim's `fuzzy_indices()`.

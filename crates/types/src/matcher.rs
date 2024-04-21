@@ -32,7 +32,34 @@ pub fn parse_criteria(text: &str) -> Option<RankCriterion> {
 }
 
 /// The greater, the better.
-pub type Rank = [Score; 4];
+#[derive(Clone, Debug, Copy, Eq, PartialEq, PartialOrd, Ord, Default)]
+pub struct Rank([Score; 4]);
+
+impl From<[Score; 4]> for Rank {
+    fn from(inner: [Score; 4]) -> Self {
+        Self(inner)
+    }
+}
+
+impl Rank {
+    /// Packs four i32 values into a single u64.
+    pub fn as_u64(&self) -> u64 {
+        let a = self.0[0] as u64 & 0xFFFF_FFFF;
+        let b = self.0[1] as u64 & 0xFFFF_FFFF;
+        let c = self.0[2] as u64 & 0xFFFF_FFFF;
+        let d = self.0[3] as u64 & 0xFFFF_FFFF;
+        (a << 48) | (b << 32) | (c << 16) | d
+    }
+
+    /// Unpacks a u64 into four i32 values.
+    pub fn from_u64(value: u64) -> Self {
+        let a = (value >> 48) as i32;
+        let b = ((value >> 32) & 0xFFFF_FFFF) as i32;
+        let c = ((value >> 16) & 0xFFFF_FFFF) as i32;
+        let d = (value & 0xFFFF_FFFF) as i32;
+        Self([a, b, c, d])
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct RankCalculator {
@@ -86,7 +113,7 @@ impl RankCalculator {
             rank[index] = value;
         }
 
-        rank
+        rank.into()
     }
 }
 

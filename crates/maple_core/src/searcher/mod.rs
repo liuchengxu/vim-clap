@@ -9,8 +9,14 @@ use ignore::{WalkBuilder, WalkParallel};
 use paths::AbsPathBuf;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::sync::Arc;
+
+// Shareable searching info.
+#[derive(Clone, Debug)]
+pub struct SearchInfo {
+    pub total_processed: Arc<AtomicUsize>,
+}
 
 #[derive(Debug, Clone)]
 pub struct SearchContext {
