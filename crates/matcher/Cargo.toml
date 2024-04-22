@@ -13,3 +13,5 @@ code_tools = { workspace = true }
 extracted_fzy = { path = "./extracted_fzy" }
 pattern = { workspace = true }
 types = { workspace = true }
+norm = { version = "0.1.1", features = ["fzf-v1", "fzf-v2", "__into-score"] }
+nucleo-matcher = "0.3.1"

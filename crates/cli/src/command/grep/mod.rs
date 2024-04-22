@@ -18,6 +18,15 @@ pub use self::live_grep::LiveGrep;
 pub const RG_EXEC_CMD: &str =
     "rg --column --line-number --no-heading --color=never --smart-case '' .";
 
+#[derive(clap::ValueEnum, Default, Clone, Debug)]
+enum FuzzyAlgo {
+    #[default]
+    Fzy,
+    Skim,
+    FzfV2,
+    Nucleo,
+}
+
 #[derive(Parser, Debug, Clone)]
 pub struct Grep {
     /// Specify the query string for GREP_CMD.
@@ -33,6 +42,10 @@ pub struct Grep {
     /// Specify the working directory of CMD.
     #[clap(long, value_parser)]
     cmd_dir: Option<PathBuf>,
+
+    /// Specify the fuzzy matching algorithm.
+    #[clap(long, default_value_t, value_enum)]
+    fuzzy_algo: FuzzyAlgo,
 
     /// Recreate the grep cache.
     ///
@@ -69,7 +82,15 @@ impl Grep {
                 None => std::env::current_dir()?,
             };
 
-            let clap_matcher = matcher::MatcherBuilder::new().build(self.grep_query.clone().into());
+            let fuzzy_algo = match self.fuzzy_algo {
+                FuzzyAlgo::Skim => matcher::FuzzyAlgorithm::Skim,
+                FuzzyAlgo::Fzy => matcher::FuzzyAlgorithm::Fzy,
+                FuzzyAlgo::FzfV2 => matcher::FuzzyAlgorithm::FzfV2,
+                FuzzyAlgo::Nucleo => matcher::FuzzyAlgorithm::Nucleo,
+            };
+            let clap_matcher = matcher::MatcherBuilder::new()
+                .fuzzy_algo(fuzzy_algo)
+                .build(self.grep_query.clone().into());
 
             let search_result =
                 maple_core::searcher::grep::cli_search(vec![dir], clap_matcher).await;

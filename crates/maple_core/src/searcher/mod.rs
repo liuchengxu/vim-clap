@@ -6,11 +6,27 @@ pub mod tagfiles;
 use crate::stdio_server::Vim;
 use icon::Icon;
 use ignore::{WalkBuilder, WalkParallel};
+use parking_lot::RwLock;
 use paths::AbsPathBuf;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::sync::Arc;
+use types::Rank;
+
+// Shareable searching info.
+#[derive(Clone, Debug, Default)]
+pub struct SearchInfo {
+    pub lowest_rank: Arc<RwLock<Rank>>,
+    pub total_matched: Arc<AtomicUsize>,
+    pub total_processed: Arc<AtomicUsize>,
+}
+
+impl SearchInfo {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct SearchContext {

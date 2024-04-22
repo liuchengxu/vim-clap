@@ -17,6 +17,9 @@ tokio = { workspace = true, features = ["rt"] }
 cli = { workspace = true }
 upgrade = { workspace = true }
 
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+tikv-jemallocator = "0.5"
+
 [build-dependencies]
 built = { package = "built", version = "0.6", features = ["git2"] }
 chrono = { workspace = true }

@@ -1,4 +1,4 @@
-use crate::searcher::{walk_parallel, SearchContext, WalkConfig};
+use crate::searcher::{walk_parallel, SearchContext, SearchInfo, WalkConfig};
 use crate::stdio_server::SearchProgressor;
 use filter::MatchedItem;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
@@ -6,7 +6,7 @@ use icon::Icon;
 use ignore::{DirEntry, WalkState};
 use matcher::Matcher;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
@@ -69,7 +69,7 @@ impl StoppableSearchImpl {
         }
     }
 
-    pub(super) fn run(self, total_processed: Arc<AtomicUsize>) {
+    pub(super) fn run(self, search_info: SearchInfo) {
         let Self {
             paths,
             matcher,
@@ -89,7 +89,7 @@ impl StoppableSearchImpl {
             let sender = sender.clone();
             let stop_signal = stop_signal.clone();
             let search_root = search_root.clone();
-            let total_processed = total_processed.clone();
+            let search_info = search_info.clone();
             Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
                 if stop_signal.load(Ordering::SeqCst) {
                     return WalkState::Quit;
@@ -116,7 +116,7 @@ impl StoppableSearchImpl {
                     &MatchEverything,
                     entry.path(),
                     sinks::Lossy(|line_number, line| {
-                        total_processed.fetch_add(1, Ordering::Relaxed);
+                        search_info.total_processed.fetch_add(1, Ordering::Relaxed);
 
                         if line.is_empty() {
                             return Ok(true);
@@ -137,8 +137,13 @@ impl StoppableSearchImpl {
                                 });
 
                         if let Some(file_result) = maybe_file_result {
-                            // Discontinue if the sender has been dropped.
-                            return Ok(sender.send(file_result).is_ok());
+                            search_info.total_matched.fetch_add(1, Ordering::Relaxed);
+
+                            // Only send the item when its rank is higher than the lowest rank.
+                            if file_result.rank > *search_info.lowest_rank.read() {
+                                // Discontinue if the sender has been dropped.
+                                return Ok(sender.send(file_result).is_ok());
+                            }
                         }
 
                         Ok(true)
@@ -182,6 +187,12 @@ impl BestFileResults {
     fn sort(&mut self) {
         self.results.sort_unstable_by(|a, b| b.rank.cmp(&a.rank));
     }
+
+    #[inline]
+    fn replace_last(&mut self, new: FileResult) {
+        let index = self.results.len() - 1;
+        self.results[index] = new;
+    }
 }
 
 pub async fn search(query: String, matcher: Matcher, search_context: SearchContext) {
@@ -202,16 +213,14 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
 
     let (sender, mut receiver) = unbounded_channel();
 
-    let total_processed = Arc::new(AtomicUsize::new(0));
+    let search_info = SearchInfo::new();
 
     std::thread::Builder::new()
         .name("grep-worker".into())
         .spawn({
             let stop_signal = stop_signal.clone();
-            let total_processed = total_processed.clone();
-            move || {
-                StoppableSearchImpl::new(paths, matcher, sender, stop_signal).run(total_processed)
-            }
+            let search_info = search_info.clone();
+            move || StoppableSearchImpl::new(paths, matcher, sender, stop_signal).run(search_info)
         })
         .expect("Failed to spawn grep-worker thread");
 
@@ -274,8 +283,6 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
 
         total_matched += 1;
 
-        let total_processed = total_processed.load(Ordering::Relaxed);
-
         if best_results.results.len() <= best_results.max_capacity {
             best_results.results.push(file_result);
             best_results.sort();
@@ -283,53 +290,54 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
             let now = Instant::now();
             if now > best_results.past + UPDATE_INTERVAL {
                 let display_lines = to_display_lines(&best_results.results, icon);
+                let total_processed = search_info.total_processed.load(Ordering::Relaxed);
                 progressor.update_all(&display_lines, total_matched, total_processed);
                 best_results.last_lines = display_lines.lines;
                 best_results.past = now;
             }
         } else {
-            let last = best_results
-                .results
-                .last_mut()
-                .expect("Max capacity is non-zero; qed");
+            best_results.replace_last(file_result);
+            best_results.sort();
 
-            let new = file_result;
-            if new.rank > last.rank {
-                *last = new;
-                best_results.sort();
-            }
+            let total_matched = search_info.total_matched.load(Ordering::Relaxed);
+            let total_processed = search_info.total_processed.load(Ordering::Relaxed);
 
-            if total_matched % 16 == 0 || total_processed % 16 == 0 {
-                let now = Instant::now();
-                if now > best_results.past + UPDATE_INTERVAL {
-                    let display_lines = to_display_lines(&best_results.results, icon);
+            let now = Instant::now();
+            if now > best_results.past + UPDATE_INTERVAL {
+                let display_lines = to_display_lines(&best_results.results, icon);
 
-                    let visible_highlights = display_lines
-                        .indices
-                        .iter()
-                        .map(|line_highlights| {
-                            line_highlights
-                                .iter()
-                                .copied()
-                                .filter(|&x| x <= line_width)
-                                .collect::<Vec<_>>()
-                        })
-                        .collect::<Vec<_>>();
+                let visible_highlights = display_lines
+                    .indices
+                    .iter()
+                    .map(|line_highlights| {
+                        line_highlights
+                            .iter()
+                            .copied()
+                            .filter(|&x| x <= line_width)
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>();
 
-                    if best_results.last_lines != display_lines.lines.as_slice()
-                        || best_results.last_visible_highlights != visible_highlights
-                    {
-                        progressor.update_all(&display_lines, total_matched, total_processed);
-                        best_results.last_lines = display_lines.lines;
-                        best_results.last_visible_highlights = visible_highlights;
-                    } else {
-                        progressor.quick_update(total_matched, total_processed)
-                    }
-
-                    best_results.past = now;
+                if best_results.last_lines != display_lines.lines.as_slice()
+                    || best_results.last_visible_highlights != visible_highlights
+                {
+                    progressor.update_all(&display_lines, total_matched, total_processed);
+                    best_results.last_lines = display_lines.lines;
+                    best_results.last_visible_highlights = visible_highlights;
+                } else {
+                    progressor.quick_update(total_matched, total_processed)
                 }
+
+                best_results.past = now;
             }
         }
+
+        // best_results list is sorted now.
+        *search_info.lowest_rank.write() = best_results
+            .results
+            .last()
+            .expect("results must not be empty; qed")
+            .rank;
     }
 
     if stop_signal.load(Ordering::SeqCst) {
@@ -340,7 +348,8 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
 
     let display_lines = to_display_lines(&best_results.results, icon);
 
-    let total_processed = total_processed.load(Ordering::SeqCst);
+    let total_matched = search_info.total_matched.load(Ordering::SeqCst);
+    let total_processed = search_info.total_processed.load(Ordering::SeqCst);
     progressor.on_finished(display_lines, total_matched, total_processed);
 
     tracing::debug!(
