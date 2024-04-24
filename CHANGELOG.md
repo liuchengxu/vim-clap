@@ -8,6 +8,10 @@
 - Add `:ClapAction diagnostics.{firstHint,lastHint,nextHint,prevHint}` for navigating between the Hint diagnostics.
 - Optimize the grep search performance significantly, 2x performance has been achieved compared to the last release.
 
+### Breaking changes
+
+- Rename plugin `cursorword` to `word-highlighter` and added the new feature of highlighting keywords like TODO.
+
 ## [0.52] 2024-2-29
 
 ### Plugins

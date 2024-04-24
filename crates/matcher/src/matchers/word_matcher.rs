@@ -2,7 +2,7 @@ use grep_regex::{RegexMatcher, RegexMatcherBuilder};
 use std::ops::Range;
 use types::{Score, WordTerm};
 
-/// Word matching using the `RegexMatcher`.
+/// A matcher for matching multiple words (OR).
 #[derive(Debug, Clone, Default)]
 pub struct WordMatcher {
     matchers: Vec<(WordTerm, RegexMatcher)>,
@@ -104,7 +104,10 @@ mod tests {
         let word_matcher = WordMatcher::new(vec!["world".to_string().into()]);
         let line = "hello world world";
         assert_eq!(
-            vec![Range { start: 6, end: 11 }, Range { start: 12, end: 17 }],
+            vec![
+                (Range { start: 6, end: 11 }, 5),
+                (Range { start: 12, end: 17 }, 5)
+            ],
             word_matcher.find_all_matches_range(line)
         );
     }

@@ -27,7 +27,7 @@ tiebreak = "score,-begin,-end,-length"
 # Whether to enable this plugin.
 enable = false
 
-[plugin.cursorword]
+[plugin.word-highlighter]
 # Whether to enable this plugin.
 enable = false
 # Whether to ignore the comment line
@@ -97,6 +97,10 @@ language = []
 [plugin.markdown]
 # Whether to enable this plugin.
 enable = false
+# Specify the port number for the preview page in browser.
+#
+# A random port will be used each time if not specified.
+preview-port = 0
 
 # Specify the strategy of tree-sitter rendering.
 #
