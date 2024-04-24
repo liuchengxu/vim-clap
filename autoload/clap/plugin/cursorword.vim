@@ -15,6 +15,17 @@ augroup VimClapCursorword
   autocmd ColorScheme * call clap#client#notify('cursorword.__defineHighlights', [+expand('<abuf>')])
 augroup END
 
+function! clap#plugin#cursorword#add_keyword_highlights(keyword_highlights) abort
+  let match_ids = []
+  for hl in a:keyword_highlights
+    let match_id = matchaddpos('Error', [[hl.line_number, hl.col+1, hl.length]])
+    if match_id > -1
+      call add(match_ids, match_id)
+    endif
+  endfor
+  return match_ids
+endfunction
+
 function! clap#plugin#cursorword#add_highlights(word_highlights) abort
   let cword_len = a:word_highlights.cword_len
   let match_ids = []

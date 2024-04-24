@@ -72,17 +72,20 @@ impl WordMatcher {
         }
     }
 
-    pub fn find_all_matches_range(&self, line: &str) -> Vec<Range<usize>> {
+    pub fn find_all_matches_range(&self, line: &str) -> Vec<(Range<usize>, usize)> {
         use grep_matcher::Matcher;
 
         let mut match_start_indices = vec![];
 
-        self.matchers.iter().for_each(|(_word_term, word_matcher)| {
+        self.matchers.iter().for_each(|(word_term, word_matcher)| {
             let _ = word_matcher.find_iter(line.as_bytes(), |matched| {
-                match_start_indices.push(Range {
-                    start: matched.start(),
-                    end: matched.end(),
-                });
+                match_start_indices.push((
+                    Range {
+                        start: matched.start(),
+                        end: matched.end(),
+                    },
+                    word_term.text.len(),
+                ));
 
                 true
             });

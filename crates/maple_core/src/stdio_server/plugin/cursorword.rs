@@ -13,6 +13,14 @@ use AutocmdEventType::{
 };
 
 #[derive(Debug, serde::Serialize)]
+struct KeywordHighlight {
+    line_number: usize,
+    /// Highlight col start.
+    col: usize,
+    length: usize,
+}
+
+#[derive(Debug, serde::Serialize)]
 struct WordHighlights {
     // (line_number, highlight_col_start)
     twins_words_highlight: Vec<(usize, usize)>,
@@ -30,18 +38,18 @@ fn find_word_highlights(
     cword: String,
 ) -> std::io::Result<Option<WordHighlights>> {
     let cword_len = cword.len();
-    let word_matcher = WordMatcher::new(vec![cword.into()]);
+    let cursor_word_matcher = WordMatcher::new(vec![cword.into()]);
 
     let mut cursor_word_highlight = None;
     let twins_words_highlight = lines
         .enumerate()
         .flat_map(|(index, line)| {
-            let matches_range = word_matcher.find_all_matches_range(&line);
-
             let line_number = index + line_start;
 
+            let matches_range = cursor_word_matcher.find_all_matches_range(&line);
+
             if line_number == curlnum {
-                let cursor_word_start = matches_range.iter().find_map(|word_range| {
+                let cursor_word_start = matches_range.iter().find_map(|(word_range, _len)| {
                     if word_range.contains(&(col - 1)) {
                         Some(word_range.start)
                     } else {
@@ -53,14 +61,16 @@ fn find_word_highlights(
                 }
             }
 
-            matches_range.into_iter().filter_map(move |word_range| {
-                // Skip the cursor word highlight.
-                if line_number == curlnum && word_range.contains(&(col - 1)) {
-                    None
-                } else {
-                    Some((line_number, word_range.start))
-                }
-            })
+            matches_range
+                .into_iter()
+                .filter_map(move |(word_range, _len)| {
+                    // Skip the cursor word highlight.
+                    if line_number == curlnum && word_range.contains(&(col - 1)) {
+                        None
+                    } else {
+                        Some((line_number, word_range.start))
+                    }
+                })
         })
         .collect();
 
@@ -76,7 +86,7 @@ fn find_word_highlights(
 }
 
 #[derive(Debug)]
-struct CursorHighlights {
+struct OldHighlights {
     winid: usize,
     // Use `i32` as matchaddpos() returns -1 on error.
     match_ids: Vec<i32>,
@@ -118,7 +128,9 @@ async fn define_highlights(vim: &Vim) -> Result<(), PluginError> {
 pub struct Cursorword {
     vim: Vim,
     bufs: HashMap<usize, PathBuf>,
-    cursor_highlights: Option<CursorHighlights>,
+    keyword_matcher: WordMatcher,
+    cursor_highlights: Option<OldHighlights>,
+    keyword_highlights: Option<OldHighlights>,
     ignore_extensions: Vec<&'static str>,
     ignore_file_names: Vec<&'static str>,
 }
@@ -142,10 +154,15 @@ impl Cursorword {
             }
         });
 
+        let keywords = vec!["TODO".to_string()];
+        let keyword_matcher = WordMatcher::new(keywords.into_iter().map(Into::into).collect());
+
         Self {
             vim,
             bufs: HashMap::new(),
+            keyword_matcher,
             cursor_highlights: None,
+            keyword_highlights: None,
             ignore_extensions,
             ignore_file_names,
         }
@@ -154,7 +171,7 @@ impl Cursorword {
     async fn create_new_highlights(
         &mut self,
         bufnr: usize,
-    ) -> Result<Option<CursorHighlights>, PluginError> {
+    ) -> Result<Option<OldHighlights>, PluginError> {
         let cword = self.vim.expand("<cword>").await?;
 
         if cword.is_empty() {
@@ -204,7 +221,7 @@ impl Cursorword {
                 .vim
                 .call("clap#plugin#cursorword#add_highlights", word_highlights)
                 .await?;
-            return Ok(Some(CursorHighlights { match_ids, winid }));
+            return Ok(Some(OldHighlights { match_ids, winid }));
         }
 
         Ok(None)
@@ -219,7 +236,68 @@ impl Cursorword {
         };
 
         // Clear the old highlights after the new added ones so that no flicker occurs.
-        if let Some(CursorHighlights { winid, match_ids }) = old_highlights {
+        if let Some(OldHighlights { winid, match_ids }) = old_highlights {
+            self.vim.matchdelete_batch(match_ids, winid).await?;
+        }
+
+        Ok(())
+    }
+
+    fn find_keyword_highlights(
+        &self,
+        lines: impl Iterator<Item = String>,
+        line_start: usize,
+    ) -> Vec<KeywordHighlight> {
+        lines
+            .enumerate()
+            .flat_map(|(index, line)| {
+                let line_number = index + line_start;
+
+                let keyword_matches_range = self.keyword_matcher.find_all_matches_range(&line);
+
+                keyword_matches_range
+                    .into_iter()
+                    .map(move |(range, length)| KeywordHighlight {
+                        line_number,
+                        col: range.start,
+                        length,
+                    })
+            })
+            .collect()
+    }
+
+    async fn highlight_keywords(&mut self, bufnr: usize) -> Result<(), PluginError> {
+        let source_file = self
+            .bufs
+            .get(&bufnr)
+            .ok_or_else(|| VimError::InvalidBuffer)?;
+
+        // Lines in view.
+        let (winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
+
+        let new_keyword_highlights = if self.vim.bufmodified(bufnr).await? {
+            let lines = self.vim.getbufline(bufnr, line_start, line_end).await?;
+            self.find_keyword_highlights(lines.into_iter(), line_start)
+        } else {
+            let lines = read_lines_from(source_file, line_start - 1, line_end - line_start + 1)?;
+            self.find_keyword_highlights(lines, line_start)
+        };
+
+        let old_highlights = if !new_keyword_highlights.is_empty() {
+            let match_ids: Vec<i32> = self
+                .vim
+                .call(
+                    "clap#plugin#cursorword#add_keyword_highlights",
+                    [new_keyword_highlights],
+                )
+                .await?;
+            self.keyword_highlights
+                .replace(OldHighlights { winid, match_ids })
+        } else {
+            self.keyword_highlights.take()
+        };
+
+        if let Some(OldHighlights { winid, match_ids }) = old_highlights {
             self.vim.matchdelete_batch(match_ids, winid).await?;
         }
 
@@ -227,9 +305,14 @@ impl Cursorword {
     }
 
     async fn clear_highlights(&mut self) -> Result<(), PluginError> {
-        if let Some(CursorHighlights { winid, match_ids }) = self.cursor_highlights.take() {
+        if let Some(OldHighlights { winid, match_ids }) = self.cursor_highlights.take() {
             self.vim.matchdelete_batch(match_ids, winid).await?;
         }
+
+        if let Some(OldHighlights { winid, match_ids }) = self.keyword_highlights.take() {
+            self.vim.matchdelete_batch(match_ids, winid).await?;
+        }
+
         Ok(())
     }
 
@@ -293,7 +376,8 @@ impl ClapPlugin for Cursorword {
             }
             CursorMoved => {
                 if self.bufs.contains_key(&bufnr) {
-                    self.highlight_symbol_under_cursor(bufnr).await?
+                    self.highlight_symbol_under_cursor(bufnr).await?;
+                    self.highlight_keywords(bufnr).await?;
                 }
             }
             InsertEnter => {

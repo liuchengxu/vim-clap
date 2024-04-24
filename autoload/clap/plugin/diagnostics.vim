@@ -22,6 +22,22 @@ hi default link DiagnosticError ErrorMsg
 hi default link DiagnosticInfo Normal
 hi default link DiagnosticHint Normal
 
+function! s:should_ignore() abort
+  let filetype = getbufvar('', '&filetype')
+  if empty(filetype)
+    return v:true
+  endif
+
+  let ignore_list = ['vista', 'clap', 'nerdtree', 'startify', 'tagbar', 'fzf', 'gitcommit', 'coc']
+  for ignore in ignore_list
+    if ignore =~? filetype
+      return v:true
+    endif
+  endfor
+
+  return v:false
+endfunction
+
 function! s:convert_diagnostics_to_lines(current_diagnostics) abort
   let lines = []
   let line_highlights = []
@@ -73,6 +89,10 @@ let s:diagnostic_spans_highlight_ns_id = nvim_create_namespace('clap_diagnostics
 let s:diagnostic_msg_highlight_ns_id = nvim_create_namespace('clap_diagnostics_msg_highlight')
 
 function! s:render_on_top_right(lines, line_highlights) abort
+  if s:should_ignore()
+    return
+  endif
+
   if !exists('s:diagnostic_msg_buffer') || !nvim_buf_is_valid(s:diagnostic_msg_buffer)
     let s:diagnostic_msg_buffer = nvim_create_buf(v:false, v:true)
   endif
@@ -247,6 +267,10 @@ function! clap#plugin#diagnostics#close_top_right() abort
 endfunction
 
 function! clap#plugin#diagnostics#display_top_right(current_diagnostics) abort
+  if s:should_ignore()
+    return
+  endif
+
   if !empty(a:current_diagnostics)
     let [lines, line_highlights] = s:convert_diagnostics_to_lines(a:current_diagnostics)
 
