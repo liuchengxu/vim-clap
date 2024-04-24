@@ -30,7 +30,8 @@ pub async fn cli_search(paths: Vec<PathBuf>, matcher: Matcher) -> SearchResult {
         std::thread::Builder::new()
             .name("searcher-worker".into())
             .spawn(move || {
-                StoppableSearchImpl::new(paths, matcher, sender, stop_signal).run(search_info)
+                StoppableSearchImpl::new(paths, matcher, sender, stop_signal, usize::MAX)
+                    .run(search_info)
             })
             .expect("Failed to spawn searcher worker thread");
     }

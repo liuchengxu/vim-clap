@@ -52,6 +52,7 @@ pub(super) struct StoppableSearchImpl {
     matcher: Matcher,
     sender: UnboundedSender<FileResult>,
     stop_signal: Arc<AtomicBool>,
+    best_queue_capacity: usize,
 }
 
 impl StoppableSearchImpl {
@@ -60,12 +61,14 @@ impl StoppableSearchImpl {
         matcher: Matcher,
         sender: UnboundedSender<FileResult>,
         stop_signal: Arc<AtomicBool>,
+        best_queue_capacity: usize,
     ) -> Self {
         Self {
             paths,
             matcher,
             sender,
             stop_signal,
+            best_queue_capacity,
         }
     }
 
@@ -75,6 +78,7 @@ impl StoppableSearchImpl {
             matcher,
             sender,
             stop_signal,
+            best_queue_capacity,
         } = self;
 
         let searcher = SearcherBuilder::new()
@@ -101,9 +105,10 @@ impl StoppableSearchImpl {
 
                 // TODO: Add search syntax for filtering path
 
-                // Only search file and skip everything else.
                 match entry.file_type() {
-                    Some(entry) if entry.is_file() => {}
+                    Some(entry) if entry.is_file() => {
+                        // Only search file and skip everything else.
+                    }
                     _ => return WalkState::Continue,
                 };
 
@@ -137,10 +142,12 @@ impl StoppableSearchImpl {
                                 });
 
                         if let Some(file_result) = maybe_file_result {
-                            search_info.total_matched.fetch_add(1, Ordering::Relaxed);
+                            let total = search_info.total_matched.fetch_add(1, Ordering::Relaxed);
 
-                            // Only send the item when its rank is higher than the lowest rank.
-                            if file_result.rank > *search_info.lowest_rank.read() {
+                            // Always send over the result when the queue is not yet full.
+                            if total < best_queue_capacity {
+                                return Ok(sender.send(file_result).is_ok());
+                            } else if file_result.rank > *search_info.lowest_rank.read() {
                                 // Discontinue if the sender has been dropped.
                                 return Ok(sender.send(file_result).is_ok());
                             }
@@ -189,6 +196,11 @@ impl BestFileResults {
     }
 
     #[inline]
+    fn is_full(&self) -> bool {
+        self.results.len() >= self.max_capacity
+    }
+
+    #[inline]
     fn replace_last(&mut self, new: FileResult) {
         let index = self.results.len() - 1;
         self.results[index] = new;
@@ -220,7 +232,11 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
         .spawn({
             let stop_signal = stop_signal.clone();
             let search_info = search_info.clone();
-            move || StoppableSearchImpl::new(paths, matcher, sender, stop_signal).run(search_info)
+            let best_queue_capacity = best_results.max_capacity;
+            move || {
+                StoppableSearchImpl::new(paths, matcher, sender, stop_signal, best_queue_capacity)
+                    .run(search_info)
+            }
         })
         .expect("Failed to spawn grep-worker thread");
 
@@ -283,7 +299,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
 
         total_matched += 1;
 
-        if best_results.results.len() <= best_results.max_capacity {
+        if !best_results.is_full() {
             best_results.results.push(file_result);
             best_results.sort();
 
