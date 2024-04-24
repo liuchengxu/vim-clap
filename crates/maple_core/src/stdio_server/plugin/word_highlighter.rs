@@ -8,9 +8,6 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use utils::read_lines_from;
-use AutocmdEventType::{
-    BufDelete, BufEnter, BufLeave, BufWinEnter, BufWinLeave, CursorMoved, InsertEnter,
-};
 
 #[derive(Debug, serde::Serialize)]
 struct KeywordHighlight {
@@ -274,15 +271,23 @@ impl WordHighlighter {
         &self,
         lines: impl Iterator<Item = String>,
         line_start: usize,
+        ext: &str,
     ) -> Vec<KeywordHighlight> {
+        let comment_line_only = maple_config::config()
+            .plugin
+            .word_highlighter
+            .keyword_highlight_comment_line_only;
         lines
             .enumerate()
             .flat_map(|(index, line)| {
                 let line_number = index + line_start;
-
-                let keyword_matches_range = self
-                    .keyword_matcher
-                    .find_keyword_matches(&line, &self.keywords);
+                let keyword_matches_range =
+                    if comment_line_only && code_tools::language::is_comment(&line, ext) {
+                        self.keyword_matcher
+                            .find_keyword_matches(&line, &self.keywords)
+                    } else {
+                        vec![]
+                    };
 
                 keyword_matches_range
                     .into_iter()
@@ -301,22 +306,24 @@ impl WordHighlighter {
         bufnr: usize,
         screen_lines_range: ScreenLinesRange,
     ) -> Result<(), PluginError> {
-        let source_file = self
-            .bufs
-            .get(&bufnr)
-            .ok_or_else(|| VimError::InvalidBuffer)?;
+        let source_file = PathBuf::from(self.vim.bufabspath(bufnr).await?);
+
+        let Some(ext) = source_file.extension().and_then(|s| s.to_str()) else {
+            return Ok(());
+        };
 
         let ScreenLinesRange {
             winid,
             line_start,
             line_end,
         } = screen_lines_range;
+
         let new_keyword_highlights = if self.vim.bufmodified(bufnr).await? {
             let lines = self.vim.getbufline(bufnr, line_start, line_end).await?;
-            self.find_keyword_highlights(lines.into_iter(), line_start)
+            self.find_keyword_highlights(lines.into_iter(), line_start, ext)
         } else {
-            let lines = read_lines_from(source_file, line_start - 1, line_end - line_start + 1)?;
-            self.find_keyword_highlights(lines, line_start)
+            let lines = read_lines_from(&source_file, line_start - 1, line_end - line_start + 1)?;
+            self.find_keyword_highlights(lines, line_start, ext)
         };
 
         let old_highlights = if !new_keyword_highlights.is_empty() {
@@ -342,10 +349,6 @@ impl WordHighlighter {
 
     async fn clear_highlights(&mut self) -> Result<(), PluginError> {
         if let Some(OldHighlights { winid, match_ids }) = self.cursor_highlights.take() {
-            self.vim.matchdelete_batch(match_ids, winid).await?;
-        }
-
-        if let Some(OldHighlights { winid, match_ids }) = self.keyword_highlights.take() {
             self.vim.matchdelete_batch(match_ids, winid).await?;
         }
 
@@ -401,21 +404,33 @@ impl ClapPlugin for WordHighlighter {
 
     #[maple_derive::subscriptions]
     async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<(), PluginError> {
+        use AutocmdEventType::{
+            BufDelete, BufEnter, BufLeave, BufWinEnter, BufWinLeave, BufWritePost, CursorMoved,
+            InsertEnter,
+        };
+
         let (event_type, params) = autocmd;
         let bufnr = params.parse_bufnr()?;
 
         match event_type {
-            BufEnter | BufWinEnter => self.try_track_buffer(bufnr).await?,
+            BufEnter | BufWinEnter => {
+                self.try_track_buffer(bufnr).await?;
+                let screen_lines_range = self.vim.get_screen_lines_range().await?;
+                self.highlight_keywords(bufnr, screen_lines_range).await?;
+            }
+            BufWritePost => {
+                let screen_lines_range = self.vim.get_screen_lines_range().await?;
+                self.highlight_keywords(bufnr, screen_lines_range).await?;
+            }
             BufDelete | BufLeave | BufWinLeave => {
                 self.bufs.remove(&bufnr);
                 self.clear_highlights().await?;
             }
             CursorMoved => {
+                let screen_lines_range = self.vim.get_screen_lines_range().await?;
+                self.highlight_keywords(bufnr, screen_lines_range.clone())
+                    .await?;
                 if self.bufs.contains_key(&bufnr) {
-                    // Lines in view.
-                    let screen_lines_range = self.vim.get_screen_lines_range().await?;
-                    self.highlight_keywords(bufnr, screen_lines_range.clone())
-                        .await?;
                     self.highlight_symbol_under_cursor(bufnr, screen_lines_range)
                         .await?;
                 }

@@ -56,6 +56,10 @@ ignore-files = "*.toml,*.json,*.yml,*.log,tmp"
 # keyword-highlight = [ ["TODO", "Todo"], ["FIXME", "Error"] ]
 # ```
 keyword-highlight = [["TODO", "Todo"]]
+# This flag controls whether to only highlight the keywords in the comment line.
+#
+# This flag is set as `true` by default.
+keyword-highlight-comment-line-only = true
 
 [plugin.ctags]
 # Whether to enable this plugin.

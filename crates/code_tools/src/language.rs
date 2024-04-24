@@ -177,6 +177,13 @@ fn config_inner() -> &'static ConfigurationInner {
         let line_comments = language
             .iter()
             .flat_map(|l| {
+                if l.file_extensions.is_empty() {
+                    tracing::warn!(
+                        language = l.name,
+                        "missing file-extensions in languages.toml"
+                    );
+                }
+
                 l.file_extensions
                     .iter()
                     .map(|ext| (ext.clone(), l.line_comments.clone()))

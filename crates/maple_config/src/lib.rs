@@ -156,6 +156,11 @@ pub struct WordHighlighterConfig {
     /// keyword-highlight = [ ["TODO", "Todo"], ["FIXME", "Error"] ]
     /// ```
     pub keyword_highlight: Vec<(String, String)>,
+
+    /// This flag controls whether to only highlight the keywords in the comment line.
+    ///
+    /// This flag is set as `true` by default.
+    pub keyword_highlight_comment_line_only: bool,
 }
 
 impl Default for WordHighlighterConfig {
@@ -165,6 +170,7 @@ impl Default for WordHighlighterConfig {
             ignore_comment_line: false,
             ignore_files: "*.toml,*.json,*.yml,*.log,tmp".to_string(),
             keyword_highlight: vec![("TODO".to_string(), "Todo".to_string())],
+            keyword_highlight_comment_line_only: true,
         }
     }
 }
