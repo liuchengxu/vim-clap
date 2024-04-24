@@ -8,7 +8,8 @@ TODO: elaborate on plugins' usage.
 
 * [colorizer](#colorizer)
 * [ctags](#ctags)
-* [cursorword](#cursorword)
+* [word-highlighter](#word-highlighter)
+* [diagnostics](#diagnostics)
 * [git](#git)
 * [linter](#linter)
 * [lsp](#lsp)
@@ -34,10 +35,10 @@ enable = true
 | :------------------------------------- | :-----------------------------------------------------  |
 | statusline integration(current symbol) | [vista.vim](https://github.com/liuchengxu/vista.vim)    |
 
-## cursorword
+## word-highlighter
 
 ```toml
-[plugin.cursorword]
+[plugin.word-highlighter]
 enable = true
 ```
 

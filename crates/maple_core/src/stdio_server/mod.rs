@@ -91,8 +91,8 @@ struct InitializedService {
 fn initialize_service(vim: Vim) -> InitializedService {
     use self::diagnostics_worker::start_buffer_diagnostics_worker;
     use self::plugin::{
-        ActionType, ClapPlugin, ColorizerPlugin, CtagsPlugin, CursorwordPlugin, DiagnosticsPlugin,
-        GitPlugin, LinterPlugin, LspPlugin, MarkdownPlugin, SyntaxPlugin, SystemPlugin,
+        ActionType, ClapPlugin, ColorizerPlugin, CtagsPlugin, DiagnosticsPlugin, GitPlugin,
+        LinterPlugin, LspPlugin, MarkdownPlugin, SyntaxPlugin, SystemPlugin, WordHighlighterPlugin,
     };
 
     let mut callable_actions = Vec::new();
@@ -156,8 +156,8 @@ fn initialize_service(vim: Vim) -> InitializedService {
         );
     }
 
-    if plugin_config.cursorword.enable {
-        register_plugin(Box::new(CursorwordPlugin::new(vim.clone())), None);
+    if plugin_config.word_highlighter.enable {
+        register_plugin(Box::new(WordHighlighterPlugin::new(vim.clone())), None);
     }
 
     if plugin_config.git.enable {

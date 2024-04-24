@@ -132,10 +132,10 @@ impl Default for LogConfig {
     }
 }
 
-/// Cursorword plugin.
+/// WordHighlighter plugin.
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
-pub struct CursorWordConfig {
+pub struct WordHighlighterConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
 
@@ -146,7 +146,7 @@ pub struct CursorWordConfig {
     pub ignore_files: String,
 }
 
-impl Default for CursorWordConfig {
+impl Default for WordHighlighterConfig {
     fn default() -> Self {
         Self {
             enable: false,
@@ -480,7 +480,7 @@ impl Default for RenderStrategy {
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct PluginConfig {
     pub colorizer: ColorizerPluginConfig,
-    pub cursorword: CursorWordConfig,
+    pub word_highlighter: WordHighlighterConfig,
     pub ctags: CtagsPluginConfig,
     pub git: GitPluginConfig,
     pub linter: LinterPluginConfig,
@@ -642,7 +642,7 @@ mod tests {
           [matcher]
           tiebreak = "score,-begin,-end,-length"
 
-          [plugin.cursorword]
+          [plugin.word-highlighter]
           enable = true
 
           [provider.debounce]
@@ -677,7 +677,7 @@ mod tests {
                     tiebreak: "score,-begin,-end,-length".to_string()
                 },
                 plugin: PluginConfig {
-                    cursorword: CursorWordConfig {
+                    word_highlighter: WordHighlighterConfig {
                         enable: true,
                         ..Default::default()
                     },

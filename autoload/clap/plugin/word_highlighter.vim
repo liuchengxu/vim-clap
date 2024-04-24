@@ -9,13 +9,13 @@ hi ClapUnderline gui=underline cterm=underline
 hi default link ClapCursorWord      IncSearch
 hi default link ClapCursorWordTwins ClapUnderline
 
-augroup VimClapCursorword
+augroup VimClapWordHighlighter
   autocmd!
 
-  autocmd ColorScheme * call clap#client#notify('cursorword.__defineHighlights', [+expand('<abuf>')])
+  autocmd ColorScheme * call clap#client#notify('word-highlighter.__defineHighlights', [+expand('<abuf>')])
 augroup END
 
-function! clap#plugin#cursorword#add_keyword_highlights(keyword_highlights) abort
+function! clap#plugin#word_highlighter#add_keyword_highlights(keyword_highlights) abort
   let match_ids = []
   for hl in a:keyword_highlights
     let match_id = matchaddpos('Error', [[hl.line_number, hl.col+1, hl.length]])
@@ -26,7 +26,7 @@ function! clap#plugin#cursorword#add_keyword_highlights(keyword_highlights) abor
   return match_ids
 endfunction
 
-function! clap#plugin#cursorword#add_highlights(word_highlights) abort
+function! clap#plugin#word_highlighter#add_highlights(word_highlights) abort
   let cword_len = a:word_highlights.cword_len
   let match_ids = []
   let [lnum, col] = a:word_highlights.cword_highlight
@@ -43,7 +43,7 @@ function! clap#plugin#cursorword#add_highlights(word_highlights) abort
   return match_ids
 endfunction
 
-function! clap#plugin#cursorword#define_highlights(highlights, twins_highlights) abort
+function! clap#plugin#word_highlighter#define_highlights(highlights, twins_highlights) abort
   let [ctermbg, guibg] = a:highlights
   let [twins_ctermbg, twins_guibg] = a:twins_highlights
 

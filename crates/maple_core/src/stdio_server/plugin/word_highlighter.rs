@@ -116,7 +116,7 @@ async fn define_highlights(vim: &Vim) -> Result<(), PluginError> {
         let twins_ctermbg = rgb_to_ansi256(r as u8, g as u8, b as u8);
 
         vim.exec(
-            "clap#plugin#cursorword#define_highlights",
+            "clap#plugin#word_highlighter#define_highlights",
             [(ctermbg, guibg), (twins_ctermbg, twins_guibg)],
         )?;
     }
@@ -124,8 +124,8 @@ async fn define_highlights(vim: &Vim) -> Result<(), PluginError> {
 }
 
 #[derive(Debug, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "cursorword", actions = ["__defineHighlights"])]
-pub struct Cursorword {
+#[clap_plugin(id = "word-highlighter", actions = ["__defineHighlights"])]
+pub struct WordHighlighter {
     vim: Vim,
     bufs: HashMap<usize, PathBuf>,
     keyword_matcher: WordMatcher,
@@ -135,11 +135,11 @@ pub struct Cursorword {
     ignore_file_names: Vec<&'static str>,
 }
 
-impl Cursorword {
+impl WordHighlighter {
     pub fn new(vim: Vim) -> Self {
         let (ignore_extensions, ignore_file_names): (Vec<_>, Vec<_>) = maple_config::config()
             .plugin
-            .cursorword
+            .word_highlighter
             .ignore_files
             .split(',')
             .partition(|s| s.starts_with("*."));
@@ -149,7 +149,7 @@ impl Cursorword {
 
             async move {
                 if let Err(err) = define_highlights(&vim).await {
-                    tracing::error!(?err, "[cursorword] Failed to define highlights");
+                    tracing::error!(?err, "[word-highlighter] Failed to define highlights");
                 }
             }
         });
@@ -187,7 +187,11 @@ impl Cursorword {
         let [_bufnum, curlnum, col, _off] = self.vim.getpos(".").await?;
         let curline = self.vim.getbufoneline(bufnr, curlnum).await?;
 
-        if maple_config::config().plugin.cursorword.ignore_comment_line {
+        if maple_config::config()
+            .plugin
+            .word_highlighter
+            .ignore_comment_line
+        {
             if let Some(ext) = source_file.extension().and_then(|s| s.to_str()) {
                 if code_tools::language::is_comment(curline.as_str(), ext) {
                     return Ok(None);
@@ -219,7 +223,10 @@ impl Cursorword {
         if let Ok(Some(word_highlights)) = maybe_new_highlights {
             let match_ids: Vec<i32> = self
                 .vim
-                .call("clap#plugin#cursorword#add_highlights", word_highlights)
+                .call(
+                    "clap#plugin#word_highlighter#add_highlights",
+                    word_highlights,
+                )
                 .await?;
             return Ok(Some(OldHighlights { match_ids, winid }));
         }
@@ -287,7 +294,7 @@ impl Cursorword {
             let match_ids: Vec<i32> = self
                 .vim
                 .call(
-                    "clap#plugin#cursorword#add_keyword_highlights",
+                    "clap#plugin#word_highlighter#add_keyword_highlights",
                     [new_keyword_highlights],
                 )
                 .await?;
@@ -352,10 +359,10 @@ impl Cursorword {
 }
 
 #[async_trait::async_trait]
-impl ClapPlugin for Cursorword {
+impl ClapPlugin for WordHighlighter {
     async fn handle_action(&mut self, action: PluginAction) -> Result<(), PluginError> {
         match self.parse_action(&action.method)? {
-            CursorwordAction::__DefineHighlights => {
+            WordHighlighterAction::__DefineHighlights => {
                 define_highlights(&self.vim).await?;
             }
         }

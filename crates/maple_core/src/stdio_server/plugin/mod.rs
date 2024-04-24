@@ -1,6 +1,5 @@
 mod colorizer;
 mod ctags;
-mod cursorword;
 mod diagnostics;
 mod git;
 mod linter;
@@ -8,6 +7,7 @@ mod lsp;
 mod markdown;
 pub mod syntax;
 mod system;
+mod word_highlighter;
 
 use self::lsp::Error as LspError;
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType, PluginAction};
@@ -16,7 +16,6 @@ use std::fmt::Debug;
 
 pub use self::colorizer::ColorizerPlugin;
 pub use self::ctags::CtagsPlugin;
-pub use self::cursorword::Cursorword as CursorwordPlugin;
 pub use self::diagnostics::Diagnostics as DiagnosticsPlugin;
 pub use self::git::Git as GitPlugin;
 pub use self::linter::Linter as LinterPlugin;
@@ -24,6 +23,7 @@ pub use self::lsp::LspPlugin;
 pub use self::markdown::Markdown as MarkdownPlugin;
 pub use self::syntax::Syntax as SyntaxPlugin;
 pub use self::system::System as SystemPlugin;
+pub use self::word_highlighter::WordHighlighter as WordHighlighterPlugin;
 pub use types::{ActionType, ClapAction};
 
 pub type PluginId = &'static str;
