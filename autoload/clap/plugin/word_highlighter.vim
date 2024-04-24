@@ -18,7 +18,7 @@ augroup END
 function! clap#plugin#word_highlighter#add_keyword_highlights(keyword_highlights) abort
   let match_ids = []
   for hl in a:keyword_highlights
-    let match_id = matchaddpos('Error', [[hl.line_number, hl.col+1, hl.length]])
+    let match_id = matchaddpos(hl.hl_group, [[hl.line_number, hl.col+1, hl.length]])
     if match_id > -1
       call add(match_ids, match_id)
     endif

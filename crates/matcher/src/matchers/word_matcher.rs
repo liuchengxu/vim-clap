@@ -1,4 +1,5 @@
 use grep_regex::{RegexMatcher, RegexMatcherBuilder};
+use std::collections::HashMap;
 use std::ops::Range;
 use types::{Score, WordTerm};
 
@@ -85,6 +86,36 @@ impl WordMatcher {
                         end: matched.end(),
                     },
                     word_term.text.len(),
+                ));
+
+                true
+            });
+        });
+
+        match_start_indices
+    }
+
+    pub fn find_keyword_matches(
+        &self,
+        line: &str,
+        keyword_highlights: &HashMap<String, String>,
+    ) -> Vec<(Range<usize>, usize, String)> {
+        use grep_matcher::Matcher;
+
+        let mut match_start_indices = vec![];
+
+        self.matchers.iter().for_each(|(word_term, word_matcher)| {
+            let _ = word_matcher.find_iter(line.as_bytes(), |matched| {
+                match_start_indices.push((
+                    Range {
+                        start: matched.start(),
+                        end: matched.end(),
+                    },
+                    word_term.text.len(),
+                    keyword_highlights
+                        .get(&word_term.text)
+                        .cloned()
+                        .unwrap_or_default(),
                 ));
 
                 true

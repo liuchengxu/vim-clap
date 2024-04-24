@@ -18,6 +18,7 @@ struct KeywordHighlight {
     /// Highlight col start.
     col: usize,
     length: usize,
+    hl_group: String,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -131,15 +132,16 @@ pub struct WordHighlighter {
     keyword_matcher: WordMatcher,
     cursor_highlights: Option<OldHighlights>,
     keyword_highlights: Option<OldHighlights>,
+    keywords: HashMap<String, String>,
     ignore_extensions: Vec<&'static str>,
     ignore_file_names: Vec<&'static str>,
 }
 
 impl WordHighlighter {
     pub fn new(vim: Vim) -> Self {
-        let (ignore_extensions, ignore_file_names): (Vec<_>, Vec<_>) = maple_config::config()
-            .plugin
-            .word_highlighter
+        let word_highlighter_config = &maple_config::config().plugin.word_highlighter;
+
+        let (ignore_extensions, ignore_file_names): (Vec<_>, Vec<_>) = word_highlighter_config
             .ignore_files
             .split(',')
             .partition(|s| s.starts_with("*."));
@@ -154,8 +156,14 @@ impl WordHighlighter {
             }
         });
 
-        let keywords = vec!["TODO".to_string()];
-        let keyword_matcher = WordMatcher::new(keywords.into_iter().map(Into::into).collect());
+        let keywords = word_highlighter_config
+            .keyword_highlight
+            .iter()
+            .map(|(keyword, highlight_group)| (keyword.clone(), highlight_group.clone()))
+            .collect::<HashMap<_, _>>();
+
+        let keyword_matcher =
+            WordMatcher::new(keywords.keys().map(|k| k.to_string().into()).collect());
 
         Self {
             vim,
@@ -163,6 +171,7 @@ impl WordHighlighter {
             keyword_matcher,
             cursor_highlights: None,
             keyword_highlights: None,
+            keywords,
             ignore_extensions,
             ignore_file_names,
         }
@@ -260,14 +269,17 @@ impl WordHighlighter {
             .flat_map(|(index, line)| {
                 let line_number = index + line_start;
 
-                let keyword_matches_range = self.keyword_matcher.find_all_matches_range(&line);
+                let keyword_matches_range = self
+                    .keyword_matcher
+                    .find_keyword_matches(&line, &self.keywords);
 
                 keyword_matches_range
                     .into_iter()
-                    .map(move |(range, length)| KeywordHighlight {
+                    .map(move |(range, length, hl_group)| KeywordHighlight {
                         line_number,
                         col: range.start,
                         length,
+                        hl_group,
                     })
             })
             .collect()

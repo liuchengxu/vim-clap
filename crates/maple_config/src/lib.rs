@@ -144,6 +144,18 @@ pub struct WordHighlighterConfig {
 
     /// Disable the plugin when the file matches this pattern.
     pub ignore_files: String,
+
+    /// Specify the keyword highlights.
+    ///
+    /// ```toml
+    /// # The first item is the keyword itself, the next item is the highlight group for the keyword.
+    /// # By default only TODO is highlighted and it's linked to `Todo` highlight group.
+    /// keyword-highlight = [ ["TODO", "Todo"] ]
+    ///
+    /// # You can extend this list to define more keywords and their corresponding highlight group.
+    /// keyword-highlight = [ ["TODO", "Todo"], ["FIXME", "Error"] ]
+    /// ```
+    pub keyword_highlight: Vec<(String, String)>,
 }
 
 impl Default for WordHighlighterConfig {
@@ -152,6 +164,7 @@ impl Default for WordHighlighterConfig {
             enable: false,
             ignore_comment_line: false,
             ignore_files: "*.toml,*.json,*.yml,*.log,tmp".to_string(),
+            keyword_highlight: vec![("TODO".to_string(), "Todo".to_string())],
         }
     }
 }

@@ -34,6 +34,17 @@ enable = false
 ignore-comment-line = false
 # Disable the plugin when the file matches this pattern.
 ignore-files = "*.toml,*.json,*.yml,*.log,tmp"
+# Specify the keyword highlights.
+#
+# ```toml
+# # The first item is the keyword itself, the next item is the highlight group for the keyword.
+# # By default only TODO is highlighted and it's linked to `Todo` highlight group.
+# keyword-highlight = [ ["TODO", "Todo"] ]
+#
+# # You can extend this list to define more keywords and their corresponding highlight group.
+# keyword-highlight = [ ["TODO", "Todo"], ["FIXME", "Error"] ]
+# ```
+keyword-highlight = [["TODO", "Todo"]]
 
 [plugin.ctags]
 # Whether to enable this plugin.
