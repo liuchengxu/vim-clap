@@ -174,6 +174,15 @@ fn from_vim_bool(value: Value) -> bool {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ScreenLinesRange {
+    pub winid: usize,
+    /// Absolute line number of first line visible in current window.
+    pub line_start: usize,
+    /// Absolute line number of last line visible in current window.
+    pub line_end: usize,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum VimError {
     #[error("buffer does not exist")]
@@ -445,8 +454,13 @@ impl Vim {
         self.exec("clap#helper#echo_warn", [msg.as_ref()])
     }
 
-    pub async fn get_screen_lines_range(&self) -> VimResult<(usize, usize, usize)> {
-        self.bare_call("get_screen_lines_range").await
+    pub async fn get_screen_lines_range(&self) -> VimResult<ScreenLinesRange> {
+        let (winid, line_start, line_end) = self.bare_call("get_screen_lines_range").await?;
+        Ok(ScreenLinesRange {
+            winid,
+            line_start,
+            line_end,
+        })
     }
 
     pub async fn get_cursor_pos(&self) -> VimResult<(usize, usize, usize)> {

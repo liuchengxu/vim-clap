@@ -1,6 +1,6 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginError, Toggle};
-use crate::stdio_server::vim::Vim;
+use crate::stdio_server::vim::{ScreenLinesRange, Vim};
 use crate::tools::git::{parse_blame_info, GitRepo, Modification, SignType, Summary};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -135,7 +135,11 @@ impl Git {
         bufnr: usize,
         modifications: Vec<Modification>,
     ) -> Result<(), PluginError> {
-        let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
+        let ScreenLinesRange {
+            winid: _,
+            line_start,
+            line_end,
+        } = self.vim.get_screen_lines_range().await?;
 
         let signs = modifications
             .iter()
@@ -171,7 +175,11 @@ impl Git {
 
     async fn show_gutter_signs(&mut self, bufnr: usize) -> Result<(), PluginError> {
         if let Some(diff_state) = self.git_modifications.get_mut(&bufnr) {
-            let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
+            let ScreenLinesRange {
+                winid: _,
+                line_start,
+                line_end,
+            } = self.vim.get_screen_lines_range().await?;
 
             let new_signs = diff_state
                 .modifications

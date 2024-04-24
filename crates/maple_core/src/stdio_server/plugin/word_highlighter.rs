@@ -1,6 +1,6 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType, PluginAction};
 use crate::stdio_server::plugin::{ClapPlugin, PluginError};
-use crate::stdio_server::vim::{Vim, VimError};
+use crate::stdio_server::vim::{ScreenLinesRange, Vim, VimError};
 use colors_transform::Color;
 use matcher::WordMatcher;
 use rgb2ansi256::rgb_to_ansi256;
@@ -180,6 +180,7 @@ impl WordHighlighter {
     async fn create_new_highlights(
         &mut self,
         bufnr: usize,
+        screen_lines_range: ScreenLinesRange,
     ) -> Result<Option<OldHighlights>, PluginError> {
         let cword = self.vim.expand("<cword>").await?;
 
@@ -219,7 +220,11 @@ impl WordHighlighter {
         }
 
         // Lines in view.
-        let (winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
+        let ScreenLinesRange {
+            winid,
+            line_start,
+            line_end,
+        } = screen_lines_range;
 
         let maybe_new_highlights = if self.vim.bufmodified(bufnr).await? {
             let lines = self.vim.getbufline(bufnr, line_start, line_end).await?;
@@ -244,8 +249,14 @@ impl WordHighlighter {
     }
 
     /// Highlight the cursor word and all the occurrences.
-    async fn highlight_symbol_under_cursor(&mut self, bufnr: usize) -> Result<(), PluginError> {
-        let maybe_new_highlights = self.create_new_highlights(bufnr).await?;
+    async fn highlight_symbol_under_cursor(
+        &mut self,
+        bufnr: usize,
+        screen_lines_range: ScreenLinesRange,
+    ) -> Result<(), PluginError> {
+        let maybe_new_highlights = self
+            .create_new_highlights(bufnr, screen_lines_range)
+            .await?;
         let old_highlights = match maybe_new_highlights {
             Some(new_highlights) => self.cursor_highlights.replace(new_highlights),
             None => self.cursor_highlights.take(),
@@ -285,15 +296,21 @@ impl WordHighlighter {
             .collect()
     }
 
-    async fn highlight_keywords(&mut self, bufnr: usize) -> Result<(), PluginError> {
+    async fn highlight_keywords(
+        &mut self,
+        bufnr: usize,
+        screen_lines_range: ScreenLinesRange,
+    ) -> Result<(), PluginError> {
         let source_file = self
             .bufs
             .get(&bufnr)
             .ok_or_else(|| VimError::InvalidBuffer)?;
 
-        // Lines in view.
-        let (winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
-
+        let ScreenLinesRange {
+            winid,
+            line_start,
+            line_end,
+        } = screen_lines_range;
         let new_keyword_highlights = if self.vim.bufmodified(bufnr).await? {
             let lines = self.vim.getbufline(bufnr, line_start, line_end).await?;
             self.find_keyword_highlights(lines.into_iter(), line_start)
@@ -395,8 +412,12 @@ impl ClapPlugin for WordHighlighter {
             }
             CursorMoved => {
                 if self.bufs.contains_key(&bufnr) {
-                    self.highlight_symbol_under_cursor(bufnr).await?;
-                    self.highlight_keywords(bufnr).await?;
+                    // Lines in view.
+                    let screen_lines_range = self.vim.get_screen_lines_range().await?;
+                    self.highlight_keywords(bufnr, screen_lines_range.clone())
+                        .await?;
+                    self.highlight_symbol_under_cursor(bufnr, screen_lines_range)
+                        .await?;
                 }
             }
             InsertEnter => {
