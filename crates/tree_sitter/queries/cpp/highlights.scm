@@ -268,3 +268,5 @@
   ] @punctuation.bracket)
 
 (literal_suffix) @operator
+
+(comment) @comment
