@@ -129,11 +129,12 @@ pub async fn search(
         best_items.on_new_match(matched_item, total_matched, total_processed);
     }
 
+    let elapsed = now.elapsed().as_millis();
+
     if stop_signal.load(Ordering::SeqCst) {
+        tracing::debug!(?query, "Result dropped, searching elapsed {elapsed:?}ms");
         return;
     }
-
-    let elapsed = now.elapsed().as_millis();
 
     let BestItems {
         items,

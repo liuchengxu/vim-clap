@@ -89,10 +89,6 @@ let s:diagnostic_spans_highlight_ns_id = nvim_create_namespace('clap_diagnostics
 let s:diagnostic_msg_highlight_ns_id = nvim_create_namespace('clap_diagnostics_msg_highlight')
 
 function! s:render_on_top_right(lines, line_highlights) abort
-  if s:should_ignore()
-    return
-  endif
-
   if !exists('s:diagnostic_msg_buffer') || !nvim_buf_is_valid(s:diagnostic_msg_buffer)
     let s:diagnostic_msg_buffer = nvim_create_buf(v:false, v:true)
   endif
@@ -267,10 +263,6 @@ function! clap#plugin#diagnostics#close_top_right() abort
 endfunction
 
 function! clap#plugin#diagnostics#display_top_right(current_diagnostics) abort
-  if s:should_ignore()
-    return
-  endif
-
   if !empty(a:current_diagnostics)
     let [lines, line_highlights] = s:convert_diagnostics_to_lines(a:current_diagnostics)
 
@@ -327,6 +319,9 @@ endfunction
 endif
 
 function! clap#plugin#diagnostics#add_highlights(bufnr, diagnostics) abort
+  if s:should_ignore()
+    return
+  endif
   for diagnostic in a:diagnostics
     let hl_group = diagnostic.severity ==# 'Error' ? 'ClapDiagnosticUnderlineError' : 'ClapDiagnosticUnderlineWarn'
     call map(diagnostic.spans, 's:highlight_span(a:bufnr, v:val, hl_group)')
@@ -334,6 +329,9 @@ function! clap#plugin#diagnostics#add_highlights(bufnr, diagnostics) abort
 endfunction
 
 function! clap#plugin#diagnostics#refresh_highlights(bufnr, diagnostics) abort
+  if s:should_ignore()
+    return
+  endif
   call clap#plugin#diagnostics#delete_highlights(a:bufnr)
   call clap#plugin#diagnostics#add_highlights(a:bufnr, a:diagnostics)
 endfunction
