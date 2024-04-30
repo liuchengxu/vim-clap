@@ -89,24 +89,15 @@ impl ProviderSession {
             while let Some(event) = origin_provider_event_receiver.recv().await {
                 tracing::debug!("Recv origin event: {event:?}");
 
-                let (should_emit, debounced_event) = match event {
-                    ProviderEvent::OnMove(params) => {
-                        (on_move_timer.should_emit(), ProviderEvent::OnMove(params))
-                    }
-                    ProviderEvent::OnTyped(params) => {
-                        (on_typed_timer.should_emit(), ProviderEvent::OnTyped(params))
-                    }
-                    undebounced_event => (true, undebounced_event),
+                let should_emit = match &event {
+                    ProviderEvent::OnMove(..) => on_move_timer.should_emit(),
+                    ProviderEvent::OnTyped(..) => on_typed_timer.should_emit(),
+                    _ => true,
                 };
 
                 // Send event after debounce period
-                if should_emit {
-                    if debounced_provider_event_sender
-                        .send(debounced_event)
-                        .is_err()
-                    {
-                        return;
-                    }
+                if should_emit && debounced_provider_event_sender.send(event).is_err() {
+                    return;
                 }
             }
         });

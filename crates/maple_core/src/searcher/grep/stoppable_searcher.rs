@@ -145,9 +145,9 @@ impl StoppableSearchImpl {
                             let total = search_info.total_matched.fetch_add(1, Ordering::Relaxed);
 
                             // Always send over the result when the queue is not yet full.
-                            if total < best_queue_capacity {
-                                return Ok(sender.send(file_result).is_ok());
-                            } else if file_result.rank > *search_info.lowest_rank.read() {
+                            if total < best_queue_capacity
+                                || file_result.rank > *search_info.lowest_rank.read()
+                            {
                                 // Discontinue if the sender has been dropped.
                                 return Ok(sender.send(file_result).is_ok());
                             }
