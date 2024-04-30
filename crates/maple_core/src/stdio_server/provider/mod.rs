@@ -450,6 +450,7 @@ impl Context {
         self.env.provider_id.as_str()
     }
 
+    /// Debounce delay for Provider::Event::OnTyped in milliseconds.
     pub fn provider_debounce(&self) -> u64 {
         maple_config::config().provider_debounce(self.env.provider_id.as_str())
     }
