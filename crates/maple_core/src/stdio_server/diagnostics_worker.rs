@@ -162,12 +162,12 @@ impl BufferDiagnostics {
             // otherwise display all the diagnostics in this line.
             if diagnostic_at_cursor.is_empty() {
                 vim.exec(
-                    "clap#plugin#diagnostics#display_top_right",
+                    "clap#plugin#diagnostics#display_at_top_right",
                     [current_diagnostics],
                 )?;
             } else {
                 vim.exec(
-                    "clap#plugin#diagnostics#display_top_right",
+                    "clap#plugin#diagnostics#display_at_top_right",
                     [diagnostic_at_cursor],
                 )?;
             }

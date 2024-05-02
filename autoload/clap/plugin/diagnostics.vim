@@ -30,7 +30,7 @@ function! s:should_ignore() abort
 
   let ignore_list = ['vista', 'clap', 'nerdtree', 'startify', 'tagbar', 'fzf', 'gitcommit', 'coc']
   for ignore in ignore_list
-    if ignore =~? filetype
+    if filetype =~? ignore
       return v:true
     endif
   endfor
@@ -165,7 +165,7 @@ function! clap#plugin#diagnostics#close_top_right() abort
   endif
 endfunction
 
-function! clap#plugin#diagnostics#display_top_right(current_diagnostics) abort
+function! s:display_at_top_right(current_diagnostics) abort
   if !empty(a:current_diagnostics)
     let [lines, line_highlights] = s:convert_diagnostics_to_lines(a:current_diagnostics)
     call s:render_on_top_right(lines, line_highlights)
@@ -262,7 +262,7 @@ function! clap#plugin#diagnostics#close_top_right() abort
   endif
 endfunction
 
-function! clap#plugin#diagnostics#display_top_right(current_diagnostics) abort
+function! s:display_at_top_right(current_diagnostics) abort
   if !empty(a:current_diagnostics)
     let [lines, line_highlights] = s:convert_diagnostics_to_lines(a:current_diagnostics)
 
@@ -317,6 +317,13 @@ function! clap#plugin#diagnostics#delete_highlights(bufnr) abort
 endfunction
 
 endif
+
+function! clap#plugin#diagnostics#display_at_top_right(current_diagnostics) abort
+  if s:should_ignore()
+    return
+  endif
+  call s:display_at_top_right(a:current_diagnostics)
+endfunction
 
 function! clap#plugin#diagnostics#add_highlights(bufnr, diagnostics) abort
   if s:should_ignore()
