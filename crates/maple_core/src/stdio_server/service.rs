@@ -77,6 +77,7 @@ impl ProviderSession {
             let mut on_move_timer = DebounceTimer::new(Duration::from_millis(200));
             let mut on_typed_timer = DebounceTimer::new(Duration::from_millis(debounce_delay));
 
+            // TODO: this does not fully resolve the problem, find another solution.
             // Text input from users could be overloaded in a short period of time, e.g., OnMove
             // and OnTyped can be too frequent if user types too fast, in which case we observe
             // the receiver side of unbounded channel may not be able to receive the events in time,
