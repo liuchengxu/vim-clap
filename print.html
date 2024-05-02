@@ -600,13 +600,28 @@ tiebreak = "score,-begin,-end,-length"
 # Whether to enable this plugin.
 enable = false
 
-[plugin.cursorword]
+[plugin.word-highlighter]
 # Whether to enable this plugin.
 enable = false
 # Whether to ignore the comment line
 ignore-comment-line = false
 # Disable the plugin when the file matches this pattern.
 ignore-files = "*.toml,*.json,*.yml,*.log,tmp"
+# Specify the keyword highlights.
+#
+# ```toml
+# # The first item is the keyword itself, the next item is the highlight group for the keyword.
+# # By default only TODO is highlighted and it's linked to `Todo` highlight group.
+# keyword-highlight = [ ["TODO", "Todo"] ]
+#
+# # You can extend this list to define more keywords and their corresponding highlight group.
+# keyword-highlight = [ ["TODO", "Todo"], ["FIXME", "Error"] ]
+# ```
+keyword-highlight = [["TODO", "Todo"]]
+# This flag controls whether to only highlight the keywords in the comment line.
+#
+# This flag is set as `true` by default.
+keyword-highlight-comment-line-only = true
 
 [plugin.ctags]
 # Whether to enable this plugin.
@@ -670,6 +685,10 @@ language = []
 [plugin.markdown]
 # Whether to enable this plugin.
 enable = false
+# Specify the port number for the preview page in browser.
+#
+# A random port will be used each time if not specified.
+preview-port = 0
 
 # Specify the strategy of tree-sitter rendering.
 #
@@ -761,7 +780,8 @@ ignore-file-path-pattern = []
 <ul>
 <li><a href="plugins/plugins.html#colorizer">colorizer</a></li>
 <li><a href="plugins/plugins.html#ctags">ctags</a></li>
-<li><a href="plugins/plugins.html#cursorword">cursorword</a></li>
+<li><a href="plugins/plugins.html#word-highlighter">word-highlighter</a></li>
+<li><a href="plugins/plugins.html#diagnostics">diagnostics</a></li>
 <li><a href="plugins/plugins.html#git">git</a></li>
 <li><a href="plugins/plugins.html#linter">linter</a></li>
 <li><a href="plugins/plugins.html#lsp">lsp</a></li>
@@ -782,12 +802,13 @@ enable = true
 <tr><td style="text-align: left">statusline integration(current symbol)</td><td style="text-align: left"><a href="https://github.com/liuchengxu/vista.vim">vista.vim</a></td></tr>
 </tbody></table>
 </div>
-<h2 id="cursorword"><a class="header" href="#cursorword">cursorword</a></h2>
-<pre><code class="language-toml">[plugin.cursorword]
+<h2 id="word-highlighter"><a class="header" href="#word-highlighter">word-highlighter</a></h2>
+<pre><code class="language-toml">[plugin.word-highlighter]
 enable = true
 </code></pre>
 <div class="table-wrapper"><table><thead><tr><th style="text-align: left">Features</th><th style="text-align: left">Alternatives</th></tr></thead><tbody>
 <tr><td style="text-align: left">Highlight the word under the cursor</td><td style="text-align: left"><a href="https://github.com/tveskag/nvim-blame-line">nvim-blame-line</a></br><a href="https://github.com/RRethy/vim-illuminate">vim-illuminate</a></br> <a href="https://github.com/itchyny/vim-cursorword">vim-cursorword</a></br><a href="https://github.com/osyo-manga/vim-brightest">vim-brightest</a></td></tr>
+<tr><td style="text-align: left">Highlight the keyword like <code>TODO</code></td><td style="text-align: left"><a href="https://github.com/sakshamgupta05/vim-todo-highlight">vim-todo-highlight</a></td></tr>
 </tbody></table>
 </div>
 <p>By default this plugin utilizes <code>Normal</code> guibg as the primary color. It then lighten this base color for <code>ClapCursorWord</code>
