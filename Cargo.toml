@@ -1,6 +1,6 @@
 [workspace.package]
 authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
-version = "0.1.52"
+version = "0.1.53"
 edition = "2021"
 homepage = "https://github.com/liuchengxu/vim-clap"
 repository = "https://github.com/liuchengxu/vim-clap.git"
