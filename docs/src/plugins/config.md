@@ -38,13 +38,28 @@ tiebreak = "score,-begin,-end,-length"
 # Whether to enable this plugin.
 enable = false
 
-[plugin.cursorword]
+[plugin.word-highlighter]
 # Whether to enable this plugin.
 enable = false
 # Whether to ignore the comment line
 ignore-comment-line = false
 # Disable the plugin when the file matches this pattern.
 ignore-files = "*.toml,*.json,*.yml,*.log,tmp"
+# Specify the keyword highlights.
+#
+# ```toml
+# # The first item is the keyword itself, the next item is the highlight group for the keyword.
+# # By default only TODO is highlighted and it's linked to `Todo` highlight group.
+# keyword-highlight = [ ["TODO", "Todo"] ]
+#
+# # You can extend this list to define more keywords and their corresponding highlight group.
+# keyword-highlight = [ ["TODO", "Todo"], ["FIXME", "Error"] ]
+# ```
+keyword-highlight = [["TODO", "Todo"]]
+# This flag controls whether to only highlight the keywords in the comment line.
+#
+# This flag is set as `true` by default.
+keyword-highlight-comment-line-only = true
 
 [plugin.ctags]
 # Whether to enable this plugin.
@@ -108,6 +123,10 @@ language = []
 [plugin.markdown]
 # Whether to enable this plugin.
 enable = false
+# Specify the port number for the preview page in browser.
+#
+# A random port will be used each time if not specified.
+preview-port = 0
 
 # Specify the strategy of tree-sitter rendering.
 #

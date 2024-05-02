@@ -3,7 +3,7 @@ pub mod sublime;
 use self::sublime::SublimeSyntaxImpl;
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType};
 use crate::stdio_server::plugin::{ClapPlugin, PluginAction, PluginError, Toggle};
-use crate::stdio_server::vim::Vim;
+use crate::stdio_server::vim::{ScreenLinesRange, Vim};
 use std::collections::{BTreeMap, HashMap};
 use std::ops::Range;
 use std::path::{Path, PathBuf};
@@ -246,14 +246,22 @@ impl Syntax {
 
         let highlight_range = match render_strategy {
             RenderStrategy::VisualLines => {
-                let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
+                let ScreenLinesRange {
+                    winid: _,
+                    line_start,
+                    line_end,
+                } = self.vim.get_screen_lines_range().await?;
                 HighlightRange::Lines(line_start - 1..line_end)
             }
             RenderStrategy::EntireBufferUpToLimit(size_limit) => {
                 if file_size.0 <= *size_limit {
                     HighlightRange::EveryLine
                 } else {
-                    let (_winid, line_start, line_end) = self.vim.get_screen_lines_range().await?;
+                    let ScreenLinesRange {
+                        winid: _,
+                        line_start,
+                        line_end,
+                    } = self.vim.get_screen_lines_range().await?;
                     HighlightRange::Lines(line_start - 1..line_end)
                 }
             }

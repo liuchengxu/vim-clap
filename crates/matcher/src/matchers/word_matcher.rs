@@ -1,8 +1,9 @@
 use grep_regex::{RegexMatcher, RegexMatcherBuilder};
+use std::collections::HashMap;
 use std::ops::Range;
 use types::{Score, WordTerm};
 
-/// Word matching using the `RegexMatcher`.
+/// A matcher for matching multiple words (OR).
 #[derive(Debug, Clone, Default)]
 pub struct WordMatcher {
     matchers: Vec<(WordTerm, RegexMatcher)>,
@@ -72,17 +73,50 @@ impl WordMatcher {
         }
     }
 
-    pub fn find_all_matches_range(&self, line: &str) -> Vec<Range<usize>> {
+    pub fn find_all_matches_range(&self, line: &str) -> Vec<(Range<usize>, usize)> {
         use grep_matcher::Matcher;
 
         let mut match_start_indices = vec![];
 
-        self.matchers.iter().for_each(|(_word_term, word_matcher)| {
+        self.matchers.iter().for_each(|(word_term, word_matcher)| {
             let _ = word_matcher.find_iter(line.as_bytes(), |matched| {
-                match_start_indices.push(Range {
-                    start: matched.start(),
-                    end: matched.end(),
-                });
+                match_start_indices.push((
+                    Range {
+                        start: matched.start(),
+                        end: matched.end(),
+                    },
+                    word_term.text.len(),
+                ));
+
+                true
+            });
+        });
+
+        match_start_indices
+    }
+
+    pub fn find_keyword_matches(
+        &self,
+        line: &str,
+        keyword_highlights: &HashMap<String, String>,
+    ) -> Vec<(Range<usize>, usize, String)> {
+        use grep_matcher::Matcher;
+
+        let mut match_start_indices = vec![];
+
+        self.matchers.iter().for_each(|(word_term, word_matcher)| {
+            let _ = word_matcher.find_iter(line.as_bytes(), |matched| {
+                match_start_indices.push((
+                    Range {
+                        start: matched.start(),
+                        end: matched.end(),
+                    },
+                    word_term.text.len(),
+                    keyword_highlights
+                        .get(&word_term.text)
+                        .cloned()
+                        .unwrap_or_default(),
+                ));
 
                 true
             });
@@ -101,7 +135,10 @@ mod tests {
         let word_matcher = WordMatcher::new(vec!["world".to_string().into()]);
         let line = "hello world world";
         assert_eq!(
-            vec![Range { start: 6, end: 11 }, Range { start: 12, end: 17 }],
+            vec![
+                (Range { start: 6, end: 11 }, 5),
+                (Range { start: 12, end: 17 }, 5)
+            ],
             word_matcher.find_all_matches_range(line)
         );
     }

@@ -207,18 +207,31 @@
 ] @keyword.exception
 
 [
+  "alignas"
+  "alignof"
+  "and"
+  "and_eq"
+  "asm"
+  "break"
+  "case"
   "class"
+  "concept"
+  "const"
+  "constexpr"
+  "continue"
   "decltype"
   "explicit"
+  "for"
   "friend"
+  "if"
+  "else"
   "namespace"
   "override"
+  "return"
   "template"
   "typename"
   "using"
-  "concept"
   "requires"
-  "constexpr"
 ] @keyword
 
 [
@@ -268,3 +281,5 @@
   ] @punctuation.bracket)
 
 (literal_suffix) @operator
+
+(comment) @comment

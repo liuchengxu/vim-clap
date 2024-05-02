@@ -35,6 +35,7 @@ language-servers = ["erlang-ls"]
 [[language]]
 name = "go"
 file-types = ["go"]
+file-extensions = ["go"]
 line-comments = ["//"]
 root-markers = ["go.mod"]
 language-servers = ["gopls"]
@@ -86,6 +87,7 @@ line-comments = ["#"]
 name = "rust"
 file-types = ["rust"]
 line-comments = ["//", "///", "//!"]
+file-extensions = ["rs"]
 root-markers = ["Cargo.toml", "Cargo.lock"]
 language-servers = ["rust-analyzer"]
 

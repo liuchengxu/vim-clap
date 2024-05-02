@@ -168,7 +168,7 @@ pub fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
     let action_variants = raw_actions
         .iter()
         .map(|arg| {
-            // "__noteRecentFiles", "cursorword.__defineHighlights"
+            // "__noteRecentFiles", "word-highlighter.__defineHighlights"
             let method = if plugin_id == "system" {
                 arg.to_string()
             } else {

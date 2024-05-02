@@ -8,7 +8,8 @@ TODO: elaborate on plugins' usage.
 
 * [colorizer](#colorizer)
 * [ctags](#ctags)
-* [cursorword](#cursorword)
+* [word-highlighter](#word-highlighter)
+* [diagnostics](#diagnostics)
 * [git](#git)
 * [linter](#linter)
 * [lsp](#lsp)
@@ -34,16 +35,17 @@ enable = true
 | :------------------------------------- | :-----------------------------------------------------  |
 | statusline integration(current symbol) | [vista.vim](https://github.com/liuchengxu/vista.vim)    |
 
-## cursorword
+## word-highlighter
 
 ```toml
-[plugin.cursorword]
+[plugin.word-highlighter]
 enable = true
 ```
 
 | Features                               | Alternatives                                                                                                                                                                                                                                                   |
 | :------------------------------------- | :-----------------------------------------------------                                                                                                                                                                                                         |
 | Highlight the word under the cursor    | [nvim-blame-line](https://github.com/tveskag/nvim-blame-line)</br>[vim-illuminate](https://github.com/RRethy/vim-illuminate)</br> [vim-cursorword](https://github.com/itchyny/vim-cursorword)</br>[vim-brightest](https://github.com/osyo-manga/vim-brightest) |
+| Highlight the keyword like `TODO`      | [vim-todo-highlight](https://github.com/sakshamgupta05/vim-todo-highlight) |
 
 By default this plugin utilizes `Normal` guibg as the primary color. It then lighten this base color for `ClapCursorWord`
 and darkens it for `ClapCursorWordTwins`. You can manually adjust them in case the default highlights does not meet your

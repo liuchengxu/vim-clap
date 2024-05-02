@@ -83,9 +83,9 @@ struct SearcherControl {
 impl SearcherControl {
     fn kill_in_background(self) {
         if !self.join_handle.is_finished() {
+            self.stop_signal.store(true, Ordering::SeqCst);
             // NOTE: The kill operation may take some time, using `spawn_block` to not block current thread.
             tokio::task::spawn_blocking(move || {
-                self.stop_signal.store(true, Ordering::SeqCst);
                 self.join_handle.abort();
             });
         }
@@ -450,6 +450,7 @@ impl Context {
         self.env.provider_id.as_str()
     }
 
+    /// Debounce delay for Provider::Event::OnTyped in milliseconds.
     pub fn provider_debounce(&self) -> u64 {
         maple_config::config().provider_debounce(self.env.provider_id.as_str())
     }

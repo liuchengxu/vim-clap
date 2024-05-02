@@ -132,10 +132,10 @@ impl Default for LogConfig {
     }
 }
 
-/// Cursorword plugin.
+/// WordHighlighter plugin.
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
-pub struct CursorWordConfig {
+pub struct WordHighlighterConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
 
@@ -144,14 +144,33 @@ pub struct CursorWordConfig {
 
     /// Disable the plugin when the file matches this pattern.
     pub ignore_files: String,
+
+    /// Specify the keyword highlights.
+    ///
+    /// ```toml
+    /// # The first item is the keyword itself, the next item is the highlight group for the keyword.
+    /// # By default only TODO is highlighted and it's linked to `Todo` highlight group.
+    /// keyword-highlight = [ ["TODO", "Todo"] ]
+    ///
+    /// # You can extend this list to define more keywords and their corresponding highlight group.
+    /// keyword-highlight = [ ["TODO", "Todo"], ["FIXME", "Error"] ]
+    /// ```
+    pub keyword_highlight: Vec<(String, String)>,
+
+    /// This flag controls whether to only highlight the keywords in the comment line.
+    ///
+    /// This flag is set as `true` by default.
+    pub keyword_highlight_comment_line_only: bool,
 }
 
-impl Default for CursorWordConfig {
+impl Default for WordHighlighterConfig {
     fn default() -> Self {
         Self {
             enable: false,
             ignore_comment_line: false,
             ignore_files: "*.toml,*.json,*.yml,*.log,tmp".to_string(),
+            keyword_highlight: vec![("TODO".to_string(), "Todo".to_string())],
+            keyword_highlight_comment_line_only: true,
         }
     }
 }
@@ -480,7 +499,7 @@ impl Default for RenderStrategy {
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct PluginConfig {
     pub colorizer: ColorizerPluginConfig,
-    pub cursorword: CursorWordConfig,
+    pub word_highlighter: WordHighlighterConfig,
     pub ctags: CtagsPluginConfig,
     pub git: GitPluginConfig,
     pub linter: LinterPluginConfig,
@@ -642,7 +661,7 @@ mod tests {
           [matcher]
           tiebreak = "score,-begin,-end,-length"
 
-          [plugin.cursorword]
+          [plugin.word-highlighter]
           enable = true
 
           [provider.debounce]
@@ -677,7 +696,7 @@ mod tests {
                     tiebreak: "score,-begin,-end,-length".to_string()
                 },
                 plugin: PluginConfig {
-                    cursorword: CursorWordConfig {
+                    word_highlighter: WordHighlighterConfig {
                         enable: true,
                         ..Default::default()
                     },

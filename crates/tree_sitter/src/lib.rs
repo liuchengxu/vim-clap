@@ -208,11 +208,10 @@ mod tests {
     fn test_highlight_line() {
         // let line = b"let config = language::get_highlight_config(language);";
 
-        let line = b"pub fn parse_scopes(query: &str) -> Vec<&str> {";
+        // let line = b"pub fn parse_scopes(query: &str) -> Vec<&str> {";
+        let line = b"// Cpp comment line";
 
-        let highlight_items = crate::language::Language::Rust
-            .highlight_line(line)
-            .unwrap();
+        let highlight_items = crate::language::Language::Cpp.highlight_line(line).unwrap();
         println!("{highlight_items:?}");
 
         let syntax_tokens = highlight_items
