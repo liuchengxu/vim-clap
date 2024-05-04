@@ -14,6 +14,7 @@ use std::ops::ControlFlow;
 use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;
+use tracing::Instrument;
 
 pub type ProviderSessionId = u64;
 
@@ -209,22 +210,29 @@ impl ProviderSession {
                     if let Some(_params) = on_move.take() {
                         on_move_timer.as_mut().reset(Instant::now() + NEVER);
 
-                        if let Err(err) = self.provider.on_move(&mut self.ctx).await {
-                            tracing::error!(?err, "Failed to process ProviderEvent::OnMove");
+                        async {
+                            if let Err(err) = self.provider.on_move(&mut self.ctx).await {
+                                tracing::error!(?err, "Failed to process ProviderEvent::OnMove");
+                            }
                         }
+                        .instrument(tracing::info_span!("process_on_move")).await
                     }
                 }
                 _ = on_typed_timer.as_mut(), if on_typed.is_some() => {
                     if let Some(_params) = on_typed.take() {
                         on_typed_timer.as_mut().reset(Instant::now() + NEVER);
 
-                        let _ = self.ctx.record_input().await;
+                        let process_on_typed = async {
+                            let _ = self.ctx.record_input().await;
 
-                        if let Err(err) = self.provider.on_typed(&mut self.ctx).await {
-                            tracing::error!(?err, "Failed to process ProviderEvent::OnTyped");
-                        }
+                            if let Err(err) = self.provider.on_typed(&mut self.ctx).await {
+                                tracing::error!(?err, "Failed to process ProviderEvent::OnTyped");
+                            }
 
-                        let _ = self.provider.on_move(&mut self.ctx).await;
+                            let _ = self.provider.on_move(&mut self.ctx).await;
+                        };
+
+                        process_on_typed.instrument(tracing::info_span!("process_on_typed")).await
                     }
                 }
             }

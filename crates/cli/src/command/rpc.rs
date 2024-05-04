@@ -4,6 +4,7 @@ use clap::Parser;
 use maple_core::stdio_server::ConfigError;
 use std::io::IsTerminal;
 use tracing_subscriber::filter::EnvFilter;
+use tracing_subscriber::fmt::format::FmtSpan;
 
 /// Starts a RPC service using stdio.
 #[derive(Parser, Debug, Clone)]
@@ -68,6 +69,7 @@ impl Rpc {
             }
 
             let subscriber = tracing_subscriber::FmtSubscriber::builder()
+                .with_span_events(FmtSpan::FULL)
                 .with_max_level(max_level)
                 .with_env_filter(env_filter)
                 .with_line_number(true)
