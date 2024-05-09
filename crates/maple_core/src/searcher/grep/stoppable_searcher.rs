@@ -360,18 +360,21 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
         return;
     }
 
-    let elapsed = now.elapsed().as_millis();
+    let searching_elapsed = now.elapsed().as_millis();
 
     let display_lines = to_display_lines(&best_results.results, icon);
 
     let total_matched = search_info.total_matched.load(Ordering::SeqCst);
     let total_processed = search_info.total_processed.load(Ordering::SeqCst);
+
+    let now = std::time::Instant::now();
     progressor.on_finished(display_lines, total_matched, total_processed);
+    let ui_update_elapsed = now.elapsed().as_millis();
 
     tracing::debug!(
         total_processed,
         total_matched,
         ?query,
-        "Searching completed in {elapsed:?}ms"
+        "Searching completed in {searching_elapsed:?}ms, UI updated in {ui_update_elapsed:?}ms"
     );
 }

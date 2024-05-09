@@ -166,14 +166,18 @@ impl ClapProvider for BlinesProvider {
         if !ctx.env.preview_enabled {
             return Ok(());
         }
-        ctx.preview_manager.reset_scroll();
-        let curline = ctx.vim.display_getcurline().await?;
-        let Some(line_number) = pattern::extract_blines_lnum(&curline) else {
-            return Ok(());
-        };
-        let preview_target =
-            PreviewTarget::location_in_file(self.preview_file.clone(), line_number);
-        ctx.update_preview(Some(preview_target)).await
+        let mut ctx = ctx.clone();
+        let preview_file = self.preview_file.clone();
+        tokio::spawn(async move {
+            ctx.preview_manager.reset_scroll();
+            let curline = ctx.vim.display_getcurline().await?;
+            let Some(line_number) = pattern::extract_blines_lnum(&curline) else {
+                return Ok(());
+            };
+            let preview_target = PreviewTarget::location_in_file(preview_file, line_number);
+            ctx.update_preview(Some(preview_target)).await
+        });
+        Ok(())
     }
 
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {

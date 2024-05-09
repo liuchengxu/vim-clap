@@ -36,7 +36,7 @@ impl PluginEvent {
 }
 
 /// Provider specific events.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ProviderEvent {
     OnMove(Params),
     OnTyped(Params),
@@ -47,7 +47,7 @@ pub enum ProviderEvent {
     Internal(InternalProviderEvent),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum InternalProviderEvent {
     Initialize,
     InitialQuery(String),

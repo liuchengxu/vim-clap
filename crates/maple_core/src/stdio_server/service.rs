@@ -11,6 +11,8 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::ControlFlow;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;
@@ -29,6 +31,8 @@ pub struct ProviderSession {
     /// Each provider session can have its own message processing logic.
     provider: Box<dyn ClapProvider>,
     provider_events: UnboundedReceiver<DebouncedProviderEvent>,
+    /// Whether the provider handler is still busy with processing the last event.
+    is_busy: Arc<AtomicBool>,
 }
 
 struct DebounceTimer {
@@ -46,12 +50,15 @@ impl DebounceTimer {
 
     fn should_emit(&mut self) -> bool {
         let now = std::time::Instant::now();
-        if self.last_emitted.is_none()
-            || now.duration_since(self.last_emitted.expect("Must be Some as checked"))
-                > self.debounce_period
-        {
+        if self.last_emitted.is_none() {
             self.last_emitted.replace(now);
             return true;
+        } else {
+            let elapsed = now.duration_since(self.last_emitted.expect("Must be Some as checked"));
+            if elapsed > self.debounce_period {
+                self.last_emitted.replace(now);
+                return true;
+            }
         }
         false
     }
@@ -74,9 +81,15 @@ impl ProviderSession {
         let id = ctx.env.provider_id.clone();
         let debounce_delay = ctx.provider_debounce();
 
+        let is_busy = Arc::new(AtomicBool::new(false));
+
+        let provider_is_busy = is_busy.clone();
+
         tokio::spawn(async move {
             let mut on_move_timer = DebounceTimer::new(Duration::from_millis(200));
             let mut on_typed_timer = DebounceTimer::new(Duration::from_millis(debounce_delay));
+
+            let mut event_cache = Vec::new();
 
             // TODO: this does not fully resolve the problem, find another solution.
             // Text input from users could be overloaded in a short period of time, e.g., OnMove
@@ -89,17 +102,26 @@ impl ProviderSession {
             // provider event in a separate task, that requires more effoets however, now we choose to
             // debounce the stream to avoid overwhelming the system.
             while let Some(event) = origin_provider_event_receiver.recv().await {
-                tracing::debug!("Recv origin event: {event:?}");
-
                 let should_emit = match &event {
                     ProviderEvent::OnMove(..) => on_move_timer.should_emit(),
                     ProviderEvent::OnTyped(..) => on_typed_timer.should_emit(),
                     _ => true,
                 };
 
+                // tracing::debug!(should_emit, "Recv origin event: {event:?}");
+
                 // Send event after debounce period
-                if should_emit && debounced_provider_event_sender.send(event).is_err() {
-                    return;
+                if should_emit {
+                    if provider_is_busy.load(Ordering::SeqCst) {
+                        tracing::debug!(
+                            "=============== provider is busy, caching {event:?}, cache size: {}",
+                            event_cache.len()
+                        );
+                        event_cache.push(event);
+                    } else if debounced_provider_event_sender.send(event.clone()).is_err() {
+                        tracing::debug!("Sending debounced event: {event:?}");
+                        return;
+                    }
                 }
             }
         });
@@ -110,6 +132,7 @@ impl ProviderSession {
             provider_session_id,
             provider,
             provider_events: debounced_provider_event_receiver,
+            is_busy,
         };
 
         (provider_session, origin_provider_event_sender)
@@ -125,13 +148,24 @@ impl ProviderSession {
             "Spawning a new provider session task",
         );
 
-        tokio::spawn(async move {
-            if debounce_delay > 0 {
-                self.run_event_loop_with_debounce(debounce_delay).await;
-            } else {
+        let _join_handle = std::thread::spawn(move || {
+            let tokio_runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .max_blocking_threads(32)
+                .build()
+                .unwrap();
+            tokio_runtime.block_on(async move {
                 self.run_event_loop_without_debounce().await;
-            }
+            });
         });
+
+        // tokio::spawn(async move {
+        // if debounce_delay > 0 {
+        // self.run_event_loop_with_debounce(debounce_delay).await;
+        // } else {
+        // self.run_event_loop_without_debounce().await;
+        // }
+        // });
     }
 
     // https://github.com/denoland/deno/blob/1fb5858009f598ce3f917f9f49c466db81f4d9b0/cli/lsp/diagnostics.rs#L141
@@ -206,18 +240,6 @@ impl ProviderSession {
                           None => break, // channel has closed.
                       }
                 }
-                _ = on_move_timer.as_mut(), if on_move.is_some() => {
-                    if let Some(_params) = on_move.take() {
-                        on_move_timer.as_mut().reset(Instant::now() + NEVER);
-
-                        async {
-                            if let Err(err) = self.provider.on_move(&mut self.ctx).await {
-                                tracing::error!(?err, "Failed to process ProviderEvent::OnMove");
-                            }
-                        }
-                        .instrument(tracing::info_span!("process_on_move")).await
-                    }
-                }
                 _ = on_typed_timer.as_mut(), if on_typed.is_some() => {
                     if let Some(_params) = on_typed.take() {
                         on_typed_timer.as_mut().reset(Instant::now() + NEVER);
@@ -235,6 +257,18 @@ impl ProviderSession {
                         process_on_typed.instrument(tracing::info_span!("process_on_typed")).await
                     }
                 }
+                _ = on_move_timer.as_mut(), if on_move.is_some() => {
+                    if let Some(_params) = on_move.take() {
+                        on_move_timer.as_mut().reset(Instant::now() + NEVER);
+
+                        async {
+                            if let Err(err) = self.provider.on_move(&mut self.ctx).await {
+                                tracing::error!(?err, "Failed to process ProviderEvent::OnMove");
+                            }
+                        }
+                        .instrument(tracing::info_span!("process_on_move")).await
+                    }
+                }
             }
         }
     }
@@ -250,15 +284,21 @@ impl ProviderSession {
                     }
                 }
                 ProviderEvent::OnMove(_params) => {
+                    self.is_busy.store(true, Ordering::SeqCst);
+                    // OnMove implementation may contain blocking operation, let's not make it
+                    // overloaded.
                     if let Err(err) = self.provider.on_move(&mut self.ctx).await {
                         tracing::debug!(?err, "Failed to process OnMove");
                     }
+                    self.is_busy.store(false, Ordering::SeqCst);
                 }
                 ProviderEvent::OnTyped(_params) => {
+                    self.is_busy.store(true, Ordering::SeqCst);
                     let _ = self.ctx.record_input().await;
                     if let Err(err) = self.provider.on_typed(&mut self.ctx).await {
                         tracing::debug!(?err, "Failed to process OnTyped");
                     }
+                    self.is_busy.store(false, Ordering::SeqCst);
                 }
                 ProviderEvent::Key(key_event) => {
                     if let Err(err) = self.provider.on_key_event(&mut self.ctx, key_event).await {
