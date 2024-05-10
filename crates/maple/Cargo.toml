@@ -17,7 +17,7 @@ tokio = { workspace = true, features = ["rt"] }
 cli = { workspace = true }
 upgrade = { workspace = true }
 
-[target.'cfg(not(target_env = "msvc"))'.dependencies]
+[target.'cfg(not(any(target_env = "msvc", target_os = "android")))'.dependencies]
 tikv-jemallocator = "0.5"
 
 [build-dependencies]

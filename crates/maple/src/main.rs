@@ -1,7 +1,7 @@
 use clap::Parser;
 use cli::{Args, RunCmd};
 
-#[cfg(not(target_env = "msvc"))]
+#[cfg(not(any(target_env = "msvc", target_os = "android")))]
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
