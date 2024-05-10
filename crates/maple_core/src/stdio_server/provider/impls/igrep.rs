@@ -110,7 +110,7 @@ impl Explorer {
             let response = json!({ "entries": &entries, "dir": cwd, "total": entries.len() });
             ctx.vim
                 .exec("clap#file_explorer#handle_on_initialize", response)?;
-            self.current_lines = entries.clone();
+            self.current_lines.clone_from(&entries);
         }
 
         self.dir_entries_cache.insert(
@@ -281,7 +281,7 @@ impl Explorer {
     }
 
     fn goto_dir(&mut self, dir: PathBuf, ctx: &Context) -> Result<()> {
-        self.current_dir = dir.clone();
+        self.current_dir.clone_from(&dir);
         if let Err(err) = self.read_entries_if_not_in_cache(dir) {
             ctx.vim.exec("show_lines_in_preview", [err.to_string()])?;
         }

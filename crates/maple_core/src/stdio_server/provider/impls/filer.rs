@@ -300,7 +300,7 @@ impl FilerProvider {
     }
 
     fn goto_dir(&mut self, dir: PathBuf, ctx: &Context) -> Result<()> {
-        self.current_dir = dir.clone();
+        self.current_dir.clone_from(&dir);
         self.load_dir(dir, ctx)?;
         ctx.vim.exec("input_set", [""])?;
         ctx.vim.exec(
