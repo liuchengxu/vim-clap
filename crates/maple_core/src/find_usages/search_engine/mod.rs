@@ -24,7 +24,6 @@ pub enum QueryType {
     Exact,
     /// Substring match.
     Contain,
-    ///
     Inherit,
 }
 

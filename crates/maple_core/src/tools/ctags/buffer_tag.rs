@@ -73,7 +73,7 @@ impl BufferTag {
         let others = items.join("\t");
 
         if let Some((tagaddress, kind_line_scope)) = others.rsplit_once(";\"") {
-            t.pattern = tagaddress.to_owned();
+            tagaddress.clone_into(&mut t.pattern);
 
             let mut iter = kind_line_scope.split_whitespace();
 

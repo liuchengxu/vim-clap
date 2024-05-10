@@ -79,7 +79,7 @@ impl FilesProvider {
             let join_handle = {
                 let mut search_context = ctx.search_context(stop_signal.clone());
                 if self.args.base.no_cwd {
-                    search_context.paths = self.args.paths.clone();
+                    search_context.paths.clone_from(&self.args.paths);
                 } else {
                     search_context.paths.extend_from_slice(&self.args.paths);
                 }
