@@ -433,14 +433,13 @@ impl ClapProvider for LspProvider {
         if !ctx.env.preview_enabled {
             return Ok(());
         }
+        ctx.preview_manager.reset_scroll();
+
         let line_number = ctx.vim.display_getcurlnum().await?;
         let loc = self
             .fetch_location_at(line_number - 1)
             .ok_or(ProviderError::PreviewItemNotFound { line_number })?;
-        let mut ctx = ctx.clone();
-        ctx.preview_manager.reset_scroll();
-        ctx.update_preview(Some(loc.into_preview_target())).await;
-        Ok(())
+        ctx.update_preview(Some(loc.into_preview_target())).await
     }
 
     async fn remote_sink(&mut self, ctx: &mut Context, line_numbers: Vec<usize>) -> Result<()> {

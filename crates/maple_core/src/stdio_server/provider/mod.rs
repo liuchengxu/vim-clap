@@ -872,12 +872,8 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
         if !ctx.env.preview_enabled {
             return Ok(());
         }
-        let mut ctx = ctx.clone();
-        tokio::spawn(async move {
-            ctx.preview_manager.reset_scroll();
-            let _ = ctx.update_preview(None).await;
-        });
-        Ok(())
+        ctx.preview_manager.reset_scroll();
+        ctx.update_preview(None).await
     }
 
     async fn on_typed(&mut self, ctx: &mut Context) -> ProviderResult<()>;

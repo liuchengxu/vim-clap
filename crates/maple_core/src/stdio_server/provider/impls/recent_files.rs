@@ -169,17 +169,12 @@ impl ClapProvider for RecentFilesProvider {
 
         if let Some(curline) = maybe_curline {
             let preview_height = ctx.preview_height().await?;
-            let mut ctx = ctx.clone();
-            tokio::spawn(async move {
-                let (preview_target, preview) =
-                    CachedPreviewImpl::new(curline, preview_height, &ctx)?
-                        .get_preview()
-                        .await?;
-                ctx.preview_manager.reset_scroll();
-                ctx.update_picker_preview(preview)?;
-                ctx.preview_manager.set_preview_target(preview_target);
-                Ok::<(), ProviderError>(())
-            });
+            let (preview_target, preview) = CachedPreviewImpl::new(curline, preview_height, &ctx)?
+                .get_preview()
+                .await?;
+            ctx.preview_manager.reset_scroll();
+            ctx.update_picker_preview(preview)?;
+            ctx.preview_manager.set_preview_target(preview_target);
         }
 
         Ok(())

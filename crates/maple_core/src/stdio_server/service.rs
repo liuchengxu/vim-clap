@@ -148,24 +148,13 @@ impl ProviderSession {
             "Spawning a new provider session task",
         );
 
-        let _join_handle = std::thread::spawn(move || {
-            let tokio_runtime = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .max_blocking_threads(32)
-                .build()
-                .unwrap();
-            tokio_runtime.block_on(async move {
+        tokio::spawn(async move {
+            if debounce_delay > 0 {
+                self.run_event_loop_with_debounce(debounce_delay).await;
+            } else {
                 self.run_event_loop_without_debounce().await;
-            });
+            }
         });
-
-        // tokio::spawn(async move {
-        // if debounce_delay > 0 {
-        // self.run_event_loop_with_debounce(debounce_delay).await;
-        // } else {
-        // self.run_event_loop_without_debounce().await;
-        // }
-        // });
     }
 
     // https://github.com/denoland/deno/blob/1fb5858009f598ce3f917f9f49c466db81f4d9b0/cli/lsp/diagnostics.rs#L141
