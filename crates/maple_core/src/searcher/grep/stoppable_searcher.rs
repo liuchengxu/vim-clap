@@ -366,7 +366,6 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
 
     let total_matched = search_info.total_matched.load(Ordering::SeqCst);
     let total_processed = search_info.total_processed.load(Ordering::SeqCst);
-
     progressor.on_finished(display_lines, total_matched, total_processed);
 
     tracing::debug!(
