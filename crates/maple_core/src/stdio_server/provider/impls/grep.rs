@@ -80,7 +80,6 @@ impl ClapProvider for GrepProvider {
 
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.input_get().await?;
-        tracing::debug!("============= procesing query: {query}");
         if query.is_empty() {
             ctx.update_on_empty_query().await?;
         } else {

@@ -438,10 +438,8 @@ impl ClapProvider for LspProvider {
             .fetch_location_at(line_number - 1)
             .ok_or(ProviderError::PreviewItemNotFound { line_number })?;
         let mut ctx = ctx.clone();
-        tokio::spawn(async move {
-            ctx.preview_manager.reset_scroll();
-            ctx.update_preview(Some(loc.into_preview_target())).await;
-        });
+        ctx.preview_manager.reset_scroll();
+        ctx.update_preview(Some(loc.into_preview_target())).await;
         Ok(())
     }
 

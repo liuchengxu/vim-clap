@@ -8,7 +8,7 @@ use crate::stdio_server::plugin::syntax::sublime::{
 };
 use crate::stdio_server::provider::{read_dir_entries, Context, ProviderSource};
 use crate::stdio_server::vim::{preview_syntax, VimResult};
-use crate::tools::ctags::{current_context_tag_async, BufferTag};
+use crate::tools::ctags::{current_context_tag, BufferTag};
 use paths::{expand_tilde, truncate_absolute_path};
 use pattern::*;
 use serde::{Deserialize, Serialize};
@@ -18,6 +18,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 use sublime_syntax::TokenHighlight;
+use tokio::sync::oneshot;
 use utils::display_width;
 
 type SublimeHighlights = Vec<(usize, Vec<TokenHighlight>)>;
@@ -323,9 +324,11 @@ impl<'a> CachedPreviewImpl<'a> {
             return Ok((self.preview_target.clone(), preview));
         }
 
+        let now = std::time::Instant::now();
+
         let preview = match &self.preview_target {
             PreviewTarget::Directory(path) => self.preview_directory(path)?,
-            PreviewTarget::StartOfFile(path) => self.preview_file(path)?,
+            PreviewTarget::StartOfFile(path) => self.preview_file(path).await?,
             PreviewTarget::LocationInFile {
                 path,
                 line_number,
@@ -342,6 +345,11 @@ impl<'a> CachedPreviewImpl<'a> {
                 runtimepath,
             } => self.preview_help_subject(subject, doc_filename, runtimepath),
         };
+
+        let elapsed = now.elapsed().as_millis();
+        if elapsed > 1000 {
+            tracing::warn!("Fetching preview took too long: {elapsed:?} ms");
+        }
 
         self.ctx
             .preview_manager
@@ -408,7 +416,7 @@ impl<'a> CachedPreviewImpl<'a> {
         Ok(Preview::new(lines))
     }
 
-    fn preview_file<P: AsRef<Path>>(&self, path: P) -> Result<Preview> {
+    async fn preview_file<P: AsRef<Path>>(&self, path: P) -> Result<Preview> {
         let path = path.as_ref();
 
         if !path.is_file() {
@@ -457,8 +465,17 @@ impl<'a> CachedPreviewImpl<'a> {
             }
         };
 
-        let sublime_or_ts_highlights =
-            fetch_syntax_highlights(&lines, path, 0, self.max_line_width(), 0..lines.len(), None);
+        let sublime_or_ts_highlights = SyntaxHighlighter {
+            lines: lines.clone(),
+            path: path.to_path_buf(),
+            line_number_offset: 0,
+            max_line_width: self.max_line_width(),
+            range: 0..lines.len(),
+            maybe_code_context: None,
+            timeout: 200,
+        }
+        .fetch_highlights()
+        .await;
 
         let total = utils::line_count(path)?;
         let end = lines.len();
@@ -522,14 +539,18 @@ impl<'a> CachedPreviewImpl<'a> {
 
                 // 1 (header line) + 1 (1-based line number)
                 let line_number_offset = 1 + 1 + if maybe_code_context.is_some() { 3 } else { 0 };
-                let sublime_or_ts_highlights = fetch_syntax_highlights(
-                    &lines,
-                    path,
+
+                let sublime_or_ts_highlights = SyntaxHighlighter {
+                    lines: lines.clone(),
+                    path: path.to_path_buf(),
                     line_number_offset,
-                    self.max_line_width(),
-                    start..end + 1,
-                    maybe_code_context.as_ref(),
-                );
+                    max_line_width: self.max_line_width(),
+                    range: start..end + 1,
+                    maybe_code_context: maybe_code_context.clone(),
+                    timeout: 200,
+                }
+                .fetch_highlights()
+                .await;
 
                 let context_lines = maybe_code_context
                     .map(|code_context| {
@@ -662,10 +683,20 @@ impl<'a> CachedPreviewImpl<'a> {
 }
 
 async fn context_tag_with_timeout(path: &Path, lnum: usize) -> Option<BufferTag> {
-    const TIMEOUT: Duration = Duration::from_millis(300);
+    let (tag_sender, tag_receiver) = oneshot::channel();
 
-    match tokio::time::timeout(TIMEOUT, current_context_tag_async(path, lnum)).await {
-        Ok(res) => res,
+    const TIMEOUT: Duration = Duration::from_millis(200);
+
+    std::thread::spawn({
+        let path = path.to_path_buf();
+        move || {
+            let result = current_context_tag(&path, lnum);
+            let _ = tag_sender.send(result);
+        }
+    });
+
+    match tokio::time::timeout(TIMEOUT, tag_receiver).await {
+        Ok(res) => res.ok().flatten(),
         Err(_) => {
             tracing::debug!(timeout = ?TIMEOUT, ?path, lnum, "⏳ Did not get the context tag in time");
             None
@@ -682,6 +713,7 @@ async fn context_tag_with_timeout(path: &Path, lnum: usize) -> Option<BufferTag>
 ///
 /// The idea here is similar to how we find the nearest symbol at cursor using ctags, finding the
 /// line containing the context line and displaying it along with the normal preview content.
+#[derive(Clone)]
 struct CodeContext {
     /// Full context line.
     ///
@@ -793,6 +825,68 @@ enum SublimeOrTreeSitter {
     Sublime(SublimeHighlights),
     TreeSitter(TsHighlights),
     Neither,
+}
+
+struct SyntaxHighlighter {
+    lines: Vec<String>,
+    path: PathBuf,
+    line_number_offset: usize,
+    max_line_width: usize,
+    range: Range<usize>,
+    maybe_code_context: Option<CodeContext>,
+    // Timeout in milliseconds.
+    timeout: u64,
+}
+
+impl SyntaxHighlighter {
+    // Fetch with highlights with a timeout.
+    //
+    // `fetch_syntax_highlights` might be slow for larger files (over 100k lines) as tree-sitter will
+    // have to parse the whole file to obtain the highlight info. Therefore, we must run the actual
+    // worker in a separated task to not make the async runtime blocked, otherwise we may run into
+    // the issue of frozen UI.
+    async fn fetch_highlights(self) -> SublimeOrTreeSitter {
+        let (result_sender, result_receiver) = oneshot::channel();
+
+        let Self {
+            lines,
+            path,
+            line_number_offset,
+            max_line_width,
+            range,
+            maybe_code_context,
+            timeout,
+        } = self;
+
+        std::thread::spawn({
+            let path = path.clone();
+            move || {
+                let result = fetch_syntax_highlights(
+                    &lines,
+                    &path,
+                    line_number_offset,
+                    max_line_width,
+                    range,
+                    maybe_code_context.as_ref(),
+                );
+                let _ = result_sender.send(result);
+            }
+        });
+
+        let timeout = Duration::from_millis(timeout);
+
+        match tokio::time::timeout(timeout, result_receiver).await {
+            Ok(res) => res.unwrap_or(SublimeOrTreeSitter::Neither),
+            Err(_) => {
+                tracing::debug!(
+                    ?timeout,
+                    ?path,
+                    "⏳ Did not get the preview highlight in time"
+                );
+                SublimeOrTreeSitter::Neither
+            }
+        }
+    }
 }
 
 // TODO: this might be slow for larger files (over 100k lines) as tree-sitter will have to

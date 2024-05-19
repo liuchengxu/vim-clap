@@ -91,6 +91,8 @@ fn find_context_tag(superset_tags: Vec<BufferTag>, at: usize) -> Option<BufferTa
 }
 
 /// Async version of [`current_context_tag`].
+///
+/// NOTE: I don't know why, but this may take forever to complete somehow, making the async runtime blocked.
 pub async fn current_context_tag_async(file: &Path, at: usize) -> Option<BufferTag> {
     let superset_tags = if *CTAGS_HAS_JSON_FEATURE.deref() {
         collect_superset_context_tags_async(tokio_cmd(file, true), BufferTag::from_json_line, at)
