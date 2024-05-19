@@ -94,20 +94,19 @@ impl ProviderSession {
                 interval
             };
 
-            // NOTE: The processing logic within the provider must not contain any blocking operation,
-            // otherwise the blocking operation taking too long can block the runtime, leading a
-            // frozen UI, one symptom is that the receiver failed to receive the debounded messages
-            // in time.
+            // NOTE:
+            // The processing logic within the provider must not contain any blocking operation,
+            // otherwise the whole async runtime may be blocked if it takes too long, leading a
+            // frozen UI because the debounded message receiver failed to receive messages in time
+            // in that case, ref #1080 for more details.
 
             loop {
                 tokio::select! {
                     maybe_event = origin_provider_event_receiver.recv() => {
                       let Some(event) = maybe_event else {
-                          continue;
+                          return;
                       };
 
-                      // Params are unused at present, include the params when it's not the case
-                      // in the future.
                       let should_emit = match &event {
                           ProviderEvent::OnMove(..) => on_move_timer.should_emit(),
                           ProviderEvent::OnTyped(..) => on_typed_timer.should_emit(),
@@ -127,6 +126,10 @@ impl ProviderSession {
                       }
                     }
                     _ = tick_timeout.tick() => {
+                        if debounced_provider_event_sender.is_closed() {
+                            return;
+                        }
+
                         if let Some(event) = event_cache.pop_front() {
                             if debounced_provider_event_sender.send(event).is_err() {
                                 return;

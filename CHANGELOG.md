@@ -2,6 +2,9 @@
 
 ## [unreleased]
 
+- Fixes the regression of frozen UI caused by the blocking operations in OnMove implementation. #1081
+- Fixes the build for Android. #1079
+
 ## [0.53] 2024-5-2
 
 - Introduce `remote_sink` in provider in order to implement the sink function on the Rust side, particularly useful for the providers with static list of source like lsp.
