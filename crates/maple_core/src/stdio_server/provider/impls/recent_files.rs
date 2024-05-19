@@ -1,8 +1,6 @@
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::provider::hooks::CachedPreviewImpl;
-use crate::stdio_server::provider::{
-    BaseArgs, ClapProvider, Context, ProviderError, ProviderResult as Result,
-};
+use crate::stdio_server::provider::{BaseArgs, ClapProvider, Context, ProviderResult as Result};
 use parking_lot::Mutex;
 use paths::AbsPathBuf;
 use printer::Printer;
@@ -169,7 +167,7 @@ impl ClapProvider for RecentFilesProvider {
 
         if let Some(curline) = maybe_curline {
             let preview_height = ctx.preview_height().await?;
-            let (preview_target, preview) = CachedPreviewImpl::new(curline, preview_height, &ctx)?
+            let (preview_target, preview) = CachedPreviewImpl::new(curline, preview_height, ctx)?
                 .get_preview()
                 .await?;
             ctx.preview_manager.reset_scroll();

@@ -36,6 +36,7 @@ pub fn unreserve(job_id: u64) {
 }
 
 // Define a function to spawn a new thread and run a future
+#[allow(unused)]
 pub fn spawn_on_new_thread<F>(future: F) -> std::thread::JoinHandle<()>
 where
     F: Future<Output = ()> + Send + 'static,
