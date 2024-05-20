@@ -2,6 +2,8 @@
 
 ## [unreleased]
 
+## [0.54] 2024-5-20
+
 - Fixes the regression of frozen UI caused by the blocking operations in OnMove implementation. #1081
 - Fixes the build for Android. #1079
 
