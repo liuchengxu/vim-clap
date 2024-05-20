@@ -34,3 +34,19 @@ pub fn unreserve(job_id: u64) {
     let mut jobs = JOBS.lock();
     jobs.remove(&job_id);
 }
+
+// Define a function to spawn a new thread and run a future
+#[allow(unused)]
+pub fn spawn_on_new_thread<F>(future: F) -> std::thread::JoinHandle<()>
+where
+    F: Future<Output = ()> + Send + 'static,
+{
+    std::thread::spawn(move || {
+        let tokio_runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .max_blocking_threads(32)
+            .build()
+            .unwrap();
+        tokio_runtime.block_on(future);
+    })
+}

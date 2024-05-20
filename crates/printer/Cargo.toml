@@ -18,6 +18,6 @@ types = { workspace = true }
 utils = { workspace = true }
 
 [target.'cfg(not(windows))'.dev-dependencies]
-rayon = { workspace = true }
-termion = "1.5.1"
 filter = { workspace = true }
+rayon = { workspace = true }
+termion = { workspace = true }

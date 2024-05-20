@@ -1,4 +1,6 @@
 use super::stats::Stats;
+use base64::engine::general_purpose::STANDARD;
+use base64::Engine;
 use serde::Deserialize;
 use std::borrow::Cow;
 
@@ -85,7 +87,7 @@ where
     D: serde::Deserializer<'de>,
 {
     let s: &str = serde::Deserialize::deserialize(deserializer)?;
-    base64::decode(s).map_err(serde::de::Error::custom)
+    STANDARD.decode(s).map_err(serde::de::Error::custom)
 }
 
 #[cfg(test)]

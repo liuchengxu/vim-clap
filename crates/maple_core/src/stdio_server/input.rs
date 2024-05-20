@@ -36,7 +36,7 @@ impl PluginEvent {
 }
 
 /// Provider specific events.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ProviderEvent {
     OnMove(Params),
     OnTyped(Params),
@@ -47,7 +47,20 @@ pub enum ProviderEvent {
     Internal(InternalProviderEvent),
 }
 
-#[derive(Debug)]
+impl ProviderEvent {
+    pub fn is_same_type(&self, other: &Self) -> bool {
+        match self {
+            Self::OnMove(_) => matches!(other, Self::OnMove(_)),
+            Self::OnTyped(_) => matches!(other, Self::OnTyped(_)),
+            Self::RemoteSink(_) => matches!(other, Self::RemoteSink(_)),
+            Self::Exit => matches!(other, Self::Exit),
+            Self::Key(_) => matches!(other, Self::Key(_)),
+            Self::Internal(_) => matches!(other, Self::Internal(_)),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum InternalProviderEvent {
     Initialize,
     InitialQuery(String),

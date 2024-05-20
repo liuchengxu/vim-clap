@@ -31,8 +31,8 @@ struct ConfigInner {
 }
 
 static CONFIG: Lazy<ConfigInner> = Lazy::new(|| {
-    let tree_sitter_config = include_bytes!("../tree_sitter_config.toml");
-    let config: Config = toml::from_slice(tree_sitter_config).unwrap();
+    let tree_sitter_config = include_str!("../tree_sitter_config.toml");
+    let config: Config = toml::from_str(tree_sitter_config).unwrap();
     ConfigInner {
         language: config
             .language

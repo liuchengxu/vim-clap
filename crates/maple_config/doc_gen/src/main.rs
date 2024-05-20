@@ -5,9 +5,9 @@ use quote::ToTokens;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use syn::{
-    Attribute, Field, Fields, ItemEnum, ItemStruct, Lit, Meta, MetaNameValue, PathSegment, Type,
+    Attribute, Expr, Field, Fields, ItemEnum, ItemStruct, Lit, MetaNameValue, PathSegment, Type,
 };
-use toml_edit::Document;
+use toml_edit::DocumentMut;
 
 fn main() {
     let source_code = include_str!("../../src/lib.rs");
@@ -99,14 +99,13 @@ impl FieldInfo {
 }
 
 fn extract_doc_comment(attr: &Attribute) -> Option<String> {
-    if let Ok(Meta::NameValue(MetaNameValue {
-        path,
-        lit: Lit::Str(comment),
-        ..
-    })) = attr.parse_meta()
-    {
-        if path.is_ident("doc") {
-            return Some(comment.value());
+    if let Ok(MetaNameValue { path, value, .. }) = attr.meta.require_name_value() {
+        if let Expr::Lit(expr_lit) = value {
+            if let Lit::Str(comment) = &expr_lit.lit {
+                if path.is_ident("doc") {
+                    return Some(comment.value());
+                }
+            }
         }
     }
     None
@@ -178,7 +177,7 @@ fn parse_enum(e: &ItemEnum) -> BTreeMap<String, FieldInfo> {
 /// Conventions:
 /// - All structs with a suffix of `Config` are considered as part of the config file.
 /// - `Config` struct is the entry of various configs.
-fn process_ast(ast: &syn::File) -> Document {
+fn process_ast(ast: &syn::File) -> DocumentMut {
     let mut all_struct_docs = BTreeMap::new();
 
     // Traverse the AST and perform actions on each struct.
@@ -200,7 +199,7 @@ fn process_ast(ast: &syn::File) -> Document {
     // Inject the extracted docs into the default toml config.
     let default_config_toml =
         toml::to_string(&Config::default()).expect("Failed to convert Config::default() to toml");
-    let mut doc = toml_edit::Document::from_str(&default_config_toml)
+    let mut doc = toml_edit::DocumentMut::from_str(&default_config_toml)
         .expect("Must be valid toml as it was just constructed internally");
 
     // Iterate the fields in Config: log, matcher, plugin, provider, global_ignore
@@ -250,7 +249,7 @@ fn process_ast(ast: &syn::File) -> Document {
                                         t.decor_mut().set_prefix(format!("\n{comments}\n"));
                                     }
                                 } else {
-                                    t_key.decor_mut().set_prefix(format!("{comments}\n"));
+                                    t_key.leaf_decor_mut().set_prefix(format!("{comments}\n"));
                                 }
                             }
                         }
@@ -279,12 +278,12 @@ fn process_ast(ast: &syn::File) -> Document {
                             if let Some(t) = t_item.as_table_mut() {
                                 t.decor_mut().set_prefix(format!("\n{comments}\n"));
                             } else if t_item.is_value() {
-                                t_key.decor_mut().set_prefix(format!("{comments}\n"));
+                                t_key.leaf_decor_mut().set_prefix(format!("{comments}\n"));
                             }
                         }
                     }
                 } else if t_item.is_value() {
-                    t_key.decor_mut().set_prefix(format!("{comments}\n"));
+                    t_key.leaf_decor_mut().set_prefix(format!("{comments}\n"));
                 }
             }
         }

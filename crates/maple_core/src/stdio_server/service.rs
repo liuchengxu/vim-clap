@@ -8,12 +8,15 @@ use crate::stdio_server::plugin::{ActionType, ClapPlugin, PluginId};
 use crate::stdio_server::provider::{ClapProvider, Context, ProviderId};
 use rpc::Params;
 use std::collections::hash_map::Entry;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fmt::Debug;
 use std::ops::ControlFlow;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;
+use tracing::Instrument;
 
 pub type ProviderSessionId = u64;
 
@@ -28,6 +31,8 @@ pub struct ProviderSession {
     /// Each provider session can have its own message processing logic.
     provider: Box<dyn ClapProvider>,
     provider_events: UnboundedReceiver<DebouncedProviderEvent>,
+    /// Whether the provider handler is still busy with processing the last event.
+    is_busy: Arc<AtomicBool>,
 }
 
 struct DebounceTimer {
@@ -73,32 +78,64 @@ impl ProviderSession {
         let id = ctx.env.provider_id.clone();
         let debounce_delay = ctx.provider_debounce();
 
+        let is_busy = Arc::new(AtomicBool::new(false));
+
+        let provider_is_busy = is_busy.clone();
+
         tokio::spawn(async move {
             let mut on_move_timer = DebounceTimer::new(Duration::from_millis(200));
             let mut on_typed_timer = DebounceTimer::new(Duration::from_millis(debounce_delay));
 
-            // TODO: this does not fully resolve the problem, find another solution.
-            // Text input from users could be overloaded in a short period of time, e.g., OnMove
-            // and OnTyped can be too frequent if user types too fast, in which case we observe
-            // the receiver side of unbounded channel may not be able to receive the events in time,
-            // leading to the annoying frozen UI on the vim side. The cause is probably because of
-            // the event processing logic on the receiver side are not running in separate tasks,
-            // the processing of incoming messages cannot keep up with the rate of message generation,
-            // rendering the receiver may hang for a while. One proper solution is to process each
-            // provider event in a separate task, that requires more effoets however, now we choose to
-            // debounce the stream to avoid overwhelming the system.
-            while let Some(event) = origin_provider_event_receiver.recv().await {
-                tracing::debug!("Recv origin event: {event:?}");
+            let mut event_cache = VecDeque::with_capacity(2);
 
-                let should_emit = match &event {
-                    ProviderEvent::OnMove(..) => on_move_timer.should_emit(),
-                    ProviderEvent::OnTyped(..) => on_typed_timer.should_emit(),
-                    _ => true,
-                };
+            let mut tick_timeout = {
+                let mut interval = tokio::time::interval(Duration::from_millis(100));
+                interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+                interval
+            };
 
-                // Send event after debounce period
-                if should_emit && debounced_provider_event_sender.send(event).is_err() {
-                    return;
+            // NOTE:
+            // The processing logic within the provider must not contain any blocking operation,
+            // otherwise the whole async runtime may be blocked if it takes too long, leading a
+            // frozen UI because the debounded message receiver failed to receive messages in time
+            // in that case, ref #1080 for more details.
+
+            loop {
+                tokio::select! {
+                    maybe_event = origin_provider_event_receiver.recv() => {
+                      let Some(event) = maybe_event else {
+                          return;
+                      };
+
+                      let should_emit = match &event {
+                          ProviderEvent::OnMove(..) => on_move_timer.should_emit(),
+                          ProviderEvent::OnTyped(..) => on_typed_timer.should_emit(),
+                          _ => true,
+                      };
+
+                      // Send event after debounce period if the provider is not overloaded.
+                      if should_emit {
+                          if provider_is_busy.load(Ordering::SeqCst) {
+                              if event_cache.iter().any(|e| event.is_same_type(e)) {
+                                continue;
+                              }
+                              event_cache.push_back(event);
+                          } else if debounced_provider_event_sender.send(event).is_err() {
+                              return;
+                          }
+                      }
+                    }
+                    _ = tick_timeout.tick() => {
+                        if debounced_provider_event_sender.is_closed() {
+                            return;
+                        }
+
+                        if let Some(event) = event_cache.pop_front() {
+                            if debounced_provider_event_sender.send(event).is_err() {
+                                return;
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -109,6 +146,7 @@ impl ProviderSession {
             provider_session_id,
             provider,
             provider_events: debounced_provider_event_receiver,
+            is_busy,
         };
 
         (provider_session, origin_provider_event_sender)
@@ -205,26 +243,33 @@ impl ProviderSession {
                           None => break, // channel has closed.
                       }
                 }
-                _ = on_move_timer.as_mut(), if on_move.is_some() => {
-                    if let Some(_params) = on_move.take() {
-                        on_move_timer.as_mut().reset(Instant::now() + NEVER);
-
-                        if let Err(err) = self.provider.on_move(&mut self.ctx).await {
-                            tracing::error!(?err, "Failed to process ProviderEvent::OnMove");
-                        }
-                    }
-                }
                 _ = on_typed_timer.as_mut(), if on_typed.is_some() => {
                     if let Some(_params) = on_typed.take() {
                         on_typed_timer.as_mut().reset(Instant::now() + NEVER);
 
-                        let _ = self.ctx.record_input().await;
+                        let process_on_typed = async {
+                            let _ = self.ctx.record_input().await;
 
-                        if let Err(err) = self.provider.on_typed(&mut self.ctx).await {
-                            tracing::error!(?err, "Failed to process ProviderEvent::OnTyped");
+                            if let Err(err) = self.provider.on_typed(&mut self.ctx).await {
+                                tracing::error!(?err, "Failed to process ProviderEvent::OnTyped");
+                            }
+
+                            let _ = self.provider.on_move(&mut self.ctx).await;
+                        };
+
+                        process_on_typed.instrument(tracing::info_span!("process_on_typed")).await
+                    }
+                }
+                _ = on_move_timer.as_mut(), if on_move.is_some() => {
+                    if let Some(_params) = on_move.take() {
+                        on_move_timer.as_mut().reset(Instant::now() + NEVER);
+
+                        async {
+                            if let Err(err) = self.provider.on_move(&mut self.ctx).await {
+                                tracing::error!(?err, "Failed to process ProviderEvent::OnMove");
+                            }
                         }
-
-                        let _ = self.provider.on_move(&mut self.ctx).await;
+                        .instrument(tracing::info_span!("process_on_move")).await
                     }
                 }
             }
@@ -242,15 +287,21 @@ impl ProviderSession {
                     }
                 }
                 ProviderEvent::OnMove(_params) => {
+                    self.is_busy.store(true, Ordering::SeqCst);
+                    // OnMove implementation may contain blocking operation, let's not make it
+                    // overloaded.
                     if let Err(err) = self.provider.on_move(&mut self.ctx).await {
                         tracing::debug!(?err, "Failed to process OnMove");
                     }
+                    self.is_busy.store(false, Ordering::SeqCst);
                 }
                 ProviderEvent::OnTyped(_params) => {
+                    self.is_busy.store(true, Ordering::SeqCst);
                     let _ = self.ctx.record_input().await;
                     if let Err(err) = self.provider.on_typed(&mut self.ctx).await {
                         tracing::debug!(?err, "Failed to process OnTyped");
                     }
+                    self.is_busy.store(false, Ordering::SeqCst);
                 }
                 ProviderEvent::Key(key_event) => {
                     if let Err(err) = self.provider.on_key_event(&mut self.ctx, key_event).await {
