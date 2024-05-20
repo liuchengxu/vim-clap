@@ -34,7 +34,7 @@ tree-sitter-vim = { git = "https://github.com/liuchengxu/tree-sitter-vim", rev =
 [dev-dependencies]
 criterion = { workspace = true }
 rand = "0.8"
-tree-sitter-tags = "0.20"
+tree-sitter-tags = "0.22"
 
 [[bench]]
 name = "benchmark"
