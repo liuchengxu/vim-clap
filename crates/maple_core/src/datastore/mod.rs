@@ -6,7 +6,7 @@ use crate::recent_files::SortedRecentFiles;
 use crate::stdio_server::InputHistory;
 use dirs::Dirs;
 use once_cell::sync::Lazy;
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::io::BufReader;
@@ -32,11 +32,11 @@ static RECENT_FILES_JSON_PATH: Lazy<Option<PathBuf>> =
 static INPUT_HISTORY_JSON_PATH: Lazy<Option<PathBuf>> =
     Lazy::new(|| generate_data_file_path("input_history.json").ok());
 
-pub static RECENT_FILES_IN_MEMORY: Lazy<Mutex<SortedRecentFiles>> = Lazy::new(|| {
+pub static RECENT_FILES_IN_MEMORY: Lazy<RwLock<SortedRecentFiles>> = Lazy::new(|| {
     let maybe_persistent = load_json(RECENT_FILES_JSON_PATH.as_deref())
         .map(|f: SortedRecentFiles| f.remove_invalid_entries())
         .unwrap_or_default();
-    Mutex::new(maybe_persistent)
+    RwLock::new(maybe_persistent)
 });
 
 pub static INPUT_HISTORY_IN_MEMORY: Lazy<Arc<Mutex<InputHistory>>> = Lazy::new(|| {

@@ -239,9 +239,9 @@ impl ProviderSession {
                                     return;
                                 }
                             }
-                          }
-                          None => break, // channel has closed.
-                      }
+                        }
+                        None => break, // channel has closed.
+                    }
                 }
                 _ = on_typed_timer.as_mut(), if on_typed.is_some() => {
                     if let Some(_params) = on_typed.take() {

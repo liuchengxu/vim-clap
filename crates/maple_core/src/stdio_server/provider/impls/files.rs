@@ -44,7 +44,7 @@ impl FilesProvider {
         let expanded_paths = ctx.expanded_paths(&args.paths).await?;
 
         let recent_files = crate::datastore::RECENT_FILES_IN_MEMORY
-            .lock()
+            .read()
             .recent_n_files(100);
         let recent_files_bonus = Bonus::RecentFiles(recent_files.into());
 

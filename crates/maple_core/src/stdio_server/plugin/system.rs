@@ -85,7 +85,7 @@ fn note_recent_file(file_path: String) {
         return;
     }
 
-    let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
+    let mut recent_files = RECENT_FILES_IN_MEMORY.write();
     recent_files.upsert(file_path);
 }
 
