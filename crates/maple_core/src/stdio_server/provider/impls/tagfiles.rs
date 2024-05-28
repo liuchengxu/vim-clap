@@ -34,9 +34,12 @@ impl TagfilesProvider {
             let join_handle = {
                 let search_context = ctx.search_context(stop_signal.clone());
                 let cwd = ctx.cwd.to_path_buf();
+                let vim = ctx.vim.clone();
 
                 tokio::spawn(async move {
-                    crate::searcher::tagfiles::search(query, cwd, matcher, search_context).await;
+                    let future =
+                        crate::searcher::tagfiles::search(query, cwd, matcher, search_context);
+                    vim.search_with_spinner(future).await;
                 })
             };
 

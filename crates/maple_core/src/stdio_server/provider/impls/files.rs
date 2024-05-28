@@ -86,9 +86,9 @@ impl FilesProvider {
                 let vim = ctx.vim.clone();
                 let hidden = self.args.hidden;
                 tokio::spawn(async move {
-                    let _ = vim.bare_exec("clap#spinner#set_busy");
-                    crate::searcher::files::search(query, hidden, matcher, search_context).await;
-                    let _ = vim.bare_exec("clap#spinner#set_idle");
+                    let future =
+                        crate::searcher::files::search(query, hidden, matcher, search_context);
+                    vim.search_with_spinner(future).await;
                 })
             };
 

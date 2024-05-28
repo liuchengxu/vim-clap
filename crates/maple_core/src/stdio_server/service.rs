@@ -204,7 +204,8 @@ impl ProviderSession {
                 maybe_event = self.provider_events.recv() => {
                     match maybe_event {
                         Some(event) => {
-                            tracing::trace!(debounce = true, "[{}] Recv debounced event: {event:?}", self.id);
+                            let event_display = format!("{event:?}");
+                            tracing::trace!(debounce = true, "[{}] Recv debounced event: {event_display}", self.id);
 
                             match event {
                                 ProviderEvent::Internal(internal_event) => {
@@ -216,6 +217,7 @@ impl ProviderSession {
                                             }
                                         }
                                     }
+                                    tracing::trace!("[{}] Processed event: {event_display}", self.id);
                                 }
                                 ProviderEvent::OnMove(params) => {
                                     on_move.replace(params);
@@ -229,6 +231,7 @@ impl ProviderSession {
                                     if let Err(err) = self.provider.on_key_event(&mut self.ctx, key_event).await {
                                         tracing::error!(?err, "Failed to process key_event");
                                     }
+                                    tracing::trace!("[{}] Processed event: {event_display}", self.id);
                                 }
                                 ProviderEvent::Exit => {
                                     self.handle_exit();

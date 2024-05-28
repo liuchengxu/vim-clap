@@ -58,9 +58,8 @@ impl GrepProvider {
             search_context.paths.extend_from_slice(&self.args.paths);
         }
         let join_handle = tokio::spawn(async move {
-            let _ = vim.bare_exec("clap#spinner#set_busy");
-            crate::searcher::grep::search(query, matcher, search_context).await;
-            let _ = vim.bare_exec("clap#spinner#set_idle");
+            let future = crate::searcher::grep::search(query, matcher, search_context);
+            vim.search_with_spinner(future).await;
         });
 
         let new_control = SearcherControl {

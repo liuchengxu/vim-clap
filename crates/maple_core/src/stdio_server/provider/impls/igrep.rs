@@ -46,11 +46,13 @@ impl Grepper {
 
         let new_control = {
             let stop_signal = Arc::new(AtomicBool::new(false));
+            let vim = ctx.vim.clone();
 
             let mut search_context = ctx.search_context(stop_signal.clone());
             search_context.paths = vec![path];
             let join_handle = tokio::spawn(async move {
-                crate::searcher::grep::search(query, matcher, search_context).await
+                let future = crate::searcher::grep::search(query, matcher, search_context);
+                vim.search_with_spinner(future).await
             });
 
             SearcherControl {
