@@ -119,6 +119,12 @@ function! clap#plugin#git#set_summary_var(bufnr, summary) abort
   call setbufvar(a:bufnr, 'clap_git', clap_git)
 endfunction
 
+function! clap#plugin#git#set_branch_var(bufnr, branch) abort
+  let clap_git = getbufvar(a:bufnr, 'clap_git', {})
+  let clap_git.branch = a:branch
+  call setbufvar(a:bufnr, 'clap_git', clap_git)
+endfunction
+
 if has('nvim')
   function! clap#plugin#git#clear_blame_info(bufnr) abort
     let id = getbufvar(a:bufnr, 'clap_git_blame_extmark_id')

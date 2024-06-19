@@ -373,6 +373,18 @@ impl GitRepo {
         Ok(String::from_utf8(output.stdout)?)
     }
 
+    pub fn fetch_branch(&self) -> Result<String, GitError> {
+        let output = std::process::Command::new("git")
+            .current_dir(&self.repo)
+            .arg("rev-parse")
+            .arg("--abbrev-ref")
+            .arg("HEAD")
+            .stderr(Stdio::null())
+            .output()?;
+
+        Ok(String::from_utf8(output.stdout)?)
+    }
+
     #[allow(unused)]
     fn fetch_user_name(&self) -> Result<String, GitError> {
         let output = std::process::Command::new("git")
