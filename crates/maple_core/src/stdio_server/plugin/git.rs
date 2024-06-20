@@ -252,11 +252,11 @@ impl Git {
             }
 
             if let Ok(branch) = git.fetch_branch() {
-                if filepath.canonicalize()?.starts_with(&git.repo) {
-                    if git.is_tracked(filepath).unwrap_or(false) {
-                        self.vim
-                            .exec("clap#plugin#git#set_branch_var", (bufnr, branch.trim()))?;
-                    }
+                if filepath.canonicalize()?.starts_with(&git.repo)
+                    && git.is_tracked(filepath).unwrap_or(false)
+                {
+                    self.vim
+                        .exec("clap#plugin#git#set_branch_var", (bufnr, branch.trim()))?;
                 }
             }
         }

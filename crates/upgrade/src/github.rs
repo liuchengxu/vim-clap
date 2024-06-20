@@ -8,6 +8,7 @@ use tokio::io::AsyncWriteExt;
 pub struct Asset {
     pub name: String,
     pub size: u64,
+    #[allow(dead_code)]
     pub browser_download_url: String,
 }
 

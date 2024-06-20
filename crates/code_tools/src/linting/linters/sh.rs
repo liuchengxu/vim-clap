@@ -13,6 +13,7 @@ pub enum Severity {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct ShellCheckMessage {
     pub file: String,
     pub line: usize,

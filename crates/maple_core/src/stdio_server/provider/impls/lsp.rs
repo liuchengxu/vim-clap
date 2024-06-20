@@ -147,6 +147,7 @@ pub struct DocumentItem {
     pub name: String,
     pub kind: &'static str,
     pub location: lsp::Location,
+    #[allow(dead_code)]
     pub container_name: Option<String>,
     pub output_text: String,
 }
@@ -196,6 +197,7 @@ pub struct WorkspaceItem {
     pub path: String,
     pub kind: &'static str,
     pub location: lsp::Location,
+    #[allow(dead_code)]
     pub container_name: Option<String>,
     pub output_text: String,
 }
