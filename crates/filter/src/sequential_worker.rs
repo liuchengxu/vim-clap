@@ -75,7 +75,7 @@ fn initialize_buffer(
     iter: &mut impl Iterator<Item = MatchedItem>,
 ) -> BufferInitializationResult {
     let mut top_ranks: [Rank; ITEMS_TO_SHOW] = [Rank::default(); ITEMS_TO_SHOW];
-    let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
+    let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::MIN; ITEMS_TO_SHOW];
 
     let mut total = 0;
     let res = iter.try_for_each(|matched_item| {

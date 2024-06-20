@@ -109,10 +109,9 @@ impl BlinesProvider {
                 let search_context = ctx.search_context(stop_signal.clone());
 
                 tokio::spawn(async move {
-                    let _ = vim.bare_exec("clap#spinner#set_busy");
-                    crate::searcher::file::search(query, source_file, matcher, search_context)
-                        .await;
-                    let _ = vim.bare_exec("clap#spinner#set_idle");
+                    let future =
+                        crate::searcher::file::search(query, source_file, matcher, search_context);
+                    vim.search_with_spinner(future).await;
                 })
             };
 

@@ -123,7 +123,9 @@ pub struct ProviderEnvironment {
     pub is_nvim: bool,
     pub has_nvim_09: bool,
     pub provider_id: ProviderId,
+    #[allow(dead_code)]
     pub start: BufnrWinid,
+    #[allow(dead_code)]
     pub input: BufnrWinid,
     pub display: BufnrWinid,
     pub icon: Icon,

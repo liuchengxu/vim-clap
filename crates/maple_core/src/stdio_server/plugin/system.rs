@@ -80,12 +80,15 @@ fn parse_vim_which_key_map(config_file: &str) -> HashMap<char, HashMap<char, Str
 fn note_recent_file(file_path: String) {
     tracing::debug!(?file_path, "Received a recent file notification");
 
-    let path = std::path::Path::new(&file_path);
+    let Ok(path) = std::fs::canonicalize(&file_path) else {
+        return;
+    };
+
     if !path.exists() || !path.is_file() {
         return;
     }
 
-    let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
+    let mut recent_files = RECENT_FILES_IN_MEMORY.write();
     recent_files.upsert(file_path);
 }
 

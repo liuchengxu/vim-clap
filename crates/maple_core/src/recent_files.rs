@@ -4,7 +4,7 @@ use matcher::{Bonus, MatcherBuilder};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
-use std::path::Path;
+use std::collections::HashSet;
 use std::sync::Arc;
 
 // 3600 seconds
@@ -138,13 +138,20 @@ impl SortedRecentFiles {
     ///
     /// Used when loading from the disk.
     pub fn remove_invalid_entries(self) -> Self {
+        let mut paths = HashSet::new();
         Self {
             entries: self
                 .entries
                 .into_iter()
-                .filter(|entry| {
-                    let path = Path::new(&entry.fpath);
-                    path.exists() && path.is_file()
+                .filter_map(|entry| {
+                    let path = std::fs::canonicalize(&entry.fpath).ok()?;
+                    if paths.contains(&path) {
+                        None
+                    } else {
+                        let is_valid_entry = path.exists() && path.is_file();
+                        paths.insert(path);
+                        is_valid_entry.then_some(entry)
+                    }
                 })
                 .collect(),
             ..self

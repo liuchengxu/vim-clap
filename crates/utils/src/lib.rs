@@ -101,13 +101,6 @@ pub fn char_index_for(line: &str, byte_idx: usize) -> Option<usize> {
 
 /// Returns the char at given byte index (0-based) in a line.
 pub fn char_at(line: &str, byte_idx: usize) -> Option<char> {
-    line.char_indices().enumerate().find_map(
-        |(_c_idx, (b_idx, c))| {
-            if byte_idx == b_idx {
-                Some(c)
-            } else {
-                None
-            }
-        },
-    )
+    line.char_indices()
+        .find_map(|(b_idx, c)| if byte_idx == b_idx { Some(c) } else { None })
 }

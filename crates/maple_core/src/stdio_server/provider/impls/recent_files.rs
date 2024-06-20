@@ -1,7 +1,7 @@
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::provider::hooks::CachedPreviewImpl;
 use crate::stdio_server::provider::{BaseArgs, ClapProvider, Context, ProviderResult as Result};
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 use paths::AbsPathBuf;
 use printer::Printer;
 use serde_json::json;
@@ -12,7 +12,7 @@ use types::{ClapItem, MatchedItem, RankCalculator, Score};
 pub struct RecentFilesProvider {
     args: BaseArgs,
     printer: Printer,
-    lines: Arc<Mutex<Vec<MatchedItem>>>,
+    lines: Arc<RwLock<Vec<MatchedItem>>>,
 }
 
 impl RecentFilesProvider {
@@ -40,8 +40,10 @@ impl RecentFilesProvider {
     ) -> Result<printer::PickerUpdateInfo> {
         let cwd = cwd.to_string();
 
-        let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
+        let recent_files = RECENT_FILES_IN_MEMORY.read();
         let ranked = if query.is_empty() {
+            let mut recent_files = recent_files.clone();
+
             // Sort the initial list according to the cwd.
             //
             // This changes the order of existing recent file entries.
@@ -127,7 +129,7 @@ impl RecentFilesProvider {
             preview,
         };
 
-        let mut lines = self.lines.lock();
+        let mut lines = self.lines.write();
         *lines = ranked;
 
         Ok(update_info)
@@ -159,11 +161,15 @@ impl ClapProvider for RecentFilesProvider {
     async fn on_move(&mut self, ctx: &mut Context) -> Result<()> {
         let lnum = ctx.vim.display_getcurlnum().await?;
 
-        let maybe_curline = self
-            .lines
-            .lock()
-            .get(lnum - 1)
-            .map(|r| r.item.raw_text().to_string());
+        let mut maybe_curline = None;
+
+        {
+            let lines = self.lines.read();
+            if let Some(line) = lines.get(lnum - 1).map(|r| r.item.raw_text().to_string()) {
+                maybe_curline.replace(line);
+            }
+            drop(lines);
+        }
 
         if let Some(curline) = maybe_curline {
             let preview_height = ctx.preview_height().await?;

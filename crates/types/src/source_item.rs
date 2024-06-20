@@ -41,8 +41,9 @@ impl<'a> FuzzyText<'a> {
 /// The location that a match should look in.
 ///
 /// Given a query, the match scope can refer to a full string or a substring.
-#[derive(Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy)]
 pub enum MatchScope {
+    #[default]
     Full,
     /// `:Clap tags`, `:Clap proj_tags`
     TagName,
@@ -50,12 +51,6 @@ pub enum MatchScope {
     FileName,
     /// `:Clap grep`
     GrepLine,
-}
-
-impl Default for MatchScope {
-    fn default() -> Self {
-        Self::Full
-    }
 }
 
 impl std::str::FromStr for MatchScope {

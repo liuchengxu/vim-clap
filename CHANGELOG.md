@@ -2,6 +2,8 @@
 
 ## [unreleased]
 
+- Remove the duplicate entries by using the canonicalized file path in `recent_files` provider.
+
 ## [0.54] 2024-5-20
 
 - Fixes the regression of frozen UI caused by the blocking operations in OnMove implementation. #1081

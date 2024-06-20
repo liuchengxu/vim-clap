@@ -1,4 +1,5 @@
 use crate::stdio_server::provider::ProviderId;
+use futures::Future;
 use once_cell::sync::{Lazy, OnceCell};
 use paths::AbsPathBuf;
 use rpc::vim::RpcClient;
@@ -535,6 +536,12 @@ impl Vim {
     pub async fn buf_is_valid(&self, buf: usize) -> VimResult<bool> {
         let value: Value = self.call("buf_is_valid", [buf]).await?;
         Ok(from_vim_bool(value))
+    }
+
+    pub async fn search_with_spinner(&self, future: impl Future<Output = ()>) {
+        let _ = self.bare_exec("clap#spinner#set_busy");
+        future.await;
+        let _ = self.bare_exec("clap#spinner#set_idle");
     }
 }
 
