@@ -76,7 +76,7 @@ impl Heading {
             && config.max_depth.map(|d| self.depth <= d).unwrap_or(true)
         {
             let Self { depth, title } = self;
-            let title_link = strip_backticks(&title);
+            let title_link = strip_backticks(title);
             let indent_before_bullet = " "
                 .repeat(config.indent)
                 .repeat(depth.saturating_sub(config.min_depth));
@@ -87,7 +87,7 @@ impl Heading {
                 Some(format!(
                     "{indent_before_bullet}{bullet}{indent_after_bullet}{title}"
                 ))
-            } else if let Some(cap) = MARKDOWN_LINK.captures(&title) {
+            } else if let Some(cap) = MARKDOWN_LINK.captures(title) {
                 let title = cap.get(1).map(|x| x.as_str())?;
                 Some(format!(
                     "{indent_before_bullet}{bullet}{indent_after_bullet}[{title}](#{})",

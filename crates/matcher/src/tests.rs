@@ -245,3 +245,24 @@ fn test_rank() {
         println!("{matched_item:?}");
     }
 }
+
+#[test]
+fn test_grep() {
+    let items = vec![
+        (
+            "substrate/primitives/wasm-interface/src/lib.rs",
+            "is_major_syncing: &str",
+        ),
+        (
+            "substrate/client/network/sync/src/strategy.rs",
+            "pub fn is_major_syncing(&self) -> bool {",
+        ),
+    ];
+    // let query: Query = "\"is_major_syncing 'fn \"str".into();
+    let query: Query = "is_major_syncing 'fn 'strategy".into();
+    println!("Query: {query:?}");
+    let matcher = MatcherBuilder::new().build(query);
+    for (path, line) in items {
+        println!("{:?}", matcher.match_file_result(path.as_ref(), line));
+    }
+}
