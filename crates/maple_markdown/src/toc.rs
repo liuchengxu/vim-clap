@@ -76,6 +76,7 @@ impl Heading {
             && config.max_depth.map(|d| self.depth <= d).unwrap_or(true)
         {
             let Self { depth, title } = self;
+            let title_link = strip_backticks(&title);
             let indent_before_bullet = " "
                 .repeat(config.indent)
                 .repeat(depth.saturating_sub(config.min_depth));
@@ -86,16 +87,16 @@ impl Heading {
                 Some(format!(
                     "{indent_before_bullet}{bullet}{indent_after_bullet}{title}"
                 ))
-            } else if let Some(cap) = MARKDOWN_LINK.captures(title) {
+            } else if let Some(cap) = MARKDOWN_LINK.captures(&title) {
                 let title = cap.get(1).map(|x| x.as_str())?;
                 Some(format!(
                     "{indent_before_bullet}{bullet}{indent_after_bullet}[{title}](#{})",
-                    slugify(title)
+                    slugify(&title_link)
                 ))
             } else {
                 Some(format!(
                     "{indent_before_bullet}{bullet}{indent_after_bullet}[{title}](#{})",
-                    slugify(title)
+                    slugify(&title_link)
                 ))
             }
         } else {
@@ -190,4 +191,30 @@ pub fn find_toc_range(input_file: impl AsRef<Path>) -> std::io::Result<Option<(u
     }
 
     Ok(None)
+}
+
+fn strip_backticks(input: &str) -> String {
+    // Define a regex to match text enclosed in backticks
+    static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"`([^`]*)`").unwrap());
+
+    // Replace the matched pattern, keeping the inner text unchanged
+    RE.replace_all(input, "$1").to_string()
+}
+
+#[test]
+fn test_heading() {
+    let heading: Heading = "### run-`subcoin import-blocks`".parse().unwrap();
+    assert_eq!(
+        heading.title.clone(),
+        "run-`subcoin import-blocks`".to_string()
+    );
+    assert_eq!(
+        heading
+            .format(&TocConfig {
+                max_depth: Some(4),
+                ..Default::default()
+            })
+            .unwrap(),
+        "    *   [run-`subcoin import-blocks`](#run-subcoin-import-blocks)".to_string()
+    );
 }
