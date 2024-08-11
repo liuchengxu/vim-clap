@@ -4,7 +4,7 @@
 //! 1. `let g:clap_force_python = 1`.
 //! 2. open https://github.com/subspace/subspace/blob/c50bec907ab8ade923a2a0b4888f43bfc47e8a7f/polkadot/node/collation-generation/src/lib.rs
 //! 3. Type `sr` and then you'll see Neovim hang forever, have no idea&time to fix it
-//! properly therefore the old implementation are just kept.
+//!    properly therefore the old implementation are just kept.
 
 use super::AsciiDots;
 

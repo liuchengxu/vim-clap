@@ -458,7 +458,7 @@ pub struct SyntaxPluginConfig {
     /// Possible values:
     /// - `visual-lines`: Always render the visual lines only.
     /// - `entire-buffer-up-to-limit`: Render the entire buffer until
-    /// the buffer size exceeds the size limit (in bytes).
+    ///   the buffer size exceeds the size limit (in bytes).
     ///
     /// # Example
     ///

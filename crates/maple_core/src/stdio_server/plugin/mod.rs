@@ -126,10 +126,12 @@ pub trait ClapPlugin: ClapAction + Debug + Send + Sync + 'static {
 mod tests {
     #[derive(maple_derive::ClapPlugin)]
     #[clap_plugin(id = "plugin", actions = ["action1", "action2"])]
+    #[allow(dead_code)]
     struct TestPlugin;
 
     #[derive(maple_derive::ClapPlugin)]
     #[clap_plugin(id = "empty")]
+    #[allow(dead_code)]
     struct EmptyPlugin;
 
     #[test]
