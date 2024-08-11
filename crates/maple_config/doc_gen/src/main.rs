@@ -99,12 +99,15 @@ impl FieldInfo {
 }
 
 fn extract_doc_comment(attr: &Attribute) -> Option<String> {
-    if let Ok(MetaNameValue { path, value, .. }) = attr.meta.require_name_value() {
-        if let Expr::Lit(expr_lit) = value {
-            if let Lit::Str(comment) = &expr_lit.lit {
-                if path.is_ident("doc") {
-                    return Some(comment.value());
-                }
+    if let Ok(MetaNameValue {
+        path,
+        value: Expr::Lit(expr_lit),
+        ..
+    }) = attr.meta.require_name_value()
+    {
+        if let Lit::Str(comment) = &expr_lit.lit {
+            if path.is_ident("doc") {
+                return Some(comment.value());
             }
         }
     }

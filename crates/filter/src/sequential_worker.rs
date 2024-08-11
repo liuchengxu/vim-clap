@@ -448,7 +448,7 @@ mod tests {
 
                     item
                 })
-                .take(usize::max_value() >> 8),
+                .take(usize::MAX >> 8),
             ),
         )
         .unwrap()

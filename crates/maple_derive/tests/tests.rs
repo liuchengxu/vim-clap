@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use types::AutocmdEventType;
 
 #[async_trait::async_trait]
