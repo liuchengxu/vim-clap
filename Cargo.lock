@@ -3257,6 +3257,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "tree-sitter-toml"
+version = "0.0.1"
+source = "git+https://github.com/liuchengxu/tree-sitter-toml?rev=8be356ed7b18541808d4ed5ca379834f0e0e94b4#8be356ed7b18541808d4ed5ca379834f0e0e94b4"
+dependencies = [
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
 name = "tree-sitter-vim"
 version = "0.3.1-dev.0"
 source = "git+https://github.com/liuchengxu/tree-sitter-vim?rev=a0abc5f3dd20cdc61c1a18136f9ed559d87b9a00#a0abc5f3dd20cdc61c1a18136f9ed559d87b9a00"
@@ -3289,6 +3298,7 @@ dependencies = [
  "tree-sitter-python",
  "tree-sitter-rust",
  "tree-sitter-tags",
+ "tree-sitter-toml",
  "tree-sitter-vim",
 ]
 

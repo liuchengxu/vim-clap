@@ -7,14 +7,12 @@ version.workspace = true
 cc = "*"
 
 [dependencies]
-tree-sitter-core = { package = "tree-sitter", version = "0.23" }
-tree-sitter-highlight = "0.23"
 once_cell = { workspace = true }
 serde = { workspace = true, features = [ "derive" ] }
 toml = { workspace = true }
 tracing = { workspace = true }
-# tree-sitter-traversal = "0.1"
-
+tree-sitter-core = { package = "tree-sitter", version = "0.23" }
+tree-sitter-highlight = "0.23"
 # Languages
 tree-sitter-bash = "0.23"
 tree-sitter-c = "0.23"
@@ -25,10 +23,11 @@ tree-sitter-json = "0.23"
 tree-sitter-md = "0.3.2"
 tree-sitter-python = "0.23"
 tree-sitter-rust = "0.23"
-# tree-sitter-toml = "0.20"
+# tree-sitter-traversal = "0.1"
 
-# Forked grammers
+# Forked languages.
 tree-sitter-dockerfile = { git = "https://github.com/liuchengxu/tree-sitter-dockerfile", rev = "0f648be5fd233a9be3428ec12de66a8be2dce0b6" }
+tree-sitter-toml = { git = "https://github.com/liuchengxu/tree-sitter-toml", rev = "8be356ed7b18541808d4ed5ca379834f0e0e94b4" }
 tree-sitter-vim = { git = "https://github.com/liuchengxu/tree-sitter-vim", rev = "a0abc5f3dd20cdc61c1a18136f9ed559d87b9a00" }
 
 [dev-dependencies]

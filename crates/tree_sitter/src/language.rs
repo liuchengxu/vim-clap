@@ -151,7 +151,7 @@ pub enum Language {
     Markdown,
     Python,
     Rust,
-    // Toml,
+    Toml,
     Viml,
 }
 
@@ -169,7 +169,7 @@ impl FromStr for Language {
             "markdown" => Self::Markdown,
             "python" => Self::Python,
             "rust" => Self::Rust,
-            // "toml" => Self::Toml,
+            "toml" => Self::Toml,
             "viml" => Self::Viml,
             _ => return Err(format!("Unknown language: {s}")),
         };
@@ -197,7 +197,7 @@ impl Language {
             "md" => Self::Markdown,
             "py" | "pyi" | "pyc" | "pyd" | "pyw" => Self::Python,
             "rs" => Self::Rust,
-            // "toml" => Self::Toml,
+            "toml" => Self::Toml,
             "vim" => Self::Viml,
             _ => return None,
         };
@@ -218,7 +218,7 @@ impl Language {
             "markdown" => Self::Markdown,
             "python" => Self::Python,
             "rust" => Self::Rust,
-            // "toml" => Self::Toml,
+            "toml" => Self::Toml,
             "vim" => Self::Viml,
             _ => return None,
         };
@@ -252,7 +252,7 @@ impl Language {
             Self::Markdown => tree_sitter_md::HIGHLIGHT_QUERY_BLOCK,
             Self::Python => tree_sitter_python::HIGHLIGHTS_QUERY,
             Self::Rust => tree_sitter_rust::HIGHLIGHTS_QUERY,
-            // Self::Toml => "",
+            Self::Toml => tree_sitter_toml::HIGHLIGHTS_QUERY,
             Self::Viml => tree_sitter_vim::HIGHLIGHT_QUERY,
         }
     }
@@ -330,16 +330,13 @@ impl Language {
                 "",
                 "",
             ),
-            // Language::Toml => {
-            // todo!()
-            // }
-            // HighlightConfiguration::new(
-            // tree_sitter_toml::LANGUAGE.into(),
-            // tree_sitter_toml::HIGHLIGHT_QUERY,
-            // "",
-            // "",
-            // "",
-            // ),
+            Language::Toml => HighlightConfiguration::new(
+                tree_sitter_toml::LANGUAGE.into(),
+                "toml",
+                tree_sitter_toml::HIGHLIGHTS_QUERY,
+                "",
+                "",
+            ),
             Language::Viml => HighlightConfiguration::new(
                 tree_sitter_vim::LANGUAGE.into(),
                 "vim",
