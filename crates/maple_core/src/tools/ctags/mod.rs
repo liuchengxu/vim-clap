@@ -309,9 +309,8 @@ impl ProjectCtagsCommand {
     #[allow(unused)]
     fn create_cache(&self) -> Result<(usize, PathBuf)> {
         let mut total = 0usize;
-        let mut formatted_tags_iter = self.formatted_tags_iter()?.map(|x| {
+        let mut formatted_tags_iter = self.formatted_tags_iter()?.inspect(|_x| {
             total += 1;
-            x
         });
         let lines = formatted_tags_iter.join("\n");
 
