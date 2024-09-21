@@ -205,14 +205,52 @@ mod tests {
     // use super::*;
 
     #[test]
+    fn test_basic_highlight() {
+        let line = b"let config = language::get_highlight_config(language);";
+
+        let highlight_items = crate::language::Language::Rust
+            .highlight_line(line)
+            .unwrap();
+
+        let syntax_tokens = highlight_items
+            .into_iter()
+            .map(|i| {
+                (
+                    crate::Language::Rust.highlight_name(i.highlight),
+                    String::from_utf8_lossy(&line[i.start.column..i.end.column]),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        println!("syntax_tokens: {syntax_tokens:?}");
+
+        assert_eq!(
+            syntax_tokens
+                .into_iter()
+                .map(|(highlight_name, _)| highlight_name)
+                .collect::<Vec<_>>(),
+            vec![
+                "keyword",
+                "punctuation.delimiter",
+                "function",
+                "punctuation.bracket",
+                "punctuation.bracket",
+                "punctuation.delimiter"
+            ]
+        );
+    }
+
+    #[test]
     fn test_highlight_line() {
         // let line = b"let config = language::get_highlight_config(language);";
 
         // let line = b"pub fn parse_scopes(query: &str) -> Vec<&str> {";
         let line = b"// Cpp comment line";
 
-        let highlight_items = crate::language::Language::Cpp.highlight_line(line).unwrap();
-        println!("{highlight_items:?}");
+        // let highlight_items = crate::language::Language::Cpp.highlight_line(line).unwrap();
+        let highlight_items = crate::language::Language::Rust
+            .highlight_line(line)
+            .unwrap();
 
         let syntax_tokens = highlight_items
             .into_iter()

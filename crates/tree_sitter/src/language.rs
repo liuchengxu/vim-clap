@@ -151,7 +151,7 @@ pub enum Language {
     Markdown,
     Python,
     Rust,
-    Toml,
+    // Toml,
     Viml,
 }
 
@@ -169,7 +169,7 @@ impl FromStr for Language {
             "markdown" => Self::Markdown,
             "python" => Self::Python,
             "rust" => Self::Rust,
-            "toml" => Self::Toml,
+            // "toml" => Self::Toml,
             "viml" => Self::Viml,
             _ => return Err(format!("Unknown language: {s}")),
         };
@@ -197,7 +197,7 @@ impl Language {
             "md" => Self::Markdown,
             "py" | "pyi" | "pyc" | "pyd" | "pyw" => Self::Python,
             "rs" => Self::Rust,
-            "toml" => Self::Toml,
+            // "toml" => Self::Toml,
             "vim" => Self::Viml,
             _ => return None,
         };
@@ -218,7 +218,7 @@ impl Language {
             "markdown" => Self::Markdown,
             "python" => Self::Python,
             "rust" => Self::Rust,
-            "toml" => Self::Toml,
+            // "toml" => Self::Toml,
             "vim" => Self::Viml,
             _ => return None,
         };
@@ -246,13 +246,13 @@ impl Language {
             Self::C => tree_sitter_c::HIGHLIGHT_QUERY,
             Self::Cpp => tree_sitter_cpp::HIGHLIGHT_QUERY,
             Self::Dockerfile => tree_sitter_dockerfile::HIGHLIGHTS_QUERY,
-            Self::Go => tree_sitter_go::HIGHLIGHT_QUERY,
+            Self::Go => tree_sitter_go::HIGHLIGHTS_QUERY,
             Self::Javascript => tree_sitter_javascript::HIGHLIGHT_QUERY,
-            Self::Json => tree_sitter_json::HIGHLIGHT_QUERY,
+            Self::Json => tree_sitter_json::HIGHLIGHTS_QUERY,
             Self::Markdown => tree_sitter_md::HIGHLIGHT_QUERY_BLOCK,
-            Self::Python => tree_sitter_python::HIGHLIGHT_QUERY,
-            Self::Rust => tree_sitter_rust::HIGHLIGHT_QUERY,
-            Self::Toml => tree_sitter_toml::HIGHLIGHT_QUERY,
+            Self::Python => tree_sitter_python::HIGHLIGHTS_QUERY,
+            Self::Rust => tree_sitter_rust::HIGHLIGHTS_QUERY,
+            // Self::Toml => "",
             Self::Viml => tree_sitter_vim::HIGHLIGHT_QUERY,
         }
     }
@@ -260,75 +260,89 @@ impl Language {
     fn create_new_highlight_config(&self) -> HighlightConfiguration {
         let create_config_result = match self {
             Language::Bash => HighlightConfiguration::new(
-                tree_sitter_bash::language(),
+                tree_sitter_bash::LANGUAGE.into(),
+                "bash",
                 tree_sitter_bash::HIGHLIGHT_QUERY,
                 "",
                 "",
             ),
             Language::C => HighlightConfiguration::new(
-                tree_sitter_c::language(),
+                tree_sitter_c::LANGUAGE.into(),
+                "c",
                 tree_sitter_c::HIGHLIGHT_QUERY,
                 "",
                 "",
             ),
             Language::Cpp => HighlightConfiguration::new(
-                tree_sitter_cpp::language(),
+                tree_sitter_cpp::LANGUAGE.into(),
+                "cpp",
                 // Use the local highlights.scm as tree_sitter_cpp::HIGHLIGHT_QUERY is relatively unpolished.
                 include_str!("../queries/cpp/highlights.scm"),
                 "",
                 "",
             ),
             Language::Dockerfile => HighlightConfiguration::new(
-                tree_sitter_dockerfile::language(),
+                tree_sitter_dockerfile::LANGUAGE.into(),
+                "dockerfile",
                 tree_sitter_dockerfile::HIGHLIGHTS_QUERY,
                 "",
                 "",
             ),
             Language::Go => HighlightConfiguration::new(
-                tree_sitter_go::language(),
-                tree_sitter_go::HIGHLIGHT_QUERY,
+                tree_sitter_go::LANGUAGE.into(),
+                "go",
+                tree_sitter_go::HIGHLIGHTS_QUERY,
                 "",
                 "",
             ),
             Language::Javascript => HighlightConfiguration::new(
-                tree_sitter_javascript::language(),
+                tree_sitter_javascript::LANGUAGE.into(),
+                "javascript",
                 tree_sitter_javascript::HIGHLIGHT_QUERY,
                 "",
                 "",
             ),
             Language::Json => HighlightConfiguration::new(
-                tree_sitter_json::language(),
-                tree_sitter_json::HIGHLIGHT_QUERY,
+                tree_sitter_json::LANGUAGE.into(),
+                "json",
+                tree_sitter_json::HIGHLIGHTS_QUERY,
                 "",
                 "",
             ),
             Language::Markdown => HighlightConfiguration::new(
-                tree_sitter_md::language(),
+                tree_sitter_md::LANGUAGE.into(),
+                "markdown",
                 tree_sitter_md::HIGHLIGHT_QUERY_BLOCK,
                 "",
                 "",
             ),
             Language::Python => HighlightConfiguration::new(
-                tree_sitter_python::language(),
-                tree_sitter_python::HIGHLIGHT_QUERY,
+                tree_sitter_python::LANGUAGE.into(),
+                "python",
+                tree_sitter_python::HIGHLIGHTS_QUERY,
                 "",
                 "",
             ),
             Language::Rust => HighlightConfiguration::new(
-                tree_sitter_rust::language(),
-                tree_sitter_rust::HIGHLIGHT_QUERY,
+                tree_sitter_rust::LANGUAGE.into(),
+                "rust",
+                tree_sitter_rust::HIGHLIGHTS_QUERY,
                 "",
                 "",
             ),
-
-            Language::Toml => HighlightConfiguration::new(
-                tree_sitter_toml::language(),
-                tree_sitter_toml::HIGHLIGHT_QUERY,
-                "",
-                "",
-            ),
+            // Language::Toml => {
+            // todo!()
+            // }
+            // HighlightConfiguration::new(
+            // tree_sitter_toml::LANGUAGE.into(),
+            // tree_sitter_toml::HIGHLIGHT_QUERY,
+            // "",
+            // "",
+            // "",
+            // ),
             Language::Viml => HighlightConfiguration::new(
-                tree_sitter_vim::language(),
+                tree_sitter_vim::LANGUAGE.into(),
+                "vim",
                 tree_sitter_vim::HIGHLIGHT_QUERY,
                 "",
                 "",
