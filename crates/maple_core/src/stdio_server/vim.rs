@@ -49,7 +49,7 @@ static EXTENSION_TO_FILETYPE_MAP: OnceCell<HashMap<String, String>> = OnceCell::
 
 pub fn initialize_filetype_map(output: &str) -> HashMap<&str, &str> {
     let ext_map: HashMap<&str, &str> = output
-        .split(|x| x == '\n')
+        .split('\n')
         // Only process the normal cases.
         .filter(|s| s.contains("setf"))
         .filter_map(|s| {

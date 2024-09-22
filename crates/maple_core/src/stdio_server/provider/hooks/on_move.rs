@@ -445,18 +445,12 @@ impl<'a> CachedPreviewImpl<'a> {
                     self.max_line_width(),
                     max_fname_len,
                 )
-                .map_err(|e| {
-                    handle_io_error(&e);
-                    e
-                })?
+                .inspect_err(handle_io_error)?
             }
             _ => {
                 let (lines, abs_path) =
                     previewer::preview_file(path, self.preview_height, self.max_line_width())
-                        .map_err(|e| {
-                            handle_io_error(&e);
-                            e
-                        })?;
+                        .inspect_err(handle_io_error)?;
                 // cwd is shown via the popup title, no need to include it again.
                 let cwd_relative = abs_path.replacen(self.ctx.cwd.as_str(), ".", 1);
                 let mut lines = lines;
