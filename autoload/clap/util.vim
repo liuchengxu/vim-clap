@@ -175,5 +175,11 @@ function! clap#util#reload_current_file() abort
   noautocmd call setpos('.', save_cursor)
 endfunction
 
+function! clap#util#sink_open(cmd, file) abort
+  call g:clap.start.goto_win()
+  execute a:cmd a:file
+  call clap#_exit_provider()
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo

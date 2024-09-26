@@ -481,6 +481,10 @@ impl ClapProvider for IgrepProvider {
             KeyEventType::Tab => self.on_tab(ctx).await,
             KeyEventType::Backspace => self.on_backspace(ctx).await,
             KeyEventType::CarriageReturn => self.on_carriage_return(ctx).await,
+            KeyEventType::CtrlT | KeyEventType::CtrlX | KeyEventType::CtrlV => {
+                tracing::error!("TODO: impl ctrl-t/ctrl-x/ctrl-v");
+                Ok(())
+            }
         }
     }
 }
