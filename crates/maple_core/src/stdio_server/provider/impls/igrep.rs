@@ -482,7 +482,8 @@ impl ClapProvider for IgrepProvider {
             KeyEventType::Backspace => self.on_backspace(ctx).await,
             KeyEventType::CarriageReturn => self.on_carriage_return(ctx).await,
             KeyEventType::CtrlT | KeyEventType::CtrlX | KeyEventType::CtrlV => {
-                tracing::error!("TODO: impl ctrl-t/ctrl-x/ctrl-v");
+                ctx.vim
+                    .echo_message("[igrep] unimplemented ctrl-t/ctrl-x/ctrl-v")?;
                 Ok(())
             }
         }
