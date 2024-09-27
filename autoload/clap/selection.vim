@@ -77,6 +77,12 @@ endfunction
 
 " Apply the open action specified by `g:clap_open_action` given the (selected) lines.
 function! clap#selection#try_open(action) abort
+  " ctrl-t/ctrl-x/ctrl-v are handled on the Rust side for filer.
+  if g:clap.provider.id ==# 'filer'
+    call clap#client#notify_provider(a:action)
+    return
+  endif
+
   if !has_key(g:clap_open_action, a:action)
         \ || g:clap.display.get_lines() == [g:clap_no_matches_msg]
     return

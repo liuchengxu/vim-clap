@@ -348,6 +348,14 @@ impl FilerProvider {
 
         Ok(())
     }
+
+    async fn sink_open(&self, open_cmd: &str, ctx: &Context) -> Result<()> {
+        let curline = self.current_line(ctx).await?;
+        let target_dir = self.current_dir.join(curline);
+        ctx.vim
+            .exec("clap#util#sink_open", (open_cmd, target_dir))?;
+        Ok(())
+    }
 }
 
 #[async_trait::async_trait]
@@ -424,6 +432,9 @@ impl ClapProvider for FilerProvider {
             KeyEventType::ShiftDown => ctx.scroll_preview(Direction::Down).await,
             KeyEventType::CtrlN => ctx.next_input().await,
             KeyEventType::CtrlP => ctx.prev_input().await,
+            KeyEventType::CtrlT => self.sink_open("tab split", ctx).await,
+            KeyEventType::CtrlX => self.sink_open("split", ctx).await,
+            KeyEventType::CtrlV => self.sink_open("vsplit", ctx).await,
         }
     }
 }

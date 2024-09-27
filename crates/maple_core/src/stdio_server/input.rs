@@ -84,6 +84,12 @@ pub enum KeyEventType {
     CtrlN,
     // <C-P>
     CtrlP,
+    // <C-t>
+    CtrlT,
+    // <C-x>
+    CtrlX,
+    // <C-v>
+    CtrlV,
 }
 
 pub type ActionEvent = (PluginId, PluginAction);
@@ -139,6 +145,9 @@ impl Event {
             "tab" => Ok(Self::Key((Tab, notification.params))),
             "ctrl-n" => Ok(Self::Key((CtrlN, notification.params))),
             "ctrl-p" => Ok(Self::Key((CtrlP, notification.params))),
+            "ctrl-t" => Ok(Self::Key((CtrlT, notification.params))),
+            "ctrl-x" => Ok(Self::Key((CtrlX, notification.params))),
+            "ctrl-v" => Ok(Self::Key((CtrlV, notification.params))),
             "shift-up" => Ok(Self::Key((ShiftUp, notification.params))),
             "shift-down" => Ok(Self::Key((ShiftDown, notification.params))),
             "backspace" => Ok(Self::Key((Backspace, notification.params))),
