@@ -18,7 +18,7 @@ cli = { workspace = true }
 upgrade = { workspace = true }
 
 [target.'cfg(not(any(target_env = "msvc", target_os = "android")))'.dependencies]
-tikv-jemallocator = "0.5"
+tikv-jemallocator = "0.6"
 
 [build-dependencies]
 built = { package = "built", version = "0.6", features = ["git2"] }
