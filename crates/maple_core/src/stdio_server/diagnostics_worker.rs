@@ -191,6 +191,16 @@ fn update_buffer_diagnostics(
         .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
         .is_ok();
 
+    tracing::info!(
+        ?bufnr,
+        ?is_first_result,
+        "[update_buffer_diagnostics] buffer_diagnostics: {buffer_diagnostics:?}"
+    );
+    tracing::info!(
+        ?bufnr,
+        "[update_buffer_diagnostics] new_diagnostics: {new_diagnostics:?}"
+    );
+
     let new_stats = if is_first_result {
         let _ = vim.exec(
             "clap#plugin#diagnostics#refresh_highlights",

@@ -8,7 +8,7 @@ use crate::stdio_server::provider::{
     BaseArgs, ClapProvider, Context, ProviderError, ProviderResult,
 };
 use crate::stdio_server::vim::VimResult;
-use crate::tools::ctags::{get_language, TagsGenerator, CTAGS_EXISTS};
+use crate::tools::ctags::{get_language, TagsGenerator, CTAGS_BIN};
 use crate::tools::gtags::GTAGS_EXISTS;
 use filter::Query;
 use futures::Future;
@@ -214,7 +214,7 @@ impl DumbJumpProvider {
                 });
             }
 
-            match (*CTAGS_EXISTS, *GTAGS_EXISTS) {
+            match (CTAGS_BIN.is_available(), *GTAGS_EXISTS) {
                 (true, true) => run(
                     async move {
                         futures::future::join(ctags_future, gtags_future).await;

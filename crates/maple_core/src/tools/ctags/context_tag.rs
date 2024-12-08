@@ -1,7 +1,6 @@
-use crate::tools::ctags::{BufferTag, CTAGS_HAS_JSON_FEATURE};
+use crate::tools::ctags::{BufferTag, CTAGS_BIN};
 use rayon::prelude::*;
 use std::io::Result;
-use std::ops::Deref;
 use std::path::Path;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -94,7 +93,7 @@ fn find_context_tag(superset_tags: Vec<BufferTag>, at: usize) -> Option<BufferTa
 ///
 /// NOTE: I don't know why, but this may take forever to complete somehow, making the async runtime blocked.
 pub async fn current_context_tag_async(file: &Path, at: usize) -> Option<BufferTag> {
-    let superset_tags = if *CTAGS_HAS_JSON_FEATURE.deref() {
+    let superset_tags = if CTAGS_BIN.has_json_feature() {
         collect_superset_context_tags_async(tokio_cmd(file, true), BufferTag::from_json_line, at)
             .await
     } else {
@@ -107,7 +106,7 @@ pub async fn current_context_tag_async(file: &Path, at: usize) -> Option<BufferT
 
 /// Returns the method/function context associated with line `at`.
 pub fn current_context_tag(file: &Path, at: usize) -> Option<BufferTag> {
-    let superset_tags = if *CTAGS_HAS_JSON_FEATURE.deref() {
+    let superset_tags = if CTAGS_BIN.has_json_feature() {
         collect_superset_context_tags(subprocess_cmd(file, true), BufferTag::from_json_line, at)
     } else {
         collect_superset_context_tags(subprocess_cmd(file, false), BufferTag::from_raw_line, at)
@@ -120,7 +119,7 @@ pub fn buffer_tags_lines(
     file: impl AsRef<std::ffi::OsStr>,
     force_raw: bool,
 ) -> Result<Vec<String>> {
-    let (tags, max_name_len) = if *CTAGS_HAS_JSON_FEATURE.deref() && !force_raw {
+    let (tags, max_name_len) = if CTAGS_BIN.has_json_feature() && !force_raw {
         collect_buffer_tags(subprocess_cmd(file, true), BufferTag::from_json_line)?
     } else {
         collect_buffer_tags(subprocess_cmd(file, false), BufferTag::from_raw_line)?
@@ -133,7 +132,7 @@ pub fn buffer_tags_lines(
 }
 
 pub fn fetch_buffer_tags(file: impl AsRef<std::ffi::OsStr>) -> Result<Vec<BufferTag>> {
-    let (mut tags, _max_name_len) = if *CTAGS_HAS_JSON_FEATURE.deref() {
+    let (mut tags, _max_name_len) = if CTAGS_BIN.has_json_feature() {
         collect_buffer_tags(subprocess_cmd(file, true), BufferTag::from_json_line)?
     } else {
         collect_buffer_tags(subprocess_cmd(file, false), BufferTag::from_raw_line)?
@@ -148,7 +147,7 @@ pub fn buffer_tag_items(
     file: impl AsRef<std::ffi::OsStr>,
     force_raw: bool,
 ) -> Result<Vec<Arc<dyn ClapItem>>> {
-    let (tags, max_name_len) = if *CTAGS_HAS_JSON_FEATURE.deref() && !force_raw {
+    let (tags, max_name_len) = if CTAGS_BIN.has_json_feature() && !force_raw {
         collect_buffer_tags(subprocess_cmd(file, true), BufferTag::from_json_line)?
     } else {
         collect_buffer_tags(subprocess_cmd(file, false), BufferTag::from_raw_line)?
