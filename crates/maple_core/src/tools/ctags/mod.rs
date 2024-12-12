@@ -43,7 +43,7 @@ pub static CTAGS_TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
 pub enum CtagsBinary {
     /// ctags executable exists.
     Available {
-        /// If the ctags executable supports `--output-format=json`.
+        /// Whether the ctags executable supports `--output-format=json`.
         json_feature: bool,
     },
     /// ctags executable does not exist.
@@ -68,14 +68,14 @@ impl CtagsBinary {
                 if *json_feature {
                     Ok(())
                 } else {
-                    Err(std::io::Error::new(
-                        std::io::ErrorKind::Other,
+                    Err(Error::new(
+                        ErrorKind::Other,
                         "ctags executable is not compiled with +json feature, please recompile it.",
                     ))
                 }
             }
-            Self::NotFound => Err(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
+            Self::NotFound => Err(Error::new(
+                ErrorKind::NotFound,
                 "ctags executable not found",
             )),
         }
@@ -103,20 +103,12 @@ pub static CTAGS_BIN: Lazy<CtagsBinary> = Lazy::new(|| {
             .stderr(std::process::Stdio::inherit())
             .output()?;
         let stdout = String::from_utf8_lossy(&output.stdout);
-        if stdout.split('\n').any(|x| x.starts_with("json")) {
-            Ok(true)
-        } else {
-            Err(Error::new(ErrorKind::Other, "ctags has no +json feature"))
-        }
+        Ok(stdout.split('\n').any(|x| x.starts_with("json")))
     }
 
     if ctags_exist {
-        if detect_json_feature().unwrap_or(false) {
-            CtagsBinary::Available { json_feature: true }
-        } else {
-            CtagsBinary::Available {
-                json_feature: false,
-            }
+        CtagsBinary::Available {
+            json_feature: detect_json_feature().unwrap_or(false),
         }
     } else {
         CtagsBinary::NotFound

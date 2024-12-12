@@ -119,7 +119,7 @@ enum WorkspaceMarker {
 }
 
 impl WorkspaceMarker {
-    fn find_workspace<'a>(&'a self, source_file: &'a Path) -> Option<&Path> {
+    fn find_workspace<'a>(&self, source_file: &'a Path) -> Option<&'a Path> {
         match self {
             Self::RootMarkers(root_markers) => paths::find_project_root(source_file, root_markers),
             Self::ParentOfSourceFile => Some(source_file.parent().unwrap_or(source_file)),
