@@ -366,17 +366,17 @@ function! s:init_provider() abort
   endfunction
 
   function! provider._apply_source() abort
-    let Source = self._().source
+    let ClapProviderSource = self._().source
 
     if self.source_type == g:__t_string
-      return s:_system(Source)
+      return s:_system(ClapProviderSource)
     elseif self.source_type == g:__t_list
       " Use copy here, otherwise it could be one-off List.
-      return copy(Source)
+      return copy(ClapProviderSource)
     elseif self.source_type == g:__t_func_string
-      return s:_system(Source())
+      return s:_system(ClapProviderSource())
     elseif self.source_type == g:__t_func_list
-      return copy(Source())
+      return copy(ClapProviderSource())
     else
       return ['source() must return a List or a String if it is a Funcref']
     endif
