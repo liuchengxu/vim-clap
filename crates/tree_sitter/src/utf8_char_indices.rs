@@ -13,7 +13,7 @@ impl<'a> UncheckedUtf8CharIndices<'a> {
     }
 }
 
-impl<'a> Iterator for UncheckedUtf8CharIndices<'a> {
+impl Iterator for UncheckedUtf8CharIndices<'_> {
     type Item = (usize, char);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -49,7 +49,7 @@ impl<'a> Utf8CharIndices<'a> {
     }
 }
 
-impl<'a> Iterator for Utf8CharIndices<'a> {
+impl Iterator for Utf8CharIndices<'_> {
     type Item = (usize, char);
 
     fn next(&mut self) -> Option<Self::Item> {

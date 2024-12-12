@@ -165,7 +165,11 @@ fn initialize_service(vim: Vim) -> InitializedService {
     }
 
     if plugin_config.ctags.enable {
-        register_plugin(Box::new(CtagsPlugin::new(vim.clone())), None);
+        if crate::tools::ctags::CTAGS_BIN.is_available() {
+            register_plugin(Box::new(CtagsPlugin::new(vim.clone())), None);
+        } else {
+            tracing::warn!("Failed to register ctags plugin as ctags executable not found");
+        }
     }
 
     if plugin_config.markdown.enable {

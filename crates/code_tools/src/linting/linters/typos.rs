@@ -76,7 +76,7 @@ enum Message<'m> {
     Typo(Typo<'m>),
 }
 
-impl<'m> Message<'m> {
+impl Message<'_> {
     fn try_into_diagnostic(self) -> Option<Diagnostic> {
         match self {
             Self::Typo(typo) => {

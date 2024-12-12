@@ -40,8 +40,50 @@ pub static CTAGS_TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
     tags_dir
 });
 
-pub static CTAGS_EXISTS: Lazy<bool> = Lazy::new(|| {
-    std::process::Command::new("ctags")
+pub enum CtagsBinary {
+    /// ctags executable exists.
+    Available {
+        /// Whether the ctags executable supports `--output-format=json`.
+        json_feature: bool,
+    },
+    /// ctags executable does not exist.
+    NotFound,
+}
+
+impl CtagsBinary {
+    pub fn is_available(&self) -> bool {
+        matches!(self, Self::Available { .. })
+    }
+
+    pub fn has_json_feature(&self) -> bool {
+        match self {
+            Self::Available { json_feature } => *json_feature,
+            Self::NotFound => false,
+        }
+    }
+
+    pub fn ensure_json_feature(&self) -> std::io::Result<()> {
+        match self {
+            Self::Available { json_feature } => {
+                if *json_feature {
+                    Ok(())
+                } else {
+                    Err(Error::new(
+                        ErrorKind::Other,
+                        "ctags executable is not compiled with +json feature, please recompile it.",
+                    ))
+                }
+            }
+            Self::NotFound => Err(Error::new(
+                ErrorKind::NotFound,
+                "ctags executable not found",
+            )),
+        }
+    }
+}
+
+pub static CTAGS_BIN: Lazy<CtagsBinary> = Lazy::new(|| {
+    let ctags_exist = std::process::Command::new("ctags")
         .arg("--version")
         .stderr(std::process::Stdio::inherit())
         .output()
@@ -53,25 +95,24 @@ pub static CTAGS_EXISTS: Lazy<bool> = Lazy::new(|| {
                 .next()
                 .map(|line| line.starts_with("Universal Ctags"))
         })
-        .unwrap_or(false)
-});
+        .unwrap_or(false);
 
-/// If the ctags executable supports `--output-format=json`.
-pub static CTAGS_HAS_JSON_FEATURE: Lazy<bool> = Lazy::new(|| {
     fn detect_json_feature() -> std::io::Result<bool> {
         let output = std::process::Command::new("ctags")
             .arg("--list-features")
             .stderr(std::process::Stdio::inherit())
             .output()?;
         let stdout = String::from_utf8_lossy(&output.stdout);
-        if stdout.split('\n').any(|x| x.starts_with("json")) {
-            Ok(true)
-        } else {
-            Err(Error::new(ErrorKind::Other, "ctags has no +json feature"))
-        }
+        Ok(stdout.split('\n').any(|x| x.starts_with("json")))
     }
 
-    detect_json_feature().unwrap_or(false)
+    if ctags_exist {
+        CtagsBinary::Available {
+            json_feature: detect_json_feature().unwrap_or(false),
+        }
+    } else {
+        CtagsBinary::NotFound
+    }
 });
 
 /// Used to specify the language when working with `readtags`.

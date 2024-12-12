@@ -6,10 +6,9 @@ use clap::Parser;
 use filter::{FilterContext, SequentialSource};
 use itertools::Itertools;
 use maple_core::process::ShellCommand;
-use maple_core::tools::ctags::{ProjectCtagsCommand, CTAGS_HAS_JSON_FEATURE};
+use maple_core::tools::ctags::{ProjectCtagsCommand, CTAGS_BIN};
 use matcher::{MatchScope, MatcherBuilder};
 use rayon::prelude::*;
-use std::ops::Deref;
 use std::sync::Arc;
 use types::ClapItem;
 
@@ -65,11 +64,7 @@ impl RecursiveTags {
             ..
         }: Args,
     ) -> Result<()> {
-        if !CTAGS_HAS_JSON_FEATURE.deref() {
-            return Err(anyhow::anyhow!(
-                "ctags executable is not compiled with +json feature, please recompile it."
-            ));
-        }
+        CTAGS_BIN.ensure_json_feature()?;
 
         let mut ctags_cmd = self.project_ctags_cmd()?;
 
