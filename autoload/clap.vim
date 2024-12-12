@@ -125,15 +125,15 @@ function! s:inject_default_impl_is_ok(provider_info) abort
 endfunction
 
 function! s:detect_source_type() abort
-  let Source = g:clap.provider._().source
-  let source_ty = type(Source)
+  let ClapProviderSource = g:clap.provider._().source
+  let source_ty = type(ClapProviderSource)
 
   if source_ty == v:t_string
     return g:__t_string
   elseif source_ty == v:t_list
     return g:__t_list
   elseif source_ty == v:t_func
-    let string_or_list = Source()
+    let string_or_list = ClapProviderSource()
     if type(string_or_list) == v:t_string
       return g:__t_func_string
     elseif type(string_or_list) == v:t_list
