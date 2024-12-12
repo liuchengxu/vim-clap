@@ -40,7 +40,7 @@ impl Serialize for Version {
 
 struct VersionVisitor;
 
-impl<'v> serde::de::Visitor<'v> for VersionVisitor {
+impl serde::de::Visitor<'_> for VersionVisitor {
     type Value = Version;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
