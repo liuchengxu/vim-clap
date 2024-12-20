@@ -24,9 +24,9 @@ use utils::display_width;
 type SublimeHighlights = Vec<(usize, Vec<TokenHighlight>)>;
 
 /// (start, length, highlight_group)
-type LineHighlights = Vec<(usize, usize, String)>;
+type LineHighlightData = Vec<(usize, usize, String)>;
 /// (line_number, line_highlights)
-type TsHighlights = Vec<(usize, LineHighlights)>;
+type TsHighlights = Vec<(usize, LineHighlightData)>;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct VimSyntaxInfo {

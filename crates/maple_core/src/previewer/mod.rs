@@ -186,15 +186,9 @@ mod tests {
 
     #[test]
     fn test_file_preview_contains_multi_byte() {
-        let test_txt = std::env::current_dir()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("test")
-            .join("testdata")
-            .join("test_673.txt");
+        let current_dir = std::env::current_dir().unwrap();
+        let root_dir = current_dir.parent().unwrap().parent().unwrap();
+        let test_txt = root_dir.join("test").join("testdata").join("test_673.txt");
         let FilePreview { lines, .. } = get_file_preview(test_txt, 2, 10).unwrap();
         assert_eq!(
             lines,

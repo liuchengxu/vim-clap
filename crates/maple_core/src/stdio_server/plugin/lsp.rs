@@ -230,7 +230,7 @@ impl LspPlugin {
             return Ok(());
         }
 
-        let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+        let filetype = self.vim.filetype(bufnr).await?;
 
         if filetype.is_empty()
             || self.filetype_blocklist.contains(&filetype)

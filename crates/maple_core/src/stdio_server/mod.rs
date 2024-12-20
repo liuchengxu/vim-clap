@@ -89,7 +89,7 @@ struct InitializedService {
 
 /// Create a new service, with plugins registered from the config file.
 fn initialize_service(vim: Vim) -> InitializedService {
-    use self::diagnostics_worker::start_buffer_diagnostics_worker;
+    use self::diagnostics_worker::initialize_diagnostics_worker;
     use self::plugin::{
         ActionType, ClapPlugin, ColorizerPlugin, CtagsPlugin, DiagnosticsPlugin, GitPlugin,
         LinterPlugin, LspPlugin, MarkdownPlugin, SyntaxPlugin, SystemPlugin, WordHighlighterPlugin,
@@ -118,7 +118,7 @@ fn initialize_service(vim: Vim) -> InitializedService {
     let plugin_config = &maple_config::config().plugin;
 
     if plugin_config.lsp.enable || plugin_config.linter.enable {
-        let diagnostics_worker_msg_sender = start_buffer_diagnostics_worker(vim.clone());
+        let diagnostics_worker_msg_sender = initialize_diagnostics_worker(vim.clone());
 
         register_plugin(
             Box::new(DiagnosticsPlugin::new(

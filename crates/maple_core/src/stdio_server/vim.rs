@@ -468,6 +468,10 @@ impl Vim {
         self.bare_call("get_cursor_pos").await
     }
 
+    pub async fn filetype(&self, bufnr: usize) -> VimResult<String> {
+        self.getbufvar::<String>(bufnr, "&filetype").await
+    }
+
     pub async fn bufmodified(&self, bufnr: impl Serialize) -> VimResult<bool> {
         self.getbufvar::<u32>(bufnr, "&modified")
             .await

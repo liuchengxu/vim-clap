@@ -53,7 +53,7 @@ impl Linter {
         let source_file = self.vim.bufabspath(bufnr).await?;
         let source_file = PathBuf::from(source_file);
 
-        let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+        let filetype = self.vim.filetype(bufnr).await?;
 
         let Some(workspace) = code_tools::linting::find_workspace(&filetype, &source_file) else {
             return Ok(());
@@ -105,7 +105,7 @@ impl Linter {
         let source_file = self.vim.bufabspath(bufnr).await?;
         let source_file = PathBuf::from(source_file);
 
-        let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+        let filetype = self.vim.filetype(bufnr).await?;
 
         let Some(workspace) = code_tools::linting::find_workspace(&filetype, &source_file) else {
             return Ok(());
