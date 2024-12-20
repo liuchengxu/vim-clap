@@ -21,12 +21,13 @@ use sublime_syntax::TokenHighlight;
 use tokio::sync::oneshot;
 use utils::display_width;
 
-type SublimeHighlights = Vec<(usize, Vec<TokenHighlight>)>;
+type SublimeHighlightData = Vec<(usize, Vec<TokenHighlight>)>;
 
 /// (start, length, highlight_group)
 type LineHighlightData = Vec<(usize, usize, String)>;
+
 /// (line_number, line_highlights)
-type TsHighlights = Vec<(usize, LineHighlightData)>;
+type TreeSitterHighlightData = Vec<(usize, LineHighlightData)>;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct VimSyntaxInfo {
@@ -79,11 +80,11 @@ pub struct Preview {
 
     /// Highlights from sublime-syntax highlight engine.
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub sublime_syntax_highlights: SublimeHighlights,
+    pub sublime_syntax_highlights: SublimeHighlightData,
 
     /// Highlights from tree-sitter highlight engine.
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub tree_sitter_highlights: TsHighlights,
+    pub tree_sitter_highlights: TreeSitterHighlightData,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub highlight_line: Option<HighlightLine>,
@@ -113,15 +114,15 @@ impl Preview {
         }
     }
 
-    fn set_highlights(&mut self, sublime_or_ts_highlights: SublimeOrTreeSitter, path: &Path) {
-        match sublime_or_ts_highlights {
-            SublimeOrTreeSitter::Sublime(v) => {
+    fn set_highlights(&mut self, highlight_source: HighlightSource, path: &Path) {
+        match highlight_source {
+            HighlightSource::Sublime(v) => {
                 self.sublime_syntax_highlights = v;
             }
-            SublimeOrTreeSitter::TreeSitter(v) => {
+            HighlightSource::TreeSitter(v) => {
                 self.tree_sitter_highlights = v;
             }
-            SublimeOrTreeSitter::Neither => {
+            HighlightSource::None => {
                 if let Some(syntax) = preview_syntax(path) {
                     self.vim_syntax_info.syntax = syntax.into();
                 } else {
@@ -459,7 +460,7 @@ impl<'a> CachedPreviewImpl<'a> {
             }
         };
 
-        let sublime_or_ts_highlights = SyntaxHighlighter {
+        let highlight_source = SyntaxHighlighter {
             lines: lines.clone(),
             path: path.to_path_buf(),
             line_number_offset: 0,
@@ -468,14 +469,14 @@ impl<'a> CachedPreviewImpl<'a> {
             maybe_code_context: None,
             timeout: 200,
         }
-        .fetch_highlights()
+        .highlight_with_timeout()
         .await;
 
         let total = utils::line_count(path)?;
         let end = lines.len();
 
         let scrollbar = if self.ctx.env.should_add_scrollbar(end) {
-            calculate_scrollbar(self.ctx, 0, end, total)
+            compute_scrollbar_position(self.ctx, 0, end, total)
         } else {
             None
         };
@@ -491,7 +492,7 @@ impl<'a> CachedPreviewImpl<'a> {
         }
 
         let mut preview = Preview::new_file_preview(lines, scrollbar, VimSyntaxInfo::default());
-        preview.set_highlights(sublime_or_ts_highlights, path);
+        preview.set_highlights(highlight_source, path);
 
         Ok(preview)
     }
@@ -529,12 +530,12 @@ impl<'a> CachedPreviewImpl<'a> {
                 lines,
             }) => {
                 let maybe_code_context =
-                    find_code_context(&lines, highlight_lnum, lnum, start, path).await;
+                    fetch_code_context(&lines, highlight_lnum, lnum, start, path).await;
 
                 // 1 (header line) + 1 (1-based line number)
                 let line_number_offset = 1 + 1 + if maybe_code_context.is_some() { 3 } else { 0 };
 
-                let sublime_or_ts_highlights = SyntaxHighlighter {
+                let highlight_source = SyntaxHighlighter {
                     lines: lines.clone(),
                     path: path.to_path_buf(),
                     line_number_offset,
@@ -543,12 +544,12 @@ impl<'a> CachedPreviewImpl<'a> {
                     maybe_code_context: maybe_code_context.clone(),
                     timeout: 200,
                 }
-                .fetch_highlights()
+                .highlight_with_timeout()
                 .await;
 
                 let context_lines = maybe_code_context
                     .map(|code_context| {
-                        code_context.into_context_lines(container_width, self.ctx.env.is_nvim)
+                        code_context.format_for_display(container_width, self.ctx.env.is_nvim)
                     })
                     .unwrap_or_default();
 
@@ -569,7 +570,7 @@ impl<'a> CachedPreviewImpl<'a> {
                         start
                     };
 
-                    calculate_scrollbar(self.ctx, start, end, total)
+                    compute_scrollbar_position(self.ctx, start, end, total)
                 } else {
                     None
                 };
@@ -584,7 +585,7 @@ impl<'a> CachedPreviewImpl<'a> {
                     ..Default::default()
                 };
 
-                preview.set_highlights(sublime_or_ts_highlights, path);
+                preview.set_highlights(highlight_source, path);
 
                 preview
             }
@@ -676,7 +677,7 @@ impl<'a> CachedPreviewImpl<'a> {
     }
 }
 
-async fn context_tag_with_timeout(path: &Path, lnum: usize) -> Option<BufferTag> {
+async fn fetch_context_tag_with_timeout(path: &Path, lnum: usize) -> Option<BufferTag> {
     let (tag_sender, tag_receiver) = oneshot::channel();
 
     const TIMEOUT: Duration = Duration::from_millis(200);
@@ -692,7 +693,7 @@ async fn context_tag_with_timeout(path: &Path, lnum: usize) -> Option<BufferTag>
     match tokio::time::timeout(TIMEOUT, tag_receiver).await {
         Ok(res) => res.ok().flatten(),
         Err(_) => {
-            tracing::debug!(timeout = ?TIMEOUT, ?path, lnum, "⏳ Did not get the context tag in time");
+            tracing::debug!(timeout = ?TIMEOUT, ?path, lnum, "⏳ Timeout fetching context tag");
             None
         }
     }
@@ -720,10 +721,12 @@ impl CodeContext {
     // 1 context line + 2 border lines.
     const CONTEXT_LINES_LEN: usize = 3;
 
+    /// Converts the context into series of formatted lines for display.
+    ///
     /// ------------------
     /// line
     /// ------------------
-    fn into_context_lines(self, container_width: usize, is_nvim: bool) -> Vec<String> {
+    fn format_for_display(self, container_width: usize, is_nvim: bool) -> Vec<String> {
         // Vim has a different border width.
         let border_line = "─".repeat(if is_nvim {
             container_width
@@ -752,7 +755,7 @@ impl CodeContext {
     }
 }
 
-async fn find_code_context(
+async fn fetch_code_context(
     lines: &[String],
     highlight_lnum: usize,
     lnum: usize,
@@ -773,13 +776,10 @@ async fn find_code_context(
         return None;
     };
 
-    match context_tag_with_timeout(path, lnum).await {
-        Some(tag) if tag.line_number < start => {
-            let pattern = tag.trimmed_pattern();
-            Some(CodeContext {
-                line: pattern.to_string(),
-            })
-        }
+    match fetch_context_tag_with_timeout(path, lnum).await {
+        Some(tag) if tag.line_number < start => Some(CodeContext {
+            line: tag.trimmed_pattern().to_string(),
+        }),
         _ => {
             // No context lines if no tag found prior to the line number.
             None
@@ -787,7 +787,7 @@ async fn find_code_context(
     }
 }
 
-fn calculate_scrollbar(
+fn compute_scrollbar_position(
     ctx: &Context,
     start: usize,
     end: usize,
@@ -806,7 +806,7 @@ fn calculate_scrollbar(
         let top_position = if ctx.env.preview_border_enabled {
             length -= if length == preview_winheight { 1 } else { 0 };
 
-            1usize.max(top_position as usize)
+            top_position.max(1.0) as usize
         } else {
             top_position as usize
         };
@@ -815,10 +815,10 @@ fn calculate_scrollbar(
     }
 }
 
-enum SublimeOrTreeSitter {
-    Sublime(SublimeHighlights),
-    TreeSitter(TsHighlights),
-    Neither,
+enum HighlightSource {
+    Sublime(SublimeHighlightData),
+    TreeSitter(TreeSitterHighlightData),
+    None,
 }
 
 struct SyntaxHighlighter {
@@ -835,11 +835,11 @@ struct SyntaxHighlighter {
 impl SyntaxHighlighter {
     // Fetch with highlights with a timeout.
     //
-    // `fetch_syntax_highlights` might be slow for larger files (over 100k lines) as tree-sitter will
+    // `compute_syntax_highlighting` might be slow for larger files (over 100k lines) as tree-sitter will
     // have to parse the whole file to obtain the highlight info. Therefore, we must run the actual
     // worker in a separated task to not make the async runtime blocked, otherwise we may run into
     // the issue of frozen UI.
-    async fn fetch_highlights(self) -> SublimeOrTreeSitter {
+    async fn highlight_with_timeout(self) -> HighlightSource {
         let (result_sender, result_receiver) = oneshot::channel();
 
         let Self {
@@ -855,7 +855,7 @@ impl SyntaxHighlighter {
         std::thread::spawn({
             let path = path.clone();
             move || {
-                let result = fetch_syntax_highlights(
+                let result = compute_syntax_highlighting(
                     &lines,
                     &path,
                     line_number_offset,
@@ -867,17 +867,11 @@ impl SyntaxHighlighter {
             }
         });
 
-        let timeout = Duration::from_millis(timeout);
-
-        match tokio::time::timeout(timeout, result_receiver).await {
-            Ok(res) => res.unwrap_or(SublimeOrTreeSitter::Neither),
+        match tokio::time::timeout(Duration::from_millis(timeout), result_receiver).await {
+            Ok(res) => res.unwrap_or(HighlightSource::None),
             Err(_) => {
-                tracing::debug!(
-                    ?timeout,
-                    ?path,
-                    "⏳ Did not get the preview highlight in time"
-                );
-                SublimeOrTreeSitter::Neither
+                tracing::debug!(?timeout, ?path, "⏳ Timeout fetching preview highlights");
+                HighlightSource::None
             }
         }
     }
@@ -885,142 +879,157 @@ impl SyntaxHighlighter {
 
 // TODO: this might be slow for larger files (over 100k lines) as tree-sitter will have to
 // parse the whole file to obtain the highlight info. We may make the highlighting async.
-fn fetch_syntax_highlights(
+fn compute_syntax_highlighting(
     lines: &[String],
     path: &Path,
     line_number_offset: usize,
     max_line_width: usize,
-    range: Range<usize>,
-    maybe_code_context: Option<&CodeContext>,
-) -> SublimeOrTreeSitter {
+    visible_range: Range<usize>,
+    code_context: Option<&CodeContext>,
+) -> HighlightSource {
     use maple_config::HighlightEngine;
-    use utils::SizeChecker;
 
-    let provider_config = &maple_config::config().provider;
-
-    match provider_config.preview_highlight_engine {
+    match maple_config::config().provider.preview_highlight_engine {
         HighlightEngine::SublimeSyntax => {
-            const THEME: &str = "Visual Studio Dark+";
-
-            let theme = match &provider_config.sublime_syntax_color_scheme {
-                Some(theme) => {
-                    if sublime_theme_exists(theme) {
-                        theme.as_str()
-                    } else {
-                        tracing::warn!(
-                            "preview color theme {theme} not found, fallback to {THEME}"
-                        );
-                        THEME
-                    }
-                }
-                None => THEME,
-            };
-
-            path.extension()
-                .and_then(|s| s.to_str())
-                .and_then(sublime_syntax_by_extension)
-                .map(|syntax| {
-                    //  Same reason as [`Self::truncate_preview_lines()`], if a line is too
-                    //  long and the query is short, the highlights can be enomerous and
-                    //  cause the Vim frozen due to the too many highlight works.
-                    let max_len = max_line_width;
-                    let lines = lines.iter().map(|s| {
-                        let len = s.len().min(max_len);
-                        &s[..len]
-                    });
-                    sublime_syntax_highlight(syntax, lines, line_number_offset, theme)
-                })
-                .map(SublimeOrTreeSitter::Sublime)
-                .unwrap_or(SublimeOrTreeSitter::Neither)
+            sublime_highlighting(lines, path, line_number_offset, max_line_width)
         }
         HighlightEngine::TreeSitter => {
-            const FILE_SIZE_CHECKER: SizeChecker = SizeChecker::new(1024 * 1024);
-
-            if FILE_SIZE_CHECKER.is_too_large(path).unwrap_or(true) {
-                return SublimeOrTreeSitter::Neither;
-            }
-
-            tree_sitter::Language::try_from_path(path)
-                .and_then(|language| {
-                    let Ok(source_code) = std::fs::read(path) else {
-                        return None;
-                    };
-
-                    // TODO: Cache the highlights per one provider session or even globally?
-                    // 1. Check the last modified time.
-                    // 2. If unchanged, try retrieving from the cache.
-                    // 3. Otherwise parse it.
-                    let Ok(raw_highlights) = language.highlight(&source_code) else {
-                        return None;
-                    };
-
-                    let line_start = range.start;
-                    let ts_highlights = convert_raw_ts_highlights_to_vim_highlights(
-                        &raw_highlights,
-                        language,
-                        range.into(),
-                    );
-
-                    let mut maybe_context_line_highlight = None;
-
-                    let context_lines_offset = if let Some(code_context) = maybe_code_context {
-                        if let Ok(highlight_items) =
-                            language.highlight_line(code_context.line.as_bytes())
-                        {
-                            let line_highlights = highlight_items
-                                .into_iter()
-                                .filter_map(|i| {
-                                    let start = i.start.column;
-                                    let length = i.end.column - i.start.column;
-                                    // Ignore the invisible highlights.
-                                    if start + length > max_line_width {
-                                        None
-                                    } else {
-                                        let group = language.highlight_group(i.highlight);
-                                        Some((start, length, group.to_string()))
-                                    }
-                                })
-                                .collect::<Vec<_>>();
-
-                            maybe_context_line_highlight
-                                .replace((CodeContext::CONTEXT_LINE_NUMBER, line_highlights));
-                        }
-
-                        CodeContext::CONTEXT_LINES_LEN
-                    } else {
-                        0
-                    };
-
-                    Some(
-                        ts_highlights
-                            .into_iter()
-                            .map(|(line_number, line_highlights)| {
-                                let line_number_in_preview_win =
-                                    line_number - line_start + 1 + context_lines_offset;
-
-                                // Workaround the lifetime issue, nice to remove this allocation
-                                // `group.to_string()` as it's essentially `&'static str`.
-                                let line_highlights = line_highlights
-                                    .into_iter()
-                                    .filter_map(|(start, length, group)| {
-                                        // Ignore the invisible highlights.
-                                        if start + length > max_line_width {
-                                            None
-                                        } else {
-                                            Some((start, length, group.to_string()))
-                                        }
-                                    })
-                                    .collect();
-
-                                (line_number_in_preview_win, line_highlights)
-                            })
-                            .chain(maybe_context_line_highlight)
-                            .collect(),
-                    )
-                })
-                .map(SublimeOrTreeSitter::TreeSitter)
-                .unwrap_or(SublimeOrTreeSitter::Neither)
+            tree_sitter_highlighting(path, visible_range, max_line_width, code_context)
         }
-        HighlightEngine::Vim => SublimeOrTreeSitter::Neither,
+        HighlightEngine::Vim => HighlightSource::None,
     }
 }
+
+fn sublime_highlighting(
+    lines: &[String],
+    path: &Path,
+    line_number_offset: usize,
+    max_line_width: usize,
+) -> HighlightSource {
+    const THEME: &str = "Visual Studio Dark+";
+
+    let theme = match &maple_config::config().provider.sublime_syntax_color_scheme {
+        Some(theme) => {
+            if sublime_theme_exists(theme) {
+                theme.as_str()
+            } else {
+                tracing::warn!("preview color theme {theme} not found, fallback to {THEME}");
+                THEME
+            }
+        }
+        None => THEME,
+    };
+
+    path.extension()
+        .and_then(|s| s.to_str())
+        .and_then(sublime_syntax_by_extension)
+        .map(|syntax| {
+            //  Same reason as [`Self::truncate_preview_lines()`], if a line is too
+            //  long and the query is short, the highlights can be enomerous and
+            //  cause the Vim frozen due to the too many highlight works.
+            let max_len = max_line_width;
+            let lines = lines.iter().map(|s| {
+                let len = s.len().min(max_len);
+                &s[..len]
+            });
+            sublime_syntax_highlight(syntax, lines, line_number_offset, theme)
+        })
+        .map(HighlightSource::Sublime)
+        .unwrap_or(HighlightSource::None)
+}
+
+fn tree_sitter_highlighting(
+    path: &Path,
+    visible_range: Range<usize>,
+    max_line_width: usize,
+    code_context: Option<&CodeContext>,
+) -> HighlightSource {
+    use utils::SizeChecker;
+
+    const FILE_SIZE_CHECKER: SizeChecker = SizeChecker::new(1024 * 1024);
+
+    if FILE_SIZE_CHECKER.is_too_large(path).unwrap_or(true) {
+        return HighlightSource::None;
+    }
+
+    tree_sitter::Language::try_from_path(path)
+        .and_then(|language| {
+            let Ok(source_code) = std::fs::read(path) else {
+                return None;
+            };
+
+            // TODO: Cache the highlights per one provider session or even globally?
+            // 1. Check the last modified time.
+            // 2. If unchanged, try retrieving from the cache.
+            // 3. Otherwise parse it.
+            let Ok(raw_highlights) = language.highlight(&source_code) else {
+                return None;
+            };
+
+            let line_start = visible_range.start;
+
+            let ts_highlights = convert_raw_ts_highlights_to_vim_highlights(
+                &raw_highlights,
+                language,
+                visible_range.into(),
+            );
+
+            let mut maybe_context_line_highlight = None;
+
+            let context_lines_offset = if let Some(code_context) = code_context {
+                if let Ok(highlight_items) = language.highlight_line(code_context.line.as_bytes()) {
+                    let line_highlights = highlight_items
+                        .into_iter()
+                        .filter_map(|i| {
+                            let start = i.start.column;
+                            let length = i.end.column - i.start.column;
+                            // Ignore the invisible highlights.
+                            if start + length > max_line_width {
+                                None
+                            } else {
+                                let group = language.highlight_group(i.highlight);
+                                Some((start, length, group.to_string()))
+                            }
+                        })
+                        .collect::<Vec<_>>();
+
+                    maybe_context_line_highlight
+                        .replace((CodeContext::CONTEXT_LINE_NUMBER, line_highlights));
+                }
+
+                CodeContext::CONTEXT_LINES_LEN
+            } else {
+                0
+            };
+
+            Some(
+                ts_highlights
+                    .into_iter()
+                    .map(|(line_number, line_highlights)| {
+                        let line_number_in_preview_win =
+                            line_number - line_start + 1 + context_lines_offset;
+
+                        // Workaround the lifetime issue, nice to remove this allocation
+                        // `group.to_string()` as it's essentially `&'static str`.
+                        let line_highlights = line_highlights
+                            .into_iter()
+                            .filter_map(|(start, length, group)| {
+                                // Ignore the invisible highlights.
+                                if start + length > max_line_width {
+                                    None
+                                } else {
+                                    Some((start, length, group.to_string()))
+                                }
+                            })
+                            .collect();
+
+                        (line_number_in_preview_win, line_highlights)
+                    })
+                    .chain(maybe_context_line_highlight)
+                    .collect(),
+            )
+        })
+        .map(HighlightSource::TreeSitter)
+        .unwrap_or(HighlightSource::None)
+}
+
