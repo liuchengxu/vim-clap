@@ -33,7 +33,7 @@ pub static DEFAULT_EXCLUDE_OPT: Lazy<String> = Lazy::new(|| {
 
 /// Directory for the `tags` files.
 pub static CTAGS_TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
-    let tags_dir = Dirs::project().data_dir().join("tags");
+    let tags_dir = Dirs::data_dir().join("tags");
 
     std::fs::create_dir_all(&tags_dir).expect("Couldn't create tags directory for vim-clap");
 

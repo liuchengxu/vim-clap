@@ -14,10 +14,9 @@ fn load_config(
     specified_config_file: Option<PathBuf>,
 ) -> (Config, PathBuf, Option<toml::de::Error>) {
     let config_file = specified_config_file.unwrap_or_else(|| {
-        // Linux: ~/.config/vimclap/config.toml
-        // macOS: ~/Library/Application\ Support/org.vim.Vim-Clap/config.toml
+        // Linux & macOS: ~/.config/vimclap/config.toml
         // Windows: ~\AppData\Roaming\Vim\Vim Clap\config\config.toml
-        let config_file_path = Dirs::project().config_dir().join("config.toml");
+        let config_file_path = Dirs::config_dir().join("config.toml");
 
         if !config_file_path.exists() {
             std::fs::create_dir_all(&config_file_path).ok();

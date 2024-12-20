@@ -52,7 +52,7 @@ chrono-humanize = "0.2.3"
 clap = { version = "4.2", features = ["derive"] }
 colors-transform = "0.2.11"
 criterion = "0.5"
-directories = "4.0"
+etcetera = "0.8.0"
 futures = "0.3"
 fuzzy-matcher = "0.3"
 grep-matcher = "0.1"

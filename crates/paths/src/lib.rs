@@ -21,7 +21,7 @@ impl<'de> Deserialize<'de> for AbsPathBuf {
         if path.is_absolute() {
             Ok(Self(path))
         } else if let Ok(stripped) = path.strip_prefix("~") {
-            let path = Dirs::base().home_dir().join(stripped);
+            let path = Dirs::home_dir().join(stripped);
             // Resolve the symlink.
             let path =
                 canonicalize(path).map_err(|err| DeserializeError::custom(err.to_string()))?;
@@ -124,7 +124,7 @@ pub fn expand_tilde(path: impl AsRef<str>) -> PathBuf {
         .as_ref()
         .strip_prefix(HOME_PREFIX.get_or_init(|| format!("~{MAIN_SEPARATOR}")))
     {
-        Dirs::base().home_dir().join(stripped)
+        Dirs::home_dir().join(stripped)
     } else {
         path.as_ref().into()
     }
@@ -135,7 +135,7 @@ pub fn truncate_absolute_path(abs_path: &str, max_len: usize) -> Cow<'_, str> {
     if abs_path.len() > max_len {
         let gap = abs_path.len() - max_len;
 
-        if let Some(home_dir) = Dirs::base().home_dir().to_str() {
+        if let Some(home_dir) = Dirs::home_dir().to_str() {
             if abs_path.starts_with(home_dir) {
                 // ~/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs
                 if home_dir.len() > gap {
@@ -302,10 +302,7 @@ mod tests {
         let p = ".rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs";
         #[cfg(target_os = "windows")]
         let p = r#".rustup\toolchains\stable-x86_64-unknown-linux-gnu\lib\rustlib\src\rust\library\alloc\src\string.rs"#;
-        let abs_path = format!(
-            "{}{MAIN_SEPARATOR}{p}",
-            Dirs::base().home_dir().to_str().unwrap(),
-        );
+        let abs_path = format!("{}{MAIN_SEPARATOR}{p}", Dirs::home_dir().to_str().unwrap(),);
         let max_len = 60;
         #[cfg(not(target_os = "windows"))]
         let expected = "~/.rustup/.../src/rust/library/alloc/src/string.rs";
