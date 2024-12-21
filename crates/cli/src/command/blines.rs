@@ -98,7 +98,7 @@ impl Blines {
             filter::dyn_run(
                 &self.query,
                 filter_context,
-                SequentialSource::List(blines_item_stream()),
+                SequentialSource::Iterator(blines_item_stream()),
             )?;
         }
 

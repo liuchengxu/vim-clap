@@ -1,6 +1,6 @@
 use crate::searcher::SearchContext;
 use crate::stdio_server::SearchProgressor;
-use filter::BestItems;
+use filter::TopMatches;
 use matcher::{MatchResult, Matcher};
 use printer::Printer;
 use std::borrow::Cow;
@@ -99,7 +99,7 @@ pub async fn search(
     let number = item_pool_size;
     let progressor = SearchProgressor::new(vim, stop_signal.clone());
 
-    let mut best_items = BestItems::new(printer, number, progressor, Duration::from_millis(200));
+    let mut top_matches = TopMatches::new(printer, number, progressor, Duration::from_millis(200));
 
     let (sender, mut receiver) = unbounded_channel();
 
@@ -126,7 +126,7 @@ pub async fn search(
         }
         total_matched += 1;
         let total_processed = total_processed.load(Ordering::Relaxed);
-        best_items.on_new_match(matched_item, total_matched, total_processed);
+        top_matches.on_new_match(matched_item, total_matched, total_processed);
     }
 
     let elapsed = now.elapsed().as_millis();
@@ -136,12 +136,12 @@ pub async fn search(
         return;
     }
 
-    let BestItems {
+    let TopMatches {
         items,
         progressor,
         printer,
         ..
-    } = best_items;
+    } = top_matches;
 
     let display_lines = printer.to_display_lines(items);
     let total_processed = total_processed.load(Ordering::SeqCst);

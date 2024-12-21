@@ -1032,4 +1032,3 @@ fn tree_sitter_highlighting(
         .map(HighlightSource::TreeSitter)
         .unwrap_or(HighlightSource::None)
 }
-

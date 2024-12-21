@@ -3,7 +3,7 @@ use crate::stdio_server::provider::{
     BaseArgs, ClapProvider, Context, ProviderError, ProviderResult as Result, ProviderSource,
 };
 use crate::stdio_server::SearchProgressor;
-use filter::{FilterContext, ParallelSource};
+use filter::{FilterContext, ParallelInputSource};
 use parking_lot::Mutex;
 use printer::Printer;
 use std::path::PathBuf;
@@ -58,9 +58,9 @@ fn start_filter_parallel(
                 &query,
                 filter_context,
                 match data_source {
-                    DataSource::File(path) => ParallelSource::File(path),
+                    DataSource::File(path) => ParallelInputSource::File(path),
                     DataSource::Command(command) => {
-                        ParallelSource::Exec(Box::new(Exec::shell(command).cwd(cwd)))
+                        ParallelInputSource::Exec(Box::new(Exec::shell(command).cwd(cwd)))
                     }
                 },
                 SearchProgressor::new(vim, stop_signal.clone()),

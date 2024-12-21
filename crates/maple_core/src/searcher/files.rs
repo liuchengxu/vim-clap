@@ -1,7 +1,7 @@
 use super::{walk_parallel, WalkConfig};
 use crate::searcher::SearchContext;
 use crate::stdio_server::SearchProgressor;
-use filter::{BestItems, MatchedItem};
+use filter::{MatchedItem, TopMatches};
 use ignore::{DirEntry, WalkState};
 use matcher::Matcher;
 use printer::Printer;
@@ -104,7 +104,7 @@ pub async fn search(query: String, hidden: bool, matcher: Matcher, search_contex
     let mut total_matched = 0usize;
 
     let printer = Printer::new(line_width, icon);
-    let mut best_items = BestItems::new(printer, number, progressor, Duration::from_millis(200));
+    let mut top_matches = TopMatches::new(printer, number, progressor, Duration::from_millis(200));
 
     let now = std::time::Instant::now();
 
@@ -114,7 +114,7 @@ pub async fn search(query: String, hidden: bool, matcher: Matcher, search_contex
         }
         total_matched += 1;
         let total_processed = total_processed.load(Ordering::Relaxed);
-        best_items.on_new_match(matched_item, total_matched, total_processed);
+        top_matches.on_new_match(matched_item, total_matched, total_processed);
     }
 
     if stop_signal.load(Ordering::SeqCst) {
@@ -123,12 +123,12 @@ pub async fn search(query: String, hidden: bool, matcher: Matcher, search_contex
 
     let elapsed = now.elapsed().as_millis();
 
-    let BestItems {
+    let TopMatches {
         items,
         progressor,
         printer,
         ..
-    } = best_items;
+    } = top_matches;
 
     let display_lines = printer.to_display_lines(items);
     let total_processed = total_processed.load(Ordering::SeqCst);

@@ -1,7 +1,7 @@
 use crate::searcher::SearchContext;
 use crate::stdio_server::SearchProgressor;
 use dirs::Dirs;
-use filter::BestItems;
+use filter::TopMatches;
 use matcher::Matcher;
 use printer::Printer;
 use std::borrow::Cow;
@@ -306,7 +306,7 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
     let number = item_pool_size;
     let progressor = SearchProgressor::new(vim, stop_signal.clone());
 
-    let mut best_items = BestItems::new(printer, number, progressor, Duration::from_millis(200));
+    let mut top_matches = TopMatches::new(printer, number, progressor, Duration::from_millis(200));
 
     let (sender, mut receiver) = unbounded_channel();
 
@@ -345,7 +345,7 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
         }
         total_matched += 1;
         let total_processed = total_processed.load(Ordering::Relaxed);
-        best_items.on_new_match(matched_item, total_matched, total_processed);
+        top_matches.on_new_match(matched_item, total_matched, total_processed);
     }
 
     if stop_signal.load(Ordering::SeqCst) {
@@ -354,12 +354,12 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
 
     let elapsed = now.elapsed().as_millis();
 
-    let BestItems {
+    let TopMatches {
         items,
         progressor,
         printer,
         ..
-    } = best_items;
+    } = top_matches;
 
     let display_lines = printer.to_display_lines(items);
     let total_processed = total_processed.load(Ordering::SeqCst);

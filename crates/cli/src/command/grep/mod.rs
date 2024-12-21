@@ -4,7 +4,7 @@ mod live_grep;
 use crate::app::Args;
 use anyhow::Result;
 use clap::Parser;
-use filter::{ParallelSource, SequentialSource};
+use filter::{ParallelInputSource, SequentialSource};
 use maple_core::tools::rg::{refresh_cache, rg_shell_command};
 use matcher::MatchScope;
 use std::path::PathBuf;
@@ -109,13 +109,13 @@ impl Grep {
 
         if self.par_run {
             let par_source = if let Some(cache) = maybe_usable_cache {
-                ParallelSource::File(cache)
+                ParallelInputSource::File(cache)
             } else if let Some(ref tempfile) = self.input {
-                ParallelSource::File(tempfile.clone())
+                ParallelInputSource::File(tempfile.clone())
             } else if let Some(ref dir) = self.cmd_dir {
-                ParallelSource::Exec(Box::new(Exec::shell(RG_EXEC_CMD).cwd(dir)))
+                ParallelInputSource::Exec(Box::new(Exec::shell(RG_EXEC_CMD).cwd(dir)))
             } else {
-                ParallelSource::Exec(Box::new(Exec::shell(RG_EXEC_CMD)))
+                ParallelInputSource::Exec(Box::new(Exec::shell(RG_EXEC_CMD)))
             };
 
             // TODO: Improve the responsiveness of ripgrep as it can emit the items after some time.

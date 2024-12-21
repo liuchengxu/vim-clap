@@ -10,7 +10,7 @@ use types::{ClapItem, MatchedItem, SourceItem};
 /// will be processed sequentially.
 #[derive(Debug)]
 pub enum SequentialSource<I: Iterator<Item = Arc<dyn ClapItem>>> {
-    List(I),
+    Iterator(I),
     Stdin,
     File(PathBuf),
     Exec(Box<Exec>),
@@ -28,12 +28,13 @@ impl<I: Iterator<Item = Arc<dyn ClapItem>>> From<Exec> for SequentialSource<I> {
     }
 }
 
+/// Filters items from a sequential source using the given matcher.
 pub fn filter_sequential<I: Iterator<Item = Arc<dyn ClapItem>>>(
     source: SequentialSource<I>,
     matcher: Matcher,
 ) -> crate::Result<Vec<MatchedItem>> {
     let clap_item_stream: Box<dyn Iterator<Item = Arc<dyn ClapItem>>> = match source {
-        SequentialSource::List(list) => Box::new(list),
+        SequentialSource::Iterator(iter) => Box::new(iter),
         SequentialSource::Stdin => Box::new(
             std::io::stdin()
                 .lock()
