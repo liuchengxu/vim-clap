@@ -148,8 +148,8 @@ fn fuzzy_match(
 
 /// This module is a python module implemented in Rust.
 #[pymodule]
-fn fuzzymatch_rs(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_wrapped(wrap_pyfunction!(fuzzy_match))?;
+fn fuzzymatch_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(fuzzy_match, m)?)?;
 
     Ok(())
 }
