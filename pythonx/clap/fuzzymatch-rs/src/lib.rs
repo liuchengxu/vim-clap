@@ -161,38 +161,38 @@ mod tests {
     #[test]
     fn py_and_rs_subscore_should_work() {
         use matcher::substring::substr_indices as substr_scorer;
+        use pyo3::ffi::c_str;
         use pyo3::prelude::*;
         use pyo3::types::PyModule;
-        use std::fs;
         use types::CaseMatching;
 
-        let cur_dir = std::env::current_dir().unwrap();
-        let py_path = cur_dir.parent().unwrap().join("scorer.py");
-        let py_source_code = fs::read_to_string(py_path).unwrap();
+        Python::with_gil(|py| {
+            let py_scorer = PyModule::from_code(
+                py,
+                c_str!(include_str!("../../scorer.py")),
+                c_str!("scorer.py"),
+                c_str!("scorer"),
+            )
+            .unwrap();
 
-        pyo3::prepare_freethreaded_python();
+            let test_cases = vec![
+                ("su ou", "substr_scorer_should_work"),
+                ("su ork", "substr_scorer_should_work"),
+            ];
 
-        let gil = Python::acquire_gil();
-        let py = gil.python();
-        let py_scorer = PyModule::from_code(py, &py_source_code, "scorer.py", "scorer").unwrap();
-
-        let test_cases = vec![
-            ("su ou", "substr_scorer_should_work"),
-            ("su ork", "substr_scorer_should_work"),
-        ];
-
-        for (needle, haystack) in test_cases.into_iter() {
-            let py_result: (i32, Vec<usize>) = py_scorer
-                .getattr("substr_scorer")
-                .unwrap()
-                .call1((needle, haystack))
-                .unwrap()
-                .extract()
-                .map(|(score, positions): (f64, Vec<usize>)| (score as i32, positions))
-                .unwrap();
-            let rs_result = substr_scorer(haystack, needle, CaseMatching::Smart).unwrap();
-            assert_eq!(py_result, rs_result);
-        }
+            for (needle, haystack) in test_cases.into_iter() {
+                let py_result: (i32, Vec<usize>) = py_scorer
+                    .getattr("substr_scorer")
+                    .unwrap()
+                    .call1((needle, haystack))
+                    .unwrap()
+                    .extract()
+                    .map(|(score, positions): (f64, Vec<usize>)| (score as i32, positions))
+                    .unwrap();
+                let rs_result = substr_scorer(haystack, needle, CaseMatching::Smart).unwrap();
+                assert_eq!(py_result, rs_result);
+            }
+        });
     }
 
     #[test]
