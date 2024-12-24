@@ -349,7 +349,7 @@ impl<'a> CachedPreviewImpl<'a> {
 
         let elapsed = now.elapsed().as_millis();
         if elapsed > 1000 {
-            tracing::warn!("Fetching preview took too long: {elapsed:?} ms");
+            tracing::warn!(preview_target = ?self.preview_target, "Fetching preview took too long: {elapsed:?} ms");
         }
 
         self.ctx
@@ -436,52 +436,66 @@ impl<'a> CachedPreviewImpl<'a> {
             }
         };
 
-        let (lines, fname) = match (self.ctx.env.is_nvim, self.ctx.env.has_nvim_09) {
+        let (lines, fname, file_size) = match (self.ctx.env.is_nvim, self.ctx.env.has_nvim_09) {
             (true, false) => {
                 // Title is not available before nvim 0.9
                 let max_fname_len = self.ctx.env.display_line_width - 1;
-                previewer::preview_file_with_truncated_title(
+                let previewer::PreviewLines {
+                    lines,
+                    display_path,
+                    file_size,
+                } = previewer::preview_file_with_truncated_title(
                     path,
                     self.preview_height,
                     self.max_line_width(),
                     max_fname_len,
                 )
-                .inspect_err(handle_io_error)?
+                .inspect_err(handle_io_error)?;
+                (lines, display_path, file_size)
             }
             _ => {
-                let (lines, abs_path) =
-                    previewer::preview_file(path, self.preview_height, self.max_line_width())
-                        .inspect_err(handle_io_error)?;
+                let previewer::PreviewLines {
+                    lines,
+                    display_path: abs_path,
+                    file_size,
+                } = previewer::preview_file(path, self.preview_height, self.max_line_width())
+                    .inspect_err(handle_io_error)?;
+
                 // cwd is shown via the popup title, no need to include it again.
                 let cwd_relative = abs_path.replacen(self.ctx.cwd.as_str(), ".", 1);
                 let mut lines = lines;
                 lines[0] = cwd_relative;
-                (lines, abs_path)
+
+                (lines, abs_path, file_size)
             }
         };
 
-        let highlight_source = SyntaxHighlighter {
-            lines: lines.clone(),
-            path: path.to_path_buf(),
-            line_number_offset: 0,
-            max_line_width: self.max_line_width(),
-            range: 0..lines.len(),
-            maybe_code_context: None,
-            timeout: 200,
-        }
-        .highlight_with_timeout()
-        .await;
+        let highlight_source = if file_size.is_small() {
+            SyntaxHighlighter {
+                lines: lines.clone(),
+                path: path.to_path_buf(),
+                line_number_offset: 0,
+                max_line_width: self.max_line_width(),
+                range: 0..lines.len(),
+                maybe_code_context: None,
+                timeout: 200,
+            }
+            .highlight_with_timeout()
+            .await
+        } else {
+            HighlightSource::None
+        };
 
-        let total = utils::line_count(path)?;
         let end = lines.len();
 
-        let scrollbar = if self.ctx.env.should_add_scrollbar(end) {
+        let scrollbar = if file_size.can_process() && self.ctx.env.should_add_scrollbar(end) {
+            let total = utils::line_count(path)?;
             compute_scrollbar_position(self.ctx, 0, end, total)
         } else {
             None
         };
 
-        if std::fs::metadata(path)?.len() == 0 {
+        if file_size.is_empty() {
             let mut lines = lines;
             lines.push("<Empty file>".to_string());
             return Ok(Preview::new_file_preview(
