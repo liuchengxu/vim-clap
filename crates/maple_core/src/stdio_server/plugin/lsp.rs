@@ -471,9 +471,9 @@ impl LspPlugin {
             let Some(line) = utils::io::read_line_at(filepath, line)? else {
                 return Ok(None);
             };
-            utils::char_index_for(&line, col - 1)
+            utils::char_index_at_byte(&line, col - 1)
         } else {
-            utils::char_index_for(&lines[0], col - 1)
+            utils::char_index_at_byte(&lines[0], col - 1)
         };
 
         let Some(character) = maybe_character_index else {

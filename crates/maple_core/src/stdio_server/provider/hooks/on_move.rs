@@ -633,7 +633,7 @@ impl<'a> CachedPreviewImpl<'a> {
                     tracing::debug!(?latest_line, ?cache_line, "The cache is probably outdated");
 
                     let shell_cmd = crate::tools::rg::rg_shell_command(&self.ctx.cwd);
-                    let job_id = utils::calculate_hash(&shell_cmd);
+                    let job_id = utils::compute_hash(&shell_cmd);
 
                     if job::reserve(job_id) {
                         let ctx = self.ctx.clone();

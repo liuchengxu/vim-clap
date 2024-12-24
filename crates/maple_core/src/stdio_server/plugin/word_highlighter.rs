@@ -208,7 +208,7 @@ impl WordHighlighter {
 
         let is_word = |c: char| c.is_ascii_alphanumeric() || c == '_';
 
-        if let Some(cursor_char) = utils::char_at(&curline, col - 1) {
+        if let Some(cursor_char) = utils::char_at_byte(&curline, col - 1) {
             if !is_word(cursor_char) {
                 return Ok(None);
             }

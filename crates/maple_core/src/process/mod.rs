@@ -113,7 +113,7 @@ impl ShellCommand {
     }
 
     pub fn cache_file_path(&self) -> std::io::Result<PathBuf> {
-        let cached_filename = utils::calculate_hash(self);
+        let cached_filename = utils::compute_hash(self);
         generate_cache_file_path(cached_filename.to_string())
     }
 
@@ -122,7 +122,7 @@ impl ShellCommand {
     pub fn write_cache(self, total: usize, cmd_stdout: &[u8]) -> std::io::Result<PathBuf> {
         use std::io::Write;
 
-        let cache_filename = utils::calculate_hash(&self);
+        let cache_filename = utils::compute_hash(&self);
         let cache_file = generate_cache_file_path(cache_filename.to_string())?;
 
         std::fs::File::create(&cache_file)?.write_all(cmd_stdout)?;

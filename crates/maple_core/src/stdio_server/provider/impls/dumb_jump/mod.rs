@@ -168,7 +168,7 @@ impl DumbJumpProvider {
     }
 
     async fn initialize_tags(&self, extension: String, cwd: AbsPathBuf) -> VimResult<()> {
-        let job_id = utils::calculate_hash(&(&cwd, "dumb_jump"));
+        let job_id = utils::compute_hash(&(&cwd, "dumb_jump"));
 
         if job::reserve(job_id) {
             let ctags_future = {
