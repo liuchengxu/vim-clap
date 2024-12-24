@@ -470,6 +470,16 @@ impl<'a> CachedPreviewImpl<'a> {
             }
         };
 
+        if file_size.is_empty() {
+            let mut lines = lines;
+            lines.push("<Empty file>".to_string());
+            return Ok(Preview::new_file_preview(
+                lines,
+                None,
+                VimSyntaxInfo::fname(fname),
+            ));
+        }
+
         let highlight_source = if file_size.is_small() {
             SyntaxHighlighter {
                 lines: lines.clone(),
@@ -494,16 +504,6 @@ impl<'a> CachedPreviewImpl<'a> {
         } else {
             None
         };
-
-        if file_size.is_empty() {
-            let mut lines = lines;
-            lines.push("<Empty file>".to_string());
-            return Ok(Preview::new_file_preview(
-                lines,
-                scrollbar,
-                VimSyntaxInfo::fname(fname),
-            ));
-        }
 
         let mut preview = Preview::new_file_preview(lines, scrollbar, VimSyntaxInfo::default());
         preview.set_highlights(highlight_source, path);

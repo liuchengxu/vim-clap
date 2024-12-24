@@ -144,13 +144,7 @@ pub fn preview_file<P: AsRef<Path>>(
 
     let abs_path = as_absolute_path(path.as_ref())?;
 
-    let now = std::time::Instant::now();
-    tracing::info!("=============== Reading determine_file_size_tier");
     let file_size = utils::io::determine_file_size_tier(path.as_ref())?;
-    tracing::info!(
-        "=============== determine_file_size_tier elapsed: {}ms, file_size_tier: {file_size:?}",
-        now.elapsed().as_millis()
-    );
 
     let lines = match file_size {
         FileSizeTier::Empty | FileSizeTier::Small => {
@@ -191,13 +185,7 @@ pub fn preview_file_with_truncated_title<P: AsRef<Path>>(
 
     let truncated_abs_path = truncate_absolute_path(&abs_path, max_title_width).into_owned();
 
-    let now = std::time::Instant::now();
-    tracing::info!("=============== Reading determine_file_size_tier truncated");
     let file_size = utils::io::determine_file_size_tier(path.as_ref())?;
-    tracing::info!(
-        "=============== determine_file_size_tier elapsed: {}ms, file_size_tier: {file_size:?}",
-        now.elapsed().as_millis()
-    );
 
     let lines = match file_size {
         FileSizeTier::Empty | FileSizeTier::Small => {
