@@ -2,6 +2,9 @@ use std::fs::{read_dir, remove_dir_all, remove_file, File};
 use std::io::{BufRead, BufReader, Lines, Read, Result};
 use std::path::Path;
 
+const SMALL_FILE_THRESHOLD: u64 = 1024 * 1024; // 1 MiB
+const MEDIUM_FILE_THRESHOLD: u64 = 1024 * 1024 * 1024; // 1 GiB
+
 /// Counts lines in the source `handle`.
 ///
 /// # Examples
@@ -125,9 +128,6 @@ pub fn read_first_lines<P: AsRef<Path>>(
     read_lines_from_small(path, 0usize, number)
 }
 
-const SMALL_FILE_THRESHOLD: u64 = 1024 * 1024; // 1 MiB
-const MEDIUM_FILE_THRESHOLD: u64 = 1024 * 1024 * 1024; // 1 GiB
-
 /// Represents the size category of a file.
 #[derive(Debug, Clone, Copy)]
 pub enum FileSizeTier {
@@ -169,13 +169,6 @@ pub fn determine_file_size_tier(path: impl AsRef<Path>) -> Result<FileSizeTier> 
     })
 }
 
-/// Returns whether the given file is a large file.
-pub fn is_large_file(path: impl AsRef<Path>) -> bool {
-    std::fs::metadata(&path)
-        .map(|metadata| metadata.len() > SMALL_FILE_THRESHOLD)
-        .unwrap_or(false)
-}
-
 /// Returns a `number` of lines from a small file starting from the line number `from` (0-based).
 pub fn read_lines_from_medium<P: AsRef<Path>>(
     path: P,
@@ -193,7 +186,7 @@ fn read_lines_in_chunks<P: AsRef<Path>>(
 ) -> Result<Vec<String>> {
     let file = File::open(path)?;
     let mut reader = BufReader::new(file);
-    let mut buffer = vec![0; 8 * 1024 * 1024]; // 8 MiB chunk size (adjust as needed)
+    let mut buffer = vec![0; 8 * 1024 * 1024]; // 8 MiB chunk size
     let mut total_lines = Vec::new();
     let mut current_line = 0;
 

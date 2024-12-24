@@ -8,9 +8,9 @@ use utils::bytelines::ByteLines;
 use utils::io::FileSizeTier;
 use utils::read_first_lines;
 
-/// Preview of a file.
+/// Preview of a text file.
 #[derive(Clone, Debug)]
-pub struct FilePreview {
+pub struct TextPreview {
     /// Line number of source file at which the preview starts (exclusive).
     pub start: usize,
     /// Line number of source file at which the preview ends (inclusive).
@@ -27,11 +27,11 @@ pub struct FilePreview {
 ///
 /// Center the line at `target_line_number` in the preview window if possible.
 /// (`target_line` - `size`, `target_line` - `size`).
-pub fn get_file_preview<P: AsRef<Path>>(
+pub fn get_text_preview<P: AsRef<Path>>(
     path: P,
     target_line_number: usize,
     winheight: usize,
-) -> std::io::Result<FilePreview> {
+) -> std::io::Result<TextPreview> {
     let mid = winheight / 2;
     let (start, end, highlight_lnum) = if target_line_number > mid {
         (target_line_number - mid, target_line_number + mid, mid)
@@ -41,10 +41,10 @@ pub fn get_file_preview<P: AsRef<Path>>(
 
     let total = utils::line_count(path.as_ref())?;
 
-    let lines = read_preview_lines(path, start, end)?;
+    let lines = read_text_lines(path, start, end)?;
     let end = end.min(total);
 
-    Ok(FilePreview {
+    Ok(TextPreview {
         start,
         end,
         total,
@@ -53,7 +53,7 @@ pub fn get_file_preview<P: AsRef<Path>>(
     })
 }
 
-fn read_preview_lines<P: AsRef<Path>>(
+fn read_text_lines<P: AsRef<Path>>(
     path: P,
     start: usize,
     end: usize,
@@ -224,11 +224,11 @@ pub fn preview_file_at<P: AsRef<Path>>(
 ) -> std::io::Result<(Vec<String>, usize)> {
     tracing::debug!(path = %path.as_ref().display(), lnum, "Previewing file");
 
-    let FilePreview {
+    let TextPreview {
         lines,
         highlight_lnum,
         ..
-    } = get_file_preview(path.as_ref(), lnum, winheight)?;
+    } = get_text_preview(path.as_ref(), lnum, winheight)?;
 
     let lines = std::iter::once(format!("{}:{lnum}", path.as_ref().display()))
         .chain(truncate_lines(lines.into_iter(), max_width))
@@ -246,7 +246,7 @@ mod tests {
         let current_dir = std::env::current_dir().unwrap();
         let root_dir = current_dir.parent().unwrap().parent().unwrap();
         let test_txt = root_dir.join("test").join("testdata").join("test_673.txt");
-        let FilePreview { lines, .. } = get_file_preview(test_txt, 2, 10).unwrap();
+        let TextPreview { lines, .. } = get_text_preview(test_txt, 2, 10).unwrap();
         assert_eq!(
             lines,
             [

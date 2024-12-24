@@ -1,6 +1,6 @@
 use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
-use crate::previewer::{get_file_preview, FilePreview};
+use crate::previewer::{get_text_preview, TextPreview};
 use crate::stdio_server::job;
 use crate::stdio_server::plugin::syntax::convert_raw_ts_highlights_to_vim_highlights;
 use crate::stdio_server::plugin::syntax::sublime::{
@@ -19,7 +19,7 @@ use std::sync::atomic::Ordering;
 use std::time::Duration;
 use sublime_syntax::TokenHighlight;
 use tokio::sync::oneshot;
-use utils::display_width;
+use utils::{display_width, SizeChecker};
 
 type SublimeHighlightData = Vec<(usize, Vec<TokenHighlight>)>;
 
@@ -461,7 +461,7 @@ impl<'a> CachedPreviewImpl<'a> {
                 } = previewer::preview_file(path, self.preview_height, self.max_line_width())
                     .inspect_err(handle_io_error)?;
 
-                // cwd is shown via the popup title, no need to include it again.
+                // cwd is already shown in the popup title, no need to include it again.
                 let cwd_relative = abs_path.replacen(self.ctx.cwd.as_str(), ".", 1);
                 let mut lines = lines;
                 lines[0] = cwd_relative;
@@ -535,8 +535,8 @@ impl<'a> CachedPreviewImpl<'a> {
             }
         };
 
-        match get_file_preview(path, lnum, self.preview_height) {
-            Ok(FilePreview {
+        match get_text_preview(path, lnum, self.preview_height) {
+            Ok(TextPreview {
                 start,
                 end,
                 total,
@@ -958,8 +958,6 @@ fn tree_sitter_highlighting(
     max_line_width: usize,
     code_context: Option<&CodeContext>,
 ) -> HighlightSource {
-    use utils::SizeChecker;
-
     const FILE_SIZE_CHECKER: SizeChecker = SizeChecker::new(1024 * 1024);
 
     if FILE_SIZE_CHECKER.is_too_large(path).unwrap_or(true) {
@@ -1016,32 +1014,32 @@ fn tree_sitter_highlighting(
                 0
             };
 
-            Some(
-                ts_highlights
-                    .into_iter()
-                    .map(|(line_number, line_highlights)| {
-                        let line_number_in_preview_win =
-                            line_number - line_start + 1 + context_lines_offset;
+            let tree_sitter_highlight_data = ts_highlights
+                .into_iter()
+                .map(|(line_number, line_highlights)| {
+                    let line_number_in_preview_win =
+                        line_number - line_start + 1 + context_lines_offset;
 
-                        // Workaround the lifetime issue, nice to remove this allocation
-                        // `group.to_string()` as it's essentially `&'static str`.
-                        let line_highlights = line_highlights
-                            .into_iter()
-                            .filter_map(|(start, length, group)| {
-                                // Ignore the invisible highlights.
-                                if start + length > max_line_width {
-                                    None
-                                } else {
-                                    Some((start, length, group.to_string()))
-                                }
-                            })
-                            .collect();
+                    // Workaround the lifetime issue, nice to remove this allocation
+                    // `group.to_string()` as it's essentially `&'static str`.
+                    let line_highlights = line_highlights
+                        .into_iter()
+                        .filter_map(|(start, length, group)| {
+                            // Ignore the invisible highlights.
+                            if start + length > max_line_width {
+                                None
+                            } else {
+                                Some((start, length, group.to_string()))
+                            }
+                        })
+                        .collect();
 
-                        (line_number_in_preview_win, line_highlights)
-                    })
-                    .chain(maybe_context_line_highlight)
-                    .collect(),
-            )
+                    (line_number_in_preview_win, line_highlights)
+                })
+                .chain(maybe_context_line_highlight)
+                .collect::<Vec<_>>();
+
+            Some(tree_sitter_highlight_data)
         })
         .map(HighlightSource::TreeSitter)
         .unwrap_or(HighlightSource::None)
