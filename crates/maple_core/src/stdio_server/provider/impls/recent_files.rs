@@ -86,7 +86,8 @@ impl RecentFilesProvider {
                     lines,
                     display_path: fname,
                     ..
-                }) = crate::previewer::preview_file(new_curline, size, self.printer.line_width)
+                }) =
+                    crate::previewer::preview_file(new_curline, size, self.printer.line_width, None)
                 {
                     Some(json!({ "lines": lines, "fname": fname }))
                 } else {

@@ -38,7 +38,7 @@ pub fn get_text_preview<P: AsRef<Path>>(
         (0, winheight, target_line_number)
     };
 
-    let total = utils::line_count(path.as_ref())?;
+    let total = utils::io::line_count(path.as_ref())?;
 
     let lines = read_text_lines(path, start, end)?;
     let end = end.min(total);
@@ -129,10 +129,44 @@ pub struct PreviewLines {
     pub file_size: FileSizeTier,
 }
 
+fn generate_preview_lines(
+    path: impl AsRef<Path>,
+    title_line: String,
+    max_line_width: usize,
+    size: usize,
+) -> std::io::Result<(Vec<String>, FileSizeTier)> {
+    let file_size = utils::io::determine_file_size_tier(path.as_ref())?;
+
+    let lines = match file_size {
+        FileSizeTier::Empty | FileSizeTier::Small => {
+            let lines_iter = read_first_lines(path.as_ref(), size)?;
+            std::iter::once(title_line)
+                .chain(truncate_lines(lines_iter, max_line_width))
+                .collect::<Vec<_>>()
+        }
+        FileSizeTier::Medium => {
+            let lines = utils::io::read_lines_from_medium(path.as_ref(), 0, size)?;
+            std::iter::once(title_line)
+                .chain(truncate_lines(lines.into_iter(), max_line_width))
+                .collect::<Vec<_>>()
+        }
+        FileSizeTier::Large(size) => {
+            let size_in_gib = size as f64 / (1024.0 * 1024.0 * 1024.0);
+            vec![
+                title_line,
+                format!("File too large to preview (size: {size_in_gib:.2} GiB)."),
+            ]
+        }
+    };
+
+    Ok((lines, file_size))
+}
+
 pub fn preview_file<P: AsRef<Path>>(
     path: P,
     size: usize,
-    max_width: usize,
+    max_line_width: usize,
+    max_title_width: Option<usize>,
 ) -> std::io::Result<PreviewLines> {
     if !path.as_ref().is_file() {
         return Err(std::io::Error::new(
@@ -143,74 +177,17 @@ pub fn preview_file<P: AsRef<Path>>(
 
     let abs_path = as_absolute_path(path.as_ref())?;
 
-    let file_size = utils::io::determine_file_size_tier(path.as_ref())?;
-
-    let lines = match file_size {
-        FileSizeTier::Empty | FileSizeTier::Small => {
-            let lines_iter = read_first_lines(path.as_ref(), size)?;
-            std::iter::once(abs_path.clone())
-                .chain(truncate_lines(lines_iter, max_width))
-                .collect::<Vec<_>>()
-        }
-        FileSizeTier::Medium => {
-            let lines = utils::io::read_lines_from_medium(path.as_ref(), 0, size)?;
-            std::iter::once(abs_path.clone())
-                .chain(truncate_lines(lines.into_iter(), max_width))
-                .collect::<Vec<_>>()
-        }
-        FileSizeTier::Large(size) => {
-            let size_in_gib = size as f64 / (1024.0 * 1024.0 * 1024.0);
-            vec![
-                abs_path.clone(),
-                format!("File too large to preview (size: {size_in_gib:.2} GiB)."),
-            ]
-        }
+    let abs_path = if let Some(max_title_width) = max_title_width {
+        truncate_absolute_path(&abs_path, max_title_width).into_owned()
+    } else {
+        abs_path
     };
+
+    let (lines, file_size) = generate_preview_lines(path, abs_path.clone(), max_line_width, size)?;
 
     Ok(PreviewLines {
         lines,
         display_path: abs_path,
-        file_size,
-    })
-}
-
-pub fn preview_file_with_truncated_title<P: AsRef<Path>>(
-    path: P,
-    size: usize,
-    max_line_width: usize,
-    max_title_width: usize,
-) -> std::io::Result<PreviewLines> {
-    let abs_path = as_absolute_path(path.as_ref())?;
-
-    let truncated_abs_path = truncate_absolute_path(&abs_path, max_title_width).into_owned();
-
-    let file_size = utils::io::determine_file_size_tier(path.as_ref())?;
-
-    let lines = match file_size {
-        FileSizeTier::Empty | FileSizeTier::Small => {
-            let lines_iter = read_first_lines(path.as_ref(), size)?;
-            std::iter::once(truncated_abs_path.clone())
-                .chain(truncate_lines(lines_iter, max_line_width))
-                .collect::<Vec<_>>()
-        }
-        FileSizeTier::Medium => {
-            let lines = utils::io::read_lines_from_medium(path.as_ref(), 0, size)?;
-            std::iter::once(truncated_abs_path.clone())
-                .chain(truncate_lines(lines.into_iter(), max_line_width))
-                .collect::<Vec<_>>()
-        }
-        FileSizeTier::Large(size) => {
-            let size_in_gib = size as f64 / (1024.0 * 1024.0 * 1024.0);
-            vec![
-                truncated_abs_path.clone(),
-                format!("File too large to preview (size: {size_in_gib:.2} GiB)."),
-            ]
-        }
-    };
-
-    Ok(PreviewLines {
-        lines,
-        display_path: truncated_abs_path,
         file_size,
     })
 }

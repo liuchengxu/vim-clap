@@ -38,7 +38,7 @@ pub async fn preview_file(msg: RpcRequest) -> Result<Value, Error> {
         lines,
         display_path: fname,
         ..
-    } = crate::previewer::preview_file(fpath, preview_height, preview_width)?;
+    } = crate::previewer::preview_file(fpath, preview_height, preview_width, None)?;
 
     let value = json!({"id": msg_id, "result": json!({"lines": lines, "fname": fname})});
 
@@ -73,7 +73,7 @@ pub async fn preview_quickfix(msg: RpcRequest) -> Result<Value, Error> {
 
     let result = if lnum == 0 {
         let size = winheight + 5;
-        let PreviewLines { lines, .. } = preview_file(fpath.as_path(), size, winwidth)?;
+        let PreviewLines { lines, .. } = preview_file(fpath.as_path(), size, winwidth, None)?;
         json!({ "event": "on_move", "lines": lines, "fname": fpath })
     } else {
         let (lines, hi_lnum) = preview_file_at(fpath.as_path(), winheight, winwidth, lnum)?;

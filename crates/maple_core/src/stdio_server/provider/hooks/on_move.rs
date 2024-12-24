@@ -445,11 +445,11 @@ impl<'a> CachedPreviewImpl<'a> {
                     lines,
                     display_path,
                     file_size,
-                } = previewer::preview_file_with_truncated_title(
+                } = previewer::preview_file(
                     path,
                     self.preview_height,
                     self.max_line_width(),
-                    max_fname_len,
+                    Some(max_fname_len),
                 )
                 .inspect_err(handle_io_error)?;
                 (lines, display_path, file_size)
@@ -459,7 +459,7 @@ impl<'a> CachedPreviewImpl<'a> {
                     lines,
                     display_path: abs_path,
                     file_size,
-                } = previewer::preview_file(path, self.preview_height, self.max_line_width())
+                } = previewer::preview_file(path, self.preview_height, self.max_line_width(), None)
                     .inspect_err(handle_io_error)?;
 
                 // cwd is already shown in the popup title, no need to include it again.
@@ -500,7 +500,7 @@ impl<'a> CachedPreviewImpl<'a> {
         let end = lines.len();
 
         let scrollbar = if file_size.can_process() && self.ctx.env.should_add_scrollbar(end) {
-            let total = utils::line_count(path)?;
+            let total = utils::io::line_count(path)?;
             compute_scrollbar_position(self.ctx, 0, end, total)
         } else {
             None
