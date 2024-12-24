@@ -19,7 +19,8 @@ use std::sync::atomic::Ordering;
 use std::time::Duration;
 use sublime_syntax::TokenHighlight;
 use tokio::sync::oneshot;
-use utils::{display_width, SizeChecker};
+use utils::display_width;
+use utils::io::SizeChecker;
 
 type SublimeHighlightData = Vec<(usize, Vec<TokenHighlight>)>;
 

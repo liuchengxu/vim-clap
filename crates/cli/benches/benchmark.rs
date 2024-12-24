@@ -8,7 +8,7 @@ use rayon::prelude::*;
 use std::io::BufRead;
 use std::sync::Arc;
 use types::ClapItem;
-use utils::line_count;
+use utils::io::line_count;
 
 fn prepare_source_items() -> Vec<SourceItem> {
     let largest_cache = find_largest_cache_digest().expect("Cache is empty");

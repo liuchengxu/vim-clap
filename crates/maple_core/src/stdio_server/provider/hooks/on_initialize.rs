@@ -8,7 +8,7 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
 use types::ClapItem;
-use utils::line_count;
+use utils::io::line_count;
 
 async fn execute_and_write_cache(
     cmd: &str,

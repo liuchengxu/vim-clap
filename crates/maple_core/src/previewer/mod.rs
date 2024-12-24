@@ -5,8 +5,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use utils::bytelines::ByteLines;
-use utils::io::FileSizeTier;
-use utils::read_first_lines;
+use utils::io::{read_first_lines, FileSizeTier};
 
 /// Preview of a text file.
 #[derive(Clone, Debug)]
@@ -65,7 +64,7 @@ fn read_text_lines<P: AsRef<Path>>(
             // XXX: is megabyte enough for any text file?
             const MEGABYTE: usize = 32 * 1_048_576;
 
-            let filesize = utils::file_size(&file);
+            let filesize = utils::io::file_size(&file);
             if filesize > MEGABYTE {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::Other,

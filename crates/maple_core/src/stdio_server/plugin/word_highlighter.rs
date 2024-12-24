@@ -7,7 +7,7 @@ use rgb2ansi256::rgb_to_ansi256;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::path::PathBuf;
-use utils::read_lines_from_small;
+use utils::io::read_lines_from_small;
 
 #[derive(Debug, serde::Serialize)]
 struct KeywordHighlight {

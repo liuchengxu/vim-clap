@@ -116,7 +116,7 @@ fn parse_toc(
     line_start: usize,
 ) -> std::io::Result<Vec<String>> {
     let mut code_fence = None;
-    Ok(utils::read_lines(input_file)?
+    Ok(utils::io::read_lines(input_file)?
         .skip(line_start)
         .filter_map(Result::ok)
         .filter(|line| match &code_fence {
@@ -176,7 +176,7 @@ pub fn generate_toc(
 pub fn find_toc_range(input_file: impl AsRef<Path>) -> std::io::Result<Option<(usize, usize)>> {
     let mut start = 0;
 
-    for (idx, line) in utils::read_lines(input_file)?
+    for (idx, line) in utils::io::read_lines(input_file)?
         .map_while(Result::ok)
         .enumerate()
     {

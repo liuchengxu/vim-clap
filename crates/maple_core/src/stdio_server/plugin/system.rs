@@ -55,7 +55,7 @@ fn parse_vim_which_key_map(config_file: &str) -> HashMap<char, HashMap<char, Str
 
     let mut map = HashMap::new();
 
-    if let Ok(lines) = utils::read_lines(config_file) {
+    if let Ok(lines) = utils::io::read_lines(config_file) {
         lines.for_each(|line| {
             if let Ok(line) = line {
                 if let Some(caps) = COMMENT_DOC.captures(&line) {

@@ -105,7 +105,7 @@ fn find_colors(input_file: impl AsRef<Path>) -> std::io::Result<BTreeMap<usize, 
     };
 
     // 0-based line_number
-    for (line_number, line) in utils::read_lines(input_file)?
+    for (line_number, line) in utils::io::read_lines(input_file)?
         .map_while(Result::ok)
         .enumerate()
     {

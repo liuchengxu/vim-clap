@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use utils::read_lines;
+use utils::io::read_lines;
 
 #[inline]
 fn strip_trailing_slash(x: &str) -> &str {

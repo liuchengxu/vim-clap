@@ -9,11 +9,6 @@ use std::process::{Command, Output};
 pub mod bytelines;
 pub mod io;
 
-pub use self::io::{
-    count_lines, create_or_overwrite, file_size, line_count, read_first_lines, read_line_at,
-    read_lines, read_lines_from_small, remove_dir_contents, SizeChecker,
-};
-
 /// Returns the width of displaying `n` on the screen.
 ///
 /// Same with `n.to_string().len()` but without allocation.

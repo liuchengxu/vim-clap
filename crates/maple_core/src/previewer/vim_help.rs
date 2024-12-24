@@ -1,5 +1,5 @@
 use std::path::Path;
-use utils::{read_lines, read_lines_from_small};
+use utils::io::{read_lines, read_lines_from_small};
 
 #[derive(Debug, Clone)]
 pub struct HelpTagPreview<'a> {

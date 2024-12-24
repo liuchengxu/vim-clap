@@ -110,7 +110,7 @@ impl LocationItem {
         // location is 0-based.
         let start_line = location.range.start.line + 1;
         let start_character = location.range.start.character;
-        let line = utils::read_line_at(&file_path, start_line as usize)
+        let line = utils::io::read_line_at(&file_path, start_line as usize)
             .ok()
             .flatten()?;
 
@@ -463,7 +463,7 @@ impl ClapProvider for LspProvider {
                 .into_iter()
                 .filter_map(|line_number| self.fetch_location_at(line_number - 1))
                 .filter_map(|loc| {
-                    let text = utils::read_line_at(&loc.path, loc.row).ok().flatten()?;
+                    let text = utils::io::read_line_at(&loc.path, loc.row).ok().flatten()?;
                     Some(serde_json::json!({
                       "filename": loc.path,
                       "lnum": loc.row,

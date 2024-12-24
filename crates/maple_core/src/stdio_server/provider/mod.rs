@@ -825,7 +825,7 @@ impl ProviderSource {
                     .collect(),
             ),
             Self::File { ref path, .. } | Self::CachedFile { ref path, .. } => {
-                let lines_iter = utils::read_first_lines(path, n).ok()?;
+                let lines_iter = utils::io::read_first_lines(path, n).ok()?;
                 if provider_id == "blines" {
                     let items = lines_iter
                         .enumerate()
