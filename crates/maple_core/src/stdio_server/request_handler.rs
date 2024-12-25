@@ -1,4 +1,4 @@
-use crate::previewer::PreviewLines;
+use crate::previewer::text_file::TextLines;
 use crate::stdio_server::Error;
 use rpc::RpcRequest;
 use serde::Deserialize;
@@ -34,11 +34,11 @@ pub async fn preview_file(msg: RpcRequest) -> Result<Value, Error> {
         (display_height, preview_width.unwrap_or(display_width))
     };
 
-    let PreviewLines {
+    let TextLines {
         lines,
         display_path: fname,
         ..
-    } = crate::previewer::preview_file(fpath, preview_height, preview_width, None)?;
+    } = crate::previewer::text_file::preview_file(fpath, preview_height, preview_width, None)?;
 
     let value = json!({"id": msg_id, "result": json!({"lines": lines, "fname": fname})});
 
@@ -46,7 +46,7 @@ pub async fn preview_file(msg: RpcRequest) -> Result<Value, Error> {
 }
 
 pub async fn preview_quickfix(msg: RpcRequest) -> Result<Value, Error> {
-    use crate::previewer::{preview_file, preview_file_at};
+    use crate::previewer::text_file::{preview_file, preview_file_at};
     use std::path::PathBuf;
 
     let msg_id = msg.id;
@@ -73,7 +73,7 @@ pub async fn preview_quickfix(msg: RpcRequest) -> Result<Value, Error> {
 
     let result = if lnum == 0 {
         let size = winheight + 5;
-        let PreviewLines { lines, .. } = preview_file(fpath.as_path(), size, winwidth, None)?;
+        let TextLines { lines, .. } = preview_file(fpath.as_path(), size, winwidth, None)?;
         json!({ "event": "on_move", "lines": lines, "fname": fpath })
     } else {
         let (lines, hi_lnum) = preview_file_at(fpath.as_path(), winheight, winwidth, lnum)?;

@@ -1,6 +1,6 @@
 use crate::previewer;
+use crate::previewer::text_file::{generate_text_preview, TextPreview};
 use crate::previewer::vim_help::HelpTagPreview;
-use crate::previewer::{get_text_preview, TextPreview};
 use crate::stdio_server::job;
 use crate::stdio_server::plugin::syntax::convert_raw_ts_highlights_to_vim_highlights;
 use crate::stdio_server::plugin::syntax::sublime::{
@@ -441,11 +441,11 @@ impl<'a> CachedPreviewImpl<'a> {
             (true, false) => {
                 // Title is not available before nvim 0.9
                 let max_fname_len = self.ctx.env.display_line_width - 1;
-                let previewer::PreviewLines {
+                let previewer::text_file::TextLines {
                     lines,
                     display_path,
                     file_size,
-                } = previewer::preview_file(
+                } = previewer::text_file::preview_file(
                     path,
                     self.preview_height,
                     self.max_line_width(),
@@ -455,12 +455,17 @@ impl<'a> CachedPreviewImpl<'a> {
                 (lines, display_path, file_size)
             }
             _ => {
-                let previewer::PreviewLines {
+                let previewer::text_file::TextLines {
                     lines,
                     display_path: abs_path,
                     file_size,
-                } = previewer::preview_file(path, self.preview_height, self.max_line_width(), None)
-                    .inspect_err(handle_io_error)?;
+                } = previewer::text_file::preview_file(
+                    path,
+                    self.preview_height,
+                    self.max_line_width(),
+                    None,
+                )
+                .inspect_err(handle_io_error)?;
 
                 // cwd is already shown in the popup title, no need to include it again.
                 let cwd_relative = abs_path.replacen(self.ctx.cwd.as_str(), ".", 1);
@@ -538,7 +543,7 @@ impl<'a> CachedPreviewImpl<'a> {
             }
         };
 
-        match get_text_preview(path, lnum, self.preview_height) {
+        match generate_text_preview(path, lnum, self.preview_height) {
             Ok(TextPreview {
                 start,
                 end,
