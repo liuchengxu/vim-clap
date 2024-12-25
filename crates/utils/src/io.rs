@@ -133,11 +133,11 @@ pub fn read_first_lines<P: AsRef<Path>>(
 pub enum FileSizeTier {
     /// Empty file
     Empty,
-    // Too large to process efficiently
+    /// Suitable for immediate processing
     Small,
     /// Suitable for chunked or memory-mapped processing
     Medium,
-    /// Suitable for immediate processing
+    /// Too large to process efficiently
     Large(u64),
 }
 
@@ -157,9 +157,7 @@ impl FileSizeTier {
 
 /// Determines the size tier of a file based on its size.
 pub fn determine_file_size_tier(path: impl AsRef<Path>) -> Result<FileSizeTier> {
-    let metadata: std::fs::Metadata = path.as_ref().metadata()?;
-
-    let file_size = metadata.len();
+    let file_size = path.as_ref().metadata()?.len();
 
     Ok(match file_size {
         0 => FileSizeTier::Empty,
@@ -187,7 +185,7 @@ fn read_lines_in_chunks<P: AsRef<Path>>(
     let file = File::open(path)?;
     let mut reader = BufReader::new(file);
     let mut buffer = vec![0; 8 * 1024 * 1024]; // 8 MiB chunk size
-    let mut total_lines = Vec::new();
+    let mut total_lines = Vec::with_capacity(number);
     let mut current_line = 0;
 
     while total_lines.len() < number && reader.read(&mut buffer)? > 0 {
