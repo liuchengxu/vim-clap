@@ -405,7 +405,7 @@ pub struct PluginSession {
 
 impl PluginSession {
     /// Creates a new [`PluginSession`] and starts its event processing.
-    pub fn new(
+    pub fn create(
         plugin: Box<dyn ClapPlugin>,
         maybe_event_delay: Option<Duration>,
     ) -> UnboundedSender<PluginEvent> {
@@ -551,7 +551,7 @@ impl ServiceManager {
         let debounce = Some(maybe_debounce.unwrap_or(Duration::from_millis(50)));
 
         let subscriptions = plugin.subscriptions().to_vec();
-        let plugin_event_sender = PluginSession::new(plugin, debounce);
+        let plugin_event_sender = PluginSession::create(plugin, debounce);
 
         self.plugins
             .insert(plugin_id, (subscriptions, plugin_event_sender));
@@ -566,7 +566,7 @@ impl ServiceManager {
         plugin: Box<dyn ClapPlugin>,
     ) {
         let subscriptions = plugin.subscriptions().to_vec();
-        let plugin_event_sender = PluginSession::new(plugin, None);
+        let plugin_event_sender = PluginSession::create(plugin, None);
         self.plugins
             .insert(plugin_id, (subscriptions, plugin_event_sender));
     }

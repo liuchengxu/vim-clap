@@ -483,12 +483,14 @@ impl<'a> CachedPreviewImpl<'a> {
 
         let highlight_source = if file_size.is_small() {
             SyntaxHighlighter {
-                lines: lines.clone(),
-                path: path.to_path_buf(),
-                line_number_offset: 0,
-                max_line_width: self.max_line_width(),
-                range: 0..lines.len(),
-                maybe_code_context: None,
+                context: HighlightingContext {
+                    lines: lines.clone(),
+                    path: path.to_path_buf(),
+                    line_number_offset: 0,
+                    max_line_width: self.max_line_width(),
+                    range: 0..lines.len(),
+                    maybe_code_context: None,
+                },
                 timeout: 200,
             }
             .highlight_with_timeout()
@@ -551,12 +553,14 @@ impl<'a> CachedPreviewImpl<'a> {
                 let line_number_offset = 1 + 1 + if maybe_code_context.is_some() { 3 } else { 0 };
 
                 let highlight_source = SyntaxHighlighter {
-                    lines: lines.clone(),
-                    path: path.to_path_buf(),
-                    line_number_offset,
-                    max_line_width: self.max_line_width(),
-                    range: start..end + 1,
-                    maybe_code_context: maybe_code_context.clone(),
+                    context: HighlightingContext {
+                        lines: lines.clone(),
+                        path: path.to_path_buf(),
+                        line_number_offset,
+                        max_line_width: self.max_line_width(),
+                        range: start..end + 1,
+                        maybe_code_context: maybe_code_context.clone(),
+                    },
                     timeout: 200,
                 }
                 .highlight_with_timeout()
@@ -836,13 +840,17 @@ enum HighlightSource {
     None,
 }
 
-struct SyntaxHighlighter {
+struct HighlightingContext {
     lines: Vec<String>,
     path: PathBuf,
     line_number_offset: usize,
     max_line_width: usize,
     range: Range<usize>,
     maybe_code_context: Option<CodeContext>,
+}
+
+struct SyntaxHighlighter {
+    context: HighlightingContext,
     // Timeout in milliseconds.
     timeout: u64,
 }
@@ -857,27 +865,13 @@ impl SyntaxHighlighter {
     async fn highlight_with_timeout(self) -> HighlightSource {
         let (result_sender, result_receiver) = oneshot::channel();
 
-        let Self {
-            lines,
-            path,
-            line_number_offset,
-            max_line_width,
-            range,
-            maybe_code_context,
-            timeout,
-        } = self;
+        let Self { context, timeout } = self;
+
+        let path = context.path.clone();
 
         std::thread::spawn({
-            let path = path.clone();
             move || {
-                let result = compute_syntax_highlighting(
-                    &lines,
-                    &path,
-                    line_number_offset,
-                    max_line_width,
-                    range,
-                    maybe_code_context.as_ref(),
-                );
+                let result = compute_syntax_highlighting(context);
                 let _ = result_sender.send(result);
             }
         });
@@ -894,22 +888,24 @@ impl SyntaxHighlighter {
 
 // TODO: this might be slow for larger files (over 100k lines) as tree-sitter will have to
 // parse the whole file to obtain the highlight info. We may make the highlighting async.
-fn compute_syntax_highlighting(
-    lines: &[String],
-    path: &Path,
-    line_number_offset: usize,
-    max_line_width: usize,
-    visible_range: Range<usize>,
-    code_context: Option<&CodeContext>,
-) -> HighlightSource {
+fn compute_syntax_highlighting(context: HighlightingContext) -> HighlightSource {
     use maple_config::HighlightEngine;
+
+    let HighlightingContext {
+        lines,
+        path,
+        line_number_offset,
+        max_line_width,
+        range,
+        maybe_code_context,
+    } = context;
 
     match maple_config::config().provider.preview_highlight_engine {
         HighlightEngine::SublimeSyntax => {
-            sublime_highlighting(lines, path, line_number_offset, max_line_width)
+            sublime_highlighting(&lines, &path, line_number_offset, max_line_width)
         }
         HighlightEngine::TreeSitter => {
-            tree_sitter_highlighting(path, visible_range, max_line_width, code_context)
+            tree_sitter_highlighting(&path, range, max_line_width, maybe_code_context.as_ref())
         }
         HighlightEngine::Vim => HighlightSource::None,
     }
