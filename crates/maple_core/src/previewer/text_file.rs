@@ -103,10 +103,9 @@ fn generate_preview_lines(
     title_line: String,
     max_line_width: usize,
     size: usize,
-) -> std::io::Result<(Vec<String>, FileSizeTier)> {
-    let file_size = utils::io::determine_file_size_tier(path.as_ref())?;
-
-    let lines = match file_size {
+    file_size_tier: FileSizeTier,
+) -> std::io::Result<Vec<String>> {
+    let lines = match file_size_tier {
         FileSizeTier::Empty | FileSizeTier::Small => {
             let lines_iter = read_first_lines(path.as_ref(), size)?;
             std::iter::once(title_line)
@@ -128,7 +127,7 @@ fn generate_preview_lines(
         }
     };
 
-    Ok((lines, file_size))
+    Ok(lines)
 }
 
 pub struct TextLines {
@@ -136,8 +135,6 @@ pub struct TextLines {
     pub lines: Vec<String>,
     // Path to display, potentially truncated.
     pub display_path: String,
-    // Size tier of the file.
-    pub file_size: FileSizeTier,
 }
 
 pub fn preview_file<P: AsRef<Path>>(
@@ -145,6 +142,7 @@ pub fn preview_file<P: AsRef<Path>>(
     size: usize,
     max_line_width: usize,
     max_title_width: Option<usize>,
+    file_size_tier: FileSizeTier,
 ) -> std::io::Result<TextLines> {
     if !path.as_ref().is_file() {
         return Err(std::io::Error::new(
@@ -161,12 +159,12 @@ pub fn preview_file<P: AsRef<Path>>(
         abs_path
     };
 
-    let (lines, file_size) = generate_preview_lines(path, abs_path.clone(), max_line_width, size)?;
+    let lines =
+        generate_preview_lines(path, abs_path.clone(), max_line_width, size, file_size_tier)?;
 
     Ok(TextLines {
         lines,
         display_path: abs_path,
-        file_size,
     })
 }
 

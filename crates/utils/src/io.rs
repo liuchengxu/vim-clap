@@ -150,21 +150,29 @@ impl FileSizeTier {
         matches!(self, Self::Small)
     }
 
+    pub fn is_large(&self) -> bool {
+        matches!(self, Self::Large(_))
+    }
+
     pub fn can_process(&self) -> bool {
-        matches!(self, Self::Empty | Self::Small | Self::Medium)
+        !self.is_large()
+    }
+
+    pub fn from_metadata(metadata: &std::fs::Metadata) -> Self {
+        let file_size = metadata.len();
+
+        match file_size {
+            0 => FileSizeTier::Empty,
+            1..SMALL_FILE_THRESHOLD => FileSizeTier::Small,
+            SMALL_FILE_THRESHOLD..MEDIUM_FILE_THRESHOLD => FileSizeTier::Medium,
+            _ => FileSizeTier::Large(file_size),
+        }
     }
 }
 
 /// Determines the size tier of a file based on its size.
 pub fn determine_file_size_tier(path: impl AsRef<Path>) -> Result<FileSizeTier> {
-    let file_size = path.as_ref().metadata()?.len();
-
-    Ok(match file_size {
-        0 => FileSizeTier::Empty,
-        1..SMALL_FILE_THRESHOLD => FileSizeTier::Small,
-        SMALL_FILE_THRESHOLD..MEDIUM_FILE_THRESHOLD => FileSizeTier::Medium,
-        _ => FileSizeTier::Large(file_size),
-    })
+    Ok(FileSizeTier::from_metadata(&path.as_ref().metadata()?))
 }
 
 /// Returns a `number` of lines from a small file starting from the line number `from` (0-based).

@@ -9,10 +9,11 @@ use crate::stdio_server::plugin::syntax::sublime::{
 use crate::stdio_server::provider::{read_dir_entries, Context, ProviderSource};
 use crate::stdio_server::vim::{preview_syntax, VimResult};
 use crate::tools::ctags::{current_context_tag, BufferTag};
+use maple_config::HighlightEngine;
 use paths::{expand_tilde, truncate_absolute_path};
 use pattern::*;
 use serde::{Deserialize, Serialize};
-use std::io::{Error, ErrorKind, Result};
+use std::io::{Error, ErrorKind, Read, Result};
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
@@ -113,6 +114,25 @@ impl Preview {
             scrollbar,
             ..Default::default()
         }
+    }
+
+    fn binary_file_preview(path: impl AsRef<Path>) -> Self {
+        Self::new_file_preview(
+            vec!["<Binary file>".to_string()],
+            None,
+            VimSyntaxInfo::fname(path.as_ref().display().to_string()),
+        )
+    }
+
+    fn large_file_preview(size: u64, path: impl AsRef<Path>) -> Self {
+        let size_in_gib = size as f64 / (1024.0 * 1024.0 * 1024.0);
+        Self::new_file_preview(
+            vec![format!(
+                "File too large to preview (size: {size_in_gib:.2} GiB)."
+            )],
+            None,
+            VimSyntaxInfo::fname(path.as_ref().display().to_string()),
+        )
     }
 
     fn set_highlights(&mut self, highlight_source: HighlightSource, path: &Path) {
@@ -421,12 +441,23 @@ impl<'a> CachedPreviewImpl<'a> {
     async fn preview_file<P: AsRef<Path>>(&self, path: P) -> Result<Preview> {
         let path = path.as_ref();
 
-        if !path.is_file() {
-            return Err(Error::new(
-                ErrorKind::Other,
-                format!("Failed to preview as {} is not a file", path.display()),
-            ));
-        }
+        let file_size_tier = match detect_file_class(path)? {
+            FileClass::NotRegularFile => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("Failed to preview as {} is not a file", path.display()),
+                ));
+            }
+            FileClass::Binary => {
+                return Ok(Preview::binary_file_preview(path));
+            }
+            FileClass::Text(file_size_tier) => {
+                if let utils::io::FileSizeTier::Large(size) = file_size_tier {
+                    return Ok(Preview::large_file_preview(size, path));
+                }
+                file_size_tier
+            }
+        };
 
         let handle_io_error = |e: &Error| {
             if e.kind() == ErrorKind::NotFound {
@@ -437,33 +468,33 @@ impl<'a> CachedPreviewImpl<'a> {
             }
         };
 
-        let (lines, fname, file_size) = match (self.ctx.env.is_nvim, self.ctx.env.has_nvim_09) {
+        let (lines, fname) = match (self.ctx.env.is_nvim, self.ctx.env.has_nvim_09) {
             (true, false) => {
                 // Title is not available before nvim 0.9
                 let max_fname_len = self.ctx.env.display_line_width - 1;
                 let previewer::text_file::TextLines {
                     lines,
                     display_path,
-                    file_size,
                 } = previewer::text_file::preview_file(
                     path,
                     self.preview_height,
                     self.max_line_width(),
                     Some(max_fname_len),
+                    file_size_tier,
                 )
                 .inspect_err(handle_io_error)?;
-                (lines, display_path, file_size)
+                (lines, display_path)
             }
             _ => {
                 let previewer::text_file::TextLines {
                     lines,
                     display_path: abs_path,
-                    file_size,
                 } = previewer::text_file::preview_file(
                     path,
                     self.preview_height,
                     self.max_line_width(),
                     None,
+                    file_size_tier,
                 )
                 .inspect_err(handle_io_error)?;
 
@@ -472,11 +503,11 @@ impl<'a> CachedPreviewImpl<'a> {
                 let mut lines = lines;
                 lines[0] = cwd_relative;
 
-                (lines, abs_path, file_size)
+                (lines, abs_path)
             }
         };
 
-        if file_size.is_empty() {
+        if file_size_tier.is_empty() {
             let mut lines = lines;
             lines.push("<Empty file>".to_string());
             return Ok(Preview::new_file_preview(
@@ -486,7 +517,7 @@ impl<'a> CachedPreviewImpl<'a> {
             ));
         }
 
-        let highlight_source = if file_size.is_small() {
+        let highlight_source = if file_size_tier.is_small() {
             SyntaxHighlighter {
                 context: HighlightingContext {
                     lines: lines.clone(),
@@ -504,11 +535,15 @@ impl<'a> CachedPreviewImpl<'a> {
             HighlightSource::None
         };
 
-        let end = lines.len();
-
-        let scrollbar = if file_size.can_process() && self.ctx.env.should_add_scrollbar(end) {
-            let total = utils::io::line_count(path)?;
-            compute_scrollbar_position(self.ctx, 0, end, total)
+        // Only display the scrollbar when it's not a large file.
+        let scrollbar = if file_size_tier.can_process() {
+            let end = lines.len();
+            if self.ctx.env.should_add_scrollbar(end) {
+                let total = utils::io::line_count(path)?;
+                compute_scrollbar_position(self.ctx, 0, end, total)
+            } else {
+                None
+            }
         } else {
             None
         };
@@ -526,7 +561,30 @@ impl<'a> CachedPreviewImpl<'a> {
         column_range: Option<Range<usize>>,
         container_width: usize,
     ) -> Preview {
-        tracing::debug!(path = ?path.display(), lnum, "Previewing file");
+        tracing::debug!(path = ?path.display(), "Previewing file at line {lnum}");
+
+        match detect_file_class(path) {
+            Ok(FileClass::NotRegularFile) => {
+                return Preview::new_file_preview(
+                    vec!["<Not a regular file>".to_string()],
+                    None,
+                    VimSyntaxInfo::fname(path.display().to_string()),
+                );
+            }
+            Ok(FileClass::Binary) => return Preview::binary_file_preview(path),
+            Ok(FileClass::Text(file_size_tier)) => {
+                if let utils::io::FileSizeTier::Large(size) = file_size_tier {
+                    return Preview::large_file_preview(size, path);
+                }
+            }
+            Err(err) => {
+                return Preview::new_file_preview(
+                    vec![err.to_string()],
+                    None,
+                    VimSyntaxInfo::fname(path.display().to_string()),
+                );
+            }
+        };
 
         let fname = path.display().to_string();
 
@@ -614,11 +672,7 @@ impl<'a> CachedPreviewImpl<'a> {
                 preview
             }
             Err(err) => {
-                tracing::error!(
-                    ?path,
-                    provider_id = %self.ctx.provider_id(),
-                    "Couldn't read first lines: {err:?}",
-                );
+                tracing::error!(?path, provider_id = %self.ctx.provider_id(), "Couldn't read first lines: {err:?}");
                 let header_line = truncated_preview_header();
                 let lines = vec![
                     header_line,
@@ -699,6 +753,32 @@ impl<'a> CachedPreviewImpl<'a> {
     fn max_line_width(&self) -> usize {
         2 * self.ctx.env.display_line_width
     }
+}
+
+enum FileClass {
+    NotRegularFile,
+    Binary,
+    Text(utils::io::FileSizeTier),
+}
+
+fn detect_file_class(path: &Path) -> std::io::Result<FileClass> {
+    if !path.is_file() {
+        return Ok(FileClass::NotRegularFile);
+    }
+
+    let mut file = std::fs::File::open(&path)?;
+    let metadata = file.metadata()?;
+
+    let mut buf = vec![0u8; 1024];
+    let n = file.read(&mut buf)?;
+    let content_type = content_inspector::inspect(&buf[..n]);
+
+    if content_type.is_binary() {
+        return Ok(FileClass::Binary);
+    }
+
+    let file_size_tier = utils::io::FileSizeTier::from_metadata(&metadata);
+    Ok(FileClass::Text(file_size_tier))
 }
 
 async fn fetch_context_tag_with_timeout(path: &Path, lnum: usize) -> Option<BufferTag> {
@@ -894,8 +974,6 @@ impl SyntaxHighlighter {
 // TODO: this might be slow for larger files (over 100k lines) as tree-sitter will have to
 // parse the whole file to obtain the highlight info. We may make the highlighting async.
 fn compute_syntax_highlighting(context: HighlightingContext) -> HighlightSource {
-    use maple_config::HighlightEngine;
-
     let HighlightingContext {
         lines,
         path,
