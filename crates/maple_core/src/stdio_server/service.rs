@@ -61,6 +61,22 @@ pub struct ProviderSession {
     is_busy: Arc<AtomicBool>,
 }
 
+struct CachedEvents(VecDeque<ProviderEvent>);
+
+impl CachedEvents {
+    /// Track the event if it does not exist in the cache yet.
+    fn push(&mut self, event: ProviderEvent) {
+        if self.0.iter().any(|e| event.is_same_type(e)) {
+            return;
+        }
+        self.0.push_back(event);
+    }
+
+    fn pop(&mut self) -> Option<ProviderEvent> {
+        self.0.pop_front()
+    }
+}
+
 impl ProviderSession {
     pub fn new(
         ctx: Context,
@@ -86,7 +102,7 @@ impl ProviderSession {
             let mut on_move_timer = DebounceTimer::new(Duration::from_millis(200));
             let mut on_typed_timer = DebounceTimer::new(Duration::from_millis(debounce_delay));
 
-            let mut event_cache = VecDeque::with_capacity(2);
+            let mut cached_events = CachedEvents(VecDeque::with_capacity(2));
 
             let mut tick_timeout = {
                 let mut interval = tokio::time::interval(Duration::from_millis(100));
@@ -116,13 +132,12 @@ impl ProviderSession {
                       // Send event after debounce period if the provider is not overloaded.
                       if should_emit {
                           if provider_is_busy.load(Ordering::SeqCst) {
-                              if event_cache.iter().any(|e| event.is_same_type(e)) {
-                                continue;
-                              }
-                              event_cache.push_back(event);
+                              cached_events.push(event);
                           } else if debounced_provider_event_sender.send(event).is_err() {
                               return;
                           }
+                      } else {
+                          cached_events.push(event);
                       }
                     }
                     _ = tick_timeout.tick() => {
@@ -130,7 +145,7 @@ impl ProviderSession {
                             return;
                         }
 
-                        if let Some(event) = event_cache.pop_front() {
+                        if let Some(event) = cached_events.pop() {
                             if debounced_provider_event_sender.send(event).is_err() {
                                 return;
                             }

@@ -168,12 +168,12 @@ fn update_buffer_diagnostics(
         .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
         .is_ok();
 
-    tracing::debug!(
+    tracing::trace!(
         ?bufnr,
         ?is_first_result,
         "[update_buffer_diagnostics] buffer_diagnostics: {buffer_diagnostics:?}"
     );
-    tracing::debug!(
+    tracing::trace!(
         ?bufnr,
         "[update_buffer_diagnostics] new_diagnostics: {new_diagnostics:?}"
     );

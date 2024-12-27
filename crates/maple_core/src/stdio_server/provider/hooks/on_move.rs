@@ -561,7 +561,7 @@ impl<'a> CachedPreviewImpl<'a> {
         column_range: Option<Range<usize>>,
         container_width: usize,
     ) -> Preview {
-        tracing::debug!(path = ?path.display(), "Previewing file at line {lnum}");
+        tracing::debug!(path = %path.display(), "Previewing file at line {lnum}");
 
         match detect_file_class(path) {
             Ok(FileClass::NotRegularFile) => {
