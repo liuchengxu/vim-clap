@@ -68,7 +68,7 @@ pub async fn update_winbar(
                 }
                 None => winwidth,
             };
-            let path = if let Some(home) = dirs::Dirs::base().home_dir().to_str() {
+            let path = if let Some(home) = dirs::Dirs::home_dir().to_str() {
                 path.replacen(home, "~", 1)
             } else {
                 path
