@@ -561,7 +561,7 @@ impl<'a> CachedPreviewImpl<'a> {
         column_range: Option<Range<usize>>,
         container_width: usize,
     ) -> Preview {
-        tracing::debug!(path = %path.display(), "Previewing file at line {lnum}");
+        tracing::debug!("Previewing file {}:{lnum}", path.display());
 
         match detect_file_class(path) {
             Ok(FileClass::NotRegularFile) => {
@@ -766,7 +766,7 @@ fn detect_file_class(path: &Path) -> std::io::Result<FileClass> {
         return Ok(FileClass::NotRegularFile);
     }
 
-    let mut file = std::fs::File::open(&path)?;
+    let mut file = std::fs::File::open(path)?;
     let metadata = file.metadata()?;
 
     let mut buf = vec![0u8; 1024];
