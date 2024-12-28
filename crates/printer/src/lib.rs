@@ -306,7 +306,7 @@ pub(crate) mod tests {
             .build(query.into());
 
         filter_sequential(
-            SequentialSource::List(std::iter::once(Arc::new(line.into()) as Arc<dyn ClapItem>)),
+            SequentialSource::Iterator(std::iter::once(Arc::new(line.into()) as Arc<dyn ClapItem>)),
             matcher,
         )
         .unwrap()

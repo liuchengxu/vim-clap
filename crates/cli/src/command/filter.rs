@@ -1,7 +1,7 @@
 use crate::app::Args;
 use anyhow::Result;
 use clap::Parser;
-use filter::{filter_sequential, FilterContext, ParallelSource, SequentialSource};
+use filter::{filter_sequential, FilterContext, ParallelInputSource, SequentialSource};
 use maple_core::paths::AbsPathBuf;
 use matcher::{Bonus, FuzzyAlgorithm, MatchScope, MatcherBuilder};
 use printer::Printer;
@@ -101,21 +101,21 @@ impl Filter {
         }
     }
 
-    fn generate_par_source(&self) -> ParallelSource {
+    fn generate_parallel_input_source(&self) -> ParallelInputSource {
         if let Some(ref cmd_str) = self.cmd {
             let exec = if let Some(ref dir) = self.cmd_dir {
                 Exec::shell(cmd_str).cwd(dir)
             } else {
                 Exec::shell(cmd_str)
             };
-            ParallelSource::Exec(Box::new(exec))
+            ParallelInputSource::Exec(Box::new(exec))
         } else {
             let file = self
                 .input
                 .as_ref()
                 .map(|i| i.deref().clone())
                 .expect("Only File and Exec source can be parallel");
-            ParallelSource::File(file)
+            ParallelInputSource::File(file)
         }
     }
 
@@ -165,7 +165,7 @@ impl Filter {
             filter::par_dyn_run(
                 &self.query,
                 FilterContext::new(icon, number, winwidth, matcher_builder),
-                self.generate_par_source(),
+                self.generate_parallel_input_source(),
             )?;
         } else {
             filter::dyn_run::<std::iter::Empty<_>>(

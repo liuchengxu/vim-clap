@@ -98,7 +98,7 @@ impl RecursiveTags {
                 filter::dyn_run(
                     self.query.as_deref().unwrap_or_default(),
                     filter_context,
-                    SequentialSource::List(ctags_cmd.tag_item_iter()?.map(|tag_item| {
+                    SequentialSource::Iterator(ctags_cmd.tag_item_iter()?.map(|tag_item| {
                         let item: Arc<dyn ClapItem> = Arc::new(tag_item);
                         item
                     })),

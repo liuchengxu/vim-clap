@@ -7,7 +7,7 @@ use icon::IconType;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
-use utils::SizeChecker;
+use utils::io::SizeChecker;
 
 #[derive(Serialize, Debug)]
 struct ScopeRef<'a> {

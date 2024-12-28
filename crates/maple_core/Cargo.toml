@@ -15,6 +15,7 @@ chrono = { workspace = true }
 chrono-humanize = { workspace = true }
 clap = { workspace = true }
 colors-transform = { workspace = true }
+content_inspector = { workspace = true }
 copypasta = { version = "0.10.0", default-features = false, features = [ "x11" ] }
 futures = { workspace = true }
 # ripgrep for global search

@@ -10,7 +10,7 @@ use maple_core::process::ShellCommand;
 use printer::{println_json, println_json_with_length};
 use std::path::{Path, PathBuf};
 use std::process::Command as StdCommand;
-use utils::{line_count, read_first_lines};
+use utils::io::{line_count, read_first_lines};
 
 #[derive(Debug, Clone)]
 #[allow(unused)]

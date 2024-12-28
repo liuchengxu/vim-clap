@@ -166,7 +166,7 @@ impl ScrollFile {
     fn new(line_start: usize, path: &Path) -> std::io::Result<Self> {
         Ok(Self {
             line_start,
-            total_lines: utils::line_count(path)?,
+            total_lines: utils::io::line_count(path)?,
         })
     }
 }
@@ -493,7 +493,7 @@ impl Context {
 
     /// Executes the command `cmd` and returns the raw bytes of stdout.
     pub fn exec_cmd(&self, cmd: &str) -> std::io::Result<Vec<u8>> {
-        let out = utils::execute_at(cmd, Some(&self.cwd))?;
+        let out = utils::execute_shell_command(cmd, Some(&self.cwd))?;
         Ok(out.stdout)
     }
 
@@ -825,7 +825,7 @@ impl ProviderSource {
                     .collect(),
             ),
             Self::File { ref path, .. } | Self::CachedFile { ref path, .. } => {
-                let lines_iter = utils::read_first_lines(path, n).ok()?;
+                let lines_iter = utils::io::read_first_lines(path, n).ok()?;
                 if provider_id == "blines" {
                     let items = lines_iter
                         .enumerate()

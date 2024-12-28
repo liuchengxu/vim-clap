@@ -101,39 +101,38 @@ impl LanguageServerMessageHandler {
             }
         };
 
-        let token_d: &dyn std::fmt::Display = match &token {
-            NumberOrString::Number(n) => n,
-            NumberOrString::String(s) => s,
-        };
-
-        let status = match parts {
-            (Some(title), Some(message), Some(percentage)) => {
-                format!("[{}] {}% {} - {}", token_d, percentage, title, message)
-            }
-            (Some(title), None, Some(percentage)) => {
-                format!("[{}] {}% {}", token_d, percentage, title)
-            }
-            (Some(title), Some(message), None) => {
-                format!("[{}] {} - {}", token_d, title, message)
-            }
-            (None, Some(message), Some(percentage)) => {
-                format!("[{}] {}% {}", token_d, percentage, message)
-            }
-            (Some(title), None, None) => {
-                format!("[{}] {}", token_d, title)
-            }
-            (None, Some(message), None) => {
-                format!("[{}] {}", token_d, message)
-            }
-            (None, None, Some(percentage)) => {
-                format!("[{}] {}%", token_d, percentage)
-            }
-            (None, None, None) => format!("[{}]", token_d),
-        };
-
         if let WorkDoneProgress::End(_) = work {
             let _ = self.vim.update_lsp_status(&self.server_name);
         } else {
+            let token_d: &dyn std::fmt::Display = match &token {
+                NumberOrString::Number(n) => n,
+                NumberOrString::String(s) => s,
+            };
+
+            let status = match parts {
+                (Some(title), Some(message), Some(percentage)) => {
+                    format!("[{token_d}] {percentage}% {title} - {message}")
+                }
+                (Some(title), Some(message), None) => {
+                    format!("[{token_d}] {title} - {message}")
+                }
+                (Some(title), None, Some(percentage)) => {
+                    format!("[{token_d}] {percentage}% {title}")
+                }
+                (Some(title), None, None) => {
+                    format!("[{token_d}] {title}")
+                }
+                (None, Some(message), Some(percentage)) => {
+                    format!("[{token_d}] {percentage}% {message}")
+                }
+                (None, Some(message), None) => {
+                    format!("[{token_d}] {message}")
+                }
+                (None, None, Some(percentage)) => {
+                    format!("[{token_d}] {percentage}%")
+                }
+                (None, None, None) => format!("[{token_d}]"),
+            };
             self.update_lsp_status_gentlely(Some(status));
         }
 

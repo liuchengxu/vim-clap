@@ -5,7 +5,7 @@ use maple_core::dirs::Dirs;
 use std::fs::read_dir;
 use std::io::Write;
 use std::path::{PathBuf, MAIN_SEPARATOR};
-use utils::remove_dir_contents;
+use utils::io::remove_dir_contents;
 
 /// List and remove all the cached contents.
 #[derive(Subcommand, Debug, Clone)]

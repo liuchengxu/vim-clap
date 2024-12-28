@@ -8,7 +8,7 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
 use types::ClapItem;
-use utils::line_count;
+use utils::io::line_count;
 
 async fn execute_and_write_cache(
     cmd: &str,
@@ -254,7 +254,7 @@ pub async fn initialize_provider(ctx: &Context, init_display: bool) -> Result<()
 
                     let context = context.clone();
                     let rg_cmd = RgTokioCommand::new(context.cwd.to_path_buf());
-                    let job_id = utils::calculate_hash(&rg_cmd);
+                    let job_id = utils::compute_hash(&rg_cmd);
                     job::try_start(
                         async move {
                             if let Ok(digest) = rg_cmd.create_cache().await {

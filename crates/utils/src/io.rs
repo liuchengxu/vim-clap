@@ -1,6 +1,9 @@
 use std::fs::{read_dir, remove_dir_all, remove_file, File};
-use std::io::{BufRead, BufReader, Lines, Result};
+use std::io::{BufRead, BufReader, Lines, Read, Result};
 use std::path::Path;
+
+const SMALL_FILE_THRESHOLD: u64 = 1024 * 1024; // 1 MiB
+const MEDIUM_FILE_THRESHOLD: u64 = 1024 * 1024 * 1024; // 1 GiB
 
 /// Counts lines in the source `handle`.
 ///
@@ -122,11 +125,114 @@ pub fn read_first_lines<P: AsRef<Path>>(
     path: P,
     number: usize,
 ) -> Result<impl Iterator<Item = String>> {
-    read_lines_from(path, 0usize, number)
+    read_lines_from_small(path, 0usize, number)
 }
 
-/// Returns a `number` of lines starting from the line number `from` (0-based).
-pub fn read_lines_from<P: AsRef<Path>>(
+/// Represents the size category of a file.
+#[derive(Debug, Clone, Copy)]
+pub enum FileSizeTier {
+    /// Empty file
+    Empty,
+    /// Suitable for immediate processing
+    Small,
+    /// Suitable for chunked or memory-mapped processing
+    Medium,
+    /// Too large to process efficiently
+    Large(u64),
+}
+
+impl FileSizeTier {
+    pub fn is_empty(&self) -> bool {
+        matches!(self, Self::Empty)
+    }
+
+    pub fn is_small(&self) -> bool {
+        matches!(self, Self::Small)
+    }
+
+    pub fn is_large(&self) -> bool {
+        matches!(self, Self::Large(_))
+    }
+
+    pub fn can_process(&self) -> bool {
+        !self.is_large()
+    }
+
+    pub fn from_metadata(metadata: &std::fs::Metadata) -> Self {
+        let file_size = metadata.len();
+
+        match file_size {
+            0 => FileSizeTier::Empty,
+            1..SMALL_FILE_THRESHOLD => FileSizeTier::Small,
+            SMALL_FILE_THRESHOLD..MEDIUM_FILE_THRESHOLD => FileSizeTier::Medium,
+            _ => FileSizeTier::Large(file_size),
+        }
+    }
+}
+
+/// Determines the size tier of a file based on its size.
+pub fn determine_file_size_tier(path: impl AsRef<Path>) -> Result<FileSizeTier> {
+    Ok(FileSizeTier::from_metadata(&path.as_ref().metadata()?))
+}
+
+/// Returns a `number` of lines from a small file starting from the line number `from` (0-based).
+pub fn read_lines_from_medium<P: AsRef<Path>>(
+    path: P,
+    from: usize,
+    number: usize,
+) -> Result<Vec<String>> {
+    read_lines_in_chunks(path, from, number)
+}
+
+/// Reads `number` lines starting from `from` in chunks for large files.
+fn read_lines_in_chunks<P: AsRef<Path>>(
+    path: P,
+    from: usize,
+    number: usize,
+) -> Result<Vec<String>> {
+    let file = File::open(path)?;
+    let mut reader = BufReader::new(file);
+    let mut buffer = vec![0; 8 * 1024 * 1024]; // 8 MiB chunk size
+    let mut total_lines = Vec::with_capacity(number);
+    let mut current_line = 0;
+
+    while total_lines.len() < number && reader.read(&mut buffer)? > 0 {
+        for chunk in buffer.split(|&b| b == b'\n') {
+            if current_line >= from {
+                if let Ok(line) = std::str::from_utf8(chunk) {
+                    total_lines.push(line.to_string());
+                }
+                if total_lines.len() == number {
+                    break;
+                }
+            }
+            current_line += 1;
+        }
+    }
+
+    Ok(total_lines)
+}
+
+/// Returns a `number` of lines from a large file starting from the line number `from` (0-based).
+pub fn read_lines_using_mmap<P: AsRef<Path>>(
+    path: P,
+    from: usize,
+    number: usize,
+) -> Result<Vec<String>> {
+    let file = File::open(&path)?;
+    let mmap = unsafe { memmap2::Mmap::map(&file)? };
+    let buffer = &mmap[..];
+    let lines = buffer
+        .split(|&b| b == b'\n')
+        .skip(from)
+        .take(number)
+        .filter_map(|line_bytes| std::str::from_utf8(line_bytes).ok().map(|s| s.to_string()))
+        .collect();
+    Ok(lines)
+}
+
+/// Returns a `number` of lines from a small file starting from the line number `from` (0-based).
+pub fn read_lines_from_small<P: AsRef<Path>>(
     path: P,
     from: usize,
     number: usize,
@@ -151,7 +257,10 @@ fn read_preview_lines_utf8<P: AsRef<Path>>(
     } else {
         (0, 2 * size, target_line)
     };
-    Ok((read_lines_from(path, start, end - start)?, highlight_lnum))
+    Ok((
+        read_lines_from_small(path, start, end - start)?,
+        highlight_lnum,
+    ))
 }
 
 #[cfg(test)]

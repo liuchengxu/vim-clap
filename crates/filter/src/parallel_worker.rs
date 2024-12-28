@@ -13,9 +13,9 @@ use std::time::{Duration, Instant};
 use subprocess::Exec;
 use types::{ClapItem, MatchedItem, Query, SearchProgressUpdate};
 
-/// Parallelable source.
+/// Represents a source for parallel processing (e.g, file or command output).
 #[derive(Debug)]
-pub enum ParallelSource {
+pub enum ParallelInputSource {
     File(PathBuf),
     Exec(Box<Exec>),
 }
@@ -27,23 +27,23 @@ pub enum ParallelSource {
 pub fn par_dyn_run(
     query: &str,
     filter_context: FilterContext,
-    par_source: ParallelSource,
+    input_source: ParallelInputSource,
 ) -> crate::Result<()> {
     let query: Query = query.into();
 
-    match par_source {
-        ParallelSource::File(file) => {
-            par_dyn_run_inner::<Empty<_>, _>(
+    match input_source {
+        ParallelInputSource::File(file) => {
+            run_parallel_filter::<Empty<_>, _>(
                 query,
                 filter_context,
-                ParSourceInner::Lines(std::fs::File::open(file)?),
+                ParallelSource::Lines(std::fs::File::open(file)?),
             )?;
         }
-        ParallelSource::Exec(exec) => {
-            par_dyn_run_inner::<Empty<_>, _>(
+        ParallelInputSource::Exec(exec) => {
+            run_parallel_filter::<Empty<_>, _>(
                 query,
                 filter_context,
-                ParSourceInner::Lines(exec.stream_stdout()?),
+                ParallelSource::Lines(exec.stream_stdout()?),
             )?;
         }
     }
@@ -58,14 +58,15 @@ pub fn par_dyn_run_list<'a, 'b: 'a>(
     items: impl IntoParallelIterator<Item = Arc<dyn ClapItem>> + 'b,
 ) {
     let query: Query = query.into();
-    par_dyn_run_inner::<_, std::io::Empty>(query, filter_context, ParSourceInner::Items(items))
+    run_parallel_filter::<_, std::io::Empty>(query, filter_context, ParallelSource::Items(items))
         .expect("Matching items in parallel can not fail");
 }
 
+/// Manages the top N matches based on scores.
 #[derive(Debug)]
-pub struct BestItems<P: SearchProgressUpdate<DisplayLines>> {
+pub struct TopMatches<P: SearchProgressUpdate<DisplayLines>> {
     /// Time of last notification.
-    pub past: Instant,
+    pub last_update_time: Instant,
     /// Top N items.
     pub items: Vec<MatchedItem>,
     pub last_lines: Vec<String>,
@@ -76,7 +77,7 @@ pub struct BestItems<P: SearchProgressUpdate<DisplayLines>> {
     pub printer: Printer,
 }
 
-impl<P: SearchProgressUpdate<DisplayLines>> BestItems<P> {
+impl<P: SearchProgressUpdate<DisplayLines>> TopMatches<P> {
     pub fn new(
         printer: Printer,
         max_capacity: usize,
@@ -85,7 +86,7 @@ impl<P: SearchProgressUpdate<DisplayLines>> BestItems<P> {
     ) -> Self {
         Self {
             printer,
-            past: Instant::now(),
+            last_update_time: Instant::now(),
             items: Vec::with_capacity(max_capacity),
             last_lines: Vec::with_capacity(max_capacity),
             last_visible_highlights: Vec::with_capacity(max_capacity),
@@ -110,12 +111,12 @@ impl<P: SearchProgressUpdate<DisplayLines>> BestItems<P> {
             self.sort();
 
             let now = Instant::now();
-            if now > self.past + self.update_interval {
+            if now > self.last_update_time + self.update_interval {
                 let display_lines = self.printer.to_display_lines(self.items.clone());
                 self.progressor
                     .update_all(&display_lines, total_matched, total_processed);
                 self.last_lines = display_lines.lines;
-                self.past = now;
+                self.last_update_time = now;
             }
         } else {
             let last = self
@@ -131,7 +132,7 @@ impl<P: SearchProgressUpdate<DisplayLines>> BestItems<P> {
 
             if total_matched % 16 == 0 || total_processed % 16 == 0 {
                 let now = Instant::now();
-                if now > self.past + self.update_interval {
+                if now > self.last_update_time + self.update_interval {
                     let display_lines = self.printer.to_display_lines(self.items.clone());
 
                     let visible_highlights = display_lines
@@ -157,7 +158,7 @@ impl<P: SearchProgressUpdate<DisplayLines>> BestItems<P> {
                         self.progressor.quick_update(total_matched, total_processed)
                     }
 
-                    self.past = now;
+                    self.last_update_time = now;
                 }
             }
         }
@@ -235,16 +236,16 @@ impl SearchProgressUpdate<DisplayLines> for StdioProgressor {
     }
 }
 
-enum ParSourceInner<I: IntoParallelIterator<Item = Arc<dyn ClapItem>>, R: Read + Send> {
+enum ParallelSource<I: IntoParallelIterator<Item = Arc<dyn ClapItem>>, R: Read + Send> {
     Items(I),
     Lines(R),
 }
 
-/// Perform the matching on a stream of [`Source::File`] and `[Source::Exec]` in parallel.
-fn par_dyn_run_inner<I, R>(
+/// Runs the core fuzzy matching process on a data source in parallel.
+fn run_parallel_filter<I, R>(
     query: Query,
     filter_context: FilterContext,
-    parallel_source: ParSourceInner<I, R>,
+    parallel_source: ParallelSource<I, R>,
 ) -> std::io::Result<()>
 where
     I: IntoParallelIterator<Item = Arc<dyn ClapItem>>,
@@ -266,30 +267,28 @@ where
     let processed_count = AtomicUsize::new(0);
 
     let printer = Printer::new(winwidth, icon);
-    let best_items = Mutex::new(BestItems::new(
+    let top_matches = Mutex::new(TopMatches::new(
         printer,
         number,
         StdioProgressor,
         Duration::from_millis(200),
     ));
 
-    let process_item = |item: Arc<dyn ClapItem>, processed: usize| {
+    let process_item = |item: Arc<dyn ClapItem>| {
+        let processed = processed_count.fetch_add(1, Ordering::SeqCst);
         if let Some(matched_item) = matcher.match_item(item) {
             let matched = matched_count.fetch_add(1, Ordering::SeqCst);
 
             // TODO: not use mutex?
-            let mut best_items = best_items.lock();
-            best_items.on_new_match(matched_item, matched, processed);
-            drop(best_items);
+            let mut top_matches = top_matches.lock();
+            top_matches.on_new_match(matched_item, matched, processed);
+            drop(top_matches);
         }
     };
 
     match parallel_source {
-        ParSourceInner::Items(items) => items.into_par_iter().for_each(|item| {
-            let processed = processed_count.fetch_add(1, Ordering::SeqCst);
-            process_item(item, processed);
-        }),
-        ParSourceInner::Lines(reader) => {
+        ParallelSource::Items(items) => items.into_par_iter().for_each(process_item),
+        ParallelSource::Lines(reader) => {
             // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
             // The line stream can contain invalid UTF-8 data.
             std::io::BufReader::new(reader)
@@ -297,9 +296,8 @@ where
                 .map_while(Result::ok)
                 .par_bridge()
                 .for_each(|line: String| {
-                    let processed = processed_count.fetch_add(1, Ordering::SeqCst);
                     if let Some(item) = to_clap_item(matcher.match_scope(), line) {
-                        process_item(item, processed);
+                        process_item(item);
                     }
                 });
         }
@@ -308,12 +306,12 @@ where
     let total_matched = matched_count.into_inner();
     let total_processed = processed_count.into_inner();
 
-    let BestItems {
+    let TopMatches {
         items,
         progressor,
         printer,
         ..
-    } = best_items.into_inner();
+    } = top_matches.into_inner();
 
     let matched_items = items;
 
@@ -328,7 +326,7 @@ where
 pub fn par_dyn_run_inprocess<P>(
     query: &str,
     filter_context: FilterContext,
-    par_source: ParallelSource,
+    input_source: ParallelInputSource,
     progressor: P,
     stop_signal: Arc<AtomicBool>,
 ) -> std::io::Result<()>
@@ -353,7 +351,7 @@ where
     let processed_count = AtomicUsize::new(0);
 
     let printer = Printer::new(winwidth, icon);
-    let best_items = Mutex::new(BestItems::new(
+    let top_matches = Mutex::new(TopMatches::new(
         printer,
         number,
         progressor,
@@ -365,15 +363,15 @@ where
             let matched = matched_count.fetch_add(1, Ordering::SeqCst);
 
             // TODO: not use mutex?
-            let mut best_items = best_items.lock();
-            best_items.on_new_match(matched_item, matched, processed);
-            drop(best_items);
+            let mut top_matches = top_matches.lock();
+            top_matches.on_new_match(matched_item, matched, processed);
+            drop(top_matches);
         }
     };
 
-    let read: Box<dyn std::io::Read + Send> = match par_source {
-        ParallelSource::File(file) => Box::new(std::fs::File::open(file)?),
-        ParallelSource::Exec(exec) => Box::new(
+    let read: Box<dyn std::io::Read + Send> = match input_source {
+        ParallelInputSource::File(file) => Box::new(std::fs::File::open(file)?),
+        ParallelInputSource::Exec(exec) => Box::new(
             exec.detached()
                 .stream_stdout()
                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?,
@@ -413,12 +411,12 @@ where
         return Ok(());
     }
 
-    let BestItems {
+    let TopMatches {
         items,
         progressor,
         printer,
         ..
-    } = best_items.into_inner();
+    } = top_matches.into_inner();
 
     let matched_items = items;
 

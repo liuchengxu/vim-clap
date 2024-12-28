@@ -341,7 +341,7 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
     let matcher = matcher_builder.build(query);
 
     let clap_item_stream: Box<dyn Iterator<Item = Arc<dyn ClapItem>>> = match source {
-        SequentialSource::List(list) => Box::new(list),
+        SequentialSource::Iterator(list) => Box::new(list),
         SequentialSource::Stdin => Box::new(
             std::io::stdin()
                 .lock()
@@ -421,7 +421,7 @@ mod tests {
         dyn_run(
             "abc",
             FilterContext::default().number(Some(100)),
-            SequentialSource::List(
+            SequentialSource::Iterator(
                 std::iter::repeat_with(|| {
                     bytes = bytes.reverse_bits().rotate_right(3).wrapping_add(1);
 

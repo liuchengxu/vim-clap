@@ -23,9 +23,9 @@ type RawTsHighlights = BTreeMap<usize, Vec<tree_sitter::HighlightItem>>;
 
 /// Represents the tree-sitter highlight info of entire buffer.
 #[derive(Debug, Clone)]
-struct BufferHighlights(RawTsHighlights);
+struct BufferHighlightData(RawTsHighlights);
 
-impl BufferHighlights {
+impl BufferHighlightData {
     fn syntax_props_at(
         &self,
         language: Language,
@@ -50,15 +50,16 @@ impl BufferHighlights {
     }
 }
 
-impl From<RawTsHighlights> for BufferHighlights {
+impl From<RawTsHighlights> for BufferHighlightData {
     fn from(inner: RawTsHighlights) -> Self {
         Self(inner)
     }
 }
 
-/// (start, length, highlight_group)
-type LineHighlights = Vec<(usize, usize, &'static str)>;
-type VimHighlights = Vec<(usize, LineHighlights)>;
+/// (column_start, length, highlight_group)
+type LineHighlightData = Vec<(usize, usize, &'static str)>;
+/// (line_number, line_highlight_data)
+type VimHighlightData = Vec<(usize, LineHighlightData)>;
 
 #[derive(Debug, Clone)]
 struct TreeSitterInfo {
@@ -66,10 +67,10 @@ struct TreeSitterInfo {
     /// Used to infer the highlighting render strategy.
     file_size: FileSize,
     /// Highlights of entire buffer.
-    highlights: BufferHighlights,
+    highlights: BufferHighlightData,
     /// Current vim highlighting info, note that we only
     /// highlight the visual lines on the vim side.
-    vim_highlights: VimHighlights,
+    vim_highlights: VimHighlightData,
 }
 
 /// File size in bytes.
@@ -79,11 +80,11 @@ struct FileSize(usize);
 impl std::fmt::Display for FileSize {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.0 < 1024 {
-            write!(f, "{}bytes", self.0)
+            write!(f, "{} bytes", self.0)
         } else if self.0 < 1024 * 1024 {
-            write!(f, "{}KiB", self.0 / 1024)
+            write!(f, "{} KiB", self.0 / 1024)
         } else {
-            write!(f, "{}MiB", self.0 / 1024 / 1024)
+            write!(f, "{} MiB", self.0 / 1024 / 1024)
         }
     }
 }
@@ -137,14 +138,14 @@ impl Syntax {
             if let Some(language) =
                 maybe_extension.and_then(tree_sitter::Language::try_from_extension)
             {
-                self.tree_sitter_highlight(bufnr, false, Some(language))
+                self.enable_tree_sitter_highlighting(bufnr, false, Some(language))
                     .await?;
                 self.toggle.turn_on();
             } else {
-                let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+                let filetype = self.vim.filetype(bufnr).await?;
 
                 if let Some(language) = tree_sitter::Language::try_from_filetype(&filetype) {
-                    self.tree_sitter_highlight(bufnr, false, Some(language))
+                    self.enable_tree_sitter_highlighting(bufnr, false, Some(language))
                         .await?;
                     self.toggle.turn_on();
                 }
@@ -154,17 +155,19 @@ impl Syntax {
         Ok(())
     }
 
-    async fn identify_buffer_language(&self, bufnr: usize, source_file: &Path) -> Option<Language> {
+    async fn detect_buffer_language(&self, bufnr: usize, source_file: &Path) -> Option<Language> {
         if let Some(language) = tree_sitter::Language::try_from_path(source_file) {
             Some(language)
-        } else if let Ok(filetype) = self.vim.getbufvar::<String>(bufnr, "&filetype").await {
-            tree_sitter::Language::try_from_filetype(&filetype)
         } else {
-            None
+            self.vim
+                .filetype(bufnr)
+                .await
+                .ok()
+                .and_then(|ft| tree_sitter::Language::try_from_filetype(&ft))
         }
     }
 
-    async fn tree_sitter_highlight(
+    async fn enable_tree_sitter_highlighting(
         &mut self,
         bufnr: usize,
         buf_modified: bool,
@@ -175,8 +178,7 @@ impl Syntax {
         let language = match maybe_language {
             Some(language) => language,
             None => {
-                let Some(language) = self.identify_buffer_language(bufnr, &source_file).await
-                else {
+                let Some(language) = self.detect_buffer_language(bufnr, &source_file).await else {
                     // No language detected, fallback to the vim regex syntax highlighting.
                     self.vim.exec("execute", "syntax on")?;
                     return Ok(());
@@ -216,7 +218,7 @@ impl Syntax {
         );
 
         let maybe_vim_highlights = self
-            .render_ts_highlights(bufnr, language, &raw_highlights, file_size)
+            .convert_tree_sitter_to_vim_highlights(bufnr, language, &raw_highlights, file_size)
             .await?;
 
         self.ts_bufs.insert(
@@ -232,14 +234,16 @@ impl Syntax {
         Ok(())
     }
 
+    /// Converts Tree-sitter highlights to Vim highlights based on the rendering strategy.
+    ///
     /// Returns Some() if the vim highlights are changed.
-    async fn render_ts_highlights(
+    async fn convert_tree_sitter_to_vim_highlights(
         &self,
         bufnr: usize,
         language: Language,
         raw_ts_highlights: &RawTsHighlights,
         file_size: FileSize,
-    ) -> Result<Option<VimHighlights>, PluginError> {
+    ) -> Result<Option<VimHighlightData>, PluginError> {
         use maple_config::RenderStrategy;
 
         let render_strategy = &maple_config::config().plugin.syntax.render_strategy;
@@ -280,6 +284,11 @@ impl Syntax {
                 .iter()
                 .partition(|item| old_vim_highlights.contains(item));
 
+            // No new highlight changes since the last highlighting operation.
+            if changed_highlights.is_empty() {
+                return Ok(None);
+            }
+
             let unchanged_lines = unchanged_highlights
                 .into_iter()
                 .map(|item| item.0)
@@ -289,11 +298,6 @@ impl Syntax {
                 .into_iter()
                 .map(|item| item.0)
                 .collect::<Vec<_>>();
-
-            // No new highlight changes since the last highlighting operation.
-            if changed_lines.is_empty() {
-                return Ok(None);
-            }
 
             tracing::trace!(
                 total = new_vim_highlights.len(),
@@ -348,7 +352,7 @@ impl Syntax {
         let file_size = FileSize(source_code.len());
 
         let maybe_new_vim_highlights = self
-            .render_ts_highlights(bufnr, language, &new_highlights, file_size)
+            .convert_tree_sitter_to_vim_highlights(bufnr, language, &new_highlights, file_size)
             .await?;
 
         self.ts_bufs.entry(bufnr).and_modify(|i| {
@@ -412,23 +416,26 @@ pub fn convert_raw_ts_highlights_to_vim_highlights(
     raw_ts_highlights: &RawTsHighlights,
     language: Language,
     highlight_range: HighlightRange,
-) -> VimHighlights {
+) -> VimHighlightData {
     raw_ts_highlights
         .iter()
-        .filter(|(line_number, _)| highlight_range.should_highlight(**line_number))
-        .map(|(line_number, highlight_items)| {
-            let line_highlights: Vec<(usize, usize, &str)> = highlight_items
-                .iter()
-                .map(|i| {
-                    (
-                        i.start.column,
-                        i.end.column - i.start.column,
-                        language.highlight_group(i.highlight),
-                    )
-                })
-                .collect();
+        .filter_map(|(line_number, highlight_items)| {
+            if highlight_range.should_highlight(*line_number) {
+                let line_highlights: Vec<(usize, usize, &str)> = highlight_items
+                    .iter()
+                    .map(|i| {
+                        (
+                            i.start.column,
+                            i.end.column - i.start.column,
+                            language.highlight_group(i.highlight),
+                        )
+                    })
+                    .collect();
 
-            (*line_number, line_highlights)
+                Some((*line_number, line_highlights))
+            } else {
+                None
+            }
         })
         .collect::<Vec<_>>()
 }
@@ -463,11 +470,12 @@ impl ClapPlugin for Syntax {
             CursorMoved => {
                 if self.tree_sitter_enabled {
                     if self.vim.bufmodified(bufnr).await? {
-                        self.tree_sitter_highlight(bufnr, true, None).await?;
+                        self.enable_tree_sitter_highlighting(bufnr, true, None)
+                            .await?;
                     } else {
                         let maybe_new_vim_highlights =
                             if let Some(ts_info) = self.ts_bufs.get(&bufnr) {
-                                self.render_ts_highlights(
+                                self.convert_tree_sitter_to_vim_highlights(
                                     bufnr,
                                     ts_info.language,
                                     &ts_info.highlights.0,
@@ -501,7 +509,8 @@ impl ClapPlugin for Syntax {
         match self.parse_action(method)? {
             SyntaxAction::TreeSitterHighlight => {
                 let bufnr = self.vim.bufnr("").await?;
-                self.tree_sitter_highlight(bufnr, false, None).await?;
+                self.enable_tree_sitter_highlighting(bufnr, false, None)
+                    .await?;
                 self.tree_sitter_enabled = true;
                 self.toggle.turn_on();
             }

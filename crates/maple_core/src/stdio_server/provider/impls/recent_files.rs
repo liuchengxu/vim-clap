@@ -82,9 +82,20 @@ impl RecentFilesProvider {
         let preview = match (preview_size, ranked.get(lnum - 1)) {
             (Some(size), Some(new_entry)) => {
                 let new_curline = new_entry.display_text().to_string();
-                if let Ok((lines, fname)) =
-                    crate::previewer::preview_file(new_curline, size, self.printer.line_width)
-                {
+                let file_size_tier = utils::io::FileSizeTier::from_metadata(
+                    &std::fs::File::open(&new_curline)?.metadata()?,
+                );
+                if let Ok(text_lines) = crate::previewer::text_file::preview_file(
+                    new_curline,
+                    size,
+                    self.printer.line_width,
+                    None,
+                    file_size_tier,
+                ) {
+                    let crate::previewer::text_file::TextLines {
+                        lines,
+                        display_path: fname,
+                    } = text_lines;
                     Some(json!({ "lines": lines, "fname": fname }))
                 } else {
                     None

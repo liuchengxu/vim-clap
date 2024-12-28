@@ -73,7 +73,7 @@ function! clap#picker#update(update_info) abort
 
   call clap#sign#ensure_exists()
 
-  if has_key(update_info, 'preview')
+  if has_key(update_info, 'preview') && update_info.preview isnot v:null
     if !empty(update_info.preview)
       call clap#picker#update_preview(update_info.preview)
     endif

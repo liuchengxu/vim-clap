@@ -17,8 +17,8 @@ use std::sync::Arc;
 use types::{ClapItem, FileNameItem, GrepItem};
 
 pub use self::parallel_worker::{
-    par_dyn_run, par_dyn_run_inprocess, par_dyn_run_list, BestItems, ParallelSource,
-    StdioProgressor,
+    par_dyn_run, par_dyn_run_inprocess, par_dyn_run_list, ParallelInputSource, StdioProgressor,
+    TopMatches,
 };
 pub use self::sequential_source::{filter_sequential, SequentialSource};
 pub use self::sequential_worker::dyn_run;

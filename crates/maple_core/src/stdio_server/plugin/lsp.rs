@@ -230,7 +230,7 @@ impl LspPlugin {
             return Ok(());
         }
 
-        let filetype = self.vim.getbufvar::<String>(bufnr, "&filetype").await?;
+        let filetype = self.vim.filetype(bufnr).await?;
 
         if filetype.is_empty()
             || self.filetype_blocklist.contains(&filetype)
@@ -468,12 +468,12 @@ impl LspPlugin {
 
         let maybe_character_index = if lines.is_empty() {
             // Buffer may not be loaded, read the local file directly.
-            let Some(line) = utils::read_line_at(filepath, line)? else {
+            let Some(line) = utils::io::read_line_at(filepath, line)? else {
                 return Ok(None);
             };
-            utils::char_index_for(&line, col - 1)
+            utils::char_index_at_byte(&line, col - 1)
         } else {
-            utils::char_index_for(&lines[0], col - 1)
+            utils::char_index_at_byte(&lines[0], col - 1)
         };
 
         let Some(character) = maybe_character_index else {
@@ -611,7 +611,7 @@ impl LspPlugin {
                         let path = loc.uri.path();
                         let row = loc.range.start.line + 1;
                         let column = loc.range.start.character + 1;
-                        let text = utils::read_line_at(path, row as usize)
+                        let text = utils::io::read_line_at(path, row as usize)
                             .ok()
                             .flatten()
                             .unwrap_or_default();
