@@ -76,6 +76,8 @@ function! clap#picker#update(update_info) abort
   if has_key(update_info, 'preview')
     if !empty(update_info.preview)
       call clap#picker#update_preview(update_info.preview)
+    elseif empty(g:clap.input.get())
+      call clap#preview#update_with_delay()
     endif
   else
     call clap#preview#update_with_delay()
