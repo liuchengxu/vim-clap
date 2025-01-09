@@ -21,7 +21,7 @@ use std::time::Duration;
 use sublime_syntax::TokenHighlight;
 use tokio::sync::oneshot;
 use utils::display_width;
-use utils::io::SizeChecker;
+use utils::io::{FileSizeTier, SizeChecker};
 
 type SublimeHighlightData = Vec<(usize, Vec<TokenHighlight>)>;
 
@@ -451,56 +451,23 @@ impl<'a> CachedPreviewImpl<'a> {
             FileClass::Binary => {
                 return Ok(Preview::binary_file_preview(path));
             }
-            FileClass::Text(file_size_tier) => {
-                if let utils::io::FileSizeTier::Large(size) = file_size_tier {
-                    return Ok(Preview::large_file_preview(size, path));
-                }
-                file_size_tier
+            FileClass::Text(utils::io::FileSizeTier::Large(size)) => {
+                return Ok(Preview::large_file_preview(size, path))
             }
-        };
-
-        let handle_io_error = |e: &Error| {
-            if e.kind() == ErrorKind::NotFound {
-                tracing::debug!(
-                    "TODO: {} not found, the files cache might be invalid, try refreshing the cache",
-                    path.display()
-                );
-            }
+            FileClass::Text(file_size_tier) => file_size_tier,
         };
 
         let (lines, fname) = match (self.ctx.env.is_nvim, self.ctx.env.has_nvim_09) {
             (true, false) => {
                 // Title is not available before nvim 0.9
                 let max_fname_len = self.ctx.env.display_line_width - 1;
-                let previewer::text_file::TextLines {
-                    lines,
-                    display_path,
-                } = previewer::text_file::preview_file(
-                    path,
-                    self.preview_height,
-                    self.max_line_width(),
-                    Some(max_fname_len),
-                    file_size_tier,
-                )
-                .inspect_err(handle_io_error)?;
-                (lines, display_path)
+                self.preview_text_file(path, Some(max_fname_len), file_size_tier)?
             }
             _ => {
-                let previewer::text_file::TextLines {
-                    lines,
-                    display_path: abs_path,
-                } = previewer::text_file::preview_file(
-                    path,
-                    self.preview_height,
-                    self.max_line_width(),
-                    None,
-                    file_size_tier,
-                )
-                .inspect_err(handle_io_error)?;
+                let (mut lines, abs_path) = self.preview_text_file(path, None, file_size_tier)?;
 
                 // cwd is already shown in the popup title, no need to include it again.
                 let cwd_relative = abs_path.replacen(self.ctx.cwd.as_str(), ".", 1);
-                let mut lines = lines;
                 lines[0] = cwd_relative;
 
                 (lines, abs_path)
@@ -517,6 +484,7 @@ impl<'a> CachedPreviewImpl<'a> {
             ));
         }
 
+        // Only attempt the semantic highlight for small files.
         let highlight_source = if file_size_tier.is_small() {
             SyntaxHighlighter {
                 context: HighlightingContext {
@@ -554,6 +522,34 @@ impl<'a> CachedPreviewImpl<'a> {
         Ok(preview)
     }
 
+    fn preview_text_file(
+        &self,
+        path: &Path,
+        max_title_width: Option<usize>,
+        file_size_tier: FileSizeTier,
+    ) -> std::io::Result<(Vec<String>, String)> {
+        let previewer::text_file::TextLines {
+            lines,
+            display_path,
+        } = previewer::text_file::preview_file(
+            path,
+            self.preview_height,
+            self.max_line_width(),
+            max_title_width,
+            file_size_tier,
+        )
+        .inspect_err(|e|{
+            if e.kind() == ErrorKind::NotFound {
+                tracing::debug!(
+                    "TODO: {} not found, the files cache might be invalid, try refreshing the cache",
+                    path.display()
+                );
+            }
+        })?;
+
+        Ok((lines, display_path))
+    }
+
     async fn preview_file_at(
         &self,
         path: &Path,
@@ -561,7 +557,7 @@ impl<'a> CachedPreviewImpl<'a> {
         column_range: Option<Range<usize>>,
         container_width: usize,
     ) -> Preview {
-        tracing::debug!("Previewing file {}:{lnum}", path.display());
+        tracing::debug!("Previewing {}:{lnum}", path.display());
 
         match detect_file_class(path) {
             Ok(FileClass::NotRegularFile) => {
@@ -572,11 +568,10 @@ impl<'a> CachedPreviewImpl<'a> {
                 );
             }
             Ok(FileClass::Binary) => return Preview::binary_file_preview(path),
-            Ok(FileClass::Text(file_size_tier)) => {
-                if let utils::io::FileSizeTier::Large(size) = file_size_tier {
-                    return Preview::large_file_preview(size, path);
-                }
+            Ok(FileClass::Text(utils::io::FileSizeTier::Large(size))) => {
+                return Preview::large_file_preview(size, path)
             }
+            Ok(FileClass::Text(_)) => {}
             Err(err) => {
                 return Preview::new_file_preview(
                     vec![err.to_string()],
@@ -1044,83 +1039,81 @@ fn tree_sitter_highlighting(
         return HighlightSource::None;
     }
 
+    let do_tree_sitter_highlight = |language: tree_sitter::Language| -> Option<_> {
+        let source_code = std::fs::read(path).ok()?;
+
+        // TODO: Cache the highlights per one provider session or even globally?
+        // 1. Check the last modified time.
+        // 2. If unchanged, try retrieving from the cache.
+        // 3. Otherwise parse it.
+        let raw_highlights = language.highlight(&source_code).ok()?;
+
+        let line_start = visible_range.start;
+
+        let ts_highlights = convert_raw_ts_highlights_to_vim_highlights(
+            &raw_highlights,
+            language,
+            visible_range.into(),
+        );
+
+        let mut maybe_context_line_highlight = None;
+
+        let context_lines_offset = if let Some(code_context) = code_context {
+            if let Ok(highlight_items) = language.highlight_line(code_context.line.as_bytes()) {
+                let line_highlights = highlight_items
+                    .into_iter()
+                    .filter_map(|i| {
+                        let start = i.start.column;
+                        let length = i.end.column - i.start.column;
+                        // Ignore the invisible highlights.
+                        if start + length > max_line_width {
+                            None
+                        } else {
+                            let group = language.highlight_group(i.highlight);
+                            Some((start, length, group.to_string()))
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+                maybe_context_line_highlight
+                    .replace((CodeContext::CONTEXT_LINE_NUMBER, line_highlights));
+            }
+
+            CodeContext::CONTEXT_LINES_LEN
+        } else {
+            0
+        };
+
+        let tree_sitter_highlight_data = ts_highlights
+            .into_iter()
+            .map(|(line_number, line_highlights)| {
+                let line_number_in_preview_win =
+                    line_number - line_start + 1 + context_lines_offset;
+
+                // Workaround the lifetime issue, nice to remove this allocation
+                // `group.to_string()` as it's essentially `&'static str`.
+                let line_highlights = line_highlights
+                    .into_iter()
+                    .filter_map(|(start, length, group)| {
+                        // Ignore the invisible highlights.
+                        if start + length > max_line_width {
+                            None
+                        } else {
+                            Some((start, length, group.to_string()))
+                        }
+                    })
+                    .collect();
+
+                (line_number_in_preview_win, line_highlights)
+            })
+            .chain(maybe_context_line_highlight)
+            .collect::<Vec<_>>();
+
+        Some(tree_sitter_highlight_data)
+    };
+
     tree_sitter::Language::try_from_path(path)
-        .and_then(|language| {
-            let Ok(source_code) = std::fs::read(path) else {
-                return None;
-            };
-
-            // TODO: Cache the highlights per one provider session or even globally?
-            // 1. Check the last modified time.
-            // 2. If unchanged, try retrieving from the cache.
-            // 3. Otherwise parse it.
-            let Ok(raw_highlights) = language.highlight(&source_code) else {
-                return None;
-            };
-
-            let line_start = visible_range.start;
-
-            let ts_highlights = convert_raw_ts_highlights_to_vim_highlights(
-                &raw_highlights,
-                language,
-                visible_range.into(),
-            );
-
-            let mut maybe_context_line_highlight = None;
-
-            let context_lines_offset = if let Some(code_context) = code_context {
-                if let Ok(highlight_items) = language.highlight_line(code_context.line.as_bytes()) {
-                    let line_highlights = highlight_items
-                        .into_iter()
-                        .filter_map(|i| {
-                            let start = i.start.column;
-                            let length = i.end.column - i.start.column;
-                            // Ignore the invisible highlights.
-                            if start + length > max_line_width {
-                                None
-                            } else {
-                                let group = language.highlight_group(i.highlight);
-                                Some((start, length, group.to_string()))
-                            }
-                        })
-                        .collect::<Vec<_>>();
-
-                    maybe_context_line_highlight
-                        .replace((CodeContext::CONTEXT_LINE_NUMBER, line_highlights));
-                }
-
-                CodeContext::CONTEXT_LINES_LEN
-            } else {
-                0
-            };
-
-            let tree_sitter_highlight_data = ts_highlights
-                .into_iter()
-                .map(|(line_number, line_highlights)| {
-                    let line_number_in_preview_win =
-                        line_number - line_start + 1 + context_lines_offset;
-
-                    // Workaround the lifetime issue, nice to remove this allocation
-                    // `group.to_string()` as it's essentially `&'static str`.
-                    let line_highlights = line_highlights
-                        .into_iter()
-                        .filter_map(|(start, length, group)| {
-                            // Ignore the invisible highlights.
-                            if start + length > max_line_width {
-                                None
-                            } else {
-                                Some((start, length, group.to_string()))
-                            }
-                        })
-                        .collect();
-
-                    (line_number_in_preview_win, line_highlights)
-                })
-                .chain(maybe_context_line_highlight)
-                .collect::<Vec<_>>();
-
-            Some(tree_sitter_highlight_data)
-        })
+        .and_then(do_tree_sitter_highlight)
         .map(HighlightSource::TreeSitter)
         .unwrap_or(HighlightSource::None)
 }
