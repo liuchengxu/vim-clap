@@ -8,7 +8,7 @@ use crate::stdio_server::plugin::syntax::sublime::{
 };
 use crate::stdio_server::provider::{read_dir_entries, Context, ProviderSource};
 use crate::stdio_server::vim::{preview_syntax, VimResult};
-use crate::tools::ctags::{current_context_tag, BufferTag};
+use crate::tools::ctags::current_context_tag;
 use maple_config::HighlightEngine;
 use paths::{expand_tilde, truncate_absolute_path};
 use pattern::*;
@@ -776,24 +776,36 @@ fn detect_file_class(path: &Path) -> std::io::Result<FileClass> {
     Ok(FileClass::Text(file_size_tier))
 }
 
-async fn fetch_context_tag_with_timeout(path: &Path, lnum: usize) -> Option<BufferTag> {
-    let (tag_sender, tag_receiver) = oneshot::channel();
+/// A helper struct to run a blocking task in a new thread with timeout.
+struct TimeoutRunner {
+    timeout: Duration,
+}
 
-    const TIMEOUT: Duration = Duration::from_millis(200);
+impl TimeoutRunner {
+    fn new(timeout: Duration) -> Self {
+        Self { timeout }
+    }
 
-    std::thread::spawn({
-        let path = path.to_path_buf();
-        move || {
-            let result = current_context_tag(&path, lnum);
-            let _ = tag_sender.send(result);
-        }
-    });
+    async fn run<F, R>(self, name: &str, computation: F) -> Option<R>
+    where
+        F: FnOnce() -> R + Send + 'static,
+        R: Send + 'static,
+    {
+        let Self { timeout } = self;
 
-    match tokio::time::timeout(TIMEOUT, tag_receiver).await {
-        Ok(res) => res.ok().flatten(),
-        Err(_) => {
-            tracing::debug!(timeout = ?TIMEOUT, ?path, lnum, "⏳ Timeout fetching context tag");
-            None
+        let (sender, receiver) = oneshot::channel();
+
+        std::thread::spawn(move || {
+            let result = computation();
+            let _ = sender.send(result);
+        });
+
+        match tokio::time::timeout(timeout, receiver).await {
+            Ok(res) => res.ok(),
+            Err(_) => {
+                tracing::debug!(?timeout, "⏳ Timeout: {name}");
+                None
+            }
         }
     }
 }
@@ -875,14 +887,21 @@ async fn fetch_code_context(
         return None;
     };
 
-    match fetch_context_tag_with_timeout(path, lnum).await {
-        Some(tag) if tag.line_number < start => Some(CodeContext {
+    let path = path.to_path_buf();
+
+    let tag = TimeoutRunner::new(Duration::from_millis(200))
+        .run("fetching context tag", move || {
+            current_context_tag(&path, lnum)
+        })
+        .await??;
+
+    if tag.line_number < start {
+        Some(CodeContext {
             line: tag.trimmed_pattern().to_string(),
-        }),
-        _ => {
-            // No context lines if no tag found prior to the line number.
-            None
-        }
+        })
+    } else {
+        // No context lines if no tag found prior to the line number.
+        None
     }
 }
 
@@ -943,26 +962,13 @@ impl SyntaxHighlighter {
     // worker in a separated task to not make the async runtime blocked, otherwise we may run into
     // the issue of frozen UI.
     async fn highlight_with_timeout(self) -> HighlightSource {
-        let (result_sender, result_receiver) = oneshot::channel();
-
         let Self { context, timeout } = self;
-
-        let path = context.path.clone();
-
-        std::thread::spawn({
-            move || {
-                let result = compute_syntax_highlighting(context);
-                let _ = result_sender.send(result);
-            }
-        });
-
-        match tokio::time::timeout(Duration::from_millis(timeout), result_receiver).await {
-            Ok(res) => res.unwrap_or(HighlightSource::None),
-            Err(_) => {
-                tracing::debug!(?timeout, ?path, "⏳ Timeout fetching preview highlights");
-                HighlightSource::None
-            }
-        }
+        TimeoutRunner::new(Duration::from_millis(timeout))
+            .run("fetching preview highlights", move || {
+                compute_syntax_highlighting(context)
+            })
+            .await
+            .unwrap_or(HighlightSource::None)
     }
 }
 
