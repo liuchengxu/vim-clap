@@ -211,6 +211,12 @@ pub struct WinbarConfig {
 
     /// Specify the display style for the file path in winbar.
     pub file_path_style: FilePathStyle,
+
+    /// Specify the separator icon for winbar.
+    pub separator: String,
+
+    /// Specify highlight group for the text between separators.
+    pub text_highlight: String,
 }
 
 impl Default for WinbarConfig {
@@ -218,6 +224,8 @@ impl Default for WinbarConfig {
         Self {
             enable: false,
             file_path_style: FilePathStyle::OneSegmentPerComponent,
+            separator: "".to_string(),
+            text_highlight: "LineNr".to_string(),
         }
     }
 }
