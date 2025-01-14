@@ -19,10 +19,28 @@ fn shrink_text_to_fit(path: String, max_width: usize) -> String {
     }
 }
 
-pub async fn update_winbar(
+pub enum FunctionTag<'a> {
+    /// The nearest available tag to the cursor.
+    CursorTag(&'a BufferTag),
+    /// No cursor tag available, but there are other tags.
+    Ellipsis,
+    /// Nothing to show.
+    None,
+}
+
+impl<'a> FunctionTag<'a> {
+    fn tag(&self) -> Option<&BufferTag> {
+        match self {
+            Self::CursorTag(tag) => Some(tag),
+            _ => None,
+        }
+    }
+}
+
+pub async fn update_winbar<'a>(
     vim: &Vim,
     bufnr: usize,
-    tag: Option<&BufferTag>,
+    function_tag: FunctionTag<'a>,
 ) -> Result<(), PluginError> {
     let winid = vim.bare_call::<usize>("win_getid").await?;
     let winwidth = vim.winwidth(winid).await?;
@@ -66,7 +84,7 @@ pub async fn update_winbar(
             }
         }
         FilePathStyle::FullPath => {
-            let max_width = match tag {
+            let max_width = match function_tag.tag() {
                 Some(tag) => {
                     if tag.scope.is_some() {
                         winwidth / 2
@@ -86,27 +104,42 @@ pub async fn update_winbar(
         }
     }
 
-    if let Some(tag) = tag {
-        if vim.call::<usize>("winbufnr", [winid]).await? == bufnr {
-            if let Some(scope) = &tag.scope {
-                let mut scope_kind_icon = icon::tags_kind_icon(&scope.scope_kind).to_string();
-                scope_kind_icon.push(' ');
-                let scope_max_width = winwidth / 4 - scope_kind_icon.len();
-                let scope_item = shrink_text_to_fit(scope.scope.clone(), scope_max_width);
+    match function_tag {
+        FunctionTag::CursorTag(tag) => {
+            if vim.call::<usize>("winbufnr", [winid]).await? == bufnr {
+                if let Some(scope) = &tag.scope {
+                    let mut scope_kind_icon = icon::tags_kind_icon(&scope.scope_kind).to_string();
+                    scope_kind_icon.push(' ');
+                    let scope_max_width = winwidth / 4 - scope_kind_icon.len();
+                    let scope_item = shrink_text_to_fit(scope.scope.clone(), scope_max_width);
+                    winbar_items.extend([
+                        (text_hl, separator.clone()),
+                        ("Include", scope_kind_icon),
+                        (text_hl, scope_item),
+                    ]);
+                }
+
+                let tag_kind_icon = icon::tags_kind_icon(&tag.kind).to_string();
                 winbar_items.extend([
-                    (text_hl, separator.clone()),
-                    ("Include", scope_kind_icon),
-                    (text_hl, scope_item),
+                    (text_hl, separator),
+                    ("Type", tag_kind_icon),
+                    (text_hl, format!(" {}", &tag.name)),
                 ]);
             }
-
-            let tag_kind_icon = icon::tags_kind_icon(&tag.kind).to_string();
-            winbar_items.extend([
-                (text_hl, separator.clone()),
-                ("Type", tag_kind_icon),
-                (text_hl, format!(" {}", &tag.name)),
-            ]);
         }
+        FunctionTag::Ellipsis => {
+            let mut winbar: String = winbar_items
+                .iter()
+                .map(|(highlight, value)| format!("%#{highlight}#{value}%*"))
+                .join("");
+
+            winbar.push_str(&format!("%#{text_hl}#{separator}%*"));
+            winbar.push_str(&format!("%@clap#api#on_click_function_tag@...%X"));
+
+            vim.exec("clap#api#update_winbar", (winid, winbar))?;
+            return Ok(());
+        }
+        FunctionTag::None => {}
     }
 
     if winbar_items.is_empty() {

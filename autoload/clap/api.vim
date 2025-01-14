@@ -49,6 +49,10 @@ function! clap#api#update_winbar(winid, winbar) abort
   call clap#api#win_execute(a:winid, 'setlocal winbar='.l:winbar)
 endfunction
 
+function! clap#api#on_click_function_tag(minwid, clicks, button, mods) abort
+  call clap#client#notify('ctags.__onClickFunctionTag', {})
+endfunction
+
 let s:api = {}
 
 if s:is_nvim

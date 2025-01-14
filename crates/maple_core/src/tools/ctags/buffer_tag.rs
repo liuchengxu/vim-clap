@@ -42,6 +42,18 @@ impl BufferTag {
         )
     }
 
+    /// Returns the display line for BuiltinHandle, no icon attached.
+    pub fn format_function_tag(&self) -> Option<String> {
+        match self.kind.as_str() {
+            "field" => None,
+            _ => Some(format!(
+                "{} {}",
+                icon::tags_kind_icon(&self.kind),
+                self.name
+            )),
+        }
+    }
+
     pub fn into_buffer_tag_item(self, max_name_len: usize) -> BufferTagItem {
         let output_text = self.format_buffer_tag(max_name_len);
         BufferTagItem {

@@ -1,7 +1,7 @@
 use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType, PluginAction};
 use crate::stdio_server::plugin::{ClapPlugin, PluginError};
 use crate::stdio_server::vim::Vim;
-use crate::stdio_server::winbar::update_winbar;
+use crate::stdio_server::winbar::{update_winbar, FunctionTag};
 use crate::tools::ctags::{BufferTag, Scope};
 use icon::IconType;
 use serde::Serialize;
@@ -28,7 +28,12 @@ impl<'a> ScopeRef<'a> {
 }
 
 #[derive(Debug, maple_derive::ClapPlugin)]
-#[clap_plugin(id = "ctags")]
+#[clap_plugin(
+    id = "ctags",
+    actions = [
+        "__onClickFunctionTag",
+    ]
+)]
 pub struct CtagsPlugin {
     vim: Vim,
     enable_winbar: Option<bool>,
@@ -63,7 +68,14 @@ impl CtagsPlugin {
 
         let should_reset_winbar = self.last_cursor_tag.take().is_some();
         if winbar_enabled && should_reset_winbar {
-            update_winbar(&self.vim, bufnr, None).await?;
+            let has_other_tags = self.buf_tags.get(&bufnr).is_some_and(|v| !v.is_empty());
+            let function_tag = if has_other_tags {
+                FunctionTag::Ellipsis
+            } else {
+                FunctionTag::None
+            };
+
+            update_winbar(&self.vim, bufnr, function_tag).await?;
 
             // Redraw the statusline to reflect the latest tag.
             self.vim.exec("execute", ["redrawstatus"])?;
@@ -121,7 +133,7 @@ impl CtagsPlugin {
             )?;
 
             if winbar_enabled {
-                update_winbar(&self.vim, bufnr, Some(tag)).await?;
+                update_winbar(&self.vim, bufnr, FunctionTag::CursorTag(tag)).await?;
             }
 
             // Redraw the statusline to reflect the latest tag.
@@ -138,7 +150,21 @@ impl CtagsPlugin {
 
 #[async_trait::async_trait]
 impl ClapPlugin for CtagsPlugin {
-    async fn handle_action(&mut self, _action: PluginAction) -> Result<(), PluginError> {
+    async fn handle_action(&mut self, action: PluginAction) -> Result<(), PluginError> {
+        let PluginAction { method, params: _ } = action;
+        match self.parse_action(method)? {
+            CtagsAction::__OnClickFunctionTag => {
+                let bufnr = self.vim.bufnr("").await?;
+                if let Some(buffer_tags) = self.buf_tags.get(&bufnr) {
+                    let lines = buffer_tags
+                        .iter()
+                        .filter_map(|t| t.format_function_tag())
+                        .collect::<Vec<_>>();
+
+                    tracing::debug!("=========== On click function tag: lines: {lines:?}");
+                }
+            }
+        }
         Ok(())
     }
 
