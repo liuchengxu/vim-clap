@@ -102,7 +102,22 @@ endfunction
 
 function! clap#installer#build_maple() abort
   if executable('cargo')
-    let cmd = 'cargo build --release'
+    let rust_version = ''
+    for line in readfile(s:plugin_root_dir.'/rust-toolchain.toml')
+      " Extract the rust version from the channel line
+      if line =~ '^channel\s*=\s*".*"$'
+        let rust_version = matchstr(line, '"\zs.*\ze"')
+        break
+      endif
+    endfor
+
+    if empty(rust_version)
+      call clap#helper#echo_error('Could not determine Rust version from rust-toolchain.toml.')
+      return
+    endif
+
+    let cmd = printf('cargo +%s build --release', rust_version)
+
     call s:run_term(cmd, s:plugin_root_dir, 'built maple binary successfully', {-> clap#helper#echo_warn('build maple failed')})
   else
     call clap#helper#echo_error('Can not build maple binary in that cargo is not found.')

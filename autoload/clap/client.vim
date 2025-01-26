@@ -65,7 +65,7 @@ endfunction
 function! clap#client#notify(method, ...) abort
   if clap#job#daemon#is_running()
     if exists('s:enqueued_messages')
-      for [method, params] in items(s:enqueued_messages)
+      for [method, params] in s:enqueued_messages
         call clap#rpc#notify(method, params)
       endfor
       unlet s:enqueued_messages
