@@ -54,6 +54,9 @@ pub async fn update_winbar<'a>(
     let separator = format!(" {} ", winbar_config.separator);
     let text_hl = winbar_config.text_highlight.as_str();
 
+    // Whether to skip the item when truncating the items.
+    let mut skip_last = true;
+
     match winbar_config.file_path_style {
         FilePathStyle::OneSegmentPerComponent => {
             // TODO: Cache the filepath section.
@@ -101,10 +104,12 @@ pub async fn update_winbar<'a>(
             };
             winbar_items.push(("Label", format!(" {} ", icon::file_icon(&path))));
             winbar_items.push((text_hl, shrink_text_to_fit(path, max_width)));
+
+            skip_last = false;
         }
     }
 
-    match function_tag {
+    let tag_items = match function_tag {
         FunctionTag::CursorTag(tag) => {
             if vim.call::<usize>("winbufnr", [winid]).await? == bufnr {
                 if let Some(scope) = &tag.scope {
@@ -120,27 +125,40 @@ pub async fn update_winbar<'a>(
                 }
 
                 let tag_kind_icon = icon::tags_kind_icon(&tag.kind).to_string();
-                winbar_items.extend([
+                let tag_name = format!(" {}", &tag.name);
+
+                vec![
                     (text_hl, separator),
                     ("Type", tag_kind_icon),
-                    (text_hl, format!(" {}", &tag.name)),
-                ]);
+                    (text_hl, tag_name),
+                ]
+            } else {
+                vec![]
             }
         }
         FunctionTag::Ellipsis => {
+            let winwidth = vim.winwidth(winid).await?;
+            truncate_items_to_fit(&mut winbar_items, winwidth - 3, skip_last);
+
             let mut winbar: String = winbar_items
                 .iter()
                 .map(|(highlight, value)| format!("%#{highlight}#{value}%*"))
                 .join("");
 
             winbar.push_str(&format!("%#{text_hl}#{separator}%*"));
-            winbar.push_str(&format!("%@clap#api#on_click_function_tag@...%X"));
+            winbar.push_str(&format!("%@clap#api#on_click_function_tag@…%X"));
 
             vim.exec("clap#api#update_winbar", (winid, winbar))?;
             return Ok(());
         }
-        FunctionTag::None => {}
-    }
+        FunctionTag::None => vec![],
+    };
+
+    let winwidth = vim.winwidth(winid).await?;
+    let tag_width = tag_items.iter().map(|(_, s)| s.len()).sum::<usize>();
+    truncate_items_to_fit(&mut winbar_items, winwidth - tag_width, skip_last);
+
+    winbar_items.extend(tag_items);
 
     if winbar_items.is_empty() {
         vim.exec("clap#api#update_winbar", (winid, ""))?;
@@ -154,4 +172,70 @@ pub async fn update_winbar<'a>(
     }
 
     Ok(())
+}
+
+fn truncate_items_to_fit(items: &mut Vec<(&str, String)>, width: usize, skip_last: bool) {
+    // 3 is the separator prefix, with the first item excluded.
+    let total_len = items.iter().map(|(_, i)| i.len()).sum::<usize>() + (items.len() - 1) * 3;
+
+    // If the full path fits within the width, return the items as is.
+    if total_len <= width {
+        return;
+    }
+
+    // We need to truncate the items to fit the width.
+    let gap_width = total_len - width;
+
+    let mut reduced_width = 0;
+    let last_index = items.len() - 1;
+
+    for (index, (_, item)) in items.iter_mut().enumerate() {
+        if skip_last && index == last_index {
+            return;
+        }
+
+        let w1 = item.len();
+
+        if w1 <= 5 {
+            continue;
+        }
+
+        let mut truncated_i = item.chars().take(3).collect::<String>();
+        truncated_i.push('…');
+
+        reduced_width += w1 - 5;
+
+        *item = truncated_i;
+
+        if reduced_width >= gap_width {
+            return;
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_truncate_items_to_fit() {
+        let winbar_config = &maple_config::config().winbar;
+
+        let mut items = vec![
+            "Users",
+            "xuliucheng",
+            ".vim",
+            "plugged",
+            "vim-clap",
+            "autoload",
+            "clap",
+        ]
+        .into_iter()
+        .map(|s| ("hl", format!(" {} {s}", winbar_config.separator)))
+        .collect::<Vec<_>>();
+
+        truncate_items_to_fit(&mut items, 20, true);
+
+        println!("items: {items:?}");
+    }
 }
