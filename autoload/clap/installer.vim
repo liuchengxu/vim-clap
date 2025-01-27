@@ -116,7 +116,11 @@ function! clap#installer#build_maple() abort
       return
     endif
 
-    let cmd = printf('cargo +%s build --release', rust_version)
+    if empty(filter(split(system('rustup toolchain list')), 'v:val =~ l:rust_version'))
+      let cmd = printf('rustup install %s && cargo +%s build --release', rust_version)
+    else
+      let cmd = printf('cargo +%s build --release', rust_version)
+    endif
 
     call s:run_term(cmd, s:plugin_root_dir, 'built maple binary successfully', {-> clap#helper#echo_warn('build maple failed')})
   else
