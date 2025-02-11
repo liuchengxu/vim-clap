@@ -33,6 +33,8 @@ function! s:run_term(cmd, cwd, success_info, ErrorCallback) abort
     let cmd = a:cmd
     if has('win32')
       let cmd = 'cmd.exe /c '.cmd
+    else
+      let cmd = printf('%s -c "%s"', &shell, cmd)
     endif
     call term_start(cmd, {
           \ 'curwin': 1,
@@ -117,7 +119,7 @@ function! clap#installer#build_maple() abort
     endif
 
     if empty(filter(split(system('rustup toolchain list')), 'v:val =~ l:rust_version'))
-      let cmd = printf('rustup install %s && cargo +%s build --release', rust_version)
+      let cmd = printf('rustup install %s && cargo +%s build --release', rust_version, rust_version)
     else
       let cmd = printf('cargo +%s build --release', rust_version)
     endif
