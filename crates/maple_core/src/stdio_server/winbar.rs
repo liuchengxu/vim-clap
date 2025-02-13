@@ -28,7 +28,7 @@ pub enum FunctionTag<'a> {
     None,
 }
 
-impl<'a> FunctionTag<'a> {
+impl FunctionTag<'_> {
     fn tag(&self) -> Option<&BufferTag> {
         match self {
             Self::CursorTag(tag) => Some(tag),
@@ -146,7 +146,7 @@ pub async fn update_winbar<'a>(
                 .join("");
 
             winbar.push_str(&format!("%#{text_hl}#{separator}%*"));
-            winbar.push_str(&format!("%@clap#api#on_click_function_tag@…%X"));
+            winbar.push_str("%@clap#api#on_click_function_tag@…%X");
 
             vim.exec("clap#api#update_winbar", (winid, winbar))?;
             return Ok(());

@@ -698,7 +698,8 @@ mod tests {
                 },
                 winbar: WinbarConfig {
                     enable: false,
-                    file_path_style: FilePathStyle::OneSegmentPerComponent
+                    file_path_style: FilePathStyle::OneSegmentPerComponent,
+                    ..Default::default()
                 },
                 matcher: MatcherConfig {
                     tiebreak: "score,-begin,-end,-length".to_string()
