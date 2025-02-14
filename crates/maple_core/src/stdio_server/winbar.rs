@@ -112,33 +112,42 @@ pub async fn update_winbar<'a>(
     let tag_items = match function_tag {
         FunctionTag::CursorTag(tag) => {
             if vim.call::<usize>("winbufnr", [winid]).await? == bufnr {
-                if let Some(scope) = &tag.scope {
+                let mut tag_items = if let Some(scope) = &tag.scope {
                     let mut scope_kind_icon = icon::tags_kind_icon(&scope.scope_kind).to_string();
                     scope_kind_icon.push(' ');
                     let scope_max_width = winwidth / 4 - scope_kind_icon.len();
                     let scope_item = shrink_text_to_fit(scope.scope.clone(), scope_max_width);
-                    winbar_items.extend([
+                    vec![
                         (text_hl, separator.clone()),
                         ("Include", scope_kind_icon),
                         (text_hl, scope_item),
-                    ]);
-                }
+                    ]
+                } else {
+                    Vec::with_capacity(3)
+                };
 
                 let tag_kind_icon = icon::tags_kind_icon(&tag.kind).to_string();
                 let tag_name = format!(" {}", &tag.name);
 
-                vec![
+                tag_items.extend([
                     (text_hl, separator),
                     ("Type", tag_kind_icon),
                     (text_hl, tag_name),
-                ]
+                ]);
+
+                tag_items
             } else {
                 vec![]
             }
         }
         FunctionTag::Ellipsis => {
-            let winwidth = vim.winwidth(winid).await?;
-            truncate_items_to_fit(&mut winbar_items, winwidth - 3, skip_last);
+            let tag_width = 3;
+            let path_width = winbar_items.iter().map(|(_, i)| i.len()).sum::<usize>();
+
+            if path_width + tag_width > winwidth {
+                let gap_width = winwidth - path_width - tag_width;
+                truncate_items_to_fit(&mut winbar_items, gap_width, skip_last);
+            }
 
             let mut winbar: String = winbar_items
                 .iter()
@@ -154,9 +163,20 @@ pub async fn update_winbar<'a>(
         FunctionTag::None => vec![],
     };
 
-    let winwidth = vim.winwidth(winid).await?;
-    let tag_width = tag_items.iter().map(|(_, s)| s.len()).sum::<usize>();
-    truncate_items_to_fit(&mut winbar_items, winwidth - tag_width, skip_last);
+    let tag_width = tag_items
+        .iter()
+        .map(|(_, s): &(&str, String)| s.len())
+        .sum::<usize>();
+
+    tracing::debug!("========= tag_width: {tag_width}");
+
+    let path_width = winbar_items.iter().map(|(_, i)| i.len()).sum::<usize>();
+
+    // We need to truncate the items to fit the width.
+    if path_width + tag_width > winwidth {
+        let gap_width = winwidth - path_width - tag_width;
+        truncate_items_to_fit(&mut winbar_items, gap_width, skip_last);
+    }
 
     winbar_items.extend(tag_items);
 
@@ -174,19 +194,9 @@ pub async fn update_winbar<'a>(
     Ok(())
 }
 
-fn truncate_items_to_fit(items: &mut Vec<(&str, String)>, width: usize, skip_last: bool) {
-    // 3 is the separator prefix, with the first item excluded.
-    let total_len = items.iter().map(|(_, i)| i.len()).sum::<usize>() + (items.len() - 1) * 3;
-
-    // If the full path fits within the width, return the items as is.
-    if total_len <= width {
-        return;
-    }
-
-    // We need to truncate the items to fit the width.
-    let gap_width = total_len - width;
-
+fn truncate_items_to_fit(items: &mut Vec<(&str, String)>, gap_width: usize, skip_last: bool) {
     let mut reduced_width = 0;
+
     let last_index = items.len() - 1;
 
     for (index, (_, item)) in items.iter_mut().enumerate() {
@@ -203,7 +213,7 @@ fn truncate_items_to_fit(items: &mut Vec<(&str, String)>, width: usize, skip_las
         let mut truncated_i = item.chars().take(3).collect::<String>();
         truncated_i.push('…');
 
-        reduced_width += w1 - 5;
+        reduced_width += w1 - truncated_i.len();
 
         *item = truncated_i;
 
