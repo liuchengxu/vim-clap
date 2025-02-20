@@ -157,7 +157,7 @@ pub async fn update_winbar<'a>(
             winbar.push_str(&format!("%#{text_hl}#{separator}%*"));
             winbar.push_str("%@clap#api#on_click_function_tag@…%X");
 
-            vim.exec("clap#api#update_winbar", (winid, winbar))?;
+            vim.exec("clap#api#update_winbar", (winid, winbar, text_hl))?;
             return Ok(());
         }
         FunctionTag::None => vec![],
@@ -181,14 +181,14 @@ pub async fn update_winbar<'a>(
     winbar_items.extend(tag_items);
 
     if winbar_items.is_empty() {
-        vim.exec("clap#api#update_winbar", (winid, ""))?;
+        vim.exec("clap#api#update_winbar", (winid, "", text_hl))?;
     } else {
         let winbar = winbar_items
             .iter()
             .map(|(highlight, value)| format!("%#{highlight}#{value}%*"))
             .join("");
 
-        vim.exec("clap#api#update_winbar", (winid, winbar))?;
+        vim.exec("clap#api#update_winbar", (winid, winbar, text_hl))?;
     }
 
     Ok(())

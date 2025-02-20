@@ -37,7 +37,7 @@ else
   endfunction
 endif
 
-function! clap#api#update_winbar(winid, winbar) abort
+function! clap#api#update_winbar(winid, winbar, winbar_hl) abort
   if winheight(a:winid) < 2
     return 0
   endif
@@ -47,6 +47,11 @@ function! clap#api#update_winbar(winid, winbar) abort
     let l:winbar = escape(a:winbar, ' ')
   endif
   call clap#api#win_execute(a:winid, 'setlocal winbar='.l:winbar)
+  if !exists('s:winbar_hl_initialized')
+    call execute('hi! link WinBar '.a:winbar_hl)
+    call execute('hi! link WinBarNC '.a:winbar_hl)
+    let s:winbar_hl_initialized = v:true
+  endif
 endfunction
 
 function! clap#api#on_click_function_tag(minwid, clicks, button, mods) abort
