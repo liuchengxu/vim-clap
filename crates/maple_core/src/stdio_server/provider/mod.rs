@@ -595,7 +595,7 @@ impl Context {
 
     pub async fn record_input(&mut self) -> VimResult<()> {
         let input = self.vim.input_get().await?;
-        self.input_recorder.try_record(input);
+        self.input_recorder.record_input(input);
         Ok(())
     }
 

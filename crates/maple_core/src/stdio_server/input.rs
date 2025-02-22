@@ -240,7 +240,7 @@ impl InputRecorder {
         self.inputs
     }
 
-    pub fn try_record(&mut self, new: String) {
+    pub fn record_input(&mut self, new: String) {
         let trimmed_new = new.trim();
 
         if trimmed_new.is_empty() || self.inputs.iter().any(|s| s == trimmed_new) {

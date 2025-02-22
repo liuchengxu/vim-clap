@@ -282,7 +282,7 @@ impl LspPlugin {
             Entry::Vacant(e) => {
                 let enable_snippets = false;
                 let name = language_server_config.server_name();
-                let client = maple_lsp::start_client(
+                let client_result = maple_lsp::start_client(
                     maple_lsp::ClientParams {
                         language_server_config,
                         manual_roots: vec![],
@@ -292,12 +292,23 @@ impl LspPlugin {
                     Some(PathBuf::from(path.clone())),
                     get_root_markers(language_id),
                     LanguageServerMessageHandler::new(
-                        name,
+                        name.clone(),
                         self.vim.clone(),
                         self.diagnostics_worker_msg_sender.clone(),
                     ),
                 )
-                .await?;
+                .await;
+
+                let client = match client_result {
+                    Ok(client) => client,
+                    Err(maple_lsp::Error::FailedToInitServer(err_msg)) => {
+                        self.vim.echo_warn(format!(
+                            "[{name}] failed to initialize server: {err_msg}"
+                        ))?;
+                        return Err(Error::Lsp(maple_lsp::Error::FailedToInitServer(err_msg)));
+                    }
+                    Err(err) => return Err(Error::Lsp(err)),
+                };
 
                 open_new_doc(&client, buffer.language_id, &path)?;
 

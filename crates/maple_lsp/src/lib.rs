@@ -31,8 +31,8 @@ pub use lsp;
 pub enum Error {
     #[error("client is not yet initialized")]
     Uninitialized,
-    #[error("failed to initialize language server")]
-    FailedToInitServer,
+    #[error("failed to initialize language server: {0}")]
+    FailedToInitServer(String),
     #[error("method {0} is unsupported by language server")]
     Unsupported(&'static str),
     #[error("received a failure response: {0:?}")]
@@ -415,7 +415,7 @@ where
 
     if let Err(e) = value {
         tracing::error!("failed to initialize language server: {e:?}");
-        return Err(Error::FailedToInitServer);
+        return Err(Error::FailedToInitServer(e.to_string()));
     }
 
     client.notify::<lsp::notification::Initialized>(lsp::InitializedParams {})?;

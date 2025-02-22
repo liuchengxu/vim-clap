@@ -192,9 +192,9 @@ pub enum VimError {
     InvalidWinid(usize),
     #[error("setvar requires an explicit scope in `var_name`")]
     InvalidVariableScope,
-    #[error("`{0}` failure")]
+    #[error("Vim API call failed: `{0}`")]
     VimApiFailure(String),
-    #[error("{0}")]
+    #[error("Failed to get display current line:{0}")]
     GetDisplayCurLine(String),
     #[error(transparent)]
     IO(#[from] std::io::Error),
