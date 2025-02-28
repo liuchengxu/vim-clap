@@ -1,10 +1,8 @@
 # Introduction
 
 [![CI](https://github.com/liuchengxu/vim-clap/workflows/ci/badge.svg)](https://github.com/liuchengxu/vim-clap/actions?workflow=ci)
-[![Gitter][g1]][g2]
 
 [g1]: https://badges.gitter.im/liuchengxu/vim-clap.svg
-[g2]: https://gitter.im/liuchengxu/vim-clap?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge
 
 Vim-clap stands as a comprehensive and efficient solution, providing powerful fuzzy pickers and replacements for various established Vim plugins, designed to support both Vim and NeoVim.
 
