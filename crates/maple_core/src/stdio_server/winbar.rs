@@ -38,10 +38,10 @@ impl FunctionTag<'_> {
     }
 }
 
-pub async fn update_winbar<'a>(
+pub async fn update_winbar(
     vim: &Vim,
     bufnr: usize,
-    function_tag: FunctionTag<'a>,
+    function_tag: FunctionTag<'_>,
 ) -> Result<(), PluginError> {
     let winid = vim.bare_call::<usize>("win_getid").await?;
     let winwidth = vim.winwidth(winid).await?;
