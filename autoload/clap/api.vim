@@ -58,6 +58,52 @@ function! clap#api#on_click_function_tag(minwid, clicks, button, mods) abort
   call clap#client#notify('ctags.__onClickFunctionTag', {})
 endfunction
 
+" Show the message in a popup at the right-top corner.
+function! clap#api#popup_notify(messages, timeout) abort
+  if empty(a:messages)
+    return
+  endif
+
+  " Determine the popup width based on the longest message
+  let max_width = max(map(copy(a:messages), 'len(v:val)')) + 2
+  let height = len(a:messages)
+
+  if has('nvim')
+    " Neovim: Floating window
+    let buf = nvim_create_buf(v:false, v:true)
+    call nvim_buf_set_lines(buf, 0, -1, v:true, a:messages)
+
+    let col = &columns - max_width - 1
+    let row = 1 " Top-right corner
+
+    let opts = {
+          \ 'relative': 'editor',
+          \ 'width': max_width,
+          \ 'height': height,
+          \ 'col': col,
+          \ 'row': row,
+          \ 'style': 'minimal',
+          \ 'border': 'single',
+          \ }
+
+    let win = nvim_open_win(buf, v:false, opts)
+
+    " Auto-close after timeout
+    call timer_start(a:timeout, {-> nvim_win_close(win, v:true)})
+  else
+    " Vim: Popup at top-right corner
+    let col = max([&columns - max_width - 1, 1])
+    let popup_id = popup_create(a:messages, {
+          \ 'line': 1,
+          \ 'col': col,
+          \ 'border': [],
+          \ 'highlight': 'Normal',
+          \ 'borderhighlight': ['Comment'],
+          \ 'time': a:timeout
+          \ })
+  endif
+endfunction
+
 let s:api = {}
 
 if s:is_nvim
