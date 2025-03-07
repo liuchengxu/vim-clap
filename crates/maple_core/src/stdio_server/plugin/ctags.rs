@@ -160,8 +160,7 @@ impl ClapPlugin for CtagsPlugin {
                         .iter()
                         .filter_map(|t| t.format_function_tag())
                         .collect::<Vec<_>>();
-
-                    tracing::debug!("TODO: Show the entire symbol list in popup: {lines:?}");
+                    self.vim.exec("clap#api#popup#show_outline", [lines])?;
                 }
             }
         }

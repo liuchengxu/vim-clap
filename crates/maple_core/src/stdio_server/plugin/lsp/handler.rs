@@ -62,7 +62,7 @@ impl LanguageServerMessageHandler {
         if echo_message_in_vim {
             if let Some(first_line) = message.lines().next() {
                 let msg = format!("[{}] [{msg_type}] {first_line}", self.server_name);
-                let _ = self.vim.exec("clap#api#popup_notify", (vec![msg], 5000));
+                let _ = self.vim.exec("clap#api#popup#notify", (vec![msg], 5000));
             }
         } else {
             tracing::debug!("[{}] [{msg_type}] {message}", self.server_name);
