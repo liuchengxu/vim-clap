@@ -161,7 +161,7 @@ impl ClapPlugin for CtagsPlugin {
                         .filter_map(|t| t.format_function_tag())
                         .collect::<Vec<_>>();
 
-                    tracing::debug!("=========== On click function tag: lines: {lines:?}");
+                    tracing::debug!("TODO: Show the entire symbol list in popup: {lines:?}");
                 }
             }
         }

@@ -4,11 +4,12 @@ use crate::tools::ctags::BufferTag;
 use itertools::Itertools;
 use maple_config::FilePathStyle;
 
+const DOTS: char = '…';
+
 fn shrink_text_to_fit(path: String, max_width: usize) -> String {
     if path.len() < max_width {
         path
     } else {
-        const DOTS: char = '…';
         let to_shrink_len = path.len() - max_width;
         let left = path.chars().take(max_width / 2).collect::<String>();
         let right = path
@@ -167,8 +168,6 @@ pub async fn update_winbar<'a>(
         .iter()
         .map(|(_, s): &(&str, String)| s.len())
         .sum::<usize>();
-
-    tracing::debug!("========= tag_width: {tag_width}");
 
     let path_width = winbar_items.iter().map(|(_, i)| i.len()).sum::<usize>();
 
