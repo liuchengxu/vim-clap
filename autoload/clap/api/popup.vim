@@ -1,96 +1,109 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
-" Description: Make a compatible layer for popup/floating_win APIs.
+" Description: Compatibility layer for popup/floating_win APIs.
 
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-" Show the message in a popup at the right-top corner.
-function! clap#api#popup#notify(messages, timeout) abort
-  if empty(a:messages)
-    return
+" Helper: Compute maximum width for a list of messages.
+function! s:get_max_width(messages) abort
+  return max(map(copy(a:messages), 'strdisplaywidth(v:val)')) + 2
+endfunction
+
+" Create a floating window (Neovim) or popup (Vim) with options.
+" Supported options:
+"   - timeout: Auto-close timeout (ms)
+"   - close_on_cursor_move: (boolean) Auto-close on cursor movement.
+"   - border: Border style (default: 'single' in Neovim, none in Vim)
+"   - position: "right-top" (default) or "right-bottom"
+"   - row: Override computed row.
+function! s:create_popup(messages, opts) abort
+  let max_width = s:get_max_width(a:messages)
+  let height = len(a:messages)
+  let col = &columns - max_width - 1
+
+  " Determine row position:
+  if has_key(a:opts, 'row')
+    let row = a:opts.row
+  else
+    let pos = get(a:opts, 'position', 'right-top')
+    if pos ==# 'right-bottom'
+      " Place popup at bottom-right (1-line margin from bottom).
+      let row = &lines - height - 1
+    else
+      " Default: top-right.
+      let row = 1
+    endif
   endif
 
-  " Determine the popup width based on the longest message
-  let max_width = max(map(copy(a:messages), 'len(v:val)')) + 2
-  let height = len(a:messages)
-
   if has('nvim')
-    " Neovim: Floating window
+    " Neovim: Create floating window.
     let buf = nvim_create_buf(v:false, v:true)
     call nvim_buf_set_lines(buf, 0, -1, v:true, a:messages)
 
-    let col = &columns - max_width - 1
-    let row = 1 " Top-right corner
-
-    let opts = {
+    let win_opts = {
           \ 'relative': 'editor',
           \ 'width': max_width,
           \ 'height': height,
           \ 'col': col,
           \ 'row': row,
           \ 'style': 'minimal',
-          \ 'border': 'single',
+          \ 'border': get(a:opts, 'border', 'single'),
           \ }
+    let g:_clap_popup_id = nvim_open_win(buf, v:false, win_opts)
 
-    let win = nvim_open_win(buf, v:false, opts)
+    " Auto-close based on timeout.
+    if has_key(a:opts, 'timeout')
+      call timer_start(a:opts.timeout, {-> nvim_win_close(g:_clap_popup_id, v:true)})
+    endif
 
-    " Auto-close after timeout
-    call timer_start(a:timeout, {-> nvim_win_close(win, v:true)})
+    " Close when the cursor moves.
+    if get(a:opts, 'close_on_cursor_move', 0)
+      autocmd CursorMoved,CursorMovedI * ++once call nvim_win_close(g:_clap_popup_id, v:true) | unlet! g:_clap_popup_id
+    endif
   else
-    " Vim: Popup at top-right corner
-    let col = max([&columns - max_width - 1, 1])
-    let popup_id = popup_create(a:messages, {
-          \ 'line': 1,
+    " Vim: Create popup.
+    let g:_clap_popup_id = popup_create(a:messages, {
+          \ 'line': row,
           \ 'col': col,
           \ 'border': [],
           \ 'highlight': 'Normal',
           \ 'borderhighlight': ['Comment'],
-          \ 'time': a:timeout
           \ })
+    if has_key(a:opts, 'timeout')
+      call popup_setoptions(g:_clap_popup_id, { 'time': a:opts.timeout })
+    endif
+    if get(a:opts, 'close_on_cursor_move', 0)
+      autocmd CursorMoved,CursorMovedI * ++once call popup_close(g:_clap_popup_id) | unlet! g:_clap_popup_id
+    endif
   endif
 endfunction
 
-function! clap#api#popup#show_outline(symbols) abort
-  let symbols = a:symbols
-
-  " Determine width based on longest symbol
-  let max_width = max(map(copy(symbols), 'strdisplaywidth(v:val)')) + 2
-  let height = len(symbols)
-
-  if has('nvim')
-    " Neovim Floating Window
-    let buf = nvim_create_buf(v:false, v:true)
-    call nvim_buf_set_lines(buf, 0, -1, v:true, symbols)
-
-    let opts = {
-          \ 'relative': 'editor',
-          \ 'width': max_width,
-          \ 'height': height,
-          \ 'col': &columns - max_width - 2,
-          \ 'row': 1,
-          \ 'style': 'minimal',
-          \ 'border': 'rounded',
-          \ }
-
-    let g:outline_win = nvim_open_win(buf, v:false, opts)
-
-    " Close when cursor moves
-    autocmd CursorMoved,CursorMovedI * ++once call nvim_win_close(g:outline_win, v:true) | unlet! g:outline_win
-  else
-    " Vim Popup
-    let col = max([&columns - max_width - 2, 1])
-    let g:outline_popup = popup_create(symbols, {
-          \ 'line': 1,
-          \ 'col': col,
-          \ 'border': [],
-          \ 'highlight': 'Normal',
-          \ 'borderhighlight': ['Comment'],
-          \ })
-
-    " Close when cursor moves
-    autocmd CursorMoved,CursorMovedI * ++once call popup_close(g:outline_popup) | unlet! g:outline_win
+" Show a notification popup at the right-top or right-bottom corner.
+" Usage:
+"   :call clap#api#popup#notify(["Message"], 2000)
+"   :call clap#api#popup#notify(["Message"], 2000, {'position': 'right-bottom'})
+function! clap#api#popup#notify(messages, timeout, ...) abort
+  if empty(a:messages)
+    return
   endif
+  let l:opts = a:0 >= 1 ? a:1 : {}
+  call s:create_popup(a:messages, extend({'timeout': a:timeout}, l:opts))
+endfunction
+
+" Show document outline symbols in a popup.
+" It will auto-close when the cursor moves.
+" Optional extra opts can be provided to override defaults.
+function! clap#api#popup#show_outline(symbols, ...) abort
+  if empty(a:symbols)
+    return
+  endif
+  let l:opts = {'border': 'rounded', 'close_on_cursor_move': 1}
+  if a:0 >= 1
+    let l:opts = extend(l:opts, a:1)
+  endif
+  call s:create_popup(a:symbols, l:opts)
 endfunction
 
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
+
