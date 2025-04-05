@@ -11,7 +11,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Ensure each vim source file declares cpoptions
       run: test/autoload_should_check_cpo.sh
     - name: Run vint with reviewdog
@@ -50,8 +50,8 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
-    - uses: actions/cache@v2
+      uses: actions/checkout@v4
+    - uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
@@ -69,8 +69,8 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
-    - uses: actions/cache@v2
+      uses: actions/checkout@v4
+    - uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
@@ -84,7 +84,7 @@ jobs:
     name: Docs Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -99,7 +99,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Run Cargo test
       run: |
         cd pythonx/clap/fuzzymatch-rs

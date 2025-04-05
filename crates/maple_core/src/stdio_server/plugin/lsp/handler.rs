@@ -46,7 +46,12 @@ impl LanguageServerMessageHandler {
         }
     }
 
-    fn handle_message(&self, show_message: bool, msg_type: lsp::MessageType, message: String) {
+    fn handle_message(
+        &self,
+        echo_message_in_vim: bool,
+        msg_type: lsp::MessageType,
+        message: String,
+    ) {
         let msg_type = match msg_type {
             lsp::MessageType::ERROR => "ERROR",
             lsp::MessageType::WARNING => "WARN",
@@ -54,10 +59,11 @@ impl LanguageServerMessageHandler {
             lsp::MessageType::LOG => "LOG",
             _ => return,
         };
-        if show_message {
-            let _ = self
-                .vim
-                .echo_message(format!("[{}] [{msg_type}] {message}", self.server_name));
+        if echo_message_in_vim {
+            if let Some(first_line) = message.lines().next() {
+                let msg = format!("[{}] [{msg_type}] {first_line}", self.server_name);
+                let _ = self.vim.exec("clap#api#popup#notify", (vec![msg], 5000));
+            }
         } else {
             tracing::debug!("[{}] [{msg_type}] {message}", self.server_name);
         }
