@@ -11,14 +11,17 @@ use types::ClapItem;
 use utils::io::line_count;
 
 async fn execute_and_write_cache(
-    cmd: &str,
+    cmd: &ShellCommand,
     cache_file: std::path::PathBuf,
 ) -> std::io::Result<ProviderSource> {
     // Can not use subprocess::Exec::shell here.
     //
     // Must use TokioCommand otherwise the timeout may not work.
 
-    let mut tokio_cmd = crate::process::tokio::shell_command(cmd);
+    let mut tokio_cmd = crate::process::tokio::shell_command(&cmd.command);
+
+    tokio_cmd.current_dir(&cmd.dir);
+
     crate::process::tokio::write_stdout_to_file(&mut tokio_cmd, &cache_file).await?;
     let total = line_count(&cache_file)?;
     Ok(ProviderSource::CachedFile {
@@ -99,7 +102,7 @@ async fn initialize_provider_source(ctx: &Context) -> Result<ProviderSource> {
                     DIRECT_CREATE_NEW_SOURCE.contains(&ctx.provider_id());
 
                 let provider_source = if create_new_source_directly || ctx.env.no_cache {
-                    execute_and_write_cache(&shell_cmd.command, cache_file).await?
+                    execute_and_write_cache(&shell_cmd, cache_file).await?
                 } else {
                     match shell_cmd.cache_digest() {
                         Some(digest) => ProviderSource::CachedFile {
@@ -107,7 +110,7 @@ async fn initialize_provider_source(ctx: &Context) -> Result<ProviderSource> {
                             path: digest.cached_path,
                             refreshed: false,
                         },
-                        None => execute_and_write_cache(&shell_cmd.command, cache_file).await?,
+                        None => execute_and_write_cache(&shell_cmd, cache_file).await?,
                     }
                 };
 
