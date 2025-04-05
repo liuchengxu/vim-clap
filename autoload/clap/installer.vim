@@ -118,7 +118,7 @@ function! clap#installer#build_maple() abort
       return
     endif
 
-    if empty(filter(split(system('rustup toolchain list')), 'v:val =~ l:rust_version'))
+    if executable('rustup') && empty(filter(split(system('rustup toolchain list')), 'v:val =~ l:rust_version'))
       let cmd = printf('rustup install %s && cargo +%s build --release', rust_version, rust_version)
     else
       let cmd = printf('cargo +%s build --release', rust_version)
