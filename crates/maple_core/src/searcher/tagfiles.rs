@@ -34,7 +34,7 @@ impl TagItem {
         let mut home_path = PathBuf::new();
         let path = Path::new(&self.path);
         let path = path.strip_prefix(cwd).unwrap_or({
-            path.strip_prefix(Dirs::base().home_dir())
+            path.strip_prefix(Dirs::home_dir())
                 .map(|path| {
                     home_path.push("~");
                     home_path = home_path.join(path);
