@@ -152,8 +152,8 @@ trait Linter {
 
     /// Constructs a base linter command.
     fn base_command(workspace_root: &Path) -> std::io::Result<tokio::process::Command> {
-        let executable = which::which(Self::EXE)
-            .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err.to_string()))?;
+        let executable =
+            which::which(Self::EXE).map_err(|err| std::io::Error::other(err.to_string()))?;
 
         let mut cmd = tokio::process::Command::new(executable);
 

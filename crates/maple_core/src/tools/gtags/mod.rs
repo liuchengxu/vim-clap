@@ -22,9 +22,6 @@ fn gtags_executable_exists() -> std::io::Result<bool> {
     if let Some(line) = stdout.split('\n').next() {
         Ok(line.starts_with("gtags"))
     } else {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "gtags executable not found",
-        ))
+        Err(std::io::Error::other("gtags executable not found"))
     }
 }

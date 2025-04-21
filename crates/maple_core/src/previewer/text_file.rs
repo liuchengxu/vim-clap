@@ -64,8 +64,7 @@ fn read_lines_in_range<P: AsRef<Path>>(
 
             let filesize = utils::io::file_size(&file);
             if filesize > MEGABYTE {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
+                return Err(std::io::Error::other(
                     "maximum preview file buffer size reached",
                 ));
             }
@@ -145,8 +144,7 @@ pub fn preview_file<P: AsRef<Path>>(
     file_size_tier: FileSizeTier,
 ) -> std::io::Result<TextLines> {
     if !path.as_ref().is_file() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        return Err(std::io::Error::other(
             "Can not preview if the object is not a file",
         ));
     }

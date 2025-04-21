@@ -374,7 +374,7 @@ where
         ParallelInputSource::Exec(exec) => Box::new(
             exec.detached()
                 .stream_stdout()
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?,
+                .map_err(|e| std::io::Error::other(e.to_string()))?,
         ), // TODO: kill the exec command ASAP/ Run the exec command in another blocking task.
     };
 

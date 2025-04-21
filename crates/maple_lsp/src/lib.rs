@@ -117,16 +117,13 @@ fn parse_header(s: &str) -> std::io::Result<LspHeader> {
         .collect::<Vec<String>>();
 
     if split.len() != 2 {
-        return Err(std::io::Error::new(std::io::ErrorKind::Other, "Malformed"));
+        return Err(std::io::Error::other("Malformed"));
     };
 
     match split[0].as_ref() {
         CONTENT_TYPE => Ok(LspHeader::ContentType),
         CONTENT_LENGTH => Ok(LspHeader::ContentLength(split[1].parse::<usize>().unwrap())),
-        _ => Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "Unknown LSP header line",
-        )),
+        _ => Err(std::io::Error::other("Unknown LSP header line")),
     }
 }
 
@@ -154,12 +151,8 @@ fn recv_message_from_server<T: BufRead>(reader: &mut T) -> Result<String, Error>
         };
     }
 
-    let content_length = content_length.ok_or_else(|| {
-        std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("missing content-length header: {buffer}"),
-        )
-    })?;
+    let content_length = content_length
+        .ok_or_else(|| std::io::Error::other(format!("missing content-length header: {buffer}")))?;
 
     let mut body_buffer = vec![0; content_length];
     reader.read_exact(&mut body_buffer)?;

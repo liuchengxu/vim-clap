@@ -503,13 +503,10 @@ impl Context {
             .extension()
             .and_then(|s| s.to_str())
             .ok_or_else(|| {
-                std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!(
-                        "Extension not found for start_buffer_path: {}",
-                        self.env.start_buffer_path.display()
-                    ),
-                )
+                std::io::Error::other(format!(
+                    "Extension not found for start_buffer_path: {}",
+                    self.env.start_buffer_path.display()
+                ))
             })
     }
 

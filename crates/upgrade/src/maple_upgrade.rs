@@ -114,10 +114,7 @@ fn get_binary_path() -> std::io::Result<impl AsRef<std::path::Path>> {
     })?;
 
     if !bin_dir.ends_with("bin") {
-        return Err(Error::new(
-            ErrorKind::Other,
-            "Current executable is not from bin/***",
-        ));
+        return Err(Error::other("Current executable is not from bin/***"));
     }
 
     let bin_path = if cfg!(windows) {
@@ -164,12 +161,8 @@ async fn download_prebuilt_binary(
     version: &str,
     no_progress_bar: bool,
 ) -> std::io::Result<PathBuf> {
-    let binary_unavailable = || {
-        std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "No available prebuilt binary for this platform",
-        )
-    };
+    let binary_unavailable =
+        || std::io::Error::other("No available prebuilt binary for this platform");
 
     let asset_name = asset_name().ok_or_else(binary_unavailable)?;
     let total_size = fetch_asset_size(asset_name, version).await?;

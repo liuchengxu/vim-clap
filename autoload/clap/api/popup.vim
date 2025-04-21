@@ -49,6 +49,9 @@ function! s:CreatePopup(messages, opts) abort
   call s:CloseExistingPopup(type) " Ensure no old popups exist
 
   let max_width = s:GetMaxWidth(a:messages)
+  if max_width > winwidth('') / 2
+    let max_width = winwidth('') / 2
+  endif
   let height = len(a:messages)
   let col = &columns - max_width - 1
 

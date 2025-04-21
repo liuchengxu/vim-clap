@@ -41,13 +41,10 @@ pub fn write_stdout_to_file<P: AsRef<Path>>(
     if exit_status.success() {
         Ok(())
     } else {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!(
-                "Failed to execute the command: {cmd:?}, exit code: {:?}",
-                exit_status.code()
-            ),
-        ))
+        Err(std::io::Error::other(format!(
+            "Failed to execute the command: {cmd:?}, exit code: {:?}",
+            exit_status.code()
+        )))
     }
 }
 
@@ -56,10 +53,9 @@ pub fn write_stdout_to_file<P: AsRef<Path>>(
 /// Remove the last line if it's empty.
 pub fn process_output(output: std::process::Output) -> std::io::Result<Vec<String>> {
     if !output.status.success() && !output.stderr.is_empty() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            String::from_utf8_lossy(&output.stderr),
-        ));
+        return Err(std::io::Error::other(String::from_utf8_lossy(
+            &output.stderr,
+        )));
     }
 
     let mut lines = output

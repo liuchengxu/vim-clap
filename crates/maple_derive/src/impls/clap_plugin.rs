@@ -199,7 +199,7 @@ pub fn clap_plugin_derive_impl(input: &DeriveInput) -> TokenStream {
             fn parse_action(&self, method: impl AsRef<str>) -> std::io::Result<#plugin_action> {
                 match method.as_ref() {
                   #(#action_variants)*
-                  unknown => Err(std::io::Error::new(std::io::ErrorKind::Other, format!("[{}] unknown action: {unknown}", #plugin_id))),
+                  unknown => Err(std::io::Error::other(format!("[{}] unknown action: {unknown}", #plugin_id))),
                 }
             }
         }

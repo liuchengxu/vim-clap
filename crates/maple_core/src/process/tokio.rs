@@ -20,13 +20,10 @@ pub async fn write_stdout_to_file<P: AsRef<Path>>(
     if exit_status.success() {
         Ok(())
     } else {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!(
-                "Failed to execute the command: {cmd:?}, exit code: {:?}",
-                exit_status.code()
-            ),
-        ))
+        Err(std::io::Error::other(format!(
+            "Failed to execute the command: {cmd:?}, exit code: {:?}",
+            exit_status.code()
+        )))
     }
 }
 
