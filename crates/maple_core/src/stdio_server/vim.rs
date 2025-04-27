@@ -59,7 +59,7 @@ pub fn initialize_filetype_map(output: &str) -> HashMap<&str, &str> {
                 None
             } else {
                 // (mkiv, context)
-                items[0].split('.').last().map(|ext| (ext, items[2]))
+                items[0].split('.').next_back().map(|ext| (ext, items[2]))
             }
         })
         .chain(
