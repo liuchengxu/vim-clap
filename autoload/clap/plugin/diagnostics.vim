@@ -70,13 +70,13 @@ endfunction
 function! s:max_available_length_on_top() abort
   let win_line_start = line('w0')
   let max_top_line_len = max(map([win_line_start, win_line_start+1, win_line_start+2], "strlen(get(getbufline('', v:val), 0, ''))"))
-  let line_cap = &columns - &numberwidth
+  let line_cap = winwidth('') - &numberwidth
   if &signcolumn ==# 'yes'
     let line_cap -= 2
   endif
 
   " Buy some more space for the code display.
-  let line_cap -= 4
+  let line_cap -= 8
 
   return line_cap - max_top_line_len
 endfunction

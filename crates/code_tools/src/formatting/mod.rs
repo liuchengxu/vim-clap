@@ -14,10 +14,10 @@ pub async fn run_cargo_fmt(workspace_root: &Path) -> std::io::Result<()> {
     if exit_status.success() {
         Ok(())
     } else {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("error: {:?}", exit_status.code()),
-        ))
+        Err(std::io::Error::other(format!(
+            "error: {:?}",
+            exit_status.code()
+        )))
     }
 }
 
@@ -36,9 +36,9 @@ pub async fn run_rustfmt(source_file: &Path, workspace_root: &Path) -> std::io::
     if exit_status.success() {
         Ok(())
     } else {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("error: {:?}", exit_status.code()),
-        ))
+        Err(std::io::Error::other(format!(
+            "error: {:?}",
+            exit_status.code()
+        )))
     }
 }

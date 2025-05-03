@@ -171,9 +171,8 @@ impl StoppableSearchImpl {
 struct BestFileResults {
     /// Time of last notification.
     past: Instant,
-    // TODO: Use BinaryHeap than sorted vector.
-    //
-    // Blocked by https://github.com/rust-lang/rust/pull/124012
+    // TODO: Is BinaryHeap better than sorted vector for our use case?
+    // It's hard to say which one is more performant without proper benchmark.
     results: Vec<FileResult>,
     last_lines: Vec<String>,
     last_visible_highlights: Vec<Vec<usize>>,

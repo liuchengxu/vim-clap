@@ -4,7 +4,7 @@ use crate::process::subprocess::exec;
 use crate::tools::gtags::GTAGS_DIR;
 use code_tools::analyzer::resolve_reference_kind;
 use rayon::prelude::*;
-use std::io::{Error, ErrorKind, Result};
+use std::io::{Error, Result};
 use std::path::{PathBuf, MAIN_SEPARATOR};
 use subprocess::Exec;
 
@@ -73,14 +73,13 @@ impl GtagsSearcher {
             .cwd(&self.project_root)
             .arg(&self.db_path)
             .join()
-            .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to run gtags: {e:?}")))?;
+            .map_err(|e| Error::other(format!("Failed to run gtags: {e:?}")))?;
         if exit_status.success() {
             Ok(())
         } else {
-            Err(Error::new(
-                ErrorKind::Other,
-                format!("Creating gtags failed, exit_status: {exit_status:?}"),
-            ))
+            Err(Error::other(format!(
+                "Creating gtags failed, exit_status: {exit_status:?}"
+            )))
         }
     }
 
@@ -93,15 +92,14 @@ impl GtagsSearcher {
             .cwd(&self.project_root)
             .arg("--update")
             .join()
-            .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to update gtags: {e:?}")))?;
+            .map_err(|e| Error::other(format!("Failed to update gtags: {e:?}")))?;
 
         if exit_status.success() {
             Ok(())
         } else {
-            Err(Error::new(
-                ErrorKind::Other,
-                format!("Updating gtags failed, exit_status: {exit_status:?}"),
-            ))
+            Err(Error::other(format!(
+                "Updating gtags failed, exit_status: {exit_status:?}"
+            )))
         }
     }
 

@@ -7,7 +7,7 @@ pub fn exec(cmd: Exec) -> std::io::Result<Lines<impl BufRead>> {
     Ok(std::io::BufReader::with_capacity(
         8 * 1024 * 1024,
         cmd.stream_stdout()
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?,
+            .map_err(|e| std::io::Error::other(e.to_string()))?,
     )
     .lines())
 }

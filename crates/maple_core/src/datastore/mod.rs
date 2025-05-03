@@ -85,10 +85,10 @@ fn read_json_as<P: AsRef<Path>, T: DeserializeOwned>(path: P) -> std::io::Result
     let file = std::fs::File::open(&path)?;
     let reader = BufReader::new(&file);
     let deserializd = serde_json::from_reader(reader).map_err(|e| {
-        std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Failed to write {} as json: {e:?}", path.as_ref().display()),
-        )
+        std::io::Error::other(format!(
+            "Failed to write {} as json: {e:?}",
+            path.as_ref().display()
+        ))
     })?;
 
     Ok(deserializd)

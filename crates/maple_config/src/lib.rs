@@ -31,7 +31,7 @@ fn load_config(
         .and_then(|contents| {
             toml::from_str(&contents).map_err(|err| {
                 maybe_config_err.replace(err);
-                std::io::Error::new(std::io::ErrorKind::Other, "Error occurred in config.toml")
+                std::io::Error::other("Error occurred in config.toml")
             })
         })
         .unwrap_or_default();

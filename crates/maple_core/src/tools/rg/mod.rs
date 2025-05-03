@@ -32,7 +32,7 @@ static RG_LANGUAGE_EXT_TABLE: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
         .iter()
         .flat_map(|(lang, values)| {
             values.iter().filter_map(|v| {
-                v.split('.').last().and_then(|ext| {
+                v.split('.').next_back().and_then(|ext| {
                     // Simply ignore the abnormal cases.
                     if ext.contains('[') || ext.contains('*') {
                         None

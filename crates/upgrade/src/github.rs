@@ -20,8 +20,7 @@ pub struct GitHubRelease {
 }
 
 pub async fn request<T: DeserializeOwned>(url: &str, user_agent: &str) -> std::io::Result<T> {
-    let io_error =
-        |e| std::io::Error::new(std::io::ErrorKind::Other, format!("Reqwest error: {e}"));
+    let io_error = |e| std::io::Error::other(format!("Reqwest error: {e}"));
 
     reqwest::Client::new()
         .get(url)
@@ -78,8 +77,7 @@ pub async fn download_asset_file(
         Some(progress_bar)
     };
 
-    let to_io_error =
-        |e| std::io::Error::new(std::io::ErrorKind::Other, format!("Reqwest error: {e}"));
+    let to_io_error = |e| std::io::Error::other(format!("Reqwest error: {e}"));
 
     let mut source = reqwest::Client::new()
         .get(asset_download_url)

@@ -18,7 +18,7 @@ use crate::tools::rg::{get_language, Match, Word};
 use code_tools::analyzer::{resolve_reference_kind, Priority};
 use rayon::prelude::*;
 use std::collections::HashMap;
-use std::io::{Error, ErrorKind, Result};
+use std::io::{Error, Result};
 use std::path::PathBuf;
 
 /// [`Usage`] with some structured information.
@@ -103,12 +103,8 @@ impl RegexSearcher {
             dir,
         } = self;
 
-        let re = regex::Regex::new(&format!("\\b{word}\\b")).map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("{word} is an invalid regex expression: {e}"),
-            )
-        })?;
+        let re = regex::Regex::new(&format!("\\b{word}\\b"))
+            .map_err(|e| Error::other(format!("{word} is an invalid regex expression: {e}")))?;
 
         let word = Word::new(word.clone(), re);
 

@@ -36,10 +36,7 @@ impl ExecutableSearcher {
         let cmd_output = cmd.output()?;
 
         if !cmd_output.status.success() && !cmd_output.stderr.is_empty() {
-            return Err(Error::new(
-                ErrorKind::Other,
-                String::from_utf8_lossy(&cmd_output.stderr),
-            ));
+            return Err(Error::other(String::from_utf8_lossy(&cmd_output.stderr)));
         }
 
         Ok(cmd_output
@@ -108,7 +105,7 @@ impl LanguageRegexSearcher {
     /// Returns all kinds of definitions.
     fn definitions(&self) -> Result<Vec<DefinitionSearchResult>> {
         Ok(get_definition_rules(&self.lang)
-            .ok_or_else(|| Error::new(ErrorKind::Other, "Can not find the definition rules"))?
+            .ok_or_else(|| Error::other("Can not find the definition rules"))?
             .0
             .keys()
             .map(|kind| self.find_definitions(kind))
@@ -154,7 +151,7 @@ impl LanguageRegexSearcher {
     /// Returns a tuple of (definition_kind, ripgrep_matches) by searching given language `lang`.
     fn find_definitions(&self, kind: &DefinitionKind) -> Result<(DefinitionKind, Vec<Match>)> {
         let regexp = build_full_regexp(&self.lang, kind, &self.word)
-            .ok_or_else(|| Error::new(ErrorKind::Other, "Can not find the definition rule"))?;
+            .ok_or_else(|| Error::other("Can not find the definition rule"))?;
         let mut command = Command::new("rg");
         command
             .arg("--trim")

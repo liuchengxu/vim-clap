@@ -429,16 +429,13 @@ impl GitRepo {
         if output.status.success() {
             Ok(output.stdout)
         } else {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!(
-                    "child process errors out: {}, {}, \
+            Err(std::io::Error::other(format!(
+                "child process errors out: {}, {}, \
                     command: `git blame --porcelain --incremental -L{lnum},{lnum} -- {}`",
-                    String::from_utf8_lossy(&output.stderr),
-                    output.status,
-                    relative_path.display()
-                ),
-            ))
+                String::from_utf8_lossy(&output.stderr),
+                output.status,
+                relative_path.display()
+            )))
         }
     }
 
@@ -466,7 +463,7 @@ impl GitRepo {
         let stdin = p
             .stdin
             .as_mut()
-            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "stdin unavailable"))?;
+            .ok_or_else(|| std::io::Error::other("stdin unavailable"))?;
 
         let lines = lines.into_iter().join("\n");
         stdin.write_all(lines.as_bytes())?;
@@ -476,16 +473,13 @@ impl GitRepo {
         if output.status.success() {
             Ok(output.stdout)
         } else {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!(
-                    "child process errors out: {}, {}, \
+            Err(std::io::Error::other(format!(
+                "child process errors out: {}, {}, \
                     command: `git blame --contents - -L {lnum},+1 --line-porcelain {}`",
-                    String::from_utf8_lossy(&output.stderr),
-                    output.status,
-                    relative_path.display()
-                ),
-            ))
+                String::from_utf8_lossy(&output.stderr),
+                output.status,
+                relative_path.display()
+            )))
         }
     }
 

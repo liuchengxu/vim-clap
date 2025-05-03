@@ -103,7 +103,7 @@ impl BufferDiagnostics {
 
         match direction {
             Direction::First => relevant_spans().next().map(|span| span.start_pos()),
-            Direction::Last => relevant_spans().last().map(|span| span.start_pos()),
+            Direction::Last => relevant_spans().next_back().map(|span| span.start_pos()),
             Direction::Next => {
                 relevant_spans().find_map(|span| check_span(span, CmpOrdering::Greater))
             }

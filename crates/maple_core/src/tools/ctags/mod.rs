@@ -68,8 +68,7 @@ impl CtagsBinary {
                 if *json_feature {
                     Ok(())
                 } else {
-                    Err(Error::new(
-                        ErrorKind::Other,
+                    Err(Error::other(
                         "ctags executable is not compiled with +json feature, please recompile it.",
                     ))
                 }
@@ -242,10 +241,10 @@ impl<'a, P: AsRef<Path> + Hash> TagsGenerator<'a, P> {
             .stderr(NullFile) // ignore the line: ctags: warning...
             .cwd(self.dir.as_ref())
             .join()
-            .map_err(|e| Error::new(ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| Error::other(e.to_string()))?;
 
         if !exit_status.success() {
-            return Err(Error::new(ErrorKind::Other, "Failed to generate tags file"));
+            return Err(Error::other("Failed to generate tags file"));
         }
 
         Ok(())
@@ -312,7 +311,7 @@ impl ProjectCtagsCommand {
         Ok(BufReader::new(
             exec_cmd
                 .stream_stdout()
-                .map_err(|err| Error::new(ErrorKind::Other, err.to_string()))?,
+                .map_err(|err| Error::other(err.to_string()))?,
         )
         .lines()
         .map_while(Result::ok))

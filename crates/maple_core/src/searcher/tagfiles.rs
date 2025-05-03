@@ -146,10 +146,7 @@ impl TagItem {
                 }
                 /* Nothing else is accepted */
                 else {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        "Invalid tag line: invalid address",
-                    ));
+                    return Err(std::io::Error::other("Invalid tag line: invalid address"));
                 }
 
                 /* Cleanup end-of-tagaddress chars: `;` and `"` usually */
@@ -204,10 +201,7 @@ impl TagItem {
 
         /* Not enough fields for us */
         if field <= 1 {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Invalid tag line: not enough fields",
-            ))
+            Err(std::io::Error::other("Invalid tag line: not enough fields"))
         } else {
             Ok(TagItem {
                 name,

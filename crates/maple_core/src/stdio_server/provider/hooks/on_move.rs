@@ -201,13 +201,10 @@ impl PreviewTarget {
 
 fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget, Option<String>)> {
     let err = || {
-        Error::new(
-            ErrorKind::Other,
-            format!(
-                "Failed to parse PreviewTarget for provider_id: {} from `{curline}`",
-                ctx.provider_id()
-            ),
-        )
+        Error::other(format!(
+            "Failed to parse PreviewTarget for provider_id: {} from `{curline}`",
+            ctx.provider_id()
+        ))
     };
 
     // Store the line context we see in the search result, but it may be out-dated due to the
@@ -272,13 +269,10 @@ fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget
             PreviewTarget::GitCommit(rev.into())
         }
         unknown_provider_id => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!(
-                    "Failed to parse PreviewTarget, you probably forget to \
+            return Err(std::io::Error::other(format!(
+                "Failed to parse PreviewTarget, you probably forget to \
                     add an implementation for this provider: {unknown_provider_id}",
-                ),
-            ))
+            )))
         }
     };
 
@@ -443,10 +437,10 @@ impl<'a> CachedPreviewImpl<'a> {
 
         let file_size_tier = match detect_file_class(path)? {
             FileClass::NotRegularFile => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("Failed to preview as {} is not a file", path.display()),
-                ));
+                return Err(Error::other(format!(
+                    "Failed to preview as {} is not a file",
+                    path.display()
+                )));
             }
             FileClass::Binary => {
                 return Ok(Preview::binary_file_preview(path));
