@@ -2,6 +2,8 @@
 
 ## [unreleased]
 
+## [0.55] 2025-5-3
+
 - Remove the duplicate entries by using the canonicalized file path in `recent_files` provider.
 
 ## [0.54] 2024-5-20
