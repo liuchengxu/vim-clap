@@ -99,6 +99,7 @@ impl std::fmt::Display for FileSize {
     "treeSitterHighlightDisable",
     "treeSitterListScopes",
     "treeSitterPropsUnderCursor",
+    "treeSitterRefresh",
     "toggle",
   ],
 )]
@@ -444,7 +445,9 @@ pub fn convert_raw_ts_highlights_to_vim_highlights(
 impl ClapPlugin for Syntax {
     #[maple_derive::subscriptions]
     async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<(), PluginError> {
-        use AutocmdEventType::{BufDelete, BufEnter, BufWritePost, CursorMoved};
+        use AutocmdEventType::{
+            BufDelete, BufEnter, BufWritePost, CursorMoved, FileChangedShellPost,
+        };
 
         if self.toggle.is_off() {
             return Ok(());
@@ -455,7 +458,7 @@ impl ClapPlugin for Syntax {
 
         match autocmd_event_type {
             BufEnter => self.on_buf_enter(bufnr).await?,
-            BufWritePost => {
+            BufWritePost | FileChangedShellPost => {
                 if self.tree_sitter_enabled {
                     if let Some(ts_info) = self.ts_bufs.get(&bufnr) {
                         self.refresh_tree_sitter_highlight(bufnr, ts_info.language)
@@ -530,6 +533,17 @@ impl ClapPlugin for Syntax {
             }
             SyntaxAction::TreeSitterPropsUnderCursor => {
                 self.tree_sitter_props_under_cursor().await?;
+            }
+            SyntaxAction::TreeSitterRefresh => {
+                let bufnr = self.vim.bufnr("").await?;
+                if let Some(ts_info) = self.ts_bufs.get(&bufnr) {
+                    self.refresh_tree_sitter_highlight(bufnr, ts_info.language)
+                        .await?;
+                    self.vim.echo_message("Tree-sitter syntax refreshed")?;
+                } else {
+                    self.vim
+                        .echo_message("Tree-sitter highlighting not enabled for this buffer")?;
+                }
             }
             SyntaxAction::SublimeSyntaxHighlight => {
                 let bufnr = self.vim.bufnr("").await?;

@@ -160,4 +160,5 @@ event_enum_with_variants!(AutocmdEventType {
     BufWinLeave,
     TextChanged,
     TextChangedI,
+    FileChangedShellPost,
 });
