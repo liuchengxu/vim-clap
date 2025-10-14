@@ -151,6 +151,7 @@ pub enum Language {
     Markdown,
     Python,
     Rust,
+    Swift,
     Toml,
     Viml,
 }
@@ -169,6 +170,7 @@ impl FromStr for Language {
             "markdown" => Self::Markdown,
             "python" => Self::Python,
             "rust" => Self::Rust,
+            "swift" => Self::Swift,
             "toml" => Self::Toml,
             "viml" => Self::Viml,
             _ => return Err(format!("Unknown language: {s}")),
@@ -197,6 +199,7 @@ impl Language {
             "md" => Self::Markdown,
             "py" | "pyi" | "pyc" | "pyd" | "pyw" => Self::Python,
             "rs" => Self::Rust,
+            "swift" => Self::Swift,
             "toml" => Self::Toml,
             "vim" => Self::Viml,
             _ => return None,
@@ -218,6 +221,7 @@ impl Language {
             "markdown" => Self::Markdown,
             "python" => Self::Python,
             "rust" => Self::Rust,
+            "swift" => Self::Swift,
             "toml" => Self::Toml,
             "vim" => Self::Viml,
             _ => return None,
@@ -252,6 +256,7 @@ impl Language {
             Self::Markdown => tree_sitter_md::HIGHLIGHT_QUERY_BLOCK,
             Self::Python => tree_sitter_python::HIGHLIGHTS_QUERY,
             Self::Rust => tree_sitter_rust::HIGHLIGHTS_QUERY,
+            Self::Swift => tree_sitter_swift::HIGHLIGHTS_QUERY,
             Self::Toml => tree_sitter_toml::HIGHLIGHTS_QUERY,
             Self::Viml => tree_sitter_vim::HIGHLIGHT_QUERY,
         }
@@ -330,6 +335,13 @@ impl Language {
                 "",
                 "",
             ),
+            Language::Swift => HighlightConfiguration::new(
+                tree_sitter_swift::LANGUAGE.into(),
+                "swift",
+                tree_sitter_swift::HIGHLIGHTS_QUERY,
+                "",
+                "",
+            ),
             Language::Toml => HighlightConfiguration::new(
                 tree_sitter_toml::LANGUAGE.into(),
                 "toml",
@@ -382,6 +394,6 @@ mod tests {
 
     #[test]
     fn test_tree_sitter_config() {
-        assert_eq!(CONFIG.language.len(), 7);
+        assert_eq!(CONFIG.language.len(), 8);
     }
 }
