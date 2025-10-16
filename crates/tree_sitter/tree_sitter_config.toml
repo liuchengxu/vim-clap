@@ -113,6 +113,30 @@ highlight-name-and-groups = [
   ["variable.parameter", "Identifier"],
 ]
 
+[language.swift]
+highlight-name-and-groups = [
+  ["attribute", "Special"],
+  ["comment", "Comment"],
+  ["constant", "Constant"],
+  ["constant.builtin", "Constant"],
+  ["constructor", "Function"],
+  ["function", "Function"],
+  ["function.builtin", "Special"],
+  ["function.method", "Function"],
+  ["keyword", "Keyword"],
+  ["number", "Number"],
+  ["operator", "Operator"],
+  ["property", "SpecialKey"],
+  ["punctuation.bracket", "Delimiter"],
+  ["punctuation.delimiter", "Delimiter"],
+  ["string", "String"],
+  ["type", "Type"],
+  ["type.builtin", "Type"],
+  ["variable", "Identifier"],
+  ["variable.builtin", "Identifier"],
+  ["variable.parameter", "Identifier"],
+]
+
 [language.viml]
 highlight-name-and-groups = [
   ["_option", "StorageClass"],

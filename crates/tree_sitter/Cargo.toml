@@ -23,6 +23,7 @@ tree-sitter-json = "0.23"
 tree-sitter-md = "0.3.2"
 tree-sitter-python = "0.23"
 tree-sitter-rust = "0.23"
+tree-sitter-swift = "0.6"
 # tree-sitter-traversal = "0.1"
 
 # Forked languages.
