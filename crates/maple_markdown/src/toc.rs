@@ -5,7 +5,7 @@ use std::collections::VecDeque;
 use std::path::Path;
 use std::str::FromStr;
 
-fn slugify(text: &str) -> String {
+pub fn slugify(text: &str) -> String {
     percent_encode(text.replace(' ', "-").to_lowercase().as_bytes(), CONTROLS).to_string()
 }
 

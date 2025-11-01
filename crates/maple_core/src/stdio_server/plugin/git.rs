@@ -12,6 +12,37 @@ fn in_git_repo(filepath: &Path) -> Option<&Path> {
         .flatten()
 }
 
+/// Strips credentials (username, password, or tokens) from a URL.
+///
+/// Converts URLs like:
+/// - `https://ghp_TOKEN@github.com/user/repo` -> `https://github.com/user/repo`
+/// - `https://username:password@github.com/user/repo` -> `https://github.com/user/repo`
+/// - `git@github.com:user/repo` -> `git@github.com:user/repo` (unchanged)
+fn strip_url_credentials(url: &str) -> String {
+    // Only process HTTP(S) URLs that contain '@'
+    if !url.starts_with("http") || !url.contains('@') {
+        return url.to_string();
+    }
+
+    // Find the @ symbol that separates credentials from host
+    if let Some(at_pos) = url.rfind('@') {
+        // Find the protocol separator (://)
+        if let Some(protocol_end) = url.find("://") {
+            let protocol_end = protocol_end + 3; // Skip past "://"
+
+            // If @ comes after the protocol, it's a credentials separator
+            if at_pos > protocol_end {
+                // Reconstruct URL without credentials
+                let protocol = &url[..protocol_end];
+                let rest = &url[at_pos + 1..];
+                return format!("{protocol}{rest}");
+            }
+        }
+    }
+
+    url.to_string()
+}
+
 type Sign = (usize, SignType);
 
 #[derive(Debug, Clone)]
@@ -297,8 +328,11 @@ impl Git {
         let stdout = git.fetch_origin_url()?;
         let remote_url = stdout.trim();
 
+        // Strip credentials/tokens from the URL (e.g., https://TOKEN@github.com/user/repo)
+        let remote_url = strip_url_credentials(remote_url);
+
         // https://github.com/liuchengxu/vim-clap{.git}
-        let remote_url = remote_url.strip_suffix(".git").unwrap_or(remote_url);
+        let remote_url = remote_url.strip_suffix(".git").unwrap_or(&remote_url);
 
         let Ok(stdout) = git.fetch_rev_parse("HEAD") else {
             return Ok(None);
@@ -427,5 +461,43 @@ impl ClapPlugin for Git {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_strip_url_credentials() {
+        // Test HTTPS URL with token
+        assert_eq!(
+            strip_url_credentials("https://ghp_TOKEN123@github.com/user/repo"),
+            "https://github.com/user/repo"
+        );
+
+        // Test HTTPS URL with username:password
+        assert_eq!(
+            strip_url_credentials("https://username:password@github.com/user/repo"),
+            "https://github.com/user/repo"
+        );
+
+        // Test HTTPS URL without credentials
+        assert_eq!(
+            strip_url_credentials("https://github.com/user/repo"),
+            "https://github.com/user/repo"
+        );
+
+        // Test git URL (should remain unchanged)
+        assert_eq!(
+            strip_url_credentials("git@github.com:user/repo"),
+            "git@github.com:user/repo"
+        );
+
+        // Test HTTP URL with token
+        assert_eq!(
+            strip_url_credentials("http://token@example.com/repo"),
+            "http://example.com/repo"
+        );
     }
 }

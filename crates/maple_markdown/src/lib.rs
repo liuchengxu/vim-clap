@@ -49,10 +49,76 @@ async fn handle_websocket(mut socket: WebSocket, mut msg_rx: Receiver<Message>) 
 }
 
 pub fn to_html(markdown_content: &str) -> Result<String, Error> {
-    let parser = pulldown_cmark::Parser::new(markdown_content);
+    use pulldown_cmark::{Event, Tag, TagEnd};
+
+    let mut options = pulldown_cmark::Options::empty();
+    options.insert(pulldown_cmark::Options::ENABLE_TABLES);
+    options.insert(pulldown_cmark::Options::ENABLE_STRIKETHROUGH);
+    options.insert(pulldown_cmark::Options::ENABLE_TASKLISTS);
+    options.insert(pulldown_cmark::Options::ENABLE_HEADING_ATTRIBUTES);
+
+    let parser = pulldown_cmark::Parser::new_ext(markdown_content, options);
 
     let mut html_output = String::new();
-    pulldown_cmark::html::push_html(&mut html_output, parser);
+    let mut heading_text = String::new();
+
+    let events: Vec<Event> = parser.collect();
+    let mut processed_events = Vec::new();
+
+    let mut i = 0;
+    while i < events.len() {
+        match &events[i] {
+            Event::Start(Tag::Heading {
+                level,
+                id: _,
+                classes,
+                attrs,
+            }) => {
+                heading_text.clear();
+
+                // Collect heading text
+                let mut j = i + 1;
+                while j < events.len() {
+                    match &events[j] {
+                        Event::Text(text) | Event::Code(text) => {
+                            heading_text.push_str(text);
+                            j += 1;
+                        }
+                        Event::End(TagEnd::Heading(_)) => {
+                            break;
+                        }
+                        _ => {
+                            j += 1;
+                        }
+                    }
+                }
+
+                // Strip backticks and generate slug for heading (same as TOC does)
+                let heading_text_without_backticks = heading_text.replace('`', "");
+                let slug = toc::slugify(&heading_text_without_backticks);
+
+                // Create heading with ID
+                processed_events.push(Event::Start(Tag::Heading {
+                    level: *level,
+                    id: Some(slug.into()),
+                    classes: classes.clone(),
+                    attrs: attrs.clone(),
+                }));
+
+                i += 1;
+            }
+            Event::End(TagEnd::Heading(_)) => {
+                processed_events.push(events[i].clone());
+                i += 1;
+            }
+            _ => {
+                processed_events.push(events[i].clone());
+                i += 1;
+            }
+        }
+    }
+
+    pulldown_cmark::html::push_html(&mut html_output, processed_events.into_iter());
 
     Ok(html_output)
 }
