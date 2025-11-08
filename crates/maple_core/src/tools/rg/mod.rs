@@ -112,7 +112,7 @@ impl PartialEq for Match {
 impl Eq for Match {}
 
 impl Match {
-    pub fn path(&self) -> Cow<str> {
+    pub fn path(&self) -> Cow<'_, str> {
         self.path.text()
     }
 
@@ -203,7 +203,7 @@ impl Match {
     }
 
     #[inline]
-    pub fn pattern(&self) -> Cow<str> {
+    pub fn pattern(&self) -> Cow<'_, str> {
         self.lines.text()
     }
 

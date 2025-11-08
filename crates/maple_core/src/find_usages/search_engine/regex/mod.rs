@@ -63,11 +63,7 @@ impl RegexUsage {
 
 impl PartialOrd for RegexUsage {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some((self.pattern_priority, &self.path, self.line_number).cmp(&(
-            other.pattern_priority,
-            &other.path,
-            other.line_number,
-        )))
+        Some(self.cmp(other))
     }
 }
 

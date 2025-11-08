@@ -130,7 +130,7 @@ impl<P: SearchProgressUpdate<DisplayLines>> TopMatches<P> {
                 self.sort();
             }
 
-            if total_matched % 16 == 0 || total_processed % 16 == 0 {
+            if total_matched.is_multiple_of(16) || total_processed.is_multiple_of(16) {
                 let now = Instant::now();
                 if now > self.last_update_time + self.update_interval {
                     let display_lines = self.printer.to_display_lines(self.items.clone());

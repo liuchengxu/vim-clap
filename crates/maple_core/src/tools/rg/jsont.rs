@@ -74,7 +74,7 @@ pub enum Data {
 }
 
 impl Data {
-    pub fn text(&self) -> Cow<str> {
+    pub fn text(&self) -> Cow<'_, str> {
         match self {
             Self::Text { text } => text.as_str().into(),
             Self::Bytes { bytes } => String::from_utf8_lossy(bytes),

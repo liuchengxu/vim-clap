@@ -126,7 +126,7 @@ impl ClapItem for BufferTagItem {
         self.raw_text()
     }
 
-    fn fuzzy_text(&self, _match_scope: MatchScope) -> Option<FuzzyText> {
+    fn fuzzy_text(&self, _match_scope: MatchScope) -> Option<FuzzyText<'_>> {
         Some(FuzzyText::new(&self.name, 0))
     }
 

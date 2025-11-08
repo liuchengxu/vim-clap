@@ -50,11 +50,7 @@ impl Eq for FrecentEntry {}
 
 impl PartialOrd for FrecentEntry {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some((self.frecent_score, self.visits, self.last_visit).cmp(&(
-            other.frecent_score,
-            other.visits,
-            other.last_visit,
-        )))
+        Some(self.cmp(other))
     }
 }
 
