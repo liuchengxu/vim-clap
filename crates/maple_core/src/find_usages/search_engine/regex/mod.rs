@@ -69,7 +69,10 @@ impl PartialOrd for RegexUsage {
 
 impl Ord for RegexUsage {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.partial_cmp(other).unwrap()
+        self.pattern_priority
+            .cmp(&other.pattern_priority)
+            .then_with(|| self.path.cmp(&other.path))
+            .then_with(|| self.line_number.cmp(&other.line_number))
     }
 }
 
