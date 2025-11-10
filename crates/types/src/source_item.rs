@@ -88,7 +88,7 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync {
     /// matching pipeline.
     ///
     /// The fuzzy matching process only happens when Some(_) is returned.
-    fn fuzzy_text(&self, match_scope: MatchScope) -> Option<FuzzyText> {
+    fn fuzzy_text(&self, match_scope: MatchScope) -> Option<FuzzyText<'_>> {
         extract_fuzzy_text(self.match_text(), match_scope)
     }
 
@@ -170,7 +170,7 @@ impl ClapItem for GrepItem {
         &self.raw
     }
 
-    fn fuzzy_text(&self, _match_scope: MatchScope) -> Option<FuzzyText> {
+    fn fuzzy_text(&self, _match_scope: MatchScope) -> Option<FuzzyText<'_>> {
         Some(FuzzyText::new(self.line(), self.start_of_line))
     }
 
@@ -209,7 +209,7 @@ impl ClapItem for FileNameItem {
         &self.raw
     }
 
-    fn fuzzy_text(&self, _match_scope: MatchScope) -> Option<FuzzyText> {
+    fn fuzzy_text(&self, _match_scope: MatchScope) -> Option<FuzzyText<'_>> {
         Some(FuzzyText::new(self.file_name(), self.file_name_offset))
     }
 
@@ -266,7 +266,7 @@ impl SourceItem {
     pub fn fuzzy_text_or_exact_using_match_scope(
         &self,
         match_scope: MatchScope,
-    ) -> Option<FuzzyText> {
+    ) -> Option<FuzzyText<'_>> {
         match self.fuzzy_text {
             Some((ref text, offset)) => Some(FuzzyText::new(text, offset)),
             None => extract_fuzzy_text(self.raw.as_str(), match_scope),
@@ -279,7 +279,7 @@ impl ClapItem for SourceItem {
         &self.raw
     }
 
-    fn fuzzy_text(&self, match_scope: MatchScope) -> Option<FuzzyText> {
+    fn fuzzy_text(&self, match_scope: MatchScope) -> Option<FuzzyText<'_>> {
         self.fuzzy_text_or_exact_using_match_scope(match_scope)
     }
 
@@ -288,7 +288,7 @@ impl ClapItem for SourceItem {
     }
 }
 
-pub fn extract_fuzzy_text(full: &str, match_scope: MatchScope) -> Option<FuzzyText> {
+pub fn extract_fuzzy_text(full: &str, match_scope: MatchScope) -> Option<FuzzyText<'_>> {
     match match_scope {
         MatchScope::Full => Some(FuzzyText::new(full, 0)),
         MatchScope::TagName => extract_tag_name(full).map(|s| FuzzyText::new(s, 0)),
@@ -364,14 +364,14 @@ impl MatchedItem {
     }
 
     /// Maybe truncated display text.
-    pub fn display_text(&self) -> Cow<str> {
+    pub fn display_text(&self) -> Cow<'_, str> {
         self.display_text
             .as_ref()
             .map(Into::into)
             .unwrap_or_else(|| self.item.output_text())
     }
 
-    pub fn output_text(&self) -> Cow<str> {
+    pub fn output_text(&self) -> Cow<'_, str> {
         self.output_text
             .as_ref()
             .map(Into::into)

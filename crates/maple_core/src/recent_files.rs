@@ -50,17 +50,16 @@ impl Eq for FrecentEntry {}
 
 impl PartialOrd for FrecentEntry {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some((self.frecent_score, self.visits, self.last_visit).cmp(&(
-            other.frecent_score,
-            other.visits,
-            other.last_visit,
-        )))
+        Some(self.cmp(other))
     }
 }
 
 impl Ord for FrecentEntry {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap()
+        match self.frecent_score.cmp(&other.frecent_score) {
+            Ordering::Equal => other.last_visit.cmp(&self.last_visit),
+            other => other,
+        }
     }
 }
 
@@ -167,8 +166,8 @@ impl SortedRecentFiles {
     pub fn sort_by_cwd(&mut self, cwd: &str) {
         self.entries.sort_unstable_by(|a, b| {
             b.cwd_preferred_score(cwd)
-                .partial_cmp(&a.cwd_preferred_score(cwd))
-                .unwrap()
+                .cmp(&a.cwd_preferred_score(cwd))
+                .then_with(|| b.last_visit.cmp(&a.last_visit))
         });
     }
 

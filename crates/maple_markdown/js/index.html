@@ -3,6 +3,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown.min.css" >
+    <!-- GitHub Alerts styling from markdown-it-github-alerts
+         Source: https://github.com/antfu/markdown-it-github-alerts
+         These styles are extracted from GitHub's official alert implementation -->
+    <link rel="stylesheet" href="https://unpkg.com/markdown-it-github-alerts@0.3.0/styles/github-base.css">
+    <link rel="stylesheet" href="https://unpkg.com/markdown-it-github-alerts@0.3.0/styles/github-colors-light.css">
+    <link rel="stylesheet" href="https://unpkg.com/markdown-it-github-alerts@0.3.0/styles/github-colors-dark-media.css">
     <!-- Code highlight -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -15,6 +21,13 @@
     <!-- KaTeX Auto-render extension + KaTeX main -->
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+    <!-- Mermaid -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: false });
+        window.mermaid = mermaid;
+    </script>
 
     <style>
       .markdown-body {
@@ -45,12 +58,21 @@
             }
         }
 
+        async function renderMermaid() {
+            if (window.mermaid !== undefined) {
+                await window.mermaid.run({
+                    querySelector: '.language-mermaid'
+                });
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', (event) => {
             document.querySelectorAll('pre code').forEach((el) => {
                 hljs.highlightElement(el);
             });
 
             codeHighlight();
+            renderMermaid();
 
             const webSocketUrl = 'ws://' + window.location.host;
             var socket = new WebSocket(webSocketUrl);
@@ -69,6 +91,8 @@
                             {left: "$", right: "$", display: false}
                         ]
                     });
+                    // Render mermaid diagrams
+                    renderMermaid();
                 } else if (message.type === "scroll") {
                     const scrollPercent = message.data;
 

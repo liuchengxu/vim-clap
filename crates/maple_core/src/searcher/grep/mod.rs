@@ -46,7 +46,7 @@ pub async fn cli_search(paths: Vec<PathBuf>, matcher: Matcher) -> SearchResult {
         total_matched += 1;
         let total_processed = search_info.total_processed.load(Ordering::Relaxed);
 
-        if total_matched % 16 == 0 || total_processed % 16 == 0 {
+        if total_matched % 16 == 0 || total_processed.is_multiple_of(16) {
             let now = Instant::now();
             if now > past + UPDATE_INTERVAL {
                 println!("total_matched: {total_matched:?}, total_processed: {total_processed:?}");

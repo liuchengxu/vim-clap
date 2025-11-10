@@ -197,11 +197,7 @@ impl GtagsUsage {
 
 impl PartialOrd for GtagsUsage {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some((self.kind_weight, &self.path, self.line_number).cmp(&(
-            other.kind_weight,
-            &other.path,
-            other.line_number,
-        )))
+        Some(self.cmp(other))
     }
 }
 
