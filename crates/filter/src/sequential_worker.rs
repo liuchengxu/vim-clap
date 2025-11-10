@@ -160,7 +160,7 @@ impl Watcher {
     ///
     /// Printing to stdout is to send the content to the client.
     pub fn try_notify(&mut self, top_results: &[usize; ITEMS_TO_SHOW], buffer: &[MatchedItem]) {
-        if self.total.is_multiple_of(16) {
+        if self.total % 16 == 0 {
             let now = Instant::now();
             if now > self.past + UPDATE_INTERVAL {
                 let mut indices = Vec::with_capacity(ITEMS_TO_SHOW);
