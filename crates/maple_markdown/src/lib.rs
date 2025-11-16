@@ -6,7 +6,10 @@ use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse};
 use axum::routing::get;
 use axum::Router;
+use notify::{Event as NotifyEvent, RecommendedWatcher, RecursiveMode, Watcher};
 use std::net::SocketAddr;
+use std::path::Path;
+use std::sync::{Arc, Mutex};
 use tokio::sync::watch::Receiver;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -19,29 +22,101 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 async fn ws_handler(
     ws: Option<WebSocketUpgrade>,
     Extension(msg_rx): Extension<Receiver<Message>>,
+    Extension(watcher_rx): Extension<Option<Receiver<Message>>>,
+    Extension(disconnect_tx): Extension<Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>>,
 ) -> impl IntoResponse {
     if let Some(ws) = ws {
-        ws.on_upgrade(|ws| async move { handle_websocket(ws, msg_rx).await })
+        ws.on_upgrade(
+            |ws| async move { handle_websocket(ws, msg_rx, watcher_rx, disconnect_tx).await },
+        )
     } else {
         let html = include_str!("../js/index.html");
         (StatusCode::OK, Html(html)).into_response()
     }
 }
 
-async fn handle_websocket(mut socket: WebSocket, mut msg_rx: Receiver<Message>) {
-    while msg_rx.changed().await.is_ok() {
-        let msg = msg_rx.borrow().clone();
+async fn handle_websocket(
+    mut socket: WebSocket,
+    mut vim_rx: Receiver<Message>,
+    mut watcher_rx: Option<Receiver<Message>>,
+    disconnect_tx: Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>,
+) {
+    loop {
+        // Wait for messages from Vim, file watcher, or browser
+        tokio::select! {
+            // Messages FROM Vim TO browser
+            result = vim_rx.changed() => {
+                if result.is_err() {
+                    break;
+                }
+                let msg = vim_rx.borrow().clone();
+                let Ok(text) = process_message(msg) else {
+                    break;
+                };
+                if socket.send(WsMessage::Text(text.to_string())).await.is_err() {
+                    break;
+                }
+            }
+            // Messages FROM file watcher TO browser
+            result = async {
+                match &mut watcher_rx {
+                    Some(rx) => rx.changed().await,
+                    None => std::future::pending().await,
+                }
+            } => {
+                if result.is_err() {
+                    tracing::error!("File watcher channel closed unexpectedly");
+                    break;
+                }
+                if let Some(rx) = &watcher_rx {
+                    tracing::debug!("File watcher notified WebSocket handler, processing message");
+                    let msg = rx.borrow().clone();
+                    let Ok(text) = process_message(msg) else {
+                        tracing::error!("Failed to process file watcher message");
+                        break;
+                    };
+                    tracing::debug!("Sending update to browser via WebSocket");
+                    if socket.send(WsMessage::Text(text.to_string())).await.is_err() {
+                        tracing::error!("Failed to send WebSocket message to browser");
+                        break;
+                    }
+                    tracing::debug!("Successfully sent update to browser, ready for next change");
+                }
+            }
+            // Messages FROM browser (detect disconnect)
+            msg = socket.recv() => {
+                match msg {
+                    Some(Ok(WsMessage::Close(_))) | None => {
+                        tracing::debug!("Browser disconnected (close frame or connection closed)");
+                        break;
+                    }
+                    Some(Ok(WsMessage::Ping(data))) => {
+                        // Respond to keep-alive pings
+                        if socket.send(WsMessage::Pong(data)).await.is_err() {
+                            tracing::debug!("Failed to send pong, connection likely closed");
+                            break;
+                        }
+                    }
+                    Some(Err(err)) => {
+                        tracing::debug!(?err, "WebSocket error, client likely disconnected");
+                        break;
+                    }
+                    _ => {
+                        // Ignore other message types (Text, Binary, Pong)
+                        // Browsers typically don't send text messages in this use case
+                    }
+                }
+            }
+        }
+    }
 
-        let Ok(text) = process_message(msg) else {
-            break;
-        };
+    tracing::debug!("WebSocket connection closed");
 
-        if socket
-            .send(WsMessage::Text(text.to_string()))
-            .await
-            .is_err()
-        {
-            break;
+    // Notify caller that browser disconnected
+    if let Ok(mut guard) = disconnect_tx.lock() {
+        if let Some(tx) = guard.take() {
+            let _ = tx.send(());
+            tracing::debug!("Sent disconnect notification");
         }
     }
 
@@ -255,15 +330,18 @@ fn process_message(msg: Message) -> Result<serde_json::Value, Error> {
         Message::FileChanged(path) => {
             let markdown_content = std::fs::read_to_string(path)?;
             let html = to_html(&markdown_content)?;
+            let line_count = markdown_content.lines().count();
             serde_json::json!({
               "type": "update_content",
               "data": html,
+              "source_lines": line_count,
             })
         }
         Message::UpdateContent(content) => {
             serde_json::json!({
               "type": "update_content",
               "data": content,
+              "source_lines": null,
             })
         }
         Message::Scroll(position) => {
@@ -287,13 +365,177 @@ pub enum Message {
     Scroll(usize),
 }
 
+/// Spawns a file watcher that monitors changes to the given file and sends updates via the message channel.
+/// Returns a shutdown sender that can be used to cleanly stop the watcher.
+fn spawn_file_watcher(
+    file_path: String,
+    msg_tx: tokio::sync::watch::Sender<Message>,
+) -> Result<std::sync::mpsc::Sender<()>, Error> {
+    // Use a standard sync channel for the notify callback
+    let (event_tx, event_rx) = std::sync::mpsc::channel();
+
+    // Create a shutdown channel
+    let (shutdown_tx, shutdown_rx) = std::sync::mpsc::channel();
+
+    // Clone file_path for different contexts
+    let file_path_for_async = file_path.clone();
+    let file_path_for_thread = file_path.clone();
+
+    // Get the parent directory to watch (needed for write-rename editors)
+    // Watching the file directly fails when editors remove and recreate it
+    let watch_path = Path::new(&file_path_for_thread);
+    let (watch_target, file_name) = if let (Some(parent), Some(name)) =
+        (watch_path.parent(), watch_path.file_name())
+    {
+        (parent.to_path_buf(), name.to_os_string())
+    } else {
+        tracing::error!(path = ?file_path_for_thread, "Invalid file path - cannot determine parent directory");
+        return Err("Invalid file path".into());
+    };
+
+    let file_name_for_filter = file_name.clone();
+
+    // Spawn the file watcher in a blocking thread since notify is not async
+    let shutdown_rx_clone = shutdown_rx;
+    std::thread::spawn(move || {
+        let mut watcher = match RecommendedWatcher::new(
+            move |res: Result<NotifyEvent, notify::Error>| {
+                match res {
+                    Ok(event) => {
+                        // Log all events for debugging
+                        tracing::debug!(?event, target_file = ?file_name_for_filter, "File watcher received event");
+
+                        // Filter events to only our target file
+                        let is_target_file = event
+                            .paths
+                            .iter()
+                            .any(|p| p.file_name() == Some(&file_name_for_filter));
+
+                        if !is_target_file {
+                            tracing::debug!(?event.paths, "Event not for target file, ignoring");
+                            return;
+                        }
+
+                        // Capture all relevant file change events:
+                        // - Modify: direct file modification (Claude's Edit tool, direct edits)
+                        // - Create: file created (some editors use write-rename strategy)
+                        // - Remove: old file removed during write-rename (triggers reload)
+                        // - Access: Some systems trigger this on write
+                        // Note: We're permissive here to catch all possible write scenarios
+                        if event.kind.is_modify()
+                            || event.kind.is_create()
+                            || event.kind.is_remove()
+                            || event.kind.is_access()
+                        {
+                            tracing::debug!(kind = ?event.kind, "File change detected, sending notification");
+                            match event_tx.send(()) {
+                                Ok(()) => {
+                                    tracing::debug!("Notification sent successfully to bridge task")
+                                }
+                                Err(e) => tracing::error!(
+                                    ?e,
+                                    "Failed to send notification - bridge task may have exited"
+                                ),
+                            }
+                        } else {
+                            tracing::debug!(kind = ?event.kind, "Ignoring event type");
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!(?e, "File watcher error");
+                    }
+                }
+            },
+            notify::Config::default(),
+        ) {
+            Ok(w) => w,
+            Err(err) => {
+                tracing::error!(?err, "Failed to create file watcher");
+                return;
+            }
+        };
+
+        // Watch the parent directory instead of the file itself
+        // This ensures we don't lose the watch when editors remove/recreate the file
+        if let Err(err) = watcher.watch(&watch_target, RecursiveMode::NonRecursive) {
+            tracing::error!(?err, path = ?watch_target, "Failed to watch directory");
+            return;
+        }
+
+        tracing::debug!(
+            watch_dir = ?watch_target,
+            target_file = ?file_name,
+            "File watcher started on parent directory"
+        );
+
+        // Keep the watcher alive until shutdown signal is received
+        // Use recv_timeout to periodically check for shutdown
+        loop {
+            match shutdown_rx_clone.recv_timeout(std::time::Duration::from_secs(1)) {
+                Ok(_) | Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                    tracing::debug!(path = ?file_path_for_thread, "File watcher shutting down");
+                    break;
+                }
+                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                    // Continue watching
+                }
+            }
+        }
+        // Watcher is dropped here, cleaning up file descriptors
+    });
+
+    // Spawn a blocking task to bridge sync channel to async
+    tokio::task::spawn_blocking(move || {
+        while let Ok(()) = event_rx.recv() {
+            tracing::debug!(path = ?file_path_for_async, "File changed detected by watcher, bridging to async channel");
+            // Check if there are still receivers
+            let receiver_count = msg_tx.receiver_count();
+            tracing::debug!(receiver_count, "Current receiver count");
+            if receiver_count == 0 {
+                tracing::debug!("No receivers left, exiting bridge task");
+                break;
+            }
+            msg_tx.send_replace(Message::FileChanged(file_path_for_async.clone()));
+            tracing::debug!("Message sent via send_replace, waiting for next file event");
+        }
+        tracing::debug!("File watcher bridge task exiting - event_rx closed");
+    });
+
+    Ok(shutdown_tx)
+}
+
 pub async fn open_preview_in_browser(
     listener: tokio::net::TcpListener,
     msg_rx: Receiver<Message>,
+    file_path: Option<String>,
+    watcher_tx: Option<tokio::sync::watch::Sender<Message>>,
+    watcher_rx: Option<Receiver<Message>>,
+    shutdown_rx: tokio::sync::oneshot::Receiver<()>,
+    disconnect_tx: Option<tokio::sync::oneshot::Sender<()>>,
 ) -> Result<(), Error> {
+    // Start file watcher if both file_path and watcher_tx are provided
+    // The shutdown sender is kept alive for the duration of the server
+    // If watcher fails to start, log the error but continue with the preview
+    let _watcher_shutdown = if let (Some(path), Some(tx)) = (file_path, watcher_tx) {
+        match spawn_file_watcher(path, tx) {
+            Ok(shutdown) => Some(shutdown),
+            Err(err) => {
+                tracing::warn!(?err, "Failed to start file watcher, preview will work but won't auto-update on external changes");
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    // Wrap disconnect_tx in Arc<Mutex<Option<>>> so it can be shared and cloned
+    let disconnect_tx_shared = Arc::new(Mutex::new(disconnect_tx));
+
     let app = Router::new()
         .route("/", get(ws_handler))
-        .layer(Extension(msg_rx));
+        .layer(Extension(msg_rx))
+        .layer(Extension(watcher_rx))
+        .layer(Extension(disconnect_tx_shared));
 
     let port = listener.local_addr()?.port();
 
@@ -301,11 +543,20 @@ pub async fn open_preview_in_browser(
 
     tracing::debug!("Listening on {listener:?}");
 
+    // Use graceful shutdown so the server can be stopped externally
     axum::serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
     )
+    .with_graceful_shutdown(async move {
+        let _ = shutdown_rx.await;
+        tracing::debug!("Received shutdown signal for preview server");
+    })
     .await?;
+
+    // When this function exits, _watcher_shutdown is dropped, which sends the shutdown signal
+    // to the watcher thread, allowing it to exit cleanly
+    tracing::debug!("Preview server shutting down");
 
     Ok(())
 }
@@ -332,7 +583,9 @@ mod tests {
             .await
             .unwrap();
 
-        open_preview_in_browser(listener, msg_rx)
+        let (_shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
+
+        open_preview_in_browser(listener, msg_rx, None, None, None, shutdown_rx, None)
             .await
             .expect("Failed to open markdown preview");
     }

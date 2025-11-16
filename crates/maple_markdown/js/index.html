@@ -30,15 +30,327 @@
     </script>
 
     <style>
+      body {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      #sidebar {
+        width: 250px;
+        background: #f6f8fa;
+        border-right: 1px solid #d0d7de;
+        padding: 20px;
+        box-sizing: border-box;
+        overflow-y: auto;
+        flex-shrink: 0;
+      }
+
+      #sidebar h3 {
+        margin: 0 0 15px 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #24292f;
+      }
+
+      .sidebar-section {
+        margin-bottom: 20px;
+      }
+
+      .option-group {
+        padding: 8px 0;
+      }
+
+      .option-label {
+        display: block;
+        font-size: 13px;
+        color: #57606a;
+        margin-bottom: 6px;
+        font-weight: 500;
+      }
+
+      .option-select {
+        width: 100%;
+        padding: 6px 8px;
+        font-size: 13px;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        background-color: #ffffff;
+        color: #24292f;
+        cursor: pointer;
+        transition: border-color 0.2s;
+      }
+
+      .option-select:hover {
+        border-color: #8c959f;
+      }
+
+      .option-select:focus {
+        outline: none;
+        border-color: #0969da;
+        box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+      }
+
+      #toc-panel {
+        width: 250px;
+        min-width: 150px;
+        max-width: 500px;
+        background: #f6f8fa;
+        border-right: 1px solid #d0d7de;
+        padding: 20px;
+        box-sizing: border-box;
+        overflow-y: auto;
+        flex-shrink: 0;
+        display: none;
+        position: relative;
+      }
+
+      #toc-panel.visible {
+        display: block;
+      }
+
+      .toc-resize-handle {
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 5px;
+        cursor: col-resize;
+        background: transparent;
+        transition: background 0.2s;
+      }
+
+      .toc-resize-handle:hover {
+        background: #0969da;
+      }
+
+      .toc-resize-handle.resizing {
+        background: #0969da;
+      }
+
+      .toc-header {
+        font-size: 14px;
+        font-weight: 600;
+        color: #24292f;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #d0d7de;
+      }
+
+      .toc-content {
+        font-size: 13px;
+      }
+
+      .toc-content a {
+        display: block;
+        color: #57606a;
+        text-decoration: none;
+        padding: 6px 8px;
+        margin: 2px 0;
+        border-radius: 6px;
+        transition: all 0.2s;
+        border-left: 3px solid transparent;
+      }
+
+      .toc-content a:hover {
+        color: #0969da;
+        background: #f0f6fc;
+        border-left-color: #0969da;
+      }
+
+      .toc-content .toc-h1 {
+        font-weight: 700;
+        font-size: 14px;
+        margin-top: 12px;
+        padding: 8px 10px;
+        color: #24292f;
+        background: #eff2f5;
+        border-left: 4px solid #0969da;
+      }
+
+      .toc-content .toc-h1:hover {
+        background: #e6ebf1;
+      }
+
+      .toc-content .toc-h2 {
+        padding-left: 20px;
+        font-weight: 600;
+        font-size: 13px;
+        color: #1f2328;
+      }
+
+      .toc-content .toc-h3 {
+        padding-left: 32px;
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      .toc-content .toc-h4 {
+        padding-left: 44px;
+        font-size: 12px;
+        font-weight: 400;
+        opacity: 0.9;
+      }
+
+      .toc-content .toc-h5,
+      .toc-content .toc-h6 {
+        padding-left: 56px;
+        font-size: 11px;
+        opacity: 0.8;
+      }
+
+      #main-content {
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        justify-content: center;
+      }
+
       .markdown-body {
         box-sizing: border-box;
         min-width: 200px;
         max-width: 980px;
-        margin: 0 auto;
+        width: 100%;
         padding: 45px;
+        position: relative;
+      }
+
+      /* Markdown content line numbers */
+      .markdown-body.show-line-numbers {
+        padding-left: 90px;
+      }
+
+      .markdown-body.show-line-numbers > * {
+        position: relative;
+      }
+
+      /* Single line number (rendered or source) */
+      .markdown-body.show-line-numbers > *::before {
+        content: attr(data-line-number);
+        position: absolute;
+        left: -60px;
+        width: 40px;
+        text-align: right;
+        color: #999;
+        font-size: 12px;
+        user-select: none;
+        padding-right: 10px;
+        font-family: monospace;
+      }
+
+      /* Both line numbers mode */
+      .markdown-body.show-line-numbers-both {
+        padding-left: 110px;
+      }
+
+      .markdown-body.show-line-numbers-both > * {
+        position: relative;
+      }
+
+      .markdown-body.show-line-numbers-both > *::before {
+        content: attr(data-rendered-number) " / " attr(data-source-number);
+        position: absolute;
+        left: -90px;
+        width: 70px;
+        text-align: right;
+        color: #999;
+        font-size: 11px;
+        user-select: none;
+        padding-right: 10px;
+        font-family: monospace;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #0d1117;
+        }
+
+        #sidebar {
+          background: #161b22;
+          border-right-color: #30363d;
+        }
+
+        #sidebar h3 {
+          color: #c9d1d9;
+        }
+
+        .option-label {
+          color: #8b949e;
+        }
+
+        .option-select {
+          background-color: #0d1117;
+          border-color: #30363d;
+          color: #c9d1d9;
+        }
+
+        .option-select:hover {
+          border-color: #6e7681;
+        }
+
+        .option-select:focus {
+          border-color: #58a6ff;
+          box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+        }
+
+        .markdown-body.show-line-numbers > *::before,
+        .markdown-body.show-line-numbers-both > *::before {
+          color: #6e7681;
+        }
+
+        #toc-panel {
+          background: #161b22;
+          border-right-color: #30363d;
+        }
+
+        .toc-header {
+          color: #c9d1d9;
+          border-bottom-color: #30363d;
+        }
+
+        .toc-content a {
+          color: #8b949e;
+        }
+
+        .toc-content a:hover {
+          color: #58a6ff;
+          background: #1c2128;
+          border-left-color: #58a6ff;
+        }
+
+        .toc-content .toc-h1 {
+          color: #c9d1d9;
+          background: #21262d;
+          border-left-color: #58a6ff;
+        }
+
+        .toc-content .toc-h1:hover {
+          background: #2d333b;
+        }
+
+        .toc-content .toc-h2 {
+          color: #c9d1d9;
+        }
+
+        .toc-resize-handle:hover,
+        .toc-resize-handle.resizing {
+          background: #58a6ff;
+        }
       }
 
       @media (max-width: 767px) {
+        body {
+          flex-direction: column;
+        }
+
+        #sidebar {
+          width: 100%;
+          border-right: none;
+          border-bottom: 1px solid #d0d7de;
+        }
+
         .markdown-body {
           padding: 15px;
         }
@@ -47,9 +359,43 @@
     <title>Markdown Preview</title>
 </head>
 <body>
-    <article class="markdown-body" id="content"></article>
+    <div id="sidebar">
+        <div class="sidebar-section">
+            <h3>Display Options</h3>
+            <div class="option-group">
+                <label class="option-label">Line Numbers</label>
+                <select id="line-numbers-mode" class="option-select">
+                    <option value="off">Off</option>
+                    <option value="rendered">Rendered Elements (1, 2, 3...)</option>
+                    <option value="source">Source File (Git-style)</option>
+                    <option value="both">Both (Rendered / Source)</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label class="option-label">Table of Contents</label>
+                <select id="toc-mode" class="option-select">
+                    <option value="off">Off</option>
+                    <option value="on">Show</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div id="toc-panel" class="toc-panel">
+        <div class="toc-header">Table of Contents</div>
+        <nav id="toc-content" class="toc-content"></nav>
+        <div class="toc-resize-handle"></div>
+    </div>
+
+    <div id="main-content">
+        <article class="markdown-body" id="content"></article>
+    </div>
 
     <script>
+        let lineNumberMode = 'off';  // 'off', 'rendered', 'source', 'both'
+        let currentSourceLines = 0;
+        let tocVisible = false;
+
         function codeHighlight() {
             if (hljs !== undefined) {
                 document.querySelectorAll('pre code').forEach((el) => {
@@ -66,13 +412,222 @@
             }
         }
 
+        function applyLineNumberMode(mode, sourceLines) {
+            const content = document.getElementById('content');
+            if (!content) return;
+
+            // Update current source lines if provided
+            if (sourceLines) {
+                currentSourceLines = sourceLines;
+            }
+
+            // Remove all line number classes and attributes
+            content.classList.remove('show-line-numbers', 'show-line-numbers-both');
+            const children = Array.from(content.children);
+            children.forEach((child) => {
+                child.removeAttribute('data-line-number');
+                child.removeAttribute('data-source-line');
+                child.removeAttribute('data-rendered-number');
+                child.removeAttribute('data-source-number');
+            });
+
+            if (mode === 'off') {
+                return;
+            }
+
+            // Calculate source line mapping (approximate distribution)
+            const linesPerElement = Math.max(1, Math.floor(currentSourceLines / Math.max(1, children.length)));
+
+            if (mode === 'rendered') {
+                // Show simple 1, 2, 3... numbering
+                content.classList.add('show-line-numbers');
+                children.forEach((child, index) => {
+                    const renderedNum = index + 1;
+                    child.setAttribute('data-line-number', renderedNum);
+                    child.setAttribute('data-source-line', renderedNum);  // For scrolling
+                });
+            } else if (mode === 'source') {
+                // Show approximate source file line numbers
+                content.classList.add('show-line-numbers');
+                children.forEach((child, index) => {
+                    const sourceNum = Math.min(index * linesPerElement + 1, currentSourceLines);
+                    child.setAttribute('data-line-number', sourceNum);
+                    child.setAttribute('data-source-line', sourceNum);
+                });
+            } else if (mode === 'both') {
+                // Show both rendered/source
+                content.classList.add('show-line-numbers-both');
+                children.forEach((child, index) => {
+                    const renderedNum = index + 1;
+                    const sourceNum = Math.min(index * linesPerElement + 1, currentSourceLines);
+                    child.setAttribute('data-rendered-number', renderedNum);
+                    child.setAttribute('data-source-number', sourceNum);
+                    child.setAttribute('data-source-line', sourceNum);  // For scrolling
+                });
+            }
+        }
+
+        function changeLineNumberMode(newMode) {
+            lineNumberMode = newMode;
+            applyLineNumberMode(lineNumberMode, currentSourceLines);
+            localStorage.setItem('lineNumberMode', lineNumberMode);
+        }
+
+        // Scroll to a specific source line
+        function scrollToSourceLine(lineNumber) {
+            const content = document.getElementById('content');
+            if (!content) return;
+
+            const children = Array.from(content.children);
+            let closestElement = null;
+            let closestDiff = Infinity;
+
+            children.forEach((child) => {
+                const sourceLine = parseInt(child.getAttribute('data-source-line') || '0');
+                const diff = Math.abs(sourceLine - lineNumber);
+                if (diff < closestDiff) {
+                    closestDiff = diff;
+                    closestElement = child;
+                }
+            });
+
+            if (closestElement) {
+                closestElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Highlight briefly
+                closestElement.style.backgroundColor = '#ffeb3b';
+                setTimeout(() => {
+                    closestElement.style.backgroundColor = '';
+                }, 1000);
+            }
+        }
+
+        // Generate Table of Contents from headings
+        function generateTOC() {
+            const content = document.getElementById('content');
+            const tocContent = document.getElementById('toc-content');
+            if (!content || !tocContent) return;
+
+            const headings = content.querySelectorAll('h1, h2, h3, h4, h5, h6');
+            tocContent.innerHTML = '';
+
+            headings.forEach((heading, index) => {
+                const level = heading.tagName.toLowerCase();
+                const text = heading.textContent;
+                const id = heading.id || `heading-${index}`;
+
+                if (!heading.id) {
+                    heading.id = id;
+                }
+
+                const link = document.createElement('a');
+                link.href = `#${id}`;
+                link.textContent = text;
+                link.className = `toc-${level}`;
+                link.onclick = (e) => {
+                    e.preventDefault();
+                    heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                };
+
+                tocContent.appendChild(link);
+            });
+        }
+
+        // Toggle TOC visibility
+        function toggleTOC(visible) {
+            tocVisible = visible;
+            const tocPanel = document.getElementById('toc-panel');
+            if (visible) {
+                tocPanel.classList.add('visible');
+                generateTOC();
+                // Restore saved width if available
+                const savedWidth = localStorage.getItem('tocWidth');
+                if (savedWidth) {
+                    tocPanel.style.width = savedWidth + 'px';
+                }
+            } else {
+                tocPanel.classList.remove('visible');
+            }
+            localStorage.setItem('tocVisible', visible);
+        }
+
+        // Set up TOC resize functionality
+        function setupTOCResize() {
+            const tocPanel = document.getElementById('toc-panel');
+            const resizeHandle = document.querySelector('.toc-resize-handle');
+            let isResizing = false;
+            let startX = 0;
+            let startWidth = 0;
+
+            resizeHandle.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                startX = e.clientX;
+                startWidth = tocPanel.offsetWidth;
+                resizeHandle.classList.add('resizing');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isResizing) return;
+
+                const delta = e.clientX - startX;
+                const newWidth = startWidth + delta;
+                const minWidth = 150;
+                const maxWidth = 500;
+
+                if (newWidth >= minWidth && newWidth <= maxWidth) {
+                    tocPanel.style.width = newWidth + 'px';
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isResizing) {
+                    isResizing = false;
+                    resizeHandle.classList.remove('resizing');
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                    // Save the new width
+                    localStorage.setItem('tocWidth', tocPanel.offsetWidth);
+                }
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', (event) => {
+            // Restore saved preferences
+            const savedMode = localStorage.getItem('lineNumberMode') || 'off';
+            lineNumberMode = savedMode;
+            document.getElementById('line-numbers-mode').value = savedMode;
+
+            const savedTOC = localStorage.getItem('tocVisible') === 'true';
+            tocVisible = savedTOC;
+            document.getElementById('toc-mode').value = savedTOC ? 'on' : 'off';
+
+            // Set up line number mode change listener
+            document.getElementById('line-numbers-mode').addEventListener('change', (e) => {
+                changeLineNumberMode(e.target.value);
+            });
+
+            // Set up TOC toggle listener
+            document.getElementById('toc-mode').addEventListener('change', (e) => {
+                toggleTOC(e.target.value === 'on');
+            });
+
+            // Set up TOC resize functionality
+            setupTOCResize();
+
             document.querySelectorAll('pre code').forEach((el) => {
                 hljs.highlightElement(el);
             });
 
             codeHighlight();
             renderMermaid();
+            applyLineNumberMode(lineNumberMode, currentSourceLines);
+
+            // Initialize TOC if enabled
+            if (tocVisible) {
+                toggleTOC(true);
+            }
 
             const webSocketUrl = 'ws://' + window.location.host;
             var socket = new WebSocket(webSocketUrl);
@@ -93,6 +648,12 @@
                     });
                     // Render mermaid diagrams
                     renderMermaid();
+                    // Apply line numbers with source line count
+                    applyLineNumberMode(lineNumberMode, message.source_lines);
+                    // Regenerate TOC if visible
+                    if (tocVisible) {
+                        generateTOC();
+                    }
                 } else if (message.type === "scroll") {
                     const scrollPercent = message.data;
 
