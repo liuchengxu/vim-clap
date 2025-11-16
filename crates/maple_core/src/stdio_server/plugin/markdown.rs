@@ -183,13 +183,15 @@ impl ClapPlugin for Markdown {
 
                 tokio::spawn(async move {
                     if let Err(err) = maple_markdown::open_preview_in_browser(
-                        listener,
-                        msg_rx,
-                        Some(file_path),
-                        Some(watcher_tx),
-                        Some(watcher_rx),
-                        shutdown_rx,
-                        Some(disconnect_tx),
+                        maple_markdown::PreviewConfig {
+                            listener,
+                            msg_rx,
+                            shutdown_rx,
+                            file_path: Some(file_path),
+                            watcher_tx: Some(watcher_tx),
+                            watcher_rx: Some(watcher_rx),
+                            disconnect_tx: Some(disconnect_tx),
+                        },
                     )
                     .await
                     {

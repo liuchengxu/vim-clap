@@ -504,15 +504,35 @@ fn spawn_file_watcher(
     Ok(shutdown_tx)
 }
 
-pub async fn open_preview_in_browser(
-    listener: tokio::net::TcpListener,
-    msg_rx: Receiver<Message>,
-    file_path: Option<String>,
-    watcher_tx: Option<tokio::sync::watch::Sender<Message>>,
-    watcher_rx: Option<Receiver<Message>>,
-    shutdown_rx: tokio::sync::oneshot::Receiver<()>,
-    disconnect_tx: Option<tokio::sync::oneshot::Sender<()>>,
-) -> Result<(), Error> {
+/// Configuration for opening a markdown preview in the browser
+pub struct PreviewConfig {
+    /// TCP listener for the web server
+    pub listener: tokio::net::TcpListener,
+    /// Receiver for messages from Vim
+    pub msg_rx: Receiver<Message>,
+    /// Receiver for graceful shutdown signal
+    pub shutdown_rx: tokio::sync::oneshot::Receiver<()>,
+    /// Optional file path to watch for changes
+    pub file_path: Option<String>,
+    /// Optional sender for file watcher messages
+    pub watcher_tx: Option<tokio::sync::watch::Sender<Message>>,
+    /// Optional receiver for file watcher messages
+    pub watcher_rx: Option<Receiver<Message>>,
+    /// Optional sender to notify when browser disconnects
+    pub disconnect_tx: Option<tokio::sync::oneshot::Sender<()>>,
+}
+
+pub async fn open_preview_in_browser(config: PreviewConfig) -> Result<(), Error> {
+    let PreviewConfig {
+        listener,
+        msg_rx,
+        shutdown_rx,
+        file_path,
+        watcher_tx,
+        watcher_rx,
+        disconnect_tx,
+    } = config;
+
     // Start file watcher if both file_path and watcher_tx are provided
     // The shutdown sender is kept alive for the duration of the server
     // If watcher fails to start, log the error but continue with the preview
@@ -585,8 +605,16 @@ mod tests {
 
         let (_shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
 
-        open_preview_in_browser(listener, msg_rx, None, None, None, shutdown_rx, None)
-            .await
-            .expect("Failed to open markdown preview");
+        open_preview_in_browser(PreviewConfig {
+            listener,
+            msg_rx,
+            shutdown_rx,
+            file_path: None,
+            watcher_tx: None,
+            watcher_rx: None,
+            disconnect_tx: None,
+        })
+        .await
+        .expect("Failed to open markdown preview");
     }
 }
