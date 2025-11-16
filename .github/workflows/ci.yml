@@ -38,6 +38,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.91"
+          components: clippy
       - name: Run clippy
         run: |
           cargo clippy --locked --all-features --all-targets --manifest-path Cargo.toml -- -D warnings
