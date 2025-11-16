@@ -169,10 +169,6 @@ impl ClapPlugin for Markdown {
 
                 let path = self.vim.bufabspath(bufnr).await?;
 
-                // Create a new channel for the file watcher to send messages
-                let (watcher_tx, watcher_rx) =
-                    tokio::sync::watch::channel(Message::UpdateContent(String::new()));
-
                 // Create shutdown channel for graceful server shutdown
                 let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
 
@@ -188,8 +184,6 @@ impl ClapPlugin for Markdown {
                             msg_rx,
                             shutdown_rx,
                             file_path: Some(file_path),
-                            watcher_tx: Some(watcher_tx),
-                            watcher_rx: Some(watcher_rx),
                             disconnect_tx: Some(disconnect_tx),
                         },
                     )

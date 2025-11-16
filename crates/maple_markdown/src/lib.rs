@@ -514,10 +514,6 @@ pub struct PreviewConfig {
     pub shutdown_rx: tokio::sync::oneshot::Receiver<()>,
     /// Optional file path to watch for changes
     pub file_path: Option<String>,
-    /// Optional sender for file watcher messages
-    pub watcher_tx: Option<tokio::sync::watch::Sender<Message>>,
-    /// Optional receiver for file watcher messages
-    pub watcher_rx: Option<Receiver<Message>>,
     /// Optional sender to notify when browser disconnects
     pub disconnect_tx: Option<tokio::sync::oneshot::Sender<()>>,
 }
@@ -528,24 +524,28 @@ pub async fn open_preview_in_browser(config: PreviewConfig) -> Result<(), Error>
         msg_rx,
         shutdown_rx,
         file_path,
-        watcher_tx,
-        watcher_rx,
         disconnect_tx,
     } = config;
 
-    // Start file watcher if both file_path and watcher_tx are provided
-    // The shutdown sender is kept alive for the duration of the server
-    // If watcher fails to start, log the error but continue with the preview
-    let _watcher_shutdown = if let (Some(path), Some(tx)) = (file_path, watcher_tx) {
-        match spawn_file_watcher(path, tx) {
+    // Create watcher channels if file_path is provided
+    let (watcher_rx, _watcher_shutdown) = if let Some(path) = file_path {
+        let (watcher_tx, watcher_rx) =
+            tokio::sync::watch::channel(Message::UpdateContent(String::new()));
+
+        // Start file watcher
+        // The shutdown sender is kept alive for the duration of the server
+        // If watcher fails to start, log the error but continue with the preview
+        let shutdown = match spawn_file_watcher(path, watcher_tx) {
             Ok(shutdown) => Some(shutdown),
             Err(err) => {
                 tracing::warn!(?err, "Failed to start file watcher, preview will work but won't auto-update on external changes");
                 None
             }
-        }
+        };
+
+        (Some(watcher_rx), shutdown)
     } else {
-        None
+        (None, None)
     };
 
     // Wrap disconnect_tx in Arc<Mutex<Option<>>> so it can be shared and cloned
@@ -610,8 +610,6 @@ mod tests {
             msg_rx,
             shutdown_rx,
             file_path: None,
-            watcher_tx: None,
-            watcher_rx: None,
             disconnect_tx: None,
         })
         .await
