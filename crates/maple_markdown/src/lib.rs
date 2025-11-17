@@ -41,6 +41,28 @@ async fn handle_websocket(
     mut watcher_rx: Option<Receiver<Message>>,
     disconnect_tx: Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>,
 ) {
+    // Send initial message immediately when browser connects
+    {
+        let msg = vim_rx.borrow().clone();
+        match process_message(msg) {
+            Ok(text) => {
+                if socket
+                    .send(WsMessage::Text(text.to_string()))
+                    .await
+                    .is_err()
+                {
+                    tracing::error!("Failed to send initial message to browser");
+                    return;
+                }
+                tracing::debug!("Sent initial message to browser");
+            }
+            Err(err) => {
+                tracing::error!(?err, "Failed to process initial message");
+                // Don't return here - keep the connection open for future updates
+            }
+        }
+    }
+
     loop {
         // Wait for messages from Vim, file watcher, or browser
         tokio::select! {
@@ -65,15 +87,17 @@ async fn handle_websocket(
                 }
             } => {
                 if result.is_err() {
-                    tracing::error!("File watcher channel closed unexpectedly");
-                    break;
+                    tracing::warn!("File watcher channel closed, disabling auto-reload on external changes");
+                    // File watcher failed - disable it but keep the WebSocket alive
+                    watcher_rx = None;
+                    continue;
                 }
                 if let Some(rx) = &watcher_rx {
                     tracing::debug!("File watcher notified WebSocket handler, processing message");
                     let msg = rx.borrow().clone();
                     let Ok(text) = process_message(msg) else {
                         tracing::error!("Failed to process file watcher message");
-                        break;
+                        continue;  // Don't break, just skip this update
                     };
                     tracing::debug!("Sending update to browser via WebSocket");
                     if socket.send(WsMessage::Text(text.to_string())).await.is_err() {
@@ -83,7 +107,7 @@ async fn handle_websocket(
                     tracing::debug!("Successfully sent update to browser, ready for next change");
                 }
             }
-            // Messages FROM browser (detect disconnect)
+            // Messages FROM browser (detect disconnect or switch file requests)
             msg = socket.recv() => {
                 match msg {
                     Some(Ok(WsMessage::Close(_))) | None => {
@@ -97,13 +121,31 @@ async fn handle_websocket(
                             break;
                         }
                     }
+                    Some(Ok(WsMessage::Text(text))) => {
+                        // Handle messages from browser (e.g., switch file request)
+                        if let Ok(request) = serde_json::from_str::<serde_json::Value>(&text) {
+                            if request["type"] == "switch_file" {
+                                if let Some(file_path) = request["file_path"].as_str() {
+                                    tracing::info!(file_path, "Browser requested file switch");
+                                    let msg = Message::FileChanged(file_path.to_string());
+                                    let Ok(response) = process_message(msg) else {
+                                        tracing::error!("Failed to process file switch request");
+                                        continue;
+                                    };
+                                    if socket.send(WsMessage::Text(response.to_string())).await.is_err() {
+                                        tracing::error!("Failed to send file switch response");
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
                     Some(Err(err)) => {
                         tracing::debug!(?err, "WebSocket error, client likely disconnected");
                         break;
                     }
                     _ => {
-                        // Ignore other message types (Text, Binary, Pong)
-                        // Browsers typically don't send text messages in this use case
+                        // Ignore other message types (Binary, Pong)
                     }
                 }
             }
@@ -328,13 +370,14 @@ pub fn to_html(markdown_content: &str) -> Result<String, Error> {
 fn process_message(msg: Message) -> Result<serde_json::Value, Error> {
     let res = match msg {
         Message::FileChanged(path) => {
-            let markdown_content = std::fs::read_to_string(path)?;
+            let markdown_content = std::fs::read_to_string(&path)?;
             let html = to_html(&markdown_content)?;
             let line_count = markdown_content.lines().count();
             serde_json::json!({
               "type": "update_content",
               "data": html,
               "source_lines": line_count,
+              "file_path": path,
             })
         }
         Message::UpdateContent(content) => {
@@ -365,17 +408,70 @@ pub enum Message {
     Scroll(usize),
 }
 
-/// Spawns a file watcher that monitors changes to the given file and sends updates via the message channel.
-/// Returns a shutdown sender that can be used to cleanly stop the watcher.
+/// Spawns a polling-based file watcher as a fallback when inotify fails.
+/// Checks the file's modification time every second.
+/// Returns a tuple of (receiver, shutdown_sender).
+fn spawn_polling_file_watcher(
+    file_path: String,
+) -> (Receiver<Message>, std::sync::mpsc::Sender<()>) {
+    let (msg_tx, msg_rx) = tokio::sync::watch::channel(Message::UpdateContent(String::new()));
+    let (shutdown_tx, shutdown_rx) = std::sync::mpsc::channel();
+
+    tokio::spawn(async move {
+        let path = std::path::Path::new(&file_path);
+        let mut last_mtime = std::fs::metadata(&path).and_then(|m| m.modified()).ok();
+
+        tracing::info!(
+            path = %file_path,
+            "Started polling-based file watcher (checking every second)"
+        );
+
+        loop {
+            // Check for shutdown signal
+            if shutdown_rx.try_recv().is_ok() {
+                tracing::debug!("Polling file watcher shutting down");
+                break;
+            }
+
+            // Sleep for 1 second
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
+            // Check if file was modified
+            if let Ok(metadata) = std::fs::metadata(&path) {
+                if let Ok(current_mtime) = metadata.modified() {
+                    if let Some(last) = last_mtime {
+                        if current_mtime > last {
+                            tracing::debug!(path = %file_path, "File modified, sending update");
+                            msg_tx.send_replace(Message::FileChanged(file_path.clone()));
+                            last_mtime = Some(current_mtime);
+                        }
+                    } else {
+                        last_mtime = Some(current_mtime);
+                    }
+                }
+            }
+        }
+
+        tracing::debug!("Polling file watcher task exited");
+    });
+
+    (msg_rx, shutdown_tx)
+}
+
+/// Spawns a file watcher that monitors changes to the given file.
+/// Returns a tuple of (receiver, shutdown_sender).
 fn spawn_file_watcher(
     file_path: String,
-    msg_tx: tokio::sync::watch::Sender<Message>,
-) -> Result<std::sync::mpsc::Sender<()>, Error> {
+) -> Result<(Receiver<Message>, std::sync::mpsc::Sender<()>), Error> {
+    let (msg_tx, msg_rx) = tokio::sync::watch::channel(Message::UpdateContent(String::new()));
     // Use a standard sync channel for the notify callback
     let (event_tx, event_rx) = std::sync::mpsc::channel();
 
     // Create a shutdown channel
     let (shutdown_tx, shutdown_rx) = std::sync::mpsc::channel();
+
+    // Create a channel to signal if watcher started successfully
+    let (started_tx, started_rx) = std::sync::mpsc::channel();
 
     // Clone file_path for different contexts
     let file_path_for_async = file_path.clone();
@@ -459,8 +555,12 @@ fn spawn_file_watcher(
         // This ensures we don't lose the watch when editors remove/recreate the file
         if let Err(err) = watcher.watch(&watch_target, RecursiveMode::NonRecursive) {
             tracing::error!(?err, path = ?watch_target, "Failed to watch directory");
+            let _ = started_tx.send(Err(err.to_string()));
             return;
         }
+
+        // Signal that watcher started successfully
+        let _ = started_tx.send(Ok(()));
 
         tracing::debug!(
             watch_dir = ?watch_target,
@@ -501,7 +601,21 @@ fn spawn_file_watcher(
         tracing::debug!("File watcher bridge task exiting - event_rx closed");
     });
 
-    Ok(shutdown_tx)
+    // Wait for the watcher thread to signal whether it started successfully
+    match started_rx.recv_timeout(std::time::Duration::from_secs(2)) {
+        Ok(Ok(())) => {
+            tracing::debug!("File watcher started successfully");
+            Ok((msg_rx, shutdown_tx))
+        }
+        Ok(Err(err_msg)) => {
+            tracing::error!(error = %err_msg, "File watcher failed to start");
+            Err(err_msg.into())
+        }
+        Err(_) => {
+            tracing::error!("Timeout waiting for file watcher to start");
+            Err("Watcher startup timeout".into())
+        }
+    }
 }
 
 /// Configuration for opening a markdown preview in the browser
@@ -529,21 +643,22 @@ pub async fn open_preview_in_browser(config: PreviewConfig) -> Result<(), Error>
 
     // Create watcher channels if file_path is provided
     let (watcher_rx, _watcher_shutdown) = if let Some(path) = file_path {
-        let (watcher_tx, watcher_rx) =
-            tokio::sync::watch::channel(Message::UpdateContent(String::new()));
-
-        // Start file watcher
-        // The shutdown sender is kept alive for the duration of the server
-        // If watcher fails to start, log the error but continue with the preview
-        let shutdown = match spawn_file_watcher(path, watcher_tx) {
-            Ok(shutdown) => Some(shutdown),
-            Err(err) => {
-                tracing::warn!(?err, "Failed to start file watcher, preview will work but won't auto-update on external changes");
-                None
+        // Try inotify-based watcher first, fall back to polling if it fails
+        match spawn_file_watcher(path.clone()) {
+            Ok((watcher_rx, shutdown)) => {
+                tracing::info!("Started inotify-based file watcher");
+                (Some(watcher_rx), Some(shutdown))
             }
-        };
-
-        (Some(watcher_rx), shutdown)
+            Err(err) => {
+                tracing::warn!(
+                    ?err,
+                    "inotify file watcher failed, falling back to polling (checks every 1 second)"
+                );
+                // Fall back to polling-based watcher
+                let (polling_rx, shutdown) = spawn_polling_file_watcher(path);
+                (Some(polling_rx), Some(shutdown))
+            }
+        }
     } else {
         (None, None)
     };

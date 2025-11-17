@@ -59,6 +59,67 @@
         margin-bottom: 20px;
       }
 
+      .recent-files {
+        max-height: 200px;
+        overflow-y: auto;
+      }
+
+      .recent-file-item {
+        padding: 6px 8px;
+        margin: 4px 0;
+        background: #ffffff;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .recent-file-item:hover {
+        background: #f0f6fc;
+        border-color: #0969da;
+      }
+
+      .recent-file-item.current {
+        background: #e6f2ff;
+        border-color: #0969da;
+      }
+
+      .recent-file-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: #24292f;
+      }
+
+      .recent-file-item:hover .recent-file-name {
+        color: #0969da;
+      }
+
+      .recent-file-item.current .recent-file-name {
+        color: #0969da;
+      }
+
+      .recent-file-path {
+        font-size: 11px;
+        color: #8b949e;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .recent-file-item:hover .recent-file-path {
+        color: #6e7781;
+      }
+
+      .no-recent-files {
+        padding: 8px;
+        font-size: 12px;
+        color: #8b949e;
+        font-style: italic;
+      }
+
       .option-group {
         padding: 8px 0;
       }
@@ -94,7 +155,7 @@
       }
 
       #toc-panel {
-        width: 250px;
+        width: 250px; /* Default, will be adjusted based on screen size */
         min-width: 150px;
         max-width: 500px;
         background: #f6f8fa;
@@ -140,7 +201,7 @@
       }
 
       .toc-content {
-        font-size: 13px;
+        font-size: 14px;
       }
 
       .toc-content a {
@@ -162,7 +223,7 @@
 
       .toc-content .toc-h1 {
         font-weight: 700;
-        font-size: 14px;
+        font-size: 15px;
         margin-top: 12px;
         padding: 8px 10px;
         color: #24292f;
@@ -177,19 +238,19 @@
       .toc-content .toc-h2 {
         padding-left: 20px;
         font-weight: 600;
-        font-size: 13px;
+        font-size: 14px;
         color: #1f2328;
       }
 
       .toc-content .toc-h3 {
         padding-left: 32px;
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 500;
       }
 
       .toc-content .toc-h4 {
         padding-left: 44px;
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 400;
         opacity: 0.9;
       }
@@ -197,7 +258,7 @@
       .toc-content .toc-h5,
       .toc-content .toc-h6 {
         padding-left: 56px;
-        font-size: 11px;
+        font-size: 12px;
         opacity: 0.8;
       }
 
@@ -215,6 +276,30 @@
         width: 100%;
         padding: 45px;
         position: relative;
+      }
+
+      /* Font family options */
+      .markdown-body.font-serif {
+        font-family: "Palatino Linotype", Palatino, Palladio, "URW Palladio L", "Book Antiqua", Baskerville, "Bookman Old Style", "Bitstream Charter", "Nimbus Roman No9 L", Garamond, "Apple Garamond", "ITC Garamond Narrow", "New Century Schoolbook", "Century Schoolbook", "Century Schoolbook L", Georgia, serif;
+      }
+
+      .markdown-body.font-serif h1,
+      .markdown-body.font-serif h2,
+      .markdown-body.font-serif h3,
+      .markdown-body.font-serif h4,
+      .markdown-body.font-serif h5,
+      .markdown-body.font-serif h6 {
+        font-family: "Palatino Linotype", Palatino, Georgia, serif;
+      }
+
+      .markdown-body.font-mono {
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .markdown-body.font-system {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
       }
 
       /* Markdown content line numbers */
@@ -295,6 +380,38 @@
           box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
         }
 
+        .recent-file-item {
+          background: #0d1117;
+          border-color: #30363d;
+        }
+
+        .recent-file-item:hover {
+          background: #1c2128;
+          border-color: #58a6ff;
+        }
+
+        .recent-file-item.current {
+          background: #1c2d41;
+          border-color: #58a6ff;
+        }
+
+        .recent-file-name {
+          color: #c9d1d9;
+        }
+
+        .recent-file-item:hover .recent-file-name,
+        .recent-file-item.current .recent-file-name {
+          color: #58a6ff;
+        }
+
+        .recent-file-path {
+          color: #6e7781;
+        }
+
+        .recent-file-item:hover .recent-file-path {
+          color: #8b949e;
+        }
+
         .markdown-body.show-line-numbers > *::before,
         .markdown-body.show-line-numbers-both > *::before {
           color: #6e7681;
@@ -361,6 +478,10 @@
 <body>
     <div id="sidebar">
         <div class="sidebar-section">
+            <h3>Recent Previews</h3>
+            <div id="recent-files" class="recent-files"></div>
+        </div>
+        <div class="sidebar-section">
             <h3>Display Options</h3>
             <div class="option-group">
                 <label class="option-label">Line Numbers</label>
@@ -376,6 +497,15 @@
                 <select id="toc-mode" class="option-select">
                     <option value="off">Off</option>
                     <option value="on">Show</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label class="option-label">Font Family</label>
+                <select id="font-family" class="option-select">
+                    <option value="default">GitHub (Default)</option>
+                    <option value="serif">Serif (LaTeX-like)</option>
+                    <option value="mono">Monospace</option>
+                    <option value="system">System UI</option>
                 </select>
             </div>
         </div>
@@ -395,6 +525,9 @@
         let lineNumberMode = 'off';  // 'off', 'rendered', 'source', 'both'
         let currentSourceLines = 0;
         let tocVisible = false;
+        let fontFamily = 'default';  // 'default', 'serif', 'mono', 'system'
+        let currentFilePath = '';  // Current file being previewed
+        let websocket = null;  // WebSocket connection
 
         function codeHighlight() {
             if (hljs !== undefined) {
@@ -532,6 +665,21 @@
             });
         }
 
+        // Get smart default TOC width based on screen size
+        function getDefaultTOCWidth() {
+            const screenWidth = window.innerWidth;
+            // For wide monitors (>= 1920px), use 350px
+            // For medium screens (>= 1440px), use 300px
+            // For smaller screens, use 250px
+            if (screenWidth >= 1920) {
+                return 350;
+            } else if (screenWidth >= 1440) {
+                return 300;
+            } else {
+                return 250;
+            }
+        }
+
         // Toggle TOC visibility
         function toggleTOC(visible) {
             tocVisible = visible;
@@ -539,15 +687,127 @@
             if (visible) {
                 tocPanel.classList.add('visible');
                 generateTOC();
-                // Restore saved width if available
+                // Restore saved width if available, otherwise use smart default
                 const savedWidth = localStorage.getItem('tocWidth');
                 if (savedWidth) {
                     tocPanel.style.width = savedWidth + 'px';
+                } else {
+                    const defaultWidth = getDefaultTOCWidth();
+                    tocPanel.style.width = defaultWidth + 'px';
                 }
             } else {
                 tocPanel.classList.remove('visible');
             }
             localStorage.setItem('tocVisible', visible);
+        }
+
+        // Change font family
+        function changeFontFamily(family) {
+            fontFamily = family;
+            const content = document.getElementById('content');
+            if (!content) return;
+
+            // Remove all font classes
+            content.classList.remove('font-serif', 'font-mono', 'font-system');
+
+            // Add new font class if not default
+            if (family !== 'default') {
+                content.classList.add('font-' + family);
+            }
+
+            localStorage.setItem('fontFamily', family);
+        }
+
+        // Recent files management
+        function getRecentFiles() {
+            const recent = localStorage.getItem('recentFiles');
+            return recent ? JSON.parse(recent) : [];
+        }
+
+        function addToRecentFiles(filePath) {
+            if (!filePath) return;
+
+            let recentFiles = getRecentFiles();
+            // Remove if already exists
+            recentFiles = recentFiles.filter(f => f.path !== filePath);
+            // Add to front with timestamp
+            recentFiles.unshift({
+                path: filePath,
+                timestamp: Date.now()
+            });
+            // Limit to 10 most recent
+            recentFiles = recentFiles.slice(0, 10);
+            localStorage.setItem('recentFiles', JSON.stringify(recentFiles));
+        }
+
+        function getFileBasename(path) {
+            if (!path) return '';
+            const parts = path.split('/');
+            return parts[parts.length - 1];
+        }
+
+        function getFileDirectory(path) {
+            if (!path) return '';
+            const parts = path.split('/');
+            if (parts.length <= 1) return '';
+            return parts.slice(0, -1).join('/');
+        }
+
+        function renderRecentFiles() {
+            const container = document.getElementById('recent-files');
+            if (!container) return;
+
+            const recentFiles = getRecentFiles();
+
+            if (recentFiles.length === 0) {
+                container.innerHTML = '<div class="no-recent-files">No recent files</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            recentFiles.forEach(file => {
+                const item = document.createElement('div');
+                item.className = 'recent-file-item';
+                if (file.path === currentFilePath) {
+                    item.classList.add('current');
+                }
+
+                // Create filename element
+                const nameElement = document.createElement('div');
+                nameElement.className = 'recent-file-name';
+                nameElement.textContent = getFileBasename(file.path);
+
+                // Create path element
+                const pathElement = document.createElement('div');
+                pathElement.className = 'recent-file-path';
+                pathElement.textContent = getFileDirectory(file.path);
+                pathElement.title = file.path;
+
+                item.appendChild(nameElement);
+                item.appendChild(pathElement);
+                item.onclick = () => switchToFile(file.path);
+                container.appendChild(item);
+            });
+        }
+
+        function switchToFile(filePath) {
+            if (filePath === currentFilePath) {
+                return;  // Already viewing this file
+            }
+
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                console.error('WebSocket not connected');
+                return;
+            }
+
+            // Send switch file request to Rust backend
+            const request = {
+                type: 'switch_file',
+                file_path: filePath
+            };
+
+            websocket.send(JSON.stringify(request));
+            console.log(`Switching to: ${filePath}`);
         }
 
         // Set up TOC resize functionality
@@ -599,9 +859,17 @@
             lineNumberMode = savedMode;
             document.getElementById('line-numbers-mode').value = savedMode;
 
-            const savedTOC = localStorage.getItem('tocVisible') === 'true';
+            // For TOC, use saved preference if exists, otherwise default to on for wide monitors
+            const hasSavedTOC = localStorage.getItem('tocVisible') !== null;
+            const savedTOC = hasSavedTOC
+                ? localStorage.getItem('tocVisible') === 'true'
+                : window.innerWidth >= 1440;  // Default to on for monitors >= 1440px
             tocVisible = savedTOC;
             document.getElementById('toc-mode').value = savedTOC ? 'on' : 'off';
+
+            const savedFont = localStorage.getItem('fontFamily') || 'default';
+            fontFamily = savedFont;
+            document.getElementById('font-family').value = savedFont;
 
             // Set up line number mode change listener
             document.getElementById('line-numbers-mode').addEventListener('change', (e) => {
@@ -611,6 +879,11 @@
             // Set up TOC toggle listener
             document.getElementById('toc-mode').addEventListener('change', (e) => {
                 toggleTOC(e.target.value === 'on');
+            });
+
+            // Set up font family change listener
+            document.getElementById('font-family').addEventListener('change', (e) => {
+                changeFontFamily(e.target.value);
             });
 
             // Set up TOC resize functionality
@@ -629,8 +902,15 @@
                 toggleTOC(true);
             }
 
+            // Apply saved font family
+            changeFontFamily(fontFamily);
+
+            // Initialize recent files display
+            renderRecentFiles();
+
             const webSocketUrl = 'ws://' + window.location.host;
-            var socket = new WebSocket(webSocketUrl);
+            websocket = new WebSocket(webSocketUrl);
+            var socket = websocket;  // Keep local reference for compatibility
 
             // Handle WebSocket events...
             socket.onmessage = function(event) {
@@ -654,6 +934,12 @@
                     if (tocVisible) {
                         generateTOC();
                     }
+                    // Update file path and recent files if provided
+                    if (message.file_path) {
+                        currentFilePath = message.file_path;
+                        addToRecentFiles(currentFilePath);
+                        renderRecentFiles();
+                    }
                 } else if (message.type === "scroll") {
                     const scrollPercent = message.data;
 
@@ -670,9 +956,15 @@
             }
 
             socket.onclose = function(event) {
-                // Close the browser window.
+                // Close the browser window when WebSocket closes
+                // This happens when Vim exits or the server shuts down
+                console.log(`WebSocket closed with code ${event.code}. Closing browser.`);
                 window.open('', '_self', '');
                 window.close();
+            }
+
+            socket.onerror = function(error) {
+                console.error('WebSocket error:', error);
             }
         });
     </script>
