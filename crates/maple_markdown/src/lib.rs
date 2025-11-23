@@ -2,7 +2,7 @@ pub mod toc;
 
 use axum::extract::ws::{Message as WsMessage, WebSocket, WebSocketUpgrade};
 use axum::extract::Extension;
-use axum::http::StatusCode;
+use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::{Html, IntoResponse};
 use axum::routing::get;
 use axum::Router;
@@ -31,7 +31,12 @@ async fn ws_handler(
         )
     } else {
         let html = include_str!("../js/index.html");
-        (StatusCode::OK, Html(html)).into_response()
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            header::CACHE_CONTROL,
+            "no-cache, no-store, must-revalidate".parse().unwrap(),
+        );
+        (StatusCode::OK, headers, Html(html)).into_response()
     }
 }
 
@@ -127,7 +132,7 @@ async fn handle_websocket(
                             if request["type"] == "switch_file" {
                                 if let Some(file_path) = request["file_path"].as_str() {
                                     tracing::info!(file_path, "Browser requested file switch");
-                                    let msg = Message::FileChanged(file_path.to_string());
+                                    let msg = Message::FileChanged(file_path.to_string(), false);
                                     let Ok(response) = process_message(msg) else {
                                         tracing::error!("Failed to process file switch request");
                                         continue;
@@ -212,7 +217,21 @@ fn detect_github_alert(text: &str) -> Option<(&'static str, &'static str, &'stat
     }
 }
 
-pub fn to_html(markdown_content: &str) -> Result<String, Error> {
+/// Convert byte offset to line number (1-indexed)
+fn byte_offset_to_line(content: &str, byte_offset: usize) -> usize {
+    let mut line = 1;
+    for (i, byte) in content.bytes().enumerate() {
+        if i >= byte_offset {
+            break;
+        }
+        if byte == b'\n' {
+            line += 1;
+        }
+    }
+    line
+}
+
+pub fn to_html(markdown_content: &str) -> Result<(String, Vec<usize>), Error> {
     use pulldown_cmark::{CowStr, Event, Tag, TagEnd};
 
     let mut options = pulldown_cmark::Options::empty();
@@ -226,11 +245,53 @@ pub fn to_html(markdown_content: &str) -> Result<String, Error> {
     let mut html_output = String::new();
     let mut heading_text = String::new();
 
-    let events: Vec<Event> = parser.collect();
+    // Use into_offset_iter to get byte offsets for each event
+    let events_with_offsets: Vec<(Event, std::ops::Range<usize>)> =
+        parser.into_offset_iter().collect();
+    let events: Vec<Event> = events_with_offsets.iter().map(|(e, _)| e.clone()).collect();
     let mut processed_events = Vec::new();
+    let mut line_map = Vec::new();
+
+    // Track nesting depth to avoid counting nested lists
+    let mut list_depth: i32 = 0;
+    let mut blockquote_depth: i32 = 0;
 
     let mut i = 0;
     while i < events.len() {
+        // Update depth counters
+        match &events[i] {
+            Event::Start(Tag::List(_)) => list_depth += 1,
+            Event::End(TagEnd::List(_)) => list_depth -= 1,
+            Event::Start(Tag::BlockQuote) => blockquote_depth += 1,
+            Event::End(TagEnd::BlockQuote) => blockquote_depth -= 1,
+            _ => {}
+        }
+
+        // Only track top-level elements (not nested inside lists or blockquotes)
+        // Exception: We DO track the first level list/blockquote itself
+        let should_track_line = match &events[i] {
+            Event::Start(Tag::Paragraph) => list_depth == 0 && blockquote_depth == 0,
+            Event::Start(Tag::Heading { .. }) => true, // Headings are always top-level
+            Event::Start(Tag::BlockQuote) => blockquote_depth == 1, // First level only
+            Event::Start(Tag::CodeBlock(_)) => list_depth == 0 && blockquote_depth == 0,
+            Event::Start(Tag::List(_)) => list_depth == 1, // First level only
+            Event::Start(Tag::Table(_)) => list_depth == 0 && blockquote_depth == 0,
+            _ => false,
+        };
+
+        if should_track_line {
+            let byte_offset = events_with_offsets[i].1.start;
+            let line_number = byte_offset_to_line(markdown_content, byte_offset);
+            tracing::debug!(
+                event = ?events[i],
+                byte_offset,
+                line_number,
+                list_depth,
+                blockquote_depth,
+                "Tracking line number for element"
+            );
+            line_map.push(line_number);
+        }
         match &events[i] {
             Event::Start(Tag::Heading {
                 level,
@@ -364,20 +425,28 @@ pub fn to_html(markdown_content: &str) -> Result<String, Error> {
 
     pulldown_cmark::html::push_html(&mut html_output, processed_events.into_iter());
 
-    Ok(html_output)
+    tracing::debug!(
+        line_map_length = line_map.len(),
+        line_map = ?&line_map[..line_map.len().min(20)],
+        "Generated line map"
+    );
+
+    Ok((html_output, line_map))
 }
 
 fn process_message(msg: Message) -> Result<serde_json::Value, Error> {
     let res = match msg {
-        Message::FileChanged(path) => {
+        Message::FileChanged(path, should_focus) => {
             let markdown_content = std::fs::read_to_string(&path)?;
-            let html = to_html(&markdown_content)?;
+            let (html, line_map) = to_html(&markdown_content)?;
             let line_count = markdown_content.lines().count();
             serde_json::json!({
               "type": "update_content",
               "data": html,
               "source_lines": line_count,
+              "line_map": line_map,
               "file_path": path,
+              "should_focus": should_focus,
             })
         }
         Message::UpdateContent(content) => {
@@ -393,6 +462,11 @@ fn process_message(msg: Message) -> Result<serde_json::Value, Error> {
               "data": position,
             })
         }
+        Message::FocusWindow => {
+            serde_json::json!({
+              "type": "focus_window",
+            })
+        }
     };
     Ok(res)
 }
@@ -401,11 +475,14 @@ fn process_message(msg: Message) -> Result<serde_json::Value, Error> {
 #[derive(Debug, Clone)]
 pub enum Message {
     /// Markdown file was modified.
-    FileChanged(String),
+    /// The boolean flag indicates whether to focus the browser window.
+    FileChanged(String, bool),
     /// Refresh the page with given html content.
     UpdateContent(String),
     /// Scroll to the given position specified in a percent to the window height.
     Scroll(usize),
+    /// Request the browser window to focus itself.
+    FocusWindow,
 }
 
 /// Spawns a polling-based file watcher as a fallback when inotify fails.
@@ -419,7 +496,7 @@ fn spawn_polling_file_watcher(
 
     tokio::spawn(async move {
         let path = std::path::Path::new(&file_path);
-        let mut last_mtime = std::fs::metadata(&path).and_then(|m| m.modified()).ok();
+        let mut last_mtime = std::fs::metadata(path).and_then(|m| m.modified()).ok();
 
         tracing::info!(
             path = %file_path,
@@ -437,12 +514,12 @@ fn spawn_polling_file_watcher(
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
             // Check if file was modified
-            if let Ok(metadata) = std::fs::metadata(&path) {
+            if let Ok(metadata) = std::fs::metadata(path) {
                 if let Ok(current_mtime) = metadata.modified() {
                     if let Some(last) = last_mtime {
                         if current_mtime > last {
                             tracing::debug!(path = %file_path, "File modified, sending update");
-                            msg_tx.send_replace(Message::FileChanged(file_path.clone()));
+                            msg_tx.send_replace(Message::FileChanged(file_path.clone(), false));
                             last_mtime = Some(current_mtime);
                         }
                     } else {
@@ -595,7 +672,7 @@ fn spawn_file_watcher(
                 tracing::debug!("No receivers left, exiting bridge task");
                 break;
             }
-            msg_tx.send_replace(Message::FileChanged(file_path_for_async.clone()));
+            msg_tx.send_replace(Message::FileChanged(file_path_for_async.clone(), false));
             tracing::debug!("Message sent via send_replace, waiting for next file event");
         }
         tracing::debug!("File watcher bridge task exiting - event_rx closed");

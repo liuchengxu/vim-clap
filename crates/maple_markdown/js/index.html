@@ -302,6 +302,57 @@
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
       }
 
+      /* Reader Mode - optimized for focused reading */
+      .markdown-body.reader-mode {
+        max-width: 750px;
+        font-size: 18px;
+        line-height: 1.7;
+      }
+
+      .markdown-body.reader-mode p {
+        margin-top: 1.2em;
+        margin-bottom: 1.2em;
+      }
+
+      .markdown-body.reader-mode h1 {
+        margin-top: 1.5em;
+        margin-bottom: 0.8em;
+      }
+
+      .markdown-body.reader-mode h2 {
+        margin-top: 1.3em;
+        margin-bottom: 0.7em;
+      }
+
+      .markdown-body.reader-mode h3,
+      .markdown-body.reader-mode h4,
+      .markdown-body.reader-mode h5,
+      .markdown-body.reader-mode h6 {
+        margin-top: 1.2em;
+        margin-bottom: 0.6em;
+      }
+
+      .markdown-body.reader-mode ul,
+      .markdown-body.reader-mode ol {
+        margin-top: 1em;
+        margin-bottom: 1em;
+      }
+
+      .markdown-body.reader-mode li {
+        margin-top: 0.4em;
+        margin-bottom: 0.4em;
+      }
+
+      .markdown-body.reader-mode blockquote {
+        margin-top: 1.2em;
+        margin-bottom: 1.2em;
+      }
+
+      .markdown-body.reader-mode pre {
+        margin-top: 1.2em;
+        margin-bottom: 1.2em;
+      }
+
       /* Markdown content line numbers */
       .markdown-body.show-line-numbers {
         padding-left: 90px;
@@ -472,6 +523,54 @@
           padding: 15px;
         }
       }
+
+      /* Toast notification for clipboard */
+      .toast {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-20px);
+        background: #0969da;
+        color: #ffffff;
+        padding: 16px 32px;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(9, 105, 218, 0.5);
+        font-size: 16px;
+        font-weight: 600;
+        z-index: 10000;
+        opacity: 0;
+        transition: opacity 0.3s, transform 0.3s;
+        pointer-events: none;
+        min-width: 250px;
+        max-width: 600px;
+        text-align: center;
+      }
+
+      .toast-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+
+      .toast-path {
+        font-size: 12px;
+        font-weight: 400;
+        opacity: 0.9;
+        word-break: break-all;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .toast {
+          background: #58a6ff;
+          color: #0d1117;
+          box-shadow: 0 8px 24px rgba(88, 166, 255, 0.5);
+        }
+      }
     </style>
     <title>Markdown Preview</title>
 </head>
@@ -508,6 +607,13 @@
                     <option value="system">System UI</option>
                 </select>
             </div>
+            <div class="option-group">
+                <label class="option-label">Reading Mode</label>
+                <select id="reader-mode" class="option-select">
+                    <option value="off">Normal</option>
+                    <option value="on">Reader Mode</option>
+                </select>
+            </div>
         </div>
     </div>
 
@@ -524,8 +630,10 @@
     <script>
         let lineNumberMode = 'off';  // 'off', 'rendered', 'source', 'both'
         let currentSourceLines = 0;
+        let currentLineMap = [];  // Array mapping element index to source line number
         let tocVisible = false;
         let fontFamily = 'default';  // 'default', 'serif', 'mono', 'system'
+        let readerMode = false;  // Reader mode toggle
         let currentFilePath = '';  // Current file being previewed
         let websocket = null;  // WebSocket connection
 
@@ -545,13 +653,18 @@
             }
         }
 
-        function applyLineNumberMode(mode, sourceLines) {
+        function applyLineNumberMode(mode, sourceLines, lineMap) {
             const content = document.getElementById('content');
             if (!content) return;
 
             // Update current source lines if provided
             if (sourceLines) {
                 currentSourceLines = sourceLines;
+            }
+
+            // Update line map if provided
+            if (lineMap) {
+                currentLineMap = lineMap;
             }
 
             // Remove all line number classes and attributes
@@ -568,22 +681,25 @@
                 return;
             }
 
-            // Calculate source line mapping (approximate distribution)
-            const linesPerElement = Math.max(1, Math.floor(currentSourceLines / Math.max(1, children.length)));
-
             if (mode === 'rendered') {
                 // Show simple 1, 2, 3... numbering
                 content.classList.add('show-line-numbers');
                 children.forEach((child, index) => {
                     const renderedNum = index + 1;
                     child.setAttribute('data-line-number', renderedNum);
-                    child.setAttribute('data-source-line', renderedNum);  // For scrolling
+                    // Use line map for scrolling if available, otherwise use rendered number
+                    const sourceNum = currentLineMap[index] || renderedNum;
+                    child.setAttribute('data-source-line', sourceNum);
                 });
             } else if (mode === 'source') {
-                // Show approximate source file line numbers
+                // Show actual source file line numbers from line map
                 content.classList.add('show-line-numbers');
                 children.forEach((child, index) => {
-                    const sourceNum = Math.min(index * linesPerElement + 1, currentSourceLines);
+                    // Use line map if available, otherwise fall back to naive calculation
+                    const sourceNum = currentLineMap[index] || Math.min(
+                        Math.floor((index / Math.max(1, children.length)) * currentSourceLines) + 1,
+                        currentSourceLines
+                    );
                     child.setAttribute('data-line-number', sourceNum);
                     child.setAttribute('data-source-line', sourceNum);
                 });
@@ -592,17 +708,21 @@
                 content.classList.add('show-line-numbers-both');
                 children.forEach((child, index) => {
                     const renderedNum = index + 1;
-                    const sourceNum = Math.min(index * linesPerElement + 1, currentSourceLines);
+                    // Use line map if available, otherwise fall back to naive calculation
+                    const sourceNum = currentLineMap[index] || Math.min(
+                        Math.floor((index / Math.max(1, children.length)) * currentSourceLines) + 1,
+                        currentSourceLines
+                    );
                     child.setAttribute('data-rendered-number', renderedNum);
                     child.setAttribute('data-source-number', sourceNum);
-                    child.setAttribute('data-source-line', sourceNum);  // For scrolling
+                    child.setAttribute('data-source-line', sourceNum);
                 });
             }
         }
 
         function changeLineNumberMode(newMode) {
             lineNumberMode = newMode;
-            applyLineNumberMode(lineNumberMode, currentSourceLines);
+            applyLineNumberMode(lineNumberMode, currentSourceLines, currentLineMap);
             localStorage.setItem('lineNumberMode', lineNumberMode);
         }
 
@@ -718,6 +838,21 @@
             localStorage.setItem('fontFamily', family);
         }
 
+        // Toggle Reader Mode
+        function toggleReaderMode(enabled) {
+            readerMode = enabled;
+            const content = document.getElementById('content');
+            if (!content) return;
+
+            if (enabled) {
+                content.classList.add('reader-mode');
+            } else {
+                content.classList.remove('reader-mode');
+            }
+
+            localStorage.setItem('readerMode', enabled);
+        }
+
         // Recent files management
         function getRecentFiles() {
             const recent = localStorage.getItem('recentFiles');
@@ -753,6 +888,74 @@
             return parts.slice(0, -1).join('/');
         }
 
+        function showToast(message, subtitle = null, duration = 2000) {
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+
+            if (subtitle) {
+                // Create title element
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'toast-title';
+                titleDiv.textContent = message;
+                toast.appendChild(titleDiv);
+
+                // Create path element
+                const pathDiv = document.createElement('div');
+                pathDiv.className = 'toast-path';
+                pathDiv.textContent = subtitle;
+                toast.appendChild(pathDiv);
+            } else {
+                toast.textContent = message;
+            }
+
+            document.body.appendChild(toast);
+
+            // Show toast with animation
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+
+            // Hide and remove toast after duration
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    document.body.removeChild(toast);
+                }, 300);
+            }, duration);
+        }
+
+        function copyToClipboard(text) {
+            // Use the Clipboard API if available
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    console.log('Copied to clipboard:', text);
+                    showToast('Copied: ' + getFileBasename(text), text);
+                }).catch(err => {
+                    console.error('Failed to copy to clipboard:', err);
+                    showToast('Failed to copy to clipboard');
+                });
+            } else {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    console.log('Copied to clipboard:', text);
+                    showToast('Copied: ' + getFileBasename(text), text);
+                } catch (err) {
+                    console.error('Failed to copy to clipboard:', err);
+                    showToast('Failed to copy to clipboard');
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+
         function renderRecentFiles() {
             const container = document.getElementById('recent-files');
             if (!container) return;
@@ -785,7 +988,24 @@
 
                 item.appendChild(nameElement);
                 item.appendChild(pathElement);
-                item.onclick = () => switchToFile(file.path);
+
+                // Left click to switch file
+                item.onclick = (e) => {
+                    // If shift key is held, copy to clipboard instead of switching
+                    if (e.shiftKey) {
+                        copyToClipboard(file.path);
+                        e.stopPropagation();
+                        return;
+                    }
+                    switchToFile(file.path);
+                };
+
+                // Right click to copy to clipboard
+                item.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    copyToClipboard(file.path);
+                };
+
                 container.appendChild(item);
             });
         }
@@ -871,6 +1091,10 @@
             fontFamily = savedFont;
             document.getElementById('font-family').value = savedFont;
 
+            const savedReaderMode = localStorage.getItem('readerMode') === 'true';
+            readerMode = savedReaderMode;
+            document.getElementById('reader-mode').value = savedReaderMode ? 'on' : 'off';
+
             // Set up line number mode change listener
             document.getElementById('line-numbers-mode').addEventListener('change', (e) => {
                 changeLineNumberMode(e.target.value);
@@ -886,6 +1110,11 @@
                 changeFontFamily(e.target.value);
             });
 
+            // Set up reader mode change listener
+            document.getElementById('reader-mode').addEventListener('change', (e) => {
+                toggleReaderMode(e.target.value === 'on');
+            });
+
             // Set up TOC resize functionality
             setupTOCResize();
 
@@ -895,7 +1124,7 @@
 
             codeHighlight();
             renderMermaid();
-            applyLineNumberMode(lineNumberMode, currentSourceLines);
+            applyLineNumberMode(lineNumberMode, currentSourceLines, currentLineMap);
 
             // Initialize TOC if enabled
             if (tocVisible) {
@@ -904,6 +1133,11 @@
 
             // Apply saved font family
             changeFontFamily(fontFamily);
+
+            // Apply saved reader mode
+            if (readerMode) {
+                toggleReaderMode(true);
+            }
 
             // Initialize recent files display
             renderRecentFiles();
@@ -918,6 +1152,18 @@
 
                 if (message.type === "update_content") {
                     document.getElementById('content').innerHTML = message.data;
+
+                    // Add spacer at the end for better scrolling
+                    const spacer = document.createElement('div');
+                    spacer.style.height = '100px';
+                    spacer.style.pointerEvents = 'none';
+                    document.getElementById('content').appendChild(spacer);
+
+                    // Debug: log first 10 children
+                    const debugChildren = Array.from(document.getElementById('content').children).slice(0, 10);
+                    console.log('First 10 HTML children:', debugChildren.map((c, i) => `${i}: ${c.tagName}`));
+                    console.log('Line map (first 10):', message.line_map?.slice(0, 10));
+
                     codeHighlight();
                     // Render LaTeX inside content
                     renderMathInElement(document.getElementById('content'), {
@@ -928,8 +1174,8 @@
                     });
                     // Render mermaid diagrams
                     renderMermaid();
-                    // Apply line numbers with source line count
-                    applyLineNumberMode(lineNumberMode, message.source_lines);
+                    // Apply line numbers with source line count and line map
+                    applyLineNumberMode(lineNumberMode, message.source_lines, message.line_map);
                     // Regenerate TOC if visible
                     if (tocVisible) {
                         generateTOC();
@@ -939,6 +1185,10 @@
                         currentFilePath = message.file_path;
                         addToRecentFiles(currentFilePath);
                         renderRecentFiles();
+                    }
+                    // Focus window if requested
+                    if (message.should_focus) {
+                        window.focus();
                     }
                 } else if (message.type === "scroll") {
                     const scrollPercent = message.data;
@@ -950,6 +1200,9 @@
 
                     // Scroll the page to the calculated absolute position
                     window.scrollTo(0, absoluteScrollPosition);
+                } else if (message.type === "focus_window") {
+                    // Bring the browser window to the foreground
+                    window.focus();
                 } else {
                     console.log(`Invalid message: {message}`)
                 }

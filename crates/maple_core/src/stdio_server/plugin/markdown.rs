@@ -90,7 +90,9 @@ impl ClapPlugin for Markdown {
                                 new_bufnr = bufnr,
                                 "Switching preview to newly focused buffer"
                             );
-                            preview.msg_tx.send_replace(Message::FileChanged(path));
+                            preview
+                                .msg_tx
+                                .send_replace(Message::FileChanged(path, false));
                             // Update the tracked buffer number
                             preview.bufnr = bufnr;
                         }
@@ -110,7 +112,9 @@ impl ClapPlugin for Markdown {
                 if let Some(preview) = &self.active_preview {
                     if preview.bufnr == bufnr {
                         let path = self.vim.bufabspath(bufnr).await?;
-                        preview.msg_tx.send_replace(Message::FileChanged(path));
+                        preview
+                            .msg_tx
+                            .send_replace(Message::FileChanged(path, false));
                     }
                 }
             }
@@ -120,7 +124,7 @@ impl ClapPlugin for Markdown {
                         // TODO: incremental update?
                         let lines = self.vim.getbufline(bufnr, 1, "$").await?;
                         let markdown_content = lines.join("\n");
-                        let html = maple_markdown::to_html(&markdown_content)?;
+                        let (html, _line_map) = maple_markdown::to_html(&markdown_content)?;
                         preview.msg_tx.send_replace(Message::UpdateContent(html));
                     }
                 }
@@ -183,9 +187,11 @@ impl ClapPlugin for Markdown {
                         port = preview.port,
                         "Reusing existing preview, switching to new buffer"
                     );
-                    preview.msg_tx.send_replace(Message::FileChanged(path));
+                    // Send file changed message with focus request
+                    preview
+                        .msg_tx
+                        .send_replace(Message::FileChanged(path.clone(), true));
                     preview.bufnr = bufnr;
-                    // The browser will auto-update via WebSocket, no need to open a new tab
                     return Ok(());
                 }
 
@@ -198,7 +204,7 @@ impl ClapPlugin for Markdown {
 
                 // Initialize the channel with the file to preview
                 let (msg_tx, msg_rx) =
-                    tokio::sync::watch::channel(Message::FileChanged(path.clone()));
+                    tokio::sync::watch::channel(Message::FileChanged(path.clone(), false));
 
                 let config_port = maple_config::config().plugin.markdown.preview_port;
                 let addr = format!("127.0.0.1:{config_port}");
