@@ -192,6 +192,13 @@ impl ClapPlugin for Markdown {
                         .msg_tx
                         .send_replace(Message::FileChanged(path.clone(), true));
                     preview.bufnr = bufnr;
+
+                    // Show notification in Vim to remind user to switch to browser
+                    self.vim.exec(
+                        "clap#plugin#markdown#on_preview_updated",
+                        serde_json::json!({}),
+                    )?;
+
                     return Ok(());
                 }
 

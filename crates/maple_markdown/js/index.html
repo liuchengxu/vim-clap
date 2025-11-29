@@ -46,6 +46,7 @@
         box-sizing: border-box;
         overflow-y: auto;
         flex-shrink: 0;
+        order: 1;
       }
 
       #sidebar h3 {
@@ -159,22 +160,45 @@
         min-width: 150px;
         max-width: 500px;
         background: #f6f8fa;
-        border-right: 1px solid #d0d7de;
         padding: 20px;
         box-sizing: border-box;
         overflow-y: auto;
         flex-shrink: 0;
         display: none;
         position: relative;
+        order: 2; /* Default position between sidebar and content */
       }
 
       #toc-panel.visible {
         display: block;
       }
 
+      /* Left-side TOC (default) */
+      #toc-panel.toc-left {
+        border-right: 1px solid #d0d7de;
+        border-left: none;
+        order: 2;
+      }
+
+      #toc-panel.toc-left .toc-resize-handle {
+        right: 0;
+        left: auto;
+      }
+
+      /* Right-side TOC */
+      #toc-panel.toc-right {
+        border-left: 1px solid #d0d7de;
+        border-right: none;
+        order: 4;
+      }
+
+      #toc-panel.toc-right .toc-resize-handle {
+        left: 0;
+        right: auto;
+      }
+
       .toc-resize-handle {
         position: absolute;
-        right: 0;
         top: 0;
         bottom: 0;
         width: 5px;
@@ -267,6 +291,7 @@
         overflow-y: auto;
         display: flex;
         justify-content: center;
+        order: 3;
       }
 
       .markdown-body {
@@ -470,7 +495,14 @@
 
         #toc-panel {
           background: #161b22;
+        }
+
+        #toc-panel.toc-left {
           border-right-color: #30363d;
+        }
+
+        #toc-panel.toc-right {
+          border-left-color: #30363d;
         }
 
         .toc-header {
@@ -595,7 +627,8 @@
                 <label class="option-label">Table of Contents</label>
                 <select id="toc-mode" class="option-select">
                     <option value="off">Off</option>
-                    <option value="on">Show</option>
+                    <option value="left">Show (Left)</option>
+                    <option value="right">Show (Right)</option>
                 </select>
             </div>
             <div class="option-group">
@@ -800,13 +833,29 @@
             }
         }
 
-        // Toggle TOC visibility
-        function toggleTOC(visible) {
-            tocVisible = visible;
+        // Toggle TOC visibility and position
+        function toggleTOC(mode) {
+            // mode can be 'off', 'left', or 'right'
             const tocPanel = document.getElementById('toc-panel');
-            if (visible) {
+
+            if (mode === 'off') {
+                tocVisible = false;
+                tocPanel.classList.remove('visible', 'toc-left', 'toc-right');
+            } else {
+                tocVisible = true;
                 tocPanel.classList.add('visible');
+
+                // Remove old position classes and add new one
+                if (mode === 'left') {
+                    tocPanel.classList.remove('toc-right');
+                    tocPanel.classList.add('toc-left');
+                } else if (mode === 'right') {
+                    tocPanel.classList.remove('toc-left');
+                    tocPanel.classList.add('toc-right');
+                }
+
                 generateTOC();
+
                 // Restore saved width if available, otherwise use smart default
                 const savedWidth = localStorage.getItem('tocWidth');
                 if (savedWidth) {
@@ -815,10 +864,9 @@
                     const defaultWidth = getDefaultTOCWidth();
                     tocPanel.style.width = defaultWidth + 'px';
                 }
-            } else {
-                tocPanel.classList.remove('visible');
             }
-            localStorage.setItem('tocVisible', visible);
+
+            localStorage.setItem('tocMode', mode);
         }
 
         // Change font family
@@ -1052,7 +1100,10 @@
                 if (!isResizing) return;
 
                 const delta = e.clientX - startX;
-                const newWidth = startWidth + delta;
+                // For right-side TOC, delta should be negative to increase width
+                // For left-side TOC, delta should be positive to increase width
+                const isRightSide = tocPanel.classList.contains('toc-right');
+                const newWidth = isRightSide ? startWidth - delta : startWidth + delta;
                 const minWidth = 150;
                 const maxWidth = 500;
 
@@ -1079,13 +1130,16 @@
             lineNumberMode = savedMode;
             document.getElementById('line-numbers-mode').value = savedMode;
 
-            // For TOC, use saved preference if exists, otherwise default to on for wide monitors
-            const hasSavedTOC = localStorage.getItem('tocVisible') !== null;
-            const savedTOC = hasSavedTOC
-                ? localStorage.getItem('tocVisible') === 'true'
-                : window.innerWidth >= 1440;  // Default to on for monitors >= 1440px
-            tocVisible = savedTOC;
-            document.getElementById('toc-mode').value = savedTOC ? 'on' : 'off';
+            // For TOC, use saved preference if exists, otherwise default to right for wide monitors
+            const savedTOCMode = localStorage.getItem('tocMode');
+            let tocMode = 'off';
+            if (savedTOCMode) {
+                tocMode = savedTOCMode;
+            } else if (window.innerWidth >= 1440) {
+                // Default to right for monitors >= 1440px
+                tocMode = 'right';
+            }
+            document.getElementById('toc-mode').value = tocMode;
 
             const savedFont = localStorage.getItem('fontFamily') || 'default';
             fontFamily = savedFont;
@@ -1102,7 +1156,7 @@
 
             // Set up TOC toggle listener
             document.getElementById('toc-mode').addEventListener('change', (e) => {
-                toggleTOC(e.target.value === 'on');
+                toggleTOC(e.target.value);
             });
 
             // Set up font family change listener
@@ -1126,9 +1180,9 @@
             renderMermaid();
             applyLineNumberMode(lineNumberMode, currentSourceLines, currentLineMap);
 
-            // Initialize TOC if enabled
-            if (tocVisible) {
-                toggleTOC(true);
+            // Initialize TOC with saved mode
+            if (tocMode !== 'off') {
+                toggleTOC(tocMode);
             }
 
             // Apply saved font family
