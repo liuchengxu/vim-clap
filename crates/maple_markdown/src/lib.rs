@@ -434,18 +434,36 @@ pub fn to_html(markdown_content: &str) -> Result<(String, Vec<usize>), Error> {
     Ok((html_output, line_map))
 }
 
+/// Find the git repository root by walking up the directory tree
+fn find_git_root(path: &str) -> Option<String> {
+    let path = Path::new(path);
+    let mut current = path.parent()?;
+
+    loop {
+        let git_dir = current.join(".git");
+        if git_dir.exists() {
+            return current.to_str().map(String::from);
+        }
+
+        current = current.parent()?;
+    }
+}
+
 fn process_message(msg: Message) -> Result<serde_json::Value, Error> {
     let res = match msg {
         Message::FileChanged(path, should_focus) => {
             let markdown_content = std::fs::read_to_string(&path)?;
             let (html, line_map) = to_html(&markdown_content)?;
             let line_count = markdown_content.lines().count();
+            let git_root = find_git_root(&path);
+
             serde_json::json!({
               "type": "update_content",
               "data": html,
               "source_lines": line_count,
               "line_map": line_map,
               "file_path": path,
+              "git_root": git_root,
               "should_focus": should_focus,
             })
         }

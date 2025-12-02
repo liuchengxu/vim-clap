@@ -288,10 +288,15 @@
 
       #main-content {
         flex: 1;
-        overflow-y: auto;
         display: flex;
-        justify-content: center;
+        flex-direction: column;
         order: 3;
+        overflow-y: auto;
+      }
+
+      #main-content > .markdown-body {
+        flex: 0 1 auto;
+        align-self: center;
       }
 
       .markdown-body {
@@ -556,6 +561,91 @@
         }
       }
 
+      /* File path bar */
+      .file-path-bar {
+        background: #f6f8fa;
+        border-bottom: 1px solid #d0d7de;
+        padding: 8px 20px 18px 20px;
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+        font-size: 13px;
+        line-height: 1;
+        color: #57606a;
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.2s;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .file-path-bar:hover {
+        background: #eef2f6;
+      }
+
+      .file-path-bar:active {
+        background: #e6ebf1;
+      }
+
+      .git-root {
+        color: #0969da;
+        font-weight: 600;
+        vertical-align: baseline;
+      }
+
+      .file-path-bar:hover .git-root {
+        color: #0550ae;
+      }
+
+      .relative-path {
+        color: #57606a;
+        font-weight: 400;
+      }
+
+      .file-path-bar:hover .relative-path {
+        color: #24292f;
+      }
+
+      .path-separator {
+        color: #8b949e;
+        margin: 0 2px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .file-path-bar {
+          background: #161b22;
+          border-bottom-color: #30363d;
+          color: #8b949e;
+        }
+
+        .file-path-bar:hover {
+          background: #1c2128;
+        }
+
+        .file-path-bar:active {
+          background: #21262d;
+        }
+
+        .git-root {
+          color: #58a6ff;
+        }
+
+        .file-path-bar:hover .git-root {
+          color: #79c0ff;
+        }
+
+        .relative-path {
+          color: #8b949e;
+        }
+
+        .file-path-bar:hover .relative-path {
+          color: #c9d1d9;
+        }
+
+        .path-separator {
+          color: #6e7681;
+        }
+      }
+
       /* Toast notification for clipboard */
       .toast {
         position: fixed;
@@ -657,6 +747,7 @@
     </div>
 
     <div id="main-content">
+        <div class="file-path-bar" id="file-path-bar" title="Click to copy path"></div>
         <article class="markdown-body" id="content"></article>
     </div>
 
@@ -936,6 +1027,31 @@
             return parts.slice(0, -1).join('/');
         }
 
+        function updateFilePathBar(filePath, gitRoot) {
+            const pathBar = document.getElementById('file-path-bar');
+            if (!pathBar) return;
+
+            if (filePath) {
+                pathBar.style.display = 'block';
+                pathBar.title = `Click to copy: ${filePath}`;
+
+                if (gitRoot && filePath.startsWith(gitRoot)) {
+                    // Extract git root directory name
+                    const gitRootName = gitRoot.split('/').filter(p => p).pop() || gitRoot;
+                    // Get relative path from git root
+                    const relativePath = filePath.substring(gitRoot.length);
+
+                    // Build HTML with styled parts
+                    pathBar.innerHTML = `<span class="git-root">${gitRootName}</span><span class="path-separator">/</span><span class="relative-path">${relativePath.replace(/^\//, '')}</span>`;
+                } else {
+                    // No git root found, show full path
+                    pathBar.textContent = filePath;
+                }
+            } else {
+                pathBar.style.display = 'none';
+            }
+        }
+
         function showToast(message, subtitle = null, duration = 2000) {
             // Create toast element
             const toast = document.createElement('div');
@@ -1169,6 +1285,13 @@
                 toggleReaderMode(e.target.value === 'on');
             });
 
+            // Set up file path bar click-to-copy
+            document.getElementById('file-path-bar').addEventListener('click', () => {
+                if (currentFilePath) {
+                    copyToClipboard(currentFilePath);
+                }
+            });
+
             // Set up TOC resize functionality
             setupTOCResize();
 
@@ -1239,6 +1362,7 @@
                         currentFilePath = message.file_path;
                         addToRecentFiles(currentFilePath);
                         renderRecentFiles();
+                        updateFilePathBar(currentFilePath, message.git_root);
                     }
                     // Focus window if requested
                     if (message.should_focus) {
