@@ -155,6 +155,42 @@
         box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
       }
 
+      .document-stats {
+        background: #ffffff;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        padding: 12px;
+      }
+
+      .stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 0;
+        border-bottom: 1px solid #eaecef;
+      }
+
+      .stat-row:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+
+      .stat-row:first-child {
+        padding-top: 0;
+      }
+
+      .stat-label {
+        font-size: 13px;
+        color: #57606a;
+      }
+
+      .stat-value {
+        font-size: 13px;
+        font-weight: 600;
+        color: #24292f;
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      }
+
       #toc-panel {
         width: 250px; /* Default, will be adjusted based on screen size */
         min-width: 150px;
@@ -498,6 +534,23 @@
           color: #6e7681;
         }
 
+        .document-stats {
+          background: #0d1117;
+          border-color: #30363d;
+        }
+
+        .stat-row {
+          border-bottom-color: #21262d;
+        }
+
+        .stat-label {
+          color: #8b949e;
+        }
+
+        .stat-value {
+          color: #c9d1d9;
+        }
+
         #toc-panel {
           background: #161b22;
         }
@@ -736,6 +789,27 @@
                     <option value="off">Normal</option>
                     <option value="on">Reader Mode</option>
                 </select>
+            </div>
+        </div>
+        <div class="sidebar-section">
+            <h3>Document Stats</h3>
+            <div id="document-stats" class="document-stats">
+                <div class="stat-row">
+                    <span class="stat-label">Words</span>
+                    <span class="stat-value" id="stat-words">-</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Characters</span>
+                    <span class="stat-value" id="stat-characters">-</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Lines</span>
+                    <span class="stat-value" id="stat-lines">-</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Reading time</span>
+                    <span class="stat-value" id="stat-reading-time">-</span>
+                </div>
             </div>
         </div>
     </div>
@@ -1194,6 +1268,39 @@
             console.log(`Switching to: ${filePath}`);
         }
 
+        // Format number with thousands separator
+        function formatNumber(num) {
+            return num.toLocaleString();
+        }
+
+        // Format reading time in a human-readable way
+        function formatReadingTime(minutes) {
+            if (minutes < 1) {
+                return '< 1 min';
+            } else if (minutes === 1) {
+                return '1 min';
+            } else if (minutes < 60) {
+                return minutes + ' min';
+            } else {
+                const hours = Math.floor(minutes / 60);
+                const remainingMinutes = minutes % 60;
+                if (remainingMinutes === 0) {
+                    return hours + (hours === 1 ? ' hour' : ' hours');
+                }
+                return hours + (hours === 1 ? ' hour ' : ' hours ') + remainingMinutes + ' min';
+            }
+        }
+
+        // Update document stats display
+        function updateDocumentStats(stats) {
+            if (!stats) return;
+
+            document.getElementById('stat-words').textContent = formatNumber(stats.words);
+            document.getElementById('stat-characters').textContent = formatNumber(stats.characters);
+            document.getElementById('stat-lines').textContent = formatNumber(stats.lines);
+            document.getElementById('stat-reading-time').textContent = formatReadingTime(stats.reading_minutes);
+        }
+
         // Set up TOC resize functionality
         function setupTOCResize() {
             const tocPanel = document.getElementById('toc-panel');
@@ -1363,6 +1470,10 @@
                         addToRecentFiles(currentFilePath);
                         renderRecentFiles();
                         updateFilePathBar(currentFilePath, message.git_root);
+                    }
+                    // Update document stats if provided
+                    if (message.stats) {
+                        updateDocumentStats(message.stats);
                     }
                     // Focus window if requested
                     if (message.should_focus) {

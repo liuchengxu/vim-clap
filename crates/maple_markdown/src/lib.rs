@@ -1,18 +1,94 @@
 pub mod toc;
 
 use axum::extract::ws::{Message as WsMessage, WebSocket, WebSocketUpgrade};
-use axum::extract::Extension;
+use axum::extract::{Extension, Path as AxumPath, State};
 use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::{Html, IntoResponse};
 use axum::routing::get;
 use axum::Router;
 use notify::{Event as NotifyEvent, RecommendedWatcher, RecursiveMode, Watcher};
 use std::net::SocketAddr;
-use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex, RwLock};
 use tokio::sync::watch::Receiver;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
+
+/// Shared state for the markdown preview server.
+#[derive(Clone)]
+struct AppState {
+    /// The directory containing the current markdown file.
+    /// Used for resolving relative image paths.
+    base_dir: Arc<RwLock<Option<PathBuf>>>,
+}
+
+/// Handler for serving static files (images, etc.) relative to the markdown file's directory.
+async fn static_file_handler(
+    State(state): State<AppState>,
+    AxumPath(path): AxumPath<String>,
+) -> impl IntoResponse {
+    let base_dir = state.base_dir.read().unwrap().clone();
+
+    let Some(base_dir) = base_dir else {
+        return (StatusCode::NOT_FOUND, HeaderMap::new(), Vec::new());
+    };
+
+    // Decode URL-encoded path
+    let decoded_path = percent_encoding::percent_decode_str(&path)
+        .decode_utf8_lossy()
+        .to_string();
+
+    // Construct absolute path
+    let file_path = base_dir.join(&decoded_path);
+
+    // Security: ensure the resolved path is still within the base directory
+    let canonical_base = match base_dir.canonicalize() {
+        Ok(p) => p,
+        Err(_) => return (StatusCode::NOT_FOUND, HeaderMap::new(), Vec::new()),
+    };
+
+    let canonical_file = match file_path.canonicalize() {
+        Ok(p) => p,
+        Err(_) => return (StatusCode::NOT_FOUND, HeaderMap::new(), Vec::new()),
+    };
+
+    if !canonical_file.starts_with(&canonical_base) {
+        tracing::warn!(
+            requested = %path,
+            resolved = ?canonical_file,
+            "Attempted path traversal attack"
+        );
+        return (StatusCode::FORBIDDEN, HeaderMap::new(), Vec::new());
+    }
+
+    // Read the file
+    let content = match std::fs::read(&canonical_file) {
+        Ok(c) => c,
+        Err(_) => return (StatusCode::NOT_FOUND, HeaderMap::new(), Vec::new()),
+    };
+
+    // Determine content type based on extension
+    let content_type = match canonical_file.extension().and_then(|e| e.to_str()) {
+        Some("png") => "image/png",
+        Some("jpg") | Some("jpeg") => "image/jpeg",
+        Some("gif") => "image/gif",
+        Some("svg") => "image/svg+xml",
+        Some("webp") => "image/webp",
+        Some("ico") => "image/x-icon",
+        Some("bmp") => "image/bmp",
+        Some("pdf") => "application/pdf",
+        _ => "application/octet-stream",
+    };
+
+    let mut headers = HeaderMap::new();
+    headers.insert(header::CONTENT_TYPE, content_type.parse().unwrap());
+    headers.insert(
+        header::CACHE_CONTROL,
+        "public, max-age=3600".parse().unwrap(),
+    );
+
+    (StatusCode::OK, headers, content)
+}
 
 /// The handler for the HTTP request (this gets called when the HTTP GET lands at the start
 /// of websocket negotiation). After this completes, the actual switching from HTTP to
@@ -24,11 +100,12 @@ async fn ws_handler(
     Extension(msg_rx): Extension<Receiver<Message>>,
     Extension(watcher_rx): Extension<Option<Receiver<Message>>>,
     Extension(disconnect_tx): Extension<Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>>,
+    Extension(base_dir): Extension<Arc<RwLock<Option<PathBuf>>>>,
 ) -> impl IntoResponse {
     if let Some(ws) = ws {
-        ws.on_upgrade(
-            |ws| async move { handle_websocket(ws, msg_rx, watcher_rx, disconnect_tx).await },
-        )
+        ws.on_upgrade(|ws| async move {
+            handle_websocket(ws, msg_rx, watcher_rx, disconnect_tx, base_dir).await
+        })
     } else {
         let html = include_str!("../js/index.html");
         let mut headers = HeaderMap::new();
@@ -45,6 +122,7 @@ async fn handle_websocket(
     mut vim_rx: Receiver<Message>,
     mut watcher_rx: Option<Receiver<Message>>,
     disconnect_tx: Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>,
+    base_dir: Arc<RwLock<Option<PathBuf>>>,
 ) {
     // Send initial message immediately when browser connects
     {
@@ -132,6 +210,15 @@ async fn handle_websocket(
                             if request["type"] == "switch_file" {
                                 if let Some(file_path) = request["file_path"].as_str() {
                                     tracing::info!(file_path, "Browser requested file switch");
+
+                                    // Update base_dir for the new file's directory
+                                    if let Some(parent) = Path::new(file_path).parent() {
+                                        if let Ok(mut dir) = base_dir.write() {
+                                            *dir = Some(parent.to_path_buf());
+                                            tracing::debug!(new_base_dir = ?parent, "Updated base directory for image paths");
+                                        }
+                                    }
+
                                     let msg = Message::FileChanged(file_path.to_string(), false);
                                     let Ok(response) = process_message(msg) else {
                                         tracing::error!("Failed to process file switch request");
@@ -434,6 +521,102 @@ pub fn to_html(markdown_content: &str) -> Result<(String, Vec<usize>), Error> {
     Ok((html_output, line_map))
 }
 
+/// Rewrites relative image paths in HTML to use the `/files/` route.
+///
+/// Converts `<img src="path/to/image.png">` to `<img src="/files/path/to/image.png">`
+/// for relative paths only (absolute paths and URLs are left unchanged).
+fn rewrite_image_paths(html: &str) -> String {
+    // Regex to match img tags with src attribute
+    let img_regex = regex::Regex::new(r#"<img\s+([^>]*?)src="([^"]+)"([^>]*)>"#).unwrap();
+
+    img_regex
+        .replace_all(html, |caps: &regex::Captures| {
+            let before = &caps[1];
+            let src = &caps[2];
+            let after = &caps[3];
+
+            // Skip absolute URLs (http://, https://, data:, //)
+            if src.starts_with("http://")
+                || src.starts_with("https://")
+                || src.starts_with("data:")
+                || src.starts_with("//")
+                || src.starts_with('/')
+            {
+                return caps[0].to_string();
+            }
+
+            // URL-encode the path for safe transmission
+            let encoded_src =
+                percent_encoding::utf8_percent_encode(src, percent_encoding::NON_ALPHANUMERIC)
+                    .to_string();
+
+            format!(r#"<img {before}src="/files/{encoded_src}"{after}>"#)
+        })
+        .to_string()
+}
+
+/// Document statistics for display in the preview
+#[derive(Debug, Clone, serde::Serialize)]
+struct DocumentStats {
+    /// Total word count
+    words: usize,
+    /// Total character count (excluding whitespace)
+    characters: usize,
+    /// Total character count (including whitespace)
+    characters_with_spaces: usize,
+    /// Total line count
+    lines: usize,
+    /// Estimated reading time in minutes (based on 200 words per minute)
+    reading_minutes: usize,
+}
+
+/// Calculate document statistics from markdown content
+fn calculate_document_stats(content: &str) -> DocumentStats {
+    let lines = content.lines().count();
+
+    // Count words by splitting on whitespace
+    let words: usize = content
+        .lines()
+        .map(|line| {
+            line.split_whitespace()
+                .filter(|word| {
+                    // Filter out pure markdown syntax tokens
+                    let trimmed = word.trim_matches(|c: char| {
+                        c == '#'
+                            || c == '*'
+                            || c == '_'
+                            || c == '`'
+                            || c == '['
+                            || c == ']'
+                            || c == '('
+                            || c == ')'
+                            || c == '-'
+                            || c == '>'
+                            || c == '|'
+                    });
+                    !trimmed.is_empty()
+                })
+                .count()
+        })
+        .sum();
+
+    // Count characters
+    let characters_with_spaces = content.chars().count();
+    let characters = content.chars().filter(|c| !c.is_whitespace()).count();
+
+    // Reading time: average adult reads ~200-250 words per minute
+    // Use 200 wpm for a conservative estimate
+    let reading_minutes = words.div_ceil(200);
+
+    DocumentStats {
+        words,
+        characters,
+        characters_with_spaces,
+        lines,
+        reading_minutes,
+    }
+}
+
 /// Find the git repository root by walking up the directory tree
 fn find_git_root(path: &str) -> Option<String> {
     let path = Path::new(path);
@@ -454,17 +637,19 @@ fn process_message(msg: Message) -> Result<serde_json::Value, Error> {
         Message::FileChanged(path, should_focus) => {
             let markdown_content = std::fs::read_to_string(&path)?;
             let (html, line_map) = to_html(&markdown_content)?;
-            let line_count = markdown_content.lines().count();
+            let html = rewrite_image_paths(&html);
+            let stats = calculate_document_stats(&markdown_content);
             let git_root = find_git_root(&path);
 
             serde_json::json!({
               "type": "update_content",
               "data": html,
-              "source_lines": line_count,
+              "source_lines": stats.lines,
               "line_map": line_map,
               "file_path": path,
               "git_root": git_root,
               "should_focus": should_focus,
+              "stats": stats,
             })
         }
         Message::UpdateContent(content) => {
@@ -737,7 +922,7 @@ pub async fn open_preview_in_browser(config: PreviewConfig) -> Result<(), Error>
     } = config;
 
     // Create watcher channels if file_path is provided
-    let (watcher_rx, _watcher_shutdown) = if let Some(path) = file_path {
+    let (watcher_rx, _watcher_shutdown) = if let Some(ref path) = file_path {
         // Try inotify-based watcher first, fall back to polling if it fails
         match spawn_file_watcher(path.clone()) {
             Ok((watcher_rx, shutdown)) => {
@@ -750,7 +935,7 @@ pub async fn open_preview_in_browser(config: PreviewConfig) -> Result<(), Error>
                     "inotify file watcher failed, falling back to polling (checks every 1 second)"
                 );
                 // Fall back to polling-based watcher
-                let (polling_rx, shutdown) = spawn_polling_file_watcher(path);
+                let (polling_rx, shutdown) = spawn_polling_file_watcher(path.clone());
                 (Some(polling_rx), Some(shutdown))
             }
         }
@@ -761,11 +946,22 @@ pub async fn open_preview_in_browser(config: PreviewConfig) -> Result<(), Error>
     // Wrap disconnect_tx in Arc<Mutex<Option<>>> so it can be shared and cloned
     let disconnect_tx_shared = Arc::new(Mutex::new(disconnect_tx));
 
+    // Create shared state for the base directory
+    let base_dir = file_path
+        .as_ref()
+        .and_then(|p| Path::new(p).parent().map(|parent| parent.to_path_buf()));
+    let app_state = AppState {
+        base_dir: Arc::new(RwLock::new(base_dir)),
+    };
+
     let app = Router::new()
         .route("/", get(ws_handler))
+        .route("/files/*path", get(static_file_handler))
         .layer(Extension(msg_rx))
         .layer(Extension(watcher_rx))
-        .layer(Extension(disconnect_tx_shared));
+        .layer(Extension(disconnect_tx_shared))
+        .layer(Extension(app_state.base_dir.clone()))
+        .with_state(app_state);
 
     let port = listener.local_addr()?.port();
 
