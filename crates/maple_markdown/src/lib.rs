@@ -107,7 +107,7 @@ async fn ws_handler(
             handle_websocket(ws, msg_rx, watcher_rx, disconnect_tx, base_dir).await
         })
     } else {
-        let html = include_str!("../js/index.html");
+        let html = build_html();
         let mut headers = HeaderMap::new();
         headers.insert(
             header::CACHE_CONTROL,
@@ -115,6 +115,19 @@ async fn ws_handler(
         );
         (StatusCode::OK, headers, Html(html)).into_response()
     }
+}
+
+/// Build the complete HTML by inlining CSS and JS files at compile time.
+fn build_html() -> String {
+    const HTML_TEMPLATE: &str = include_str!("../js/index.html");
+    const STYLES_CSS: &str = include_str!("../js/styles.css");
+    const THEMES_CSS: &str = include_str!("../js/themes.css");
+    const APP_JS: &str = include_str!("../js/app.js");
+
+    HTML_TEMPLATE
+        .replace("/*__STYLES_CSS__*/", STYLES_CSS)
+        .replace("/*__THEMES_CSS__*/", THEMES_CSS)
+        .replace("/*__APP_JS__*/", APP_JS)
 }
 
 async fn handle_websocket(
