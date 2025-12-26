@@ -10,57 +10,41 @@ let s:input_default_hi_group = 'Visual'
 let s:display_default_hi_group = 'ClapDefaultPreview'
 let s:preview_default_hi_group = 'PmenuSel'
 
-function! s:extract(group, what, gui_or_cterm) abort
-  return synIDattr(synIDtrans(hlID(a:group)), a:what, a:gui_or_cterm)
-endfunction
+" Use centralized theme utilities
+let s:defaults = g:clap#theme_utils#defaults
 
+" Shorthand for theme_utils functions
 function! s:extract_or(group, what, gui_or_cterm, default) abort
-  let v = s:extract(a:group, a:what, a:gui_or_cterm)
-  return empty(v) ? a:default : v
+  return clap#theme_utils#extract_or(a:group, a:what, a:gui_or_cterm, a:default)
 endfunction
 
 " Try to sync the spinner bg with input window.
 function! s:hi_spinner() abort
-  let vis_ctermbg = s:extract_or(s:input_default_hi_group, 'bg', 'cterm', '60')
-  let vis_guibg = s:extract_or(s:input_default_hi_group, 'bg', 'gui', '#544a65')
-  let fn_ctermfg = s:extract_or('Function', 'fg', 'cterm', '170')
-  let fn_guifg = s:extract_or('Function', 'fg', 'gui', '#bc6ec5')
+  let l:bg = clap#theme_utils#extract_bg(s:input_default_hi_group, s:defaults.input_bg)
+  let l:fg = clap#theme_utils#extract_fg('Function', s:defaults.function_fg)
 
-  execute printf(
-        \ 'hi ClapSpinner guifg=%s ctermfg=%s ctermbg=%s guibg=%s gui=bold cterm=bold',
-        \ fn_guifg,
-        \ fn_ctermfg,
-        \ vis_ctermbg,
-        \ vis_guibg,
-        \ )
+  call clap#theme_utils#highlight_with_colors('ClapSpinner', l:fg, l:bg, 'bold')
 endfunction
 
 function! s:hi_clap_symbol() abort
-  let input_ctermbg = s:extract_or('ClapInput', 'bg', 'cterm', '60')
-  let input_guibg = s:extract_or('ClapInput', 'bg', 'gui', '#544a65')
-  let normal_ctermfg = s:extract_or('Normal', 'bg', 'cterm', '249')
-  let normal_guifg = s:extract_or('Normal', 'bg', 'gui', '#b2b2b2')
-  execute printf(
-        \ 'hi ClapSymbol guifg=%s ctermfg=%s ctermbg=%s guibg=%s',
-        \ input_guibg,
-        \ input_ctermbg,
-        \ normal_ctermfg,
-        \ normal_guifg,
-        \ )
+  " Symbol uses input bg as fg, and normal bg as bg (creating contrast)
+  let l:input_bg = clap#theme_utils#extract_bg('ClapInput', s:defaults.input_bg)
+  let l:normal_bg = clap#theme_utils#extract_bg('Normal', s:defaults.normal_fg)
+
+  " Swap: input_bg becomes fg, normal_bg becomes bg
+  call clap#theme_utils#highlight('ClapSymbol', {
+        \ 'guifg': l:input_bg.gui,
+        \ 'ctermfg': l:input_bg.cterm,
+        \ 'guibg': l:normal_bg.gui,
+        \ 'ctermbg': l:normal_bg.cterm,
+        \ })
 endfunction
 
 function! s:hi_clap_float_title() abort
-  let preview_ctermbg = s:extract_or('ClapPreview', 'bg', 'cterm', '60')
-  let preview_guibg = s:extract_or('ClapPreview', 'bg', 'gui', '#544a65')
-  let title_ctermfg = s:extract_or('Title', 'fg', 'cterm', '170')
-  let title_guifg = s:extract_or('Title', 'fg', 'gui', '#bc6ec5')
-  execute printf(
-        \ 'hi FloatTitle guifg=%s ctermfg=%s ctermbg=%s guibg=%s',
-        \ title_guifg,
-        \ title_ctermfg,
-        \ preview_ctermbg,
-        \ preview_guibg,
-        \ )
+  let l:bg = clap#theme_utils#extract_bg('ClapPreview', s:defaults.input_bg)
+  let l:fg = clap#theme_utils#extract_fg('Title', s:defaults.function_fg)
+
+  call clap#theme_utils#highlight_with_colors('FloatTitle', l:fg, l:bg)
 endfunction
 
 " Try the palette, otherwise use the built-in material_design_dark theme.
@@ -109,22 +93,26 @@ function! s:apply_default_theme() abort
   endif
 
   if !hlexists('ClapSearchText')
-    " A bit repeatation code here in case of ClapSpinner is defined explicitly.
-    let vis_ctermbg = s:extract_or(s:input_default_hi_group, 'bg', 'cterm', '60')
-    let vis_guibg = s:extract_or(s:input_default_hi_group, 'bg', 'gui', '#544a65')
-    let ident_ctermfg = s:extract_or('Normal', 'fg', 'cterm', '249')
-    let ident_guifg = s:extract_or('Normal', 'fg', 'gui', '#b2b2b2')
-    execute printf(
-          \ 'hi ClapSearchText guifg=%s ctermfg=%s ctermbg=%s guibg=%s cterm=bold gui=bold',
-          \ ident_guifg,
-          \ ident_ctermfg,
-          \ vis_ctermbg,
-          \ vis_guibg,
-          \ )
+    let l:bg = clap#theme_utils#extract_bg(s:input_default_hi_group, s:defaults.input_bg)
+    let l:fg = clap#theme_utils#extract_fg('Normal', s:defaults.normal_fg)
+
+    call clap#theme_utils#highlight_with_colors('ClapSearchText', l:fg, l:bg, 'bold')
   endif
 
-  hi ClapDefaultSelected         ctermfg=80  guifg=#5fd7d7 cterm=bold,underline gui=bold,underline
-  hi ClapDefaultCurrentSelection ctermfg=224 guifg=#ffd7d7 cterm=bold gui=bold
+  " Default selection highlights using centralized colors
+  call clap#theme_utils#highlight('ClapDefaultSelected', {
+        \ 'guifg': s:defaults.selected_fg.gui,
+        \ 'ctermfg': s:defaults.selected_fg.cterm,
+        \ 'gui': 'bold,underline',
+        \ 'cterm': 'bold,underline',
+        \ })
+
+  call clap#theme_utils#highlight('ClapDefaultCurrentSelection', {
+        \ 'guifg': s:defaults.current_selection_fg.gui,
+        \ 'ctermfg': s:defaults.current_selection_fg.cterm,
+        \ 'gui': 'bold',
+        \ 'cterm': 'bold',
+        \ })
 
   hi default link ClapPreview ClapDefaultPreview
   hi default link ClapSelected ClapDefaultSelected
@@ -138,55 +126,36 @@ function! s:apply_default_theme() abort
 endfunction
 
 function! s:make_display_EndOfBuffer_invisible() abort
-  let display_group = hlexists('ClapDisplay') ? 'ClapDisplay' : s:display_default_hi_group
-  " People can use their own display highlight group, so can't use s:display_default_hi_group here.
-  let guibg = s:extract_or(display_group, 'bg', 'gui', '#544a65')
-  let ctermbg = s:extract_or(display_group, 'bg', 'cterm', '60')
-  execute printf(
-        \ 'hi ClapDisplayInvisibleEndOfBuffer ctermfg=%s guifg=%s',
-        \ ctermbg,
-        \ guibg
-        \ )
+  let l:display_group = hlexists('ClapDisplay') ? 'ClapDisplay' : s:display_default_hi_group
+  call clap#theme_utils#make_eob_invisible('ClapDisplayInvisibleEndOfBuffer', l:display_group, 'input_bg')
 endfunction
 
 function! s:make_preview_EndOfBuffer_invisible() abort
-  let preview_group = hlexists('ClapPreview') ? 'ClapPreview' : 'ClapDefaultPreview'
-  let guibg = s:extract_or(preview_group, 'bg', 'gui', '#5e5079')
-  let ctermbg = s:extract_or(preview_group, 'bg', 'cterm', '60')
-  execute printf(
-        \ 'hi ClapPreviewInvisibleEndOfBuffer ctermfg=%s guifg=%s',
-        \ ctermbg,
-        \ guibg
-        \ )
+  let l:preview_group = hlexists('ClapPreview') ? 'ClapPreview' : 'ClapDefaultPreview'
+  call clap#theme_utils#make_eob_invisible('ClapPreviewInvisibleEndOfBuffer', l:preview_group, 'preview_bg')
 endfunction
 
 function! s:reverse_PopupCursor() abort
   if !hlexists('ClapSearchText')
     return
   endif
-  let ctermbg = s:extract_or('ClapSearchText', 'bg', 'cterm', '60')
-  let guibg = s:extract_or('ClapSearchText', 'bg', 'gui', '#544a65')
-  let ctermfg = s:extract_or('ClapSearchText', 'fg', 'cterm', '249')
-  let guifg = s:extract_or('ClapSearchText', 'fg', 'gui', '#b2b2b2')
-  execute printf(
-        \ 'hi ClapPopupCursor guifg=%s ctermfg=%s ctermbg=%s guibg=%s cterm=bold,reverse gui=bold,reverse',
-        \ guifg,
-        \ ctermfg,
-        \ ctermbg,
-        \ guibg,
-        \ )
+  let l:bg = clap#theme_utils#extract_bg('ClapSearchText', s:defaults.input_bg)
+  let l:fg = clap#theme_utils#extract_fg('ClapSearchText', s:defaults.normal_fg)
+
+  call clap#theme_utils#highlight_with_colors('ClapPopupCursor', l:fg, l:bg, 'bold,reverse')
 endfunction
 
 function! s:init_theme() abort
-  hi ClapDefaultShadow guibg=#000000
+  call clap#theme_utils#highlight('ClapDefaultShadow', { 'guibg': s:defaults.shadow_bg.gui })
   hi default link ClapShadow ClapDefaultShadow
   hi default link FloatBorder ClapPreview
 
-  if &background ==# 'dark'
-    hi ClapDefaultPreview ctermbg=237 guibg=#3E4452
-  else
-    hi ClapDefaultPreview ctermbg=7 guibg=#ecf5ff
-  endif
+  " Background-aware preview colors
+  let l:preview_bg = clap#theme_utils#display_bg()
+  call clap#theme_utils#highlight('ClapDefaultPreview', {
+        \ 'guibg': l:preview_bg.gui,
+        \ 'ctermbg': l:preview_bg.cterm,
+        \ })
 
   if !exists('s:palette') || !s:paint_is_ok()
     call s:apply_default_theme()

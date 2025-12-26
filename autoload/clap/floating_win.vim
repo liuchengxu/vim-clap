@@ -40,26 +40,29 @@ let s:symbol_left = g:__clap_search_box_border_symbol.left
 let s:symbol_right = g:__clap_search_box_border_symbol.right
 let s:symbol_width = strdisplaywidth(s:symbol_right)
 
-let s:shadow_winhl = 'Normal:ClapShadow,NormalNC:ClapShadow,EndOfBuffer:ClapShadow'
-let s:display_winhl = 'Normal:ClapDisplay,EndOfBuffer:ClapDisplayInvisibleEndOfBuffer,SignColumn:ClapDisplay,ColorColumn:ClapDisplay'
-let s:preview_winhl = 'Normal:ClapPreview,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreview,ColorColumn:ClapPreview'
-let s:preview_scrollbar_winhl = 'Normal:ClapPreviewScrollbar,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreviewScrollbar,ColorColumn:ClapPreviewScrollbar'
+" Use centralized winhl strings from theme_utils
+let s:shadow_winhl = g:clap#theme_utils#winhl.shadow
+let s:display_winhl = g:clap#theme_utils#winhl.display
+let s:preview_winhl = g:clap#theme_utils#winhl.preview
+let s:preview_scrollbar_winhl = clap#theme_utils#winhl('ClapPreviewScrollbar', 'ClapPreviewInvisibleEndOfBuffer')
 
-if &background ==# 'dark'
-  if empty(get(g:clap_preview.scrollbar, 'fill_char', ''))
-    hi ClapDefaultPreviewScrollbar ctermbg=237 guibg=#3E4452 ctermfg=173 guifg=#e18254 cterm=bold,reverse gui=bold,reverse
-  else
-    let s:preview_scrollbar_fill_char = g:clap_preview.scrollbar.fill_char
-    hi ClapDefaultPreviewScrollbar ctermbg=237 guibg=#3E4452 ctermfg=173 guifg=#e18254 cterm=bold gui=bold
-  endif
-else
-  if empty(get(g:clap_preview.scrollbar, 'fill_char', ''))
-    hi ClapDefaultPreviewScrollbar ctermbg=7 guibg=#ecf5ff ctermfg=173 guifg=#e18254 cterm=bold,reverse gui=bold,reverse
-  else
-    let s:preview_scrollbar_fill_char = g:clap_preview.scrollbar.fill_char
-    hi ClapDefaultPreviewScrollbar ctermbg=7 guibg=#ecf5ff ctermfg=173 guifg=#e18254 cterm=bold gui=bold
-  endif
+" Setup preview scrollbar highlight using centralized colors
+let s:defaults = g:clap#theme_utils#defaults
+let s:preview_bg = clap#theme_utils#display_bg()
+let s:scrollbar_attrs = empty(get(g:clap_preview.scrollbar, 'fill_char', '')) ? 'bold,reverse' : 'bold'
+
+if !empty(get(g:clap_preview.scrollbar, 'fill_char', ''))
+  let s:preview_scrollbar_fill_char = g:clap_preview.scrollbar.fill_char
 endif
+
+call clap#theme_utils#highlight('ClapDefaultPreviewScrollbar', {
+      \ 'guibg': s:preview_bg.gui,
+      \ 'ctermbg': s:preview_bg.cterm,
+      \ 'guifg': s:defaults.scrollbar_fg.gui,
+      \ 'ctermfg': s:defaults.scrollbar_fg.cterm,
+      \ 'gui': s:scrollbar_attrs,
+      \ 'cterm': s:scrollbar_attrs,
+      \ })
 
 hi default link ClapPreviewScrollbar ClapDefaultPreviewScrollbar
 
