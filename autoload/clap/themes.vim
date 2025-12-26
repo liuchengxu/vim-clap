@@ -157,6 +157,29 @@ function! s:init_theme() abort
         \ 'ctermbg': l:preview_bg.cterm,
         \ })
 
+  " Path prefix dimming - always define these (regardless of theme palette)
+  if &background ==# 'dark'
+    call clap#theme_utils#highlight('ClapDefaultPathPrefix', {
+          \ 'guifg': '#6c7086',
+          \ 'ctermfg': '242',
+          \ })
+    call clap#theme_utils#highlight('ClapDefaultFileName', {
+          \ 'guifg': '#cdd6f4',
+          \ 'ctermfg': '255',
+          \ })
+  else
+    call clap#theme_utils#highlight('ClapDefaultPathPrefix', {
+          \ 'guifg': '#9399b2',
+          \ 'ctermfg': '246',
+          \ })
+    call clap#theme_utils#highlight('ClapDefaultFileName', {
+          \ 'guifg': '#4c4f69',
+          \ 'ctermfg': '239',
+          \ })
+  endif
+  hi default link ClapPathPrefix ClapDefaultPathPrefix
+  hi default link ClapFileName ClapDefaultFileName
+
   if !exists('s:palette') || !s:paint_is_ok()
     call s:apply_default_theme()
   endif

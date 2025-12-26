@@ -66,12 +66,25 @@ function! s:init_fuzzy_match_hl_groups() abort
   let g:__clap_fuzzy_last_hl_group = 'ClapFuzzyMatches'.g:__clap_fuzzy_matches_hl_group_cnt
 endfunction
 
+function! s:init_path_highlight_groups() abort
+  " For Vim, we need to define text property types for path highlighting
+  if !has('nvim')
+    try
+      call prop_type_add('ClapPathPrefix', {'highlight': 'ClapPathPrefix'})
+      call prop_type_add('ClapFileName', {'highlight': 'ClapFileName'})
+    catch
+      " Types may already exist
+    endtry
+  endif
+endfunction
+
 function! clap#init#() abort
   call clap#api#clap#init()
   call clap#themes#init()
 
   call s:init_submatches_hl_group()
   call s:init_fuzzy_match_hl_groups()
+  call s:init_path_highlight_groups()
 
   " Spawn the daemon process if not running
   if !clap#job#daemon#is_running()
