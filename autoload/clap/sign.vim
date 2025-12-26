@@ -17,14 +17,12 @@ let s:preserved_selections = []
 
 if !exists('s:sign_inited')
   call sign_define(s:sign_group, get(g:, 'clap_selected_sign', {
-        \ 'text': ' ●',
+        \ 'text': ' >',
         \ 'texthl': 'ClapSelectedSign',
         \ 'linehl': 'ClapSelected'
         \ }))
-  " Use a nicer arrow for current selection (▶ or >)
-  let s:default_cur_sign_text = get(g:, 'clap_current_selection_arrow', '▶ ')
   call sign_define(s:sign_cur_group, get(g:, 'clap_current_selection_sign', {
-        \ 'text': s:default_cur_sign_text,
+        \ 'text': '>>',
         \ 'texthl': 'ClapCurrentSelectionSign',
         \ 'linehl': 'ClapCurrentSelection',
         \ }))
