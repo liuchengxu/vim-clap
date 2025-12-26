@@ -6,7 +6,17 @@ use crate::stdio_server::vim::Vim;
 use maple_markdown::toc::{find_toc_range, generate_toc};
 use maple_markdown::Message;
 use serde_json::json;
-use std::collections::HashMap;
+
+/// Active preview server state for the currently previewed markdown file
+#[derive(Debug)]
+struct ActivePreview {
+    /// The buffer number currently being displayed in the preview
+    bufnr: usize,
+    /// Port the preview server is running on
+    port: u16,
+    msg_tx: tokio::sync::watch::Sender<Message>,
+    shutdown_tx: tokio::sync::oneshot::Sender<()>,
+}
 
 #[derive(Debug, maple_derive::ClapPlugin)]
 #[clap_plugin(
@@ -19,7 +29,8 @@ use std::collections::HashMap;
 ])]
 pub struct Markdown {
     vim: Vim,
-    bufs: HashMap<usize, tokio::sync::watch::Sender<Message>>,
+    /// Single active preview (only one file can be previewed at a time)
+    active_preview: Option<ActivePreview>,
     toggle: Toggle,
 }
 
@@ -27,7 +38,7 @@ impl Markdown {
     pub fn new(vim: Vim) -> Self {
         Self {
             vim,
-            bufs: HashMap::new(),
+            active_preview: None,
             toggle: Toggle::On,
         }
     }
@@ -49,13 +60,15 @@ impl Markdown {
 impl ClapPlugin for Markdown {
     #[maple_derive::subscriptions]
     async fn handle_autocmd(&mut self, autocmd: AutocmdEvent) -> Result<(), PluginError> {
-        use AutocmdEventType::{BufDelete, BufWritePost, CursorMoved, TextChangedI};
+        use AutocmdEventType::{
+            BufDelete, BufEnter, BufWritePost, CursorMoved, FileChangedShellPost, TextChangedI,
+        };
 
         if self.toggle.is_off() {
             return Ok(());
         }
 
-        if self.bufs.is_empty() {
+        if self.active_preview.is_none() {
             return Ok(());
         }
 
@@ -63,31 +76,71 @@ impl ClapPlugin for Markdown {
         let bufnr = params.parse_bufnr()?;
 
         match event_type {
-            CursorMoved => {
-                let scroll_persent = self.vim.line(".").await? * 100 / self.vim.line("$").await?;
-                if let Some(msg_tx) = self.bufs.get(&bufnr) {
-                    msg_tx.send_replace(Message::Scroll(scroll_persent));
+            BufEnter => {
+                if let Some(preview) = &mut self.active_preview {
+                    // If we switched to a different markdown buffer, update the preview
+                    if preview.bufnr != bufnr {
+                        // Check if this is a markdown file
+                        let filetype: String =
+                            self.vim.getbufvar(&bufnr.to_string(), "&filetype").await?;
+                        if filetype == "markdown" {
+                            let path = self.vim.bufabspath(bufnr).await?;
+                            tracing::debug!(
+                                old_bufnr = preview.bufnr,
+                                new_bufnr = bufnr,
+                                "Switching preview to newly focused buffer"
+                            );
+                            preview
+                                .msg_tx
+                                .send_replace(Message::FileChanged(path, false));
+                            // Update the tracked buffer number
+                            preview.bufnr = bufnr;
+                        }
+                    }
                 }
             }
-            BufWritePost => {
-                for (bufnr, msg_tx) in self.bufs.iter() {
-                    let path = self.vim.bufabspath(bufnr).await?;
-                    msg_tx.send_replace(Message::FileChanged(path));
+            CursorMoved => {
+                if let Some(preview) = &self.active_preview {
+                    if preview.bufnr == bufnr {
+                        let scroll_persent =
+                            self.vim.line(".").await? * 100 / self.vim.line("$").await?;
+                        preview.msg_tx.send_replace(Message::Scroll(scroll_persent));
+                    }
+                }
+            }
+            BufWritePost | FileChangedShellPost => {
+                if let Some(preview) = &self.active_preview {
+                    if preview.bufnr == bufnr {
+                        let path = self.vim.bufabspath(bufnr).await?;
+                        preview
+                            .msg_tx
+                            .send_replace(Message::FileChanged(path, false));
+                    }
                 }
             }
             TextChangedI => {
-                // TODO: incremental update?
-                let lines = self.vim.getbufline(bufnr, 1, "$").await?;
-                let markdown_content = lines.join("\n");
-                let html = maple_markdown::to_html(&markdown_content)?;
-                if let Some(msg_tx) = self.bufs.get(&bufnr) {
-                    msg_tx.send_replace(Message::UpdateContent(html));
+                if let Some(preview) = &self.active_preview {
+                    if preview.bufnr == bufnr {
+                        // TODO: incremental update?
+                        let lines = self.vim.getbufline(bufnr, 1, "$").await?;
+                        let markdown_content = lines.join("\n");
+                        let (html, _line_map) = maple_markdown::to_html(&markdown_content)?;
+                        preview.msg_tx.send_replace(Message::UpdateContent(html));
+                    }
                 }
             }
             BufDelete => {
-                if let Some(msg_tx) = self.bufs.remove(&bufnr) {
-                    // Drop the markdown worker message sender to exit the markdown preview task.
-                    drop(msg_tx);
+                if let Some(preview) = &self.active_preview {
+                    if preview.bufnr == bufnr {
+                        // Remove preview and send shutdown signal
+                        if let Some(preview) = self.active_preview.take() {
+                            let _ = preview.shutdown_tx.send(());
+                            tracing::debug!(
+                                bufnr,
+                                "Sent shutdown signal to markdown preview server"
+                            );
+                        }
+                    }
                 }
             }
             event => return Err(PluginError::UnhandledEvent(event)),
@@ -123,28 +176,94 @@ impl ClapPlugin for Markdown {
                 }
             }
             MarkdownAction::PreviewInBrowser => {
-                let (msg_tx, msg_rx) =
-                    tokio::sync::watch::channel(Message::UpdateContent(String::new()));
-
-                let port = maple_config::config().plugin.markdown.preview_port;
-                let addr = format!("127.0.0.1:{port}");
-                let listener = tokio::net::TcpListener::bind(&addr).await?;
-
                 let bufnr = self.vim.bufnr("").await?;
+                let path = self.vim.bufabspath(bufnr).await?;
+
+                // If preview already exists, just update it with the new file
+                if let Some(preview) = &mut self.active_preview {
+                    tracing::debug!(
+                        old_bufnr = preview.bufnr,
+                        new_bufnr = bufnr,
+                        port = preview.port,
+                        "Reusing existing preview, switching to new buffer"
+                    );
+                    // Send file changed message with focus request
+                    preview
+                        .msg_tx
+                        .send_replace(Message::FileChanged(path.clone(), true));
+                    preview.bufnr = bufnr;
+
+                    // Show notification in Vim to remind user to switch to browser
+                    self.vim.exec(
+                        "clap#plugin#markdown#on_preview_updated",
+                        serde_json::json!({}),
+                    )?;
+
+                    return Ok(());
+                }
+
+                // No existing preview, create a new one
+                tracing::info!(
+                    bufnr,
+                    path = %path,
+                    "Creating new markdown preview"
+                );
+
+                // Initialize the channel with the file to preview
+                let (msg_tx, msg_rx) =
+                    tokio::sync::watch::channel(Message::FileChanged(path.clone(), false));
+
+                let config_port = maple_config::config().plugin.markdown.preview_port;
+                let addr = format!("127.0.0.1:{config_port}");
+                let listener = tokio::net::TcpListener::bind(&addr).await?;
+                // Get the actual port that was bound (important when config_port is 0)
+                let port = listener.local_addr()?.port();
+
+                tracing::info!(port, "Preview server will listen on port");
+
+                // Create shutdown channel for graceful server shutdown
+                let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
+
+                // Create disconnect notification channel
+                let (disconnect_tx, disconnect_rx) = tokio::sync::oneshot::channel();
+
+                let file_path = path.clone();
 
                 tokio::spawn(async move {
                     if let Err(err) =
-                        maple_markdown::open_preview_in_browser(listener, msg_rx).await
+                        maple_markdown::open_preview_in_browser(maple_markdown::PreviewConfig {
+                            listener,
+                            msg_rx,
+                            shutdown_rx,
+                            file_path: Some(file_path),
+                            disconnect_tx: Some(disconnect_tx),
+                        })
+                        .await
                     {
                         tracing::error!(?err, "Failed to open markdown preview");
                     }
                     tracing::debug!(bufnr, "markdown preview exited");
                 });
 
-                let path = self.vim.bufabspath(bufnr).await?;
-                msg_tx.send_replace(Message::FileChanged(path));
+                // Spawn task to handle browser disconnect notification
+                let vim_for_disconnect = self.vim.clone();
+                tokio::spawn(async move {
+                    if disconnect_rx.await.is_ok() {
+                        tracing::info!(bufnr, "Browser disconnected, notifying Vim");
+                        let _ = vim_for_disconnect.exec(
+                            "clap#plugin#markdown#on_browser_closed",
+                            serde_json::json!({"bufnr": bufnr}),
+                        );
+                    }
+                });
 
-                self.bufs.insert(bufnr, msg_tx);
+                // Store the new active preview
+                self.active_preview = Some(ActivePreview {
+                    bufnr,
+                    port,
+                    msg_tx,
+                    shutdown_tx,
+                });
             }
         }
 

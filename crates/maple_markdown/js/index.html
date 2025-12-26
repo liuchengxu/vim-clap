@@ -30,90 +30,106 @@
     </script>
 
     <style>
-      .markdown-body {
-        box-sizing: border-box;
-        min-width: 200px;
-        max-width: 980px;
-        margin: 0 auto;
-        padding: 45px;
-      }
-
-      @media (max-width: 767px) {
-        .markdown-body {
-          padding: 15px;
-        }
-      }
+/*__STYLES_CSS__*/
+/*__THEMES_CSS__*/
     </style>
     <title>Markdown Preview</title>
 </head>
 <body>
-    <article class="markdown-body" id="content"></article>
+    <div id="sidebar">
+        <div class="sidebar-section">
+            <h3>Recent Previews</h3>
+            <div id="recent-files" class="recent-files"></div>
+        </div>
+        <div class="sidebar-section">
+            <h3>Display Options</h3>
+            <div class="option-group">
+                <label class="option-label">Line Numbers</label>
+                <select id="line-numbers-mode" class="option-select">
+                    <option value="off">Off</option>
+                    <option value="rendered">Rendered Elements (1, 2, 3...)</option>
+                    <option value="source">Source File (Git-style)</option>
+                    <option value="both">Both (Rendered / Source)</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label class="option-label">Table of Contents</label>
+                <select id="toc-mode" class="option-select">
+                    <option value="off">Off</option>
+                    <option value="left">Show (Left)</option>
+                    <option value="right">Show (Right)</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label class="option-label">Font Family</label>
+                <select id="font-family" class="option-select">
+                    <option value="default">GitHub (Default)</option>
+                    <option value="serif">Serif (LaTeX-like)</option>
+                    <option value="mono">Monospace</option>
+                    <option value="system">System UI</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label class="option-label">Theme</label>
+                <select id="theme-select" class="option-select">
+                    <option value="auto">Auto (System)</option>
+                    <option value="github-light">GitHub Light</option>
+                    <option value="github-dark">GitHub Dark</option>
+                    <option value="dark">Dark</option>
+                    <option value="material-dark">Material Dark</option>
+                    <option value="one-dark">One Dark</option>
+                    <option value="ulysses">Ulysses Light</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label class="option-label">Reading Mode</label>
+                <select id="reader-mode" class="option-select">
+                    <option value="off">Normal</option>
+                    <option value="on">Reader Mode</option>
+                </select>
+            </div>
+        </div>
+        <div class="sidebar-section">
+            <h3>Document Stats</h3>
+            <div id="document-stats" class="document-stats">
+                <div class="stat-row">
+                    <span class="stat-label">Words</span>
+                    <span class="stat-value" id="stat-words">-</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Characters</span>
+                    <span class="stat-value" id="stat-characters">-</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Lines</span>
+                    <span class="stat-value" id="stat-lines">-</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Reading time</span>
+                    <span class="stat-value" id="stat-reading-time">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toc-panel" class="toc-panel">
+        <div class="toc-header">Table of Contents</div>
+        <nav id="toc-content" class="toc-content"></nav>
+        <div class="toc-resize-handle"></div>
+    </div>
+
+    <div id="main-content">
+        <div class="file-path-bar" id="file-path-bar" title="Click to copy path"></div>
+        <article class="markdown-body" id="content"></article>
+    </div>
 
     <script>
-        function codeHighlight() {
-            if (hljs !== undefined) {
-                document.querySelectorAll('pre code').forEach((el) => {
-                  hljs.highlightElement(el);
-                });
-            }
-        }
-
-        async function renderMermaid() {
-            if (window.mermaid !== undefined) {
-                await window.mermaid.run({
-                    querySelector: '.language-mermaid'
-                });
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', (event) => {
-            document.querySelectorAll('pre code').forEach((el) => {
-                hljs.highlightElement(el);
-            });
-
-            codeHighlight();
-            renderMermaid();
-
-            const webSocketUrl = 'ws://' + window.location.host;
-            var socket = new WebSocket(webSocketUrl);
-
-            // Handle WebSocket events...
-            socket.onmessage = function(event) {
-                const message = JSON.parse(event.data);
-
-                if (message.type === "update_content") {
-                    document.getElementById('content').innerHTML = message.data;
-                    codeHighlight();
-                    // Render LaTeX inside content
-                    renderMathInElement(document.getElementById('content'), {
-                        delimiters: [
-                            {left: "$$", right: "$$", display: true},
-                            {left: "$", right: "$", display: false}
-                        ]
-                    });
-                    // Render mermaid diagrams
-                    renderMermaid();
-                } else if (message.type === "scroll") {
-                    const scrollPercent = message.data;
-
-                    // Calculate the absolute scroll position based on the percentage
-                    const windowHeight = window.innerHeight;
-                    const totalScrollHeight = document.documentElement.scrollHeight - windowHeight;
-                    const absoluteScrollPosition = totalScrollHeight * (scrollPercent / 100);
-
-                    // Scroll the page to the calculated absolute position
-                    window.scrollTo(0, absoluteScrollPosition);
-                } else {
-                    console.log(`Invalid message: {message}`)
-                }
-            }
-
-            socket.onclose = function(event) {
-                // Close the browser window.
-                window.open('', '_self', '');
-                window.close();
-            }
-        });
+/*__APP_JS__*/
     </script>
+
+    <div id="toast" class="toast">
+        <div class="toast-title">Copied!</div>
+        <div class="toast-path"></div>
+    </div>
 </body>
 </html>

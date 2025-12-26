@@ -1,15 +1,94 @@
 pub mod toc;
 
 use axum::extract::ws::{Message as WsMessage, WebSocket, WebSocketUpgrade};
-use axum::extract::Extension;
-use axum::http::StatusCode;
+use axum::extract::{Extension, Path as AxumPath, State};
+use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::{Html, IntoResponse};
 use axum::routing::get;
 use axum::Router;
+use notify::{Event as NotifyEvent, RecommendedWatcher, RecursiveMode, Watcher};
 use std::net::SocketAddr;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex, RwLock};
 use tokio::sync::watch::Receiver;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
+
+/// Shared state for the markdown preview server.
+#[derive(Clone)]
+struct AppState {
+    /// The directory containing the current markdown file.
+    /// Used for resolving relative image paths.
+    base_dir: Arc<RwLock<Option<PathBuf>>>,
+}
+
+/// Handler for serving static files (images, etc.) relative to the markdown file's directory.
+async fn static_file_handler(
+    State(state): State<AppState>,
+    AxumPath(path): AxumPath<String>,
+) -> impl IntoResponse {
+    let base_dir = state.base_dir.read().unwrap().clone();
+
+    let Some(base_dir) = base_dir else {
+        return (StatusCode::NOT_FOUND, HeaderMap::new(), Vec::new());
+    };
+
+    // Decode URL-encoded path
+    let decoded_path = percent_encoding::percent_decode_str(&path)
+        .decode_utf8_lossy()
+        .to_string();
+
+    // Construct absolute path
+    let file_path = base_dir.join(&decoded_path);
+
+    // Security: ensure the resolved path is still within the base directory
+    let canonical_base = match base_dir.canonicalize() {
+        Ok(p) => p,
+        Err(_) => return (StatusCode::NOT_FOUND, HeaderMap::new(), Vec::new()),
+    };
+
+    let canonical_file = match file_path.canonicalize() {
+        Ok(p) => p,
+        Err(_) => return (StatusCode::NOT_FOUND, HeaderMap::new(), Vec::new()),
+    };
+
+    if !canonical_file.starts_with(&canonical_base) {
+        tracing::warn!(
+            requested = %path,
+            resolved = ?canonical_file,
+            "Attempted path traversal attack"
+        );
+        return (StatusCode::FORBIDDEN, HeaderMap::new(), Vec::new());
+    }
+
+    // Read the file
+    let content = match std::fs::read(&canonical_file) {
+        Ok(c) => c,
+        Err(_) => return (StatusCode::NOT_FOUND, HeaderMap::new(), Vec::new()),
+    };
+
+    // Determine content type based on extension
+    let content_type = match canonical_file.extension().and_then(|e| e.to_str()) {
+        Some("png") => "image/png",
+        Some("jpg") | Some("jpeg") => "image/jpeg",
+        Some("gif") => "image/gif",
+        Some("svg") => "image/svg+xml",
+        Some("webp") => "image/webp",
+        Some("ico") => "image/x-icon",
+        Some("bmp") => "image/bmp",
+        Some("pdf") => "application/pdf",
+        _ => "application/octet-stream",
+    };
+
+    let mut headers = HeaderMap::new();
+    headers.insert(header::CONTENT_TYPE, content_type.parse().unwrap());
+    headers.insert(
+        header::CACHE_CONTROL,
+        "public, max-age=3600".parse().unwrap(),
+    );
+
+    (StatusCode::OK, headers, content)
+}
 
 /// The handler for the HTTP request (this gets called when the HTTP GET lands at the start
 /// of websocket negotiation). After this completes, the actual switching from HTTP to
@@ -19,29 +98,172 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 async fn ws_handler(
     ws: Option<WebSocketUpgrade>,
     Extension(msg_rx): Extension<Receiver<Message>>,
+    Extension(watcher_rx): Extension<Option<Receiver<Message>>>,
+    Extension(disconnect_tx): Extension<Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>>,
+    Extension(base_dir): Extension<Arc<RwLock<Option<PathBuf>>>>,
 ) -> impl IntoResponse {
     if let Some(ws) = ws {
-        ws.on_upgrade(|ws| async move { handle_websocket(ws, msg_rx).await })
+        ws.on_upgrade(|ws| async move {
+            handle_websocket(ws, msg_rx, watcher_rx, disconnect_tx, base_dir).await
+        })
     } else {
-        let html = include_str!("../js/index.html");
-        (StatusCode::OK, Html(html)).into_response()
+        let html = build_html();
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            header::CACHE_CONTROL,
+            "no-cache, no-store, must-revalidate".parse().unwrap(),
+        );
+        (StatusCode::OK, headers, Html(html)).into_response()
     }
 }
 
-async fn handle_websocket(mut socket: WebSocket, mut msg_rx: Receiver<Message>) {
-    while msg_rx.changed().await.is_ok() {
-        let msg = msg_rx.borrow().clone();
+/// Build the complete HTML by inlining CSS and JS files at compile time.
+fn build_html() -> String {
+    const HTML_TEMPLATE: &str = include_str!("../js/index.html");
+    const STYLES_CSS: &str = include_str!("../js/styles.css");
+    const THEMES_CSS: &str = include_str!("../js/themes.css");
+    const APP_JS: &str = include_str!("../js/app.js");
 
-        let Ok(text) = process_message(msg) else {
-            break;
-        };
+    HTML_TEMPLATE
+        .replace("/*__STYLES_CSS__*/", STYLES_CSS)
+        .replace("/*__THEMES_CSS__*/", THEMES_CSS)
+        .replace("/*__APP_JS__*/", APP_JS)
+}
 
-        if socket
-            .send(WsMessage::Text(text.to_string()))
-            .await
-            .is_err()
-        {
-            break;
+async fn handle_websocket(
+    mut socket: WebSocket,
+    mut vim_rx: Receiver<Message>,
+    mut watcher_rx: Option<Receiver<Message>>,
+    disconnect_tx: Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>,
+    base_dir: Arc<RwLock<Option<PathBuf>>>,
+) {
+    // Send initial message immediately when browser connects
+    {
+        let msg = vim_rx.borrow().clone();
+        match process_message(msg) {
+            Ok(text) => {
+                if socket
+                    .send(WsMessage::Text(text.to_string()))
+                    .await
+                    .is_err()
+                {
+                    tracing::error!("Failed to send initial message to browser");
+                    return;
+                }
+                tracing::debug!("Sent initial message to browser");
+            }
+            Err(err) => {
+                tracing::error!(?err, "Failed to process initial message");
+                // Don't return here - keep the connection open for future updates
+            }
+        }
+    }
+
+    loop {
+        // Wait for messages from Vim, file watcher, or browser
+        tokio::select! {
+            // Messages FROM Vim TO browser
+            result = vim_rx.changed() => {
+                if result.is_err() {
+                    break;
+                }
+                let msg = vim_rx.borrow().clone();
+                let Ok(text) = process_message(msg) else {
+                    break;
+                };
+                if socket.send(WsMessage::Text(text.to_string())).await.is_err() {
+                    break;
+                }
+            }
+            // Messages FROM file watcher TO browser
+            result = async {
+                match &mut watcher_rx {
+                    Some(rx) => rx.changed().await,
+                    None => std::future::pending().await,
+                }
+            } => {
+                if result.is_err() {
+                    tracing::warn!("File watcher channel closed, disabling auto-reload on external changes");
+                    // File watcher failed - disable it but keep the WebSocket alive
+                    watcher_rx = None;
+                    continue;
+                }
+                if let Some(rx) = &watcher_rx {
+                    tracing::debug!("File watcher notified WebSocket handler, processing message");
+                    let msg = rx.borrow().clone();
+                    let Ok(text) = process_message(msg) else {
+                        tracing::error!("Failed to process file watcher message");
+                        continue;  // Don't break, just skip this update
+                    };
+                    tracing::debug!("Sending update to browser via WebSocket");
+                    if socket.send(WsMessage::Text(text.to_string())).await.is_err() {
+                        tracing::error!("Failed to send WebSocket message to browser");
+                        break;
+                    }
+                    tracing::debug!("Successfully sent update to browser, ready for next change");
+                }
+            }
+            // Messages FROM browser (detect disconnect or switch file requests)
+            msg = socket.recv() => {
+                match msg {
+                    Some(Ok(WsMessage::Close(_))) | None => {
+                        tracing::debug!("Browser disconnected (close frame or connection closed)");
+                        break;
+                    }
+                    Some(Ok(WsMessage::Ping(data))) => {
+                        // Respond to keep-alive pings
+                        if socket.send(WsMessage::Pong(data)).await.is_err() {
+                            tracing::debug!("Failed to send pong, connection likely closed");
+                            break;
+                        }
+                    }
+                    Some(Ok(WsMessage::Text(text))) => {
+                        // Handle messages from browser (e.g., switch file request)
+                        if let Ok(request) = serde_json::from_str::<serde_json::Value>(&text) {
+                            if request["type"] == "switch_file" {
+                                if let Some(file_path) = request["file_path"].as_str() {
+                                    tracing::info!(file_path, "Browser requested file switch");
+
+                                    // Update base_dir for the new file's directory
+                                    if let Some(parent) = Path::new(file_path).parent() {
+                                        if let Ok(mut dir) = base_dir.write() {
+                                            *dir = Some(parent.to_path_buf());
+                                            tracing::debug!(new_base_dir = ?parent, "Updated base directory for image paths");
+                                        }
+                                    }
+
+                                    let msg = Message::FileChanged(file_path.to_string(), false);
+                                    let Ok(response) = process_message(msg) else {
+                                        tracing::error!("Failed to process file switch request");
+                                        continue;
+                                    };
+                                    if socket.send(WsMessage::Text(response.to_string())).await.is_err() {
+                                        tracing::error!("Failed to send file switch response");
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Some(Err(err)) => {
+                        tracing::debug!(?err, "WebSocket error, client likely disconnected");
+                        break;
+                    }
+                    _ => {
+                        // Ignore other message types (Binary, Pong)
+                    }
+                }
+            }
+        }
+    }
+
+    tracing::debug!("WebSocket connection closed");
+
+    // Notify caller that browser disconnected
+    if let Ok(mut guard) = disconnect_tx.lock() {
+        if let Some(tx) = guard.take() {
+            let _ = tx.send(());
+            tracing::debug!("Sent disconnect notification");
         }
     }
 
@@ -95,7 +317,21 @@ fn detect_github_alert(text: &str) -> Option<(&'static str, &'static str, &'stat
     }
 }
 
-pub fn to_html(markdown_content: &str) -> Result<String, Error> {
+/// Convert byte offset to line number (1-indexed)
+fn byte_offset_to_line(content: &str, byte_offset: usize) -> usize {
+    let mut line = 1;
+    for (i, byte) in content.bytes().enumerate() {
+        if i >= byte_offset {
+            break;
+        }
+        if byte == b'\n' {
+            line += 1;
+        }
+    }
+    line
+}
+
+pub fn to_html(markdown_content: &str) -> Result<(String, Vec<usize>), Error> {
     use pulldown_cmark::{CowStr, Event, Tag, TagEnd};
 
     let mut options = pulldown_cmark::Options::empty();
@@ -109,11 +345,53 @@ pub fn to_html(markdown_content: &str) -> Result<String, Error> {
     let mut html_output = String::new();
     let mut heading_text = String::new();
 
-    let events: Vec<Event> = parser.collect();
+    // Use into_offset_iter to get byte offsets for each event
+    let events_with_offsets: Vec<(Event, std::ops::Range<usize>)> =
+        parser.into_offset_iter().collect();
+    let events: Vec<Event> = events_with_offsets.iter().map(|(e, _)| e.clone()).collect();
     let mut processed_events = Vec::new();
+    let mut line_map = Vec::new();
+
+    // Track nesting depth to avoid counting nested lists
+    let mut list_depth: i32 = 0;
+    let mut blockquote_depth: i32 = 0;
 
     let mut i = 0;
     while i < events.len() {
+        // Update depth counters
+        match &events[i] {
+            Event::Start(Tag::List(_)) => list_depth += 1,
+            Event::End(TagEnd::List(_)) => list_depth -= 1,
+            Event::Start(Tag::BlockQuote) => blockquote_depth += 1,
+            Event::End(TagEnd::BlockQuote) => blockquote_depth -= 1,
+            _ => {}
+        }
+
+        // Only track top-level elements (not nested inside lists or blockquotes)
+        // Exception: We DO track the first level list/blockquote itself
+        let should_track_line = match &events[i] {
+            Event::Start(Tag::Paragraph) => list_depth == 0 && blockquote_depth == 0,
+            Event::Start(Tag::Heading { .. }) => true, // Headings are always top-level
+            Event::Start(Tag::BlockQuote) => blockquote_depth == 1, // First level only
+            Event::Start(Tag::CodeBlock(_)) => list_depth == 0 && blockquote_depth == 0,
+            Event::Start(Tag::List(_)) => list_depth == 1, // First level only
+            Event::Start(Tag::Table(_)) => list_depth == 0 && blockquote_depth == 0,
+            _ => false,
+        };
+
+        if should_track_line {
+            let byte_offset = events_with_offsets[i].1.start;
+            let line_number = byte_offset_to_line(markdown_content, byte_offset);
+            tracing::debug!(
+                event = ?events[i],
+                byte_offset,
+                line_number,
+                list_depth,
+                blockquote_depth,
+                "Tracking line number for element"
+            );
+            line_map.push(line_number);
+        }
         match &events[i] {
             Event::Start(Tag::Heading {
                 level,
@@ -247,29 +525,162 @@ pub fn to_html(markdown_content: &str) -> Result<String, Error> {
 
     pulldown_cmark::html::push_html(&mut html_output, processed_events.into_iter());
 
-    Ok(html_output)
+    tracing::debug!(
+        line_map_length = line_map.len(),
+        line_map = ?&line_map[..line_map.len().min(20)],
+        "Generated line map"
+    );
+
+    Ok((html_output, line_map))
+}
+
+/// Rewrites relative image paths in HTML to use the `/files/` route.
+///
+/// Converts `<img src="path/to/image.png">` to `<img src="/files/path/to/image.png">`
+/// for relative paths only (absolute paths and URLs are left unchanged).
+fn rewrite_image_paths(html: &str) -> String {
+    // Regex to match img tags with src attribute
+    let img_regex = regex::Regex::new(r#"<img\s+([^>]*?)src="([^"]+)"([^>]*)>"#).unwrap();
+
+    img_regex
+        .replace_all(html, |caps: &regex::Captures| {
+            let before = &caps[1];
+            let src = &caps[2];
+            let after = &caps[3];
+
+            // Skip absolute URLs (http://, https://, data:, //)
+            if src.starts_with("http://")
+                || src.starts_with("https://")
+                || src.starts_with("data:")
+                || src.starts_with("//")
+                || src.starts_with('/')
+            {
+                return caps[0].to_string();
+            }
+
+            // URL-encode the path for safe transmission
+            let encoded_src =
+                percent_encoding::utf8_percent_encode(src, percent_encoding::NON_ALPHANUMERIC)
+                    .to_string();
+
+            format!(r#"<img {before}src="/files/{encoded_src}"{after}>"#)
+        })
+        .to_string()
+}
+
+/// Document statistics for display in the preview
+#[derive(Debug, Clone, serde::Serialize)]
+struct DocumentStats {
+    /// Total word count
+    words: usize,
+    /// Total character count (excluding whitespace)
+    characters: usize,
+    /// Total character count (including whitespace)
+    characters_with_spaces: usize,
+    /// Total line count
+    lines: usize,
+    /// Estimated reading time in minutes (based on 200 words per minute)
+    reading_minutes: usize,
+}
+
+/// Calculate document statistics from markdown content
+fn calculate_document_stats(content: &str) -> DocumentStats {
+    let lines = content.lines().count();
+
+    // Count words by splitting on whitespace
+    let words: usize = content
+        .lines()
+        .map(|line| {
+            line.split_whitespace()
+                .filter(|word| {
+                    // Filter out pure markdown syntax tokens
+                    let trimmed = word.trim_matches(|c: char| {
+                        c == '#'
+                            || c == '*'
+                            || c == '_'
+                            || c == '`'
+                            || c == '['
+                            || c == ']'
+                            || c == '('
+                            || c == ')'
+                            || c == '-'
+                            || c == '>'
+                            || c == '|'
+                    });
+                    !trimmed.is_empty()
+                })
+                .count()
+        })
+        .sum();
+
+    // Count characters
+    let characters_with_spaces = content.chars().count();
+    let characters = content.chars().filter(|c| !c.is_whitespace()).count();
+
+    // Reading time: average adult reads ~200-250 words per minute
+    // Use 200 wpm for a conservative estimate
+    let reading_minutes = words.div_ceil(200);
+
+    DocumentStats {
+        words,
+        characters,
+        characters_with_spaces,
+        lines,
+        reading_minutes,
+    }
+}
+
+/// Find the git repository root by walking up the directory tree
+fn find_git_root(path: &str) -> Option<String> {
+    let path = Path::new(path);
+    let mut current = path.parent()?;
+
+    loop {
+        let git_dir = current.join(".git");
+        if git_dir.exists() {
+            return current.to_str().map(String::from);
+        }
+
+        current = current.parent()?;
+    }
 }
 
 fn process_message(msg: Message) -> Result<serde_json::Value, Error> {
     let res = match msg {
-        Message::FileChanged(path) => {
-            let markdown_content = std::fs::read_to_string(path)?;
-            let html = to_html(&markdown_content)?;
+        Message::FileChanged(path, should_focus) => {
+            let markdown_content = std::fs::read_to_string(&path)?;
+            let (html, line_map) = to_html(&markdown_content)?;
+            let html = rewrite_image_paths(&html);
+            let stats = calculate_document_stats(&markdown_content);
+            let git_root = find_git_root(&path);
+
             serde_json::json!({
               "type": "update_content",
               "data": html,
+              "source_lines": stats.lines,
+              "line_map": line_map,
+              "file_path": path,
+              "git_root": git_root,
+              "should_focus": should_focus,
+              "stats": stats,
             })
         }
         Message::UpdateContent(content) => {
             serde_json::json!({
               "type": "update_content",
               "data": content,
+              "source_lines": null,
             })
         }
         Message::Scroll(position) => {
             serde_json::json!({
               "type": "scroll",
               "data": position,
+            })
+        }
+        Message::FocusWindow => {
+            serde_json::json!({
+              "type": "focus_window",
             })
         }
     };
@@ -280,20 +691,290 @@ fn process_message(msg: Message) -> Result<serde_json::Value, Error> {
 #[derive(Debug, Clone)]
 pub enum Message {
     /// Markdown file was modified.
-    FileChanged(String),
+    /// The boolean flag indicates whether to focus the browser window.
+    FileChanged(String, bool),
     /// Refresh the page with given html content.
     UpdateContent(String),
     /// Scroll to the given position specified in a percent to the window height.
     Scroll(usize),
+    /// Request the browser window to focus itself.
+    FocusWindow,
 }
 
-pub async fn open_preview_in_browser(
-    listener: tokio::net::TcpListener,
-    msg_rx: Receiver<Message>,
-) -> Result<(), Error> {
+/// Spawns a polling-based file watcher as a fallback when inotify fails.
+/// Checks the file's modification time every second.
+/// Returns a tuple of (receiver, shutdown_sender).
+fn spawn_polling_file_watcher(
+    file_path: String,
+) -> (Receiver<Message>, std::sync::mpsc::Sender<()>) {
+    let (msg_tx, msg_rx) = tokio::sync::watch::channel(Message::UpdateContent(String::new()));
+    let (shutdown_tx, shutdown_rx) = std::sync::mpsc::channel();
+
+    tokio::spawn(async move {
+        let path = std::path::Path::new(&file_path);
+        let mut last_mtime = std::fs::metadata(path).and_then(|m| m.modified()).ok();
+
+        tracing::info!(
+            path = %file_path,
+            "Started polling-based file watcher (checking every second)"
+        );
+
+        loop {
+            // Check for shutdown signal
+            if shutdown_rx.try_recv().is_ok() {
+                tracing::debug!("Polling file watcher shutting down");
+                break;
+            }
+
+            // Sleep for 1 second
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
+            // Check if file was modified
+            if let Ok(metadata) = std::fs::metadata(path) {
+                if let Ok(current_mtime) = metadata.modified() {
+                    if let Some(last) = last_mtime {
+                        if current_mtime > last {
+                            tracing::debug!(path = %file_path, "File modified, sending update");
+                            msg_tx.send_replace(Message::FileChanged(file_path.clone(), false));
+                            last_mtime = Some(current_mtime);
+                        }
+                    } else {
+                        last_mtime = Some(current_mtime);
+                    }
+                }
+            }
+        }
+
+        tracing::debug!("Polling file watcher task exited");
+    });
+
+    (msg_rx, shutdown_tx)
+}
+
+/// Spawns a file watcher that monitors changes to the given file.
+/// Returns a tuple of (receiver, shutdown_sender).
+fn spawn_file_watcher(
+    file_path: String,
+) -> Result<(Receiver<Message>, std::sync::mpsc::Sender<()>), Error> {
+    let (msg_tx, msg_rx) = tokio::sync::watch::channel(Message::UpdateContent(String::new()));
+    // Use a standard sync channel for the notify callback
+    let (event_tx, event_rx) = std::sync::mpsc::channel();
+
+    // Create a shutdown channel
+    let (shutdown_tx, shutdown_rx) = std::sync::mpsc::channel();
+
+    // Create a channel to signal if watcher started successfully
+    let (started_tx, started_rx) = std::sync::mpsc::channel();
+
+    // Clone file_path for different contexts
+    let file_path_for_async = file_path.clone();
+    let file_path_for_thread = file_path.clone();
+
+    // Get the parent directory to watch (needed for write-rename editors)
+    // Watching the file directly fails when editors remove and recreate it
+    let watch_path = Path::new(&file_path_for_thread);
+    let (watch_target, file_name) = if let (Some(parent), Some(name)) =
+        (watch_path.parent(), watch_path.file_name())
+    {
+        (parent.to_path_buf(), name.to_os_string())
+    } else {
+        tracing::error!(path = ?file_path_for_thread, "Invalid file path - cannot determine parent directory");
+        return Err("Invalid file path".into());
+    };
+
+    let file_name_for_filter = file_name.clone();
+
+    // Spawn the file watcher in a blocking thread since notify is not async
+    let shutdown_rx_clone = shutdown_rx;
+    std::thread::spawn(move || {
+        let mut watcher = match RecommendedWatcher::new(
+            move |res: Result<NotifyEvent, notify::Error>| {
+                match res {
+                    Ok(event) => {
+                        // Log all events for debugging
+                        tracing::debug!(?event, target_file = ?file_name_for_filter, "File watcher received event");
+
+                        // Filter events to only our target file
+                        let is_target_file = event
+                            .paths
+                            .iter()
+                            .any(|p| p.file_name() == Some(&file_name_for_filter));
+
+                        if !is_target_file {
+                            tracing::debug!(?event.paths, "Event not for target file, ignoring");
+                            return;
+                        }
+
+                        // Capture all relevant file change events:
+                        // - Modify: direct file modification (Claude's Edit tool, direct edits)
+                        // - Create: file created (some editors use write-rename strategy)
+                        // - Remove: old file removed during write-rename (triggers reload)
+                        // - Access: Some systems trigger this on write
+                        // Note: We're permissive here to catch all possible write scenarios
+                        if event.kind.is_modify()
+                            || event.kind.is_create()
+                            || event.kind.is_remove()
+                            || event.kind.is_access()
+                        {
+                            tracing::debug!(kind = ?event.kind, "File change detected, sending notification");
+                            match event_tx.send(()) {
+                                Ok(()) => {
+                                    tracing::debug!("Notification sent successfully to bridge task")
+                                }
+                                Err(e) => tracing::error!(
+                                    ?e,
+                                    "Failed to send notification - bridge task may have exited"
+                                ),
+                            }
+                        } else {
+                            tracing::debug!(kind = ?event.kind, "Ignoring event type");
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!(?e, "File watcher error");
+                    }
+                }
+            },
+            notify::Config::default(),
+        ) {
+            Ok(w) => w,
+            Err(err) => {
+                tracing::error!(?err, "Failed to create file watcher");
+                return;
+            }
+        };
+
+        // Watch the parent directory instead of the file itself
+        // This ensures we don't lose the watch when editors remove/recreate the file
+        if let Err(err) = watcher.watch(&watch_target, RecursiveMode::NonRecursive) {
+            tracing::error!(?err, path = ?watch_target, "Failed to watch directory");
+            let _ = started_tx.send(Err(err.to_string()));
+            return;
+        }
+
+        // Signal that watcher started successfully
+        let _ = started_tx.send(Ok(()));
+
+        tracing::debug!(
+            watch_dir = ?watch_target,
+            target_file = ?file_name,
+            "File watcher started on parent directory"
+        );
+
+        // Keep the watcher alive until shutdown signal is received
+        // Use recv_timeout to periodically check for shutdown
+        loop {
+            match shutdown_rx_clone.recv_timeout(std::time::Duration::from_secs(1)) {
+                Ok(_) | Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                    tracing::debug!(path = ?file_path_for_thread, "File watcher shutting down");
+                    break;
+                }
+                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                    // Continue watching
+                }
+            }
+        }
+        // Watcher is dropped here, cleaning up file descriptors
+    });
+
+    // Spawn a blocking task to bridge sync channel to async
+    tokio::task::spawn_blocking(move || {
+        while let Ok(()) = event_rx.recv() {
+            tracing::debug!(path = ?file_path_for_async, "File changed detected by watcher, bridging to async channel");
+            // Check if there are still receivers
+            let receiver_count = msg_tx.receiver_count();
+            tracing::debug!(receiver_count, "Current receiver count");
+            if receiver_count == 0 {
+                tracing::debug!("No receivers left, exiting bridge task");
+                break;
+            }
+            msg_tx.send_replace(Message::FileChanged(file_path_for_async.clone(), false));
+            tracing::debug!("Message sent via send_replace, waiting for next file event");
+        }
+        tracing::debug!("File watcher bridge task exiting - event_rx closed");
+    });
+
+    // Wait for the watcher thread to signal whether it started successfully
+    match started_rx.recv_timeout(std::time::Duration::from_secs(2)) {
+        Ok(Ok(())) => {
+            tracing::debug!("File watcher started successfully");
+            Ok((msg_rx, shutdown_tx))
+        }
+        Ok(Err(err_msg)) => {
+            tracing::error!(error = %err_msg, "File watcher failed to start");
+            Err(err_msg.into())
+        }
+        Err(_) => {
+            tracing::error!("Timeout waiting for file watcher to start");
+            Err("Watcher startup timeout".into())
+        }
+    }
+}
+
+/// Configuration for opening a markdown preview in the browser
+pub struct PreviewConfig {
+    /// TCP listener for the web server
+    pub listener: tokio::net::TcpListener,
+    /// Receiver for messages from Vim
+    pub msg_rx: Receiver<Message>,
+    /// Receiver for graceful shutdown signal
+    pub shutdown_rx: tokio::sync::oneshot::Receiver<()>,
+    /// Optional file path to watch for changes
+    pub file_path: Option<String>,
+    /// Optional sender to notify when browser disconnects
+    pub disconnect_tx: Option<tokio::sync::oneshot::Sender<()>>,
+}
+
+pub async fn open_preview_in_browser(config: PreviewConfig) -> Result<(), Error> {
+    let PreviewConfig {
+        listener,
+        msg_rx,
+        shutdown_rx,
+        file_path,
+        disconnect_tx,
+    } = config;
+
+    // Create watcher channels if file_path is provided
+    let (watcher_rx, _watcher_shutdown) = if let Some(ref path) = file_path {
+        // Try inotify-based watcher first, fall back to polling if it fails
+        match spawn_file_watcher(path.clone()) {
+            Ok((watcher_rx, shutdown)) => {
+                tracing::info!("Started inotify-based file watcher");
+                (Some(watcher_rx), Some(shutdown))
+            }
+            Err(err) => {
+                tracing::warn!(
+                    ?err,
+                    "inotify file watcher failed, falling back to polling (checks every 1 second)"
+                );
+                // Fall back to polling-based watcher
+                let (polling_rx, shutdown) = spawn_polling_file_watcher(path.clone());
+                (Some(polling_rx), Some(shutdown))
+            }
+        }
+    } else {
+        (None, None)
+    };
+
+    // Wrap disconnect_tx in Arc<Mutex<Option<>>> so it can be shared and cloned
+    let disconnect_tx_shared = Arc::new(Mutex::new(disconnect_tx));
+
+    // Create shared state for the base directory
+    let base_dir = file_path
+        .as_ref()
+        .and_then(|p| Path::new(p).parent().map(|parent| parent.to_path_buf()));
+    let app_state = AppState {
+        base_dir: Arc::new(RwLock::new(base_dir)),
+    };
+
     let app = Router::new()
         .route("/", get(ws_handler))
-        .layer(Extension(msg_rx));
+        .route("/files/*path", get(static_file_handler))
+        .layer(Extension(msg_rx))
+        .layer(Extension(watcher_rx))
+        .layer(Extension(disconnect_tx_shared))
+        .layer(Extension(app_state.base_dir.clone()))
+        .with_state(app_state);
 
     let port = listener.local_addr()?.port();
 
@@ -301,11 +982,20 @@ pub async fn open_preview_in_browser(
 
     tracing::debug!("Listening on {listener:?}");
 
+    // Use graceful shutdown so the server can be stopped externally
     axum::serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
     )
+    .with_graceful_shutdown(async move {
+        let _ = shutdown_rx.await;
+        tracing::debug!("Received shutdown signal for preview server");
+    })
     .await?;
+
+    // When this function exits, _watcher_shutdown is dropped, which sends the shutdown signal
+    // to the watcher thread, allowing it to exit cleanly
+    tracing::debug!("Preview server shutting down");
 
     Ok(())
 }
@@ -332,8 +1022,16 @@ mod tests {
             .await
             .unwrap();
 
-        open_preview_in_browser(listener, msg_rx)
-            .await
-            .expect("Failed to open markdown preview");
+        let (_shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
+
+        open_preview_in_browser(PreviewConfig {
+            listener,
+            msg_rx,
+            shutdown_rx,
+            file_path: None,
+            disconnect_tx: None,
+        })
+        .await
+        .expect("Failed to open markdown preview");
     }
 }

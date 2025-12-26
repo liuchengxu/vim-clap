@@ -1,12 +1,36 @@
 use once_cell::sync::Lazy;
-use percent_encoding::{percent_encode, CONTROLS};
 use regex::Regex;
 use std::collections::VecDeque;
 use std::path::Path;
 use std::str::FromStr;
 
+/// Converts heading text to a URL-safe slug following GitHub's convention.
+///
+/// GitHub's algorithm:
+/// 1. Convert to lowercase
+/// 2. Replace spaces with hyphens
+/// 3. Remove all characters except alphanumeric, hyphens, and underscores
+/// 4. Collapse multiple consecutive hyphens into one
 pub fn slugify(text: &str) -> String {
-    percent_encode(text.replace(' ', "-").to_lowercase().as_bytes(), CONTROLS).to_string()
+    text.to_lowercase()
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() || c == '_' {
+                c
+            } else if c == ' ' || c == '-' {
+                '-'
+            } else {
+                // Remove other characters (punctuation, etc.)
+                '\0'
+            }
+        })
+        .filter(|&c| c != '\0')
+        .collect::<String>()
+        // Collapse multiple hyphens into one
+        .split('-')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("-")
 }
 
 #[derive(Debug)]
