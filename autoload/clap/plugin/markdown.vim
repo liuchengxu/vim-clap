@@ -1,4 +1,9 @@
-" autoload/clap/plugin/markdown.vim
+" Author: liuchengxu <xuliuchengxlc@gmail.com>
+
+scriptencoding utf-8
+
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 " Called when the browser preview tab/window is closed
 function! clap#plugin#markdown#on_browser_closed(info) abort
@@ -17,3 +22,6 @@ function! clap#plugin#markdown#on_preview_updated(info) abort
   " Show notification to remind user to switch to browser
   call clap#helper#echo_info('Markdown preview updated - switch to browser to view')
 endfunction
+
+let &cpoptions = s:save_cpo
+unlet s:save_cpo
