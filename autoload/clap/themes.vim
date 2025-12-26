@@ -99,7 +99,8 @@ function! s:apply_default_theme() abort
     call clap#theme_utils#highlight_with_colors('ClapSearchText', l:fg, l:bg, 'bold')
   endif
 
-  " Default selection highlights using centralized colors
+  " Default selection highlights with improved visibility
+  " Multi-selected items: subtle underline with teal color
   call clap#theme_utils#highlight('ClapDefaultSelected', {
         \ 'guifg': s:defaults.selected_fg.gui,
         \ 'ctermfg': s:defaults.selected_fg.cterm,
@@ -107,22 +108,83 @@ function! s:apply_default_theme() abort
         \ 'cterm': 'bold,underline',
         \ })
 
-  call clap#theme_utils#highlight('ClapDefaultCurrentSelection', {
-        \ 'guifg': s:defaults.current_selection_fg.gui,
-        \ 'ctermfg': s:defaults.current_selection_fg.cterm,
-        \ 'gui': 'bold',
-        \ 'cterm': 'bold',
-        \ })
+  " Current selection: visible background with bright text
+  " Uses a subtle background highlight for better visibility
+  if &background ==# 'dark'
+    call clap#theme_utils#highlight('ClapDefaultCurrentSelection', {
+          \ 'guifg': '#f5e0dc',
+          \ 'ctermfg': '224',
+          \ 'guibg': '#45475a',
+          \ 'ctermbg': '238',
+          \ 'gui': 'bold',
+          \ 'cterm': 'bold',
+          \ })
+    " Current selection sign: arrow indicator
+    call clap#theme_utils#highlight('ClapDefaultCurrentSelectionSign', {
+          \ 'guifg': '#89b4fa',
+          \ 'ctermfg': '75',
+          \ 'guibg': '#45475a',
+          \ 'ctermbg': '238',
+          \ 'gui': 'bold',
+          \ 'cterm': 'bold',
+          \ })
+  else
+    call clap#theme_utils#highlight('ClapDefaultCurrentSelection', {
+          \ 'guifg': '#4c4f69',
+          \ 'ctermfg': '239',
+          \ 'guibg': '#ccd0da',
+          \ 'ctermbg': '252',
+          \ 'gui': 'bold',
+          \ 'cterm': 'bold',
+          \ })
+    call clap#theme_utils#highlight('ClapDefaultCurrentSelectionSign', {
+          \ 'guifg': '#1e66f5',
+          \ 'ctermfg': '27',
+          \ 'guibg': '#ccd0da',
+          \ 'ctermbg': '252',
+          \ 'gui': 'bold',
+          \ 'cterm': 'bold',
+          \ })
+  endif
 
   hi default link ClapPreview ClapDefaultPreview
   hi default link ClapSelected ClapDefaultSelected
   hi default link ClapCurrentSelection ClapDefaultCurrentSelection
   hi default link ClapSelectedSign WarningMsg
-  hi default link ClapCurrentSelectionSign WarningMsg
+  hi default link ClapCurrentSelectionSign ClapDefaultCurrentSelectionSign
 
   execute 'hi default link ClapInput' s:input_default_hi_group
   execute 'hi default link ClapDisplay' s:display_default_hi_group
   hi default link ClapIndicator ClapInput
+
+  " Dimmed path prefix styling for better file readability
+  " Path prefix (directory) is dimmed, filename is bright
+  if &background ==# 'dark'
+    call clap#theme_utils#highlight('ClapDefaultPathPrefix', {
+          \ 'guifg': '#6e738d',
+          \ 'ctermfg': '242',
+          \ })
+    call clap#theme_utils#highlight('ClapDefaultFileName', {
+          \ 'guifg': '#cdd6f4',
+          \ 'ctermfg': '255',
+          \ 'gui': 'bold',
+          \ 'cterm': 'bold',
+          \ })
+  else
+    call clap#theme_utils#highlight('ClapDefaultPathPrefix', {
+          \ 'guifg': '#9399b2',
+          \ 'ctermfg': '246',
+          \ })
+    call clap#theme_utils#highlight('ClapDefaultFileName', {
+          \ 'guifg': '#4c4f69',
+          \ 'ctermfg': '239',
+          \ 'gui': 'bold',
+          \ 'cterm': 'bold',
+          \ })
+  endif
+
+  hi default link ClapPathPrefix ClapDefaultPathPrefix
+  hi default link ClapFileName ClapDefaultFileName
 endfunction
 
 function! s:make_display_EndOfBuffer_invisible() abort
@@ -148,7 +210,43 @@ endfunction
 function! s:init_theme() abort
   call clap#theme_utils#highlight('ClapDefaultShadow', { 'guibg': s:defaults.shadow_bg.gui })
   hi default link ClapShadow ClapDefaultShadow
-  hi default link FloatBorder ClapPreview
+
+  " Improved border styling with subtle contrast
+  if &background ==# 'dark'
+    call clap#theme_utils#highlight('ClapDefaultBorder', {
+          \ 'guifg': '#585b70',
+          \ 'ctermfg': '240',
+          \ 'guibg': 'NONE',
+          \ 'ctermbg': 'NONE',
+          \ })
+    call clap#theme_utils#highlight('ClapDefaultBorderText', {
+          \ 'guifg': '#cba6f7',
+          \ 'ctermfg': '183',
+          \ 'guibg': 'NONE',
+          \ 'ctermbg': 'NONE',
+          \ 'gui': 'bold',
+          \ 'cterm': 'bold',
+          \ })
+  else
+    call clap#theme_utils#highlight('ClapDefaultBorder', {
+          \ 'guifg': '#9ca0b0',
+          \ 'ctermfg': '248',
+          \ 'guibg': 'NONE',
+          \ 'ctermbg': 'NONE',
+          \ })
+    call clap#theme_utils#highlight('ClapDefaultBorderText', {
+          \ 'guifg': '#8839ef',
+          \ 'ctermfg': '129',
+          \ 'guibg': 'NONE',
+          \ 'ctermbg': 'NONE',
+          \ 'gui': 'bold',
+          \ 'cterm': 'bold',
+          \ })
+  endif
+
+  hi default link ClapBorder ClapDefaultBorder
+  hi default link ClapBorderText ClapDefaultBorderText
+  hi default link FloatBorder ClapBorder
 
   " Background-aware preview colors
   let l:preview_bg = clap#theme_utils#display_bg()

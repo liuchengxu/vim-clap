@@ -19,15 +19,16 @@ function! s:define_highlight_group(group_name, cermfg, guifg) abort
 endfunction
 
 function! s:init_submatches_hl_group() abort
+  " Softer submatch colors for better visual harmony
   let clap_sub_matches = [
-        \ [173 , '#e18254'] ,
-        \ [196 , '#f2241f'] ,
-        \ [184 , '#e5d11c'] ,
-        \ [32  , '#4f97d7'] ,
-        \ [170 , '#bc6ec5'] ,
-        \ [178 , '#ffbb7d'] ,
-        \ [136 , '#b1951d'] ,
-        \ [29  , '#2d9574'] ,
+        \ [180 , '#fab387'] ,
+        \ [204 , '#f38ba8'] ,
+        \ [186 , '#f9e2af'] ,
+        \ [75  , '#7dcfff'] ,
+        \ [176 , '#cba6f7'] ,
+        \ [180 , '#f5c2e7'] ,
+        \ [143 , '#a6e3a1'] ,
+        \ [73  , '#94e2d5'] ,
         \ ]
 
   " idx from 1
@@ -46,16 +47,18 @@ function! s:init_fuzzy_match_hl_groups() abort
   if exists('g:clap_fuzzy_match_hl_groups')
     let clap_fuzzy_matches = g:clap_fuzzy_match_hl_groups
   else
+    " Softer, more pleasant color gradient inspired by Tokyo Night
+    " Uses blues, cyans, and soft greens for better readability
     let clap_fuzzy_matches = [
-          \ [118 , '#87ff00'] ,
-          \ [82  , '#5fff00'] ,
-          \ [46  , '#00ff00'] ,
-          \ [47  , '#00ff5f'] ,
-          \ [48  , '#00ff87'] ,
-          \ [49  , '#00ffaf'] ,
-          \ [50  , '#00ffd7'] ,
-          \ [51  , '#00ffff'] ,
-          \ [87  , '#5fffff'] ,
+          \ [75  , '#7dcfff'] ,
+          \ [81  , '#7aa2f7'] ,
+          \ [110 , '#89b4fa'] ,
+          \ [114 , '#9ece6a'] ,
+          \ [150 , '#a6e3a1'] ,
+          \ [116 , '#94e2d5'] ,
+          \ [152 , '#b4befe'] ,
+          \ [183 , '#cba6f7'] ,
+          \ [218 , '#f5c2e7'] ,
           \ ]
   endif
 
