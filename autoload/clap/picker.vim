@@ -32,6 +32,9 @@ function! clap#picker#init(lines, truncated_map, icon_added, using_cache) abort
   call clap#sign#ensure_exists()
   call clap#spinner#refresh()
   call clap#preview#update_with_delay()
+
+  " Apply path prefix dimming for file-related providers
+  call clap#highlighter#path#apply()
 endfunction
 
 function! clap#picker#process_progress(matched, processed) abort
@@ -88,6 +91,9 @@ function! clap#picker#update(update_info) abort
       return
     endtry
   endif
+
+  " Apply path prefix dimming for file-related providers
+  call clap#highlighter#path#apply()
 endfunction
 
 function! clap#picker#update_on_empty_query(lines, truncated_map, icon_added) abort
@@ -106,6 +112,9 @@ function! clap#picker#update_on_empty_query(lines, truncated_map, icon_added) ab
   call g:clap.display.clear_highlight()
   call clap#indicator#update_matched(0)
   call clap#preview#update_with_delay()
+
+  " Apply path prefix dimming for file-related providers
+  call clap#highlighter#path#apply()
 endfunction
 
 function! clap#picker#update_preview(preview) abort
