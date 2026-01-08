@@ -1131,9 +1131,9 @@ dependencies = [
 
 [[package]]
 name = "grep-regex"
-version = "0.1.12"
+version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f748bb135ca835da5cbc67ca0e6955f968db9c5df74ca4f56b18e1ddbc68230d"
+checksum = "9edd147c7e3296e7a26bd3a81345ce849557d5a8e48ed88f736074e760f91f7e"
 dependencies = [
  "bstr",
  "grep-matcher",
