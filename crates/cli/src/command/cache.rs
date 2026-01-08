@@ -47,7 +47,7 @@ impl List {
 
         if self.all {
             writeln!(lock, "Cached entries:")?;
-            let mut entries = read_dir(&cache_dir)?
+            let mut entries = read_dir(cache_dir)?
                 .map(|res| {
                     res.map(|e| {
                         e.path()
@@ -81,7 +81,7 @@ impl Purge {
     fn run(&self) -> Result<()> {
         let cache_dir = Dirs::clap_cache_dir()?;
 
-        if let Ok(cache_size) = dir_size(&cache_dir) {
+        if let Ok(cache_size) = dir_size(cache_dir) {
             let readable_size = if cache_size > 1024 * 1024 {
                 format!("{}MB", cache_size / 1024 / 1024)
             } else if cache_size > 1024 {
@@ -99,7 +99,7 @@ impl Purge {
             }
         }
 
-        remove_dir_contents(&cache_dir)?;
+        remove_dir_contents(cache_dir)?;
 
         println!(
             "Current cache directory {} has been purged sucessfully",
