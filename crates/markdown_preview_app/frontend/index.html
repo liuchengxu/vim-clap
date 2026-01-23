@@ -3324,6 +3324,20 @@ window.addToRecentFiles = addToRecentFiles;
         return null;
     }
 
+    // Load recent files from backend and render them
+    async function loadRecentFilesFromBackend() {
+        try {
+            const files = await invoke('get_recent_files');
+            // Convert backend format to the format expected by renderRecentFiles
+            const recentFiles = files.map(path => ({ path, timestamp: Date.now() }));
+            // Store in localStorage so renderRecentFiles can use it
+            localStorage.setItem('recentFiles', JSON.stringify(recentFiles));
+            renderRecentFiles(switchToFile);
+        } catch (e) {
+            console.error('Failed to load recent files from backend:', e);
+        }
+    }
+
     // Handle file opened result
     function handleFileOpened(result) {
         const content = document.getElementById('content');
@@ -3341,9 +3355,8 @@ window.addToRecentFiles = addToRecentFiles;
             updateFilePathBar(result.file_path, result.git_root);
             document.title = getFileBasename(result.file_path) + ' - Markdown Preview';
 
-            // Add to recent files
-            addToRecentFiles(result.file_path);
-            renderRecentFiles(switchToFile);
+            // Refresh recent files from backend (backend already added the file)
+            loadRecentFilesFromBackend();
 
             // Start watching the file for changes
             invoke('watch_file', { path: result.file_path }).catch(e => {
@@ -3445,16 +3458,16 @@ window.addToRecentFiles = addToRecentFiles;
     // Set up keyboard shortcuts
     function setupKeyboardShortcuts() {
         document.addEventListener('keydown', async (e) => {
-            // Cmd+O / Ctrl+O to open file dialog
+            // Cmd+O / Ctrl+O to open file by path (with autocomplete)
             if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'o') {
                 e.preventDefault();
-                await openFileDialog();
+                openPathInput();
             }
 
-            // Cmd+Shift+O / Ctrl+Shift+O to open file by path
+            // Cmd+Shift+O / Ctrl+Shift+O to open file dialog
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'O' || e.key === 'o')) {
                 e.preventDefault();
-                openPathInput();
+                await openFileDialog();
             }
 
             // F5 or Cmd+R / Ctrl+R to refresh
@@ -3471,11 +3484,135 @@ window.addToRecentFiles = addToRecentFiles;
             if (e.key === 'Escape' && pathInputVisible) {
                 closePathInput();
             }
+
+            // Cmd+Q / Ctrl+Q to quit the app
+            if ((e.ctrlKey || e.metaKey) && e.key === 'q') {
+                e.preventDefault();
+                const { getCurrentWindow } = window.__TAURI__.window;
+                getCurrentWindow().close();
+            }
+
+            // Cmd+C / Ctrl+C to copy selected text
+            if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+                const selection = window.getSelection();
+                const selectedText = selection ? selection.toString() : '';
+                if (selectedText) {
+                    e.preventDefault();
+                    try {
+                        const clipboardApi = window.__TAURI__.clipboard
+                            || window.__TAURI__.clipboardManager
+                            || window.__TAURI__.plugin?.clipboardManager;
+                        if (clipboardApi && clipboardApi.writeText) {
+                            await clipboardApi.writeText(selectedText);
+                        }
+                    } catch (err) {
+                        console.error('Failed to copy:', err);
+                    }
+                }
+            }
         });
     }
 
     // Path input state
     let pathInputVisible = false;
+    let autocompleteState = {
+        items: [],
+        selectedIndex: -1,
+        debounceTimer: null
+    };
+
+    // Fetch path completions from backend
+    async function fetchCompletions(partial) {
+        try {
+            return await invoke('complete_path', { partial });
+        } catch (e) {
+            console.error('Failed to fetch completions:', e);
+            return [];
+        }
+    }
+
+    // Render autocomplete dropdown
+    function renderAutocomplete(items) {
+        const dropdown = document.getElementById('path-autocomplete');
+        if (!dropdown) return;
+
+        autocompleteState.items = items;
+        autocompleteState.selectedIndex = items.length > 0 ? 0 : -1;
+
+        if (items.length === 0) {
+            dropdown.style.display = 'none';
+            return;
+        }
+
+        dropdown.innerHTML = items.map((item, index) => `
+            <div class="autocomplete-item ${index === 0 ? 'selected' : ''}" data-index="${index}">
+                <span class="autocomplete-icon">${item.is_dir ? '📁' : '📄'}</span>
+                <span class="autocomplete-name">${item.name}</span>
+            </div>
+        `).join('');
+
+        dropdown.style.display = 'block';
+
+        // Add click handlers
+        dropdown.querySelectorAll('.autocomplete-item').forEach(el => {
+            el.addEventListener('click', () => {
+                const index = parseInt(el.dataset.index);
+                selectAutocompleteItem(index);
+            });
+        });
+    }
+
+    // Select an autocomplete item
+    function selectAutocompleteItem(index) {
+        const item = autocompleteState.items[index];
+        if (!item) return;
+
+        const input = document.getElementById('path-input-field');
+        input.value = item.path;
+        input.focus();
+
+        // If it's a directory, trigger another completion
+        if (item.is_dir) {
+            triggerAutocomplete(item.path);
+        } else {
+            // Hide dropdown for files
+            const dropdown = document.getElementById('path-autocomplete');
+            if (dropdown) dropdown.style.display = 'none';
+        }
+    }
+
+    // Update selection highlight
+    function updateAutocompleteSelection() {
+        const dropdown = document.getElementById('path-autocomplete');
+        if (!dropdown) return;
+
+        dropdown.querySelectorAll('.autocomplete-item').forEach((el, index) => {
+            el.classList.toggle('selected', index === autocompleteState.selectedIndex);
+        });
+
+        // Scroll selected item into view
+        const selected = dropdown.querySelector('.autocomplete-item.selected');
+        if (selected) {
+            selected.scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    // Trigger autocomplete with debouncing
+    function triggerAutocomplete(value) {
+        if (autocompleteState.debounceTimer) {
+            clearTimeout(autocompleteState.debounceTimer);
+        }
+
+        autocompleteState.debounceTimer = setTimeout(async () => {
+            if (value.length > 0) {
+                const items = await fetchCompletions(value);
+                renderAutocomplete(items);
+            } else {
+                const dropdown = document.getElementById('path-autocomplete');
+                if (dropdown) dropdown.style.display = 'none';
+            }
+        }, 100);
+    }
 
     // Open path input modal
     function openPathInput() {
@@ -3492,14 +3629,18 @@ window.addToRecentFiles = addToRecentFiles;
                 <div class="path-input-container">
                     <div class="path-input-header">
                         <label>Open file by path</label>
-                        <span class="path-input-hint">Enter absolute path to markdown file</span>
+                        <span class="path-input-hint">Type path to autocomplete</span>
                     </div>
-                    <input type="text" id="path-input-field" class="path-input-field"
-                           placeholder="/path/to/file.md" autocomplete="off" spellcheck="false">
+                    <div class="path-input-wrapper">
+                        <input type="text" id="path-input-field" class="path-input-field"
+                               placeholder="/path/to/file.md" autocomplete="off" spellcheck="false">
+                        <div id="path-autocomplete" class="path-autocomplete"></div>
+                    </div>
                     <div class="path-input-footer">
+                        <span class="key">↑↓</span> navigate
+                        <span class="key">Tab</span> complete
                         <span class="key">Enter</span> open
                         <span class="key">Esc</span> cancel
-                        <span class="key">⌘V</span> paste
                     </div>
                 </div>
             `;
@@ -3518,7 +3659,7 @@ window.addToRecentFiles = addToRecentFiles;
                     display: flex;
                     align-items: flex-start;
                     justify-content: center;
-                    padding-top: 20vh;
+                    padding-top: 15vh;
                     z-index: 10000;
                     opacity: 0;
                     visibility: hidden;
@@ -3532,7 +3673,7 @@ window.addToRecentFiles = addToRecentFiles;
                     background: #fff;
                     border-radius: 8px;
                     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-                    width: 500px;
+                    width: 600px;
                     max-width: 90vw;
                     overflow: hidden;
                 }
@@ -3550,6 +3691,9 @@ window.addToRecentFiles = addToRecentFiles;
                     color: #666;
                     margin-top: 4px;
                 }
+                .path-input-wrapper {
+                    position: relative;
+                }
                 .path-input-field {
                     width: 100%;
                     padding: 12px 16px;
@@ -3558,6 +3702,35 @@ window.addToRecentFiles = addToRecentFiles;
                     font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
                     outline: none;
                     box-sizing: border-box;
+                }
+                .path-autocomplete {
+                    display: none;
+                    max-height: 240px;
+                    overflow-y: auto;
+                    border-top: 1px solid #e1e4e8;
+                }
+                .autocomplete-item {
+                    padding: 8px 16px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+                    font-size: 13px;
+                }
+                .autocomplete-item:hover,
+                .autocomplete-item.selected {
+                    background: #f0f6ff;
+                }
+                .autocomplete-icon {
+                    font-size: 14px;
+                    width: 20px;
+                    text-align: center;
+                }
+                .autocomplete-name {
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
                 }
                 .path-input-footer {
                     padding: 8px 16px;
@@ -3578,6 +3751,10 @@ window.addToRecentFiles = addToRecentFiles;
                     .path-input-header label { color: #fff; }
                     .path-input-hint { color: #98989f; }
                     .path-input-field { background: #1c1c1e; color: #fff; }
+                    .path-autocomplete { border-color: #3a3a3c; }
+                    .autocomplete-item { color: #fff; }
+                    .autocomplete-item:hover,
+                    .autocomplete-item.selected { background: #2c3e50; }
                     .path-input-footer { background: #2c2c2e; }
                     .path-input-footer .key { background: #3a3a3c; color: #fff; }
                 }
@@ -3606,6 +3783,28 @@ window.addToRecentFiles = addToRecentFiles;
                     background: #1c1c1e;
                     color: #fff;
                 }
+                body.theme-github-dark .path-autocomplete,
+                body.theme-dark .path-autocomplete,
+                body.theme-material-dark .path-autocomplete,
+                body.theme-one-dark .path-autocomplete {
+                    border-color: #3a3a3c;
+                }
+                body.theme-github-dark .autocomplete-item,
+                body.theme-dark .autocomplete-item,
+                body.theme-material-dark .autocomplete-item,
+                body.theme-one-dark .autocomplete-item {
+                    color: #fff;
+                }
+                body.theme-github-dark .autocomplete-item:hover,
+                body.theme-github-dark .autocomplete-item.selected,
+                body.theme-dark .autocomplete-item:hover,
+                body.theme-dark .autocomplete-item.selected,
+                body.theme-material-dark .autocomplete-item:hover,
+                body.theme-material-dark .autocomplete-item.selected,
+                body.theme-one-dark .autocomplete-item:hover,
+                body.theme-one-dark .autocomplete-item.selected {
+                    background: #2c3e50;
+                }
                 body.theme-github-dark .path-input-footer,
                 body.theme-dark .path-input-footer,
                 body.theme-material-dark .path-input-footer,
@@ -3622,18 +3821,68 @@ window.addToRecentFiles = addToRecentFiles;
                 }
             });
 
-            // Handle input
+            // Handle input events
             const input = document.getElementById('path-input-field');
+
+            // Input change - trigger autocomplete
+            input.addEventListener('input', (e) => {
+                triggerAutocomplete(e.target.value);
+            });
+
+            // Keyboard navigation
             input.addEventListener('keydown', async (e) => {
-                if (e.key === 'Enter') {
+                const dropdown = document.getElementById('path-autocomplete');
+                const isDropdownVisible = dropdown && dropdown.style.display !== 'none';
+
+                if (e.key === 'ArrowDown') {
                     e.preventDefault();
+                    if (isDropdownVisible && autocompleteState.items.length > 0) {
+                        autocompleteState.selectedIndex = Math.min(
+                            autocompleteState.selectedIndex + 1,
+                            autocompleteState.items.length - 1
+                        );
+                        updateAutocompleteSelection();
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (isDropdownVisible && autocompleteState.items.length > 0) {
+                        autocompleteState.selectedIndex = Math.max(
+                            autocompleteState.selectedIndex - 1,
+                            0
+                        );
+                        updateAutocompleteSelection();
+                    }
+                } else if (e.key === 'Tab') {
+                    e.preventDefault();
+                    if (isDropdownVisible && autocompleteState.selectedIndex >= 0) {
+                        selectAutocompleteItem(autocompleteState.selectedIndex);
+                    }
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    // If dropdown visible and item selected, use that item
+                    if (isDropdownVisible && autocompleteState.selectedIndex >= 0) {
+                        const item = autocompleteState.items[autocompleteState.selectedIndex];
+                        if (item && !item.is_dir) {
+                            closePathInput();
+                            await openFile(item.path);
+                            return;
+                        } else if (item && item.is_dir) {
+                            selectAutocompleteItem(autocompleteState.selectedIndex);
+                            return;
+                        }
+                    }
+                    // Otherwise use the input value
                     const path = input.value.trim();
                     if (path) {
                         closePathInput();
                         await openFile(path);
                     }
                 } else if (e.key === 'Escape') {
-                    closePathInput();
+                    if (isDropdownVisible) {
+                        dropdown.style.display = 'none';
+                    } else {
+                        closePathInput();
+                    }
                 } else if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
                     // Handle paste using Tauri clipboard API
                     e.preventDefault();
@@ -3644,13 +3893,13 @@ window.addToRecentFiles = addToRecentFiles;
                         if (clipboardApi && clipboardApi.readText) {
                             const text = await clipboardApi.readText();
                             if (text) {
-                                // Insert at cursor position
                                 const start = input.selectionStart;
                                 const end = input.selectionEnd;
                                 const before = input.value.substring(0, start);
                                 const after = input.value.substring(end);
                                 input.value = before + text + after;
                                 input.selectionStart = input.selectionEnd = start + text.length;
+                                triggerAutocomplete(input.value);
                             }
                         }
                     } catch (err) {
@@ -3663,6 +3912,10 @@ window.addToRecentFiles = addToRecentFiles;
         modal.classList.add('visible');
         const input = document.getElementById('path-input-field');
         input.value = '';
+        autocompleteState.items = [];
+        autocompleteState.selectedIndex = -1;
+        const dropdown = document.getElementById('path-autocomplete');
+        if (dropdown) dropdown.style.display = 'none';
         setTimeout(() => input.focus(), 50);
     }
 
@@ -3672,6 +3925,12 @@ window.addToRecentFiles = addToRecentFiles;
         const modal = document.getElementById('path-input-modal');
         if (modal) {
             modal.classList.remove('visible');
+        }
+        // Clear autocomplete state
+        autocompleteState.items = [];
+        autocompleteState.selectedIndex = -1;
+        if (autocompleteState.debounceTimer) {
+            clearTimeout(autocompleteState.debounceTimer);
         }
     }
 
@@ -3720,11 +3979,14 @@ window.addToRecentFiles = addToRecentFiles;
     }
 
     // Initialize on DOM ready
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', async function() {
         // Initialize core UI with file switch callback
         initCoreUI({
             onFileClick: switchToFile
         });
+
+        // Load recent files from backend (persistent storage)
+        await loadRecentFilesFromBackend();
 
         // Set up Tauri-specific features
         setupTauriListeners();

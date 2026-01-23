@@ -53,8 +53,17 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
-        .manage(Arc::new(RwLock::new(AppState::default())))
         .setup(move |app| {
+            // Get app data directory for persistent config
+            let config_dir = app.path().app_data_dir().ok();
+            if let Some(ref dir) = config_dir {
+                tracing::info!(path = %dir.display(), "Using config directory");
+            }
+
+            // Initialize state with config directory for persistence
+            let state = AppState::new(config_dir);
+            app.manage(Arc::new(RwLock::new(state)));
+
             // Set up the menu
             let menu = menu::create_menu(app.handle())?;
             app.set_menu(menu)?;
@@ -92,6 +101,7 @@ fn main() {
             commands::watch_file,
             commands::unwatch_file,
             commands::check_clipboard_for_markdown,
+            commands::complete_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
