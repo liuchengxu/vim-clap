@@ -313,6 +313,52 @@
         position: relative;
       }
 
+      /* GitHub-style heading anchor links */
+      .heading-anchor {
+        color: #0969da;
+        opacity: 0;
+        margin-left: -24px;
+        padding-right: 8px;
+        text-decoration: none;
+        transition: opacity 0.2s;
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .heading-anchor:hover {
+        opacity: 1 !important;
+      }
+
+      .heading-anchor .octicon {
+        fill: currentColor;
+        vertical-align: middle;
+      }
+
+      h1:hover .heading-anchor,
+      h2:hover .heading-anchor,
+      h3:hover .heading-anchor,
+      h4:hover .heading-anchor,
+      h5:hover .heading-anchor,
+      h6:hover .heading-anchor {
+        opacity: 0.6;
+      }
+
+      /* Ensure proper heading layout with anchor */
+      .markdown-body h1,
+      .markdown-body h2,
+      .markdown-body h3,
+      .markdown-body h4,
+      .markdown-body h5,
+      .markdown-body h6 {
+        scroll-margin-top: 20px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .heading-anchor {
+          color: #58a6ff;
+        }
+      }
+
       /* Font family options */
       .markdown-body.font-serif {
         font-family: "Palatino Linotype", Palatino, Palladio, "URW Palladio L", "Book Antiqua", Baskerville, "Bookman Old Style", "Bitstream Charter", "Nimbus Roman No9 L", Garamond, "Apple Garamond", "ITC Garamond Narrow", "New Century Schoolbook", "Century Schoolbook", "Century Schoolbook L", Georgia, serif;
@@ -335,6 +381,65 @@
 
       .markdown-body.font-system {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+      }
+
+      .markdown-body.font-inter {
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        letter-spacing: -0.011em;
+      }
+
+      .markdown-body.font-inter h1,
+      .markdown-body.font-inter h2,
+      .markdown-body.font-inter h3,
+      .markdown-body.font-inter h4,
+      .markdown-body.font-inter h5,
+      .markdown-body.font-inter h6 {
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        letter-spacing: -0.02em;
+      }
+
+      .markdown-body.font-merriweather {
+        font-family: "Merriweather", Georgia, "Times New Roman", serif;
+        font-size: 17px;
+        line-height: 1.75;
+      }
+
+      .markdown-body.font-merriweather h1,
+      .markdown-body.font-merriweather h2,
+      .markdown-body.font-merriweather h3,
+      .markdown-body.font-merriweather h4,
+      .markdown-body.font-merriweather h5,
+      .markdown-body.font-merriweather h6 {
+        font-family: "Merriweather", Georgia, serif;
+      }
+
+      .markdown-body.font-ibm-plex {
+        font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .markdown-body.font-ibm-plex h1,
+      .markdown-body.font-ibm-plex h2,
+      .markdown-body.font-ibm-plex h3,
+      .markdown-body.font-ibm-plex h4,
+      .markdown-body.font-ibm-plex h5,
+      .markdown-body.font-ibm-plex h6 {
+        font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .markdown-body.font-literata {
+        font-family: "Literata", Georgia, "Times New Roman", serif;
+        font-size: 17px;
+        line-height: 1.7;
+        font-optical-sizing: auto;
+      }
+
+      .markdown-body.font-literata h1,
+      .markdown-body.font-literata h2,
+      .markdown-body.font-literata h3,
+      .markdown-body.font-literata h4,
+      .markdown-body.font-literata h5,
+      .markdown-body.font-literata h6 {
+        font-family: "Literata", Georgia, serif;
       }
 
       /* Reader Mode - optimized for focused reading */
@@ -713,5 +818,332 @@
           background: #58a6ff;
           color: #0d1117;
           box-shadow: 0 8px 24px rgba(88, 166, 255, 0.5);
+        }
+      }
+
+      /* Fuzzy Finder Styles */
+      .fuzzy-finder-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 20000;
+        display: none;
+        justify-content: center;
+        align-items: flex-start;
+        padding-top: 15vh;
+      }
+
+      .fuzzy-finder-overlay.visible {
+        display: flex;
+      }
+
+      .fuzzy-finder-container {
+        width: 600px;
+        max-width: 90vw;
+        max-height: 70vh;
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 16px 70px rgba(0, 0, 0, 0.2);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        animation: fuzzy-slide-in 0.15s ease-out;
+      }
+
+      @keyframes fuzzy-slide-in {
+        from {
+          opacity: 0;
+          transform: translateY(-10px) scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .fuzzy-finder-header {
+        padding: 16px;
+        border-bottom: 1px solid #e1e4e8;
+      }
+
+      .fuzzy-finder-input-wrapper {
+        display: flex;
+        align-items: center;
+        background: #f6f8fa;
+        border: 1px solid #d0d7de;
+        border-radius: 8px;
+        padding: 8px 12px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+
+      .fuzzy-finder-input-wrapper:focus-within {
+        border-color: #0969da;
+        box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+        background: #ffffff;
+      }
+
+      .fuzzy-finder-icon {
+        fill: #57606a;
+        margin-right: 10px;
+        flex-shrink: 0;
+      }
+
+      .fuzzy-finder-input {
+        flex: 1;
+        border: none;
+        background: transparent;
+        font-size: 16px;
+        color: #24292f;
+        outline: none;
+      }
+
+      .fuzzy-finder-input::placeholder {
+        color: #8b949e;
+      }
+
+      .fuzzy-finder-mode-toggle {
+        display: flex;
+        gap: 4px;
+        margin-left: 10px;
+      }
+
+      .fuzzy-mode-btn {
+        width: 28px;
+        height: 28px;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        background: #ffffff;
+        color: #57606a;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+
+      .fuzzy-mode-btn:hover {
+        background: #f3f4f6;
+        border-color: #8b949e;
+      }
+
+      .fuzzy-mode-btn.active {
+        background: #0969da;
+        border-color: #0969da;
+        color: #ffffff;
+      }
+
+      .fuzzy-finder-hint {
+        margin-top: 10px;
+        font-size: 12px;
+        color: #8b949e;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .fuzzy-finder-hint .key {
+        background: #eff2f5;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+        font-size: 11px;
+        color: #57606a;
+        margin-right: 4px;
+      }
+
+      .fuzzy-finder-results {
+        flex: 1;
+        overflow-y: auto;
+        min-height: 100px;
+        max-height: 400px;
+      }
+
+      .fuzzy-result-item {
+        padding: 10px 16px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background 0.1s;
+      }
+
+      .fuzzy-result-item:hover {
+        background: #f6f8fa;
+      }
+
+      .fuzzy-result-item.selected {
+        background: #0969da;
+        color: #ffffff;
+      }
+
+      .fuzzy-result-item.selected .fuzzy-result-type,
+      .fuzzy-result-item.selected .fuzzy-result-context {
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      .fuzzy-result-item.selected .fuzzy-match {
+        background: rgba(255, 255, 255, 0.3);
+        color: #ffffff;
+      }
+
+      .fuzzy-result-title {
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 4px;
+        line-height: 1.4;
+      }
+
+      .fuzzy-result-context {
+        font-size: 12px;
+        color: #8b949e;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .fuzzy-result-type {
+        font-size: 11px;
+        color: #8b949e;
+        background: #eff2f5;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-right: 8px;
+        font-weight: 500;
+      }
+
+      .fuzzy-result-item.selected .fuzzy-result-type {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      .fuzzy-match {
+        background: #fff8c5;
+        color: #24292f;
+        border-radius: 2px;
+        padding: 0 1px;
+      }
+
+      .fuzzy-finder-footer {
+        padding: 10px 16px;
+        border-top: 1px solid #e1e4e8;
+        font-size: 12px;
+        color: #8b949e;
+        background: #f6f8fa;
+      }
+
+      .fuzzy-no-results {
+        padding: 40px 16px;
+        text-align: center;
+        color: #8b949e;
+        font-size: 14px;
+      }
+
+      /* Dark mode for fuzzy finder */
+      @media (prefers-color-scheme: dark) {
+        .fuzzy-finder-overlay {
+          background: rgba(0, 0, 0, 0.7);
+        }
+
+        .fuzzy-finder-container {
+          background: #161b22;
+          box-shadow: 0 16px 70px rgba(0, 0, 0, 0.5);
+        }
+
+        .fuzzy-finder-header {
+          border-bottom-color: #30363d;
+        }
+
+        .fuzzy-finder-input-wrapper {
+          background: #0d1117;
+          border-color: #30363d;
+        }
+
+        .fuzzy-finder-input-wrapper:focus-within {
+          border-color: #58a6ff;
+          box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+          background: #0d1117;
+        }
+
+        .fuzzy-finder-icon {
+          fill: #8b949e;
+        }
+
+        .fuzzy-finder-input {
+          color: #c9d1d9;
+        }
+
+        .fuzzy-finder-input::placeholder {
+          color: #6e7681;
+        }
+
+        .fuzzy-mode-btn {
+          background: #21262d;
+          border-color: #30363d;
+          color: #8b949e;
+        }
+
+        .fuzzy-mode-btn:hover {
+          background: #30363d;
+          border-color: #8b949e;
+        }
+
+        .fuzzy-mode-btn.active {
+          background: #58a6ff;
+          border-color: #58a6ff;
+          color: #0d1117;
+        }
+
+        .fuzzy-finder-hint .key {
+          background: #21262d;
+          color: #8b949e;
+        }
+
+        .fuzzy-result-item {
+          border-bottom-color: #21262d;
+        }
+
+        .fuzzy-result-item:hover {
+          background: #21262d;
+        }
+
+        .fuzzy-result-item.selected {
+          background: #58a6ff;
+          color: #0d1117;
+        }
+
+        .fuzzy-result-title {
+          color: #c9d1d9;
+        }
+
+        .fuzzy-result-item.selected .fuzzy-result-title {
+          color: #0d1117;
+        }
+
+        .fuzzy-result-context {
+          color: #6e7681;
+        }
+
+        .fuzzy-result-type {
+          background: #21262d;
+          color: #8b949e;
+        }
+
+        .fuzzy-match {
+          background: #634d00;
+          color: #c9d1d9;
+        }
+
+        .fuzzy-result-item.selected .fuzzy-match {
+          background: rgba(0, 0, 0, 0.2);
+          color: #0d1117;
+        }
+
+        .fuzzy-finder-footer {
+          border-top-color: #30363d;
+          background: #0d1117;
+          color: #6e7681;
+        }
+
+        .fuzzy-no-results {
+          color: #6e7681;
         }
       }

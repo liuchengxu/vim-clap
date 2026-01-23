@@ -149,6 +149,9 @@
       body.theme-dark .markdown-body img {
         background-color: transparent;
       }
+      body.theme-dark .heading-anchor {
+        color: #409eff;
+      }
 
       /* Theme: Material Dark */
       body.theme-material-dark {
@@ -290,6 +293,9 @@
       }
       body.theme-material-dark .markdown-body hr {
         background-color: #4f585e;
+      }
+      body.theme-material-dark .heading-anchor {
+        color: #f48237;
       }
 
       /* Theme: One Dark */
@@ -440,6 +446,9 @@
       body.theme-one-dark .markdown-body hr {
         background-color: #3a3f4b;
       }
+      body.theme-one-dark .heading-anchor {
+        color: #61afef;
+      }
 
       /* Theme: Ulysses (Light) */
       body.theme-ulysses {
@@ -582,6 +591,9 @@
       }
       body.theme-ulysses .markdown-body hr {
         background-color: #e5e5e5;
+      }
+      body.theme-ulysses .heading-anchor {
+        color: rgb(12, 139, 186);
       }
 
       /* Theme: GitHub Dark (explicit dark mode) */
@@ -797,4 +809,7 @@
       }
       body.theme-github-dark .markdown-body pre code {
         background-color: transparent;
+      }
+      body.theme-github-dark .heading-anchor {
+        color: #58a6ff;
       }

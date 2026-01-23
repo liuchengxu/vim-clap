@@ -1,0 +1,43 @@
+# Standalone workspace - separate from main vim-clap workspace
+# This avoids Tauri version conflicts with other crates
+
+[workspace]
+members = ["."]
+
+[package]
+name = "markdown_preview_app"
+description = "Standalone markdown preview application with Tauri"
+version = "0.1.0"
+edition = "2021"
+authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
+license = "MIT"
+publish = false
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+# Core library from parent workspace (path dependency)
+markdown_preview_core = { path = "../markdown_preview_core" }
+
+# Standard dependencies
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.36", features = ["sync", "fs", "rt-multi-thread", "macros"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Tauri and plugins
+tauri = { version = "2.0", features = ["devtools"] }
+tauri-plugin-clipboard-manager = "2.0"
+tauri-plugin-dialog = "2.0"
+tauri-plugin-fs = "2.0"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1

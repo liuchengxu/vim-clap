@@ -1,0 +1,22 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capabilities for markdown preview app",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "core:window:allow-close",
+    "core:window:allow-set-title",
+    "fs:default",
+    "fs:allow-read-text-file",
+    "fs:allow-exists",
+    "fs:scope-home-recursive",
+    "dialog:default",
+    "dialog:allow-open",
+    "dialog:allow-message",
+    "clipboard-manager:default",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text"
+  ]
+}

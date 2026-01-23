@@ -23,6 +23,8 @@ members = [
     "crates/maple_derive",
     "crates/maple_lsp",
     "crates/maple_markdown",
+    # markdown_preview_app is a separate workspace (has its own Cargo.toml with [workspace])
+    "crates/markdown_preview_core",
     "crates/matcher",
     "crates/matcher/extracted_fzy",
     "crates/paths",
@@ -37,7 +39,7 @@ members = [
     "crates/xtask",
 ]
 
-exclude = ["pythonx/clap/fuzzymatch-rs"]
+exclude = ["pythonx/clap/fuzzymatch-rs", "crates/markdown_preview_app"]
 
 default-members = ["crates/maple"]
 
@@ -103,6 +105,7 @@ maple_core = { path = "crates/maple_core" }
 maple_derive = { path = "crates/maple_derive" }
 maple_lsp = { path = "crates/maple_lsp" }
 maple_markdown = { path = "crates/maple_markdown" }
+markdown_preview_core = { path = "crates/markdown_preview_core" }
 matcher = { path = "crates/matcher" }
 paths = { path = "crates/paths" }
 pattern = { path = "crates/pattern" }

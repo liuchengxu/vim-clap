@@ -1,0 +1,44 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Markdown Preview",
+  "version": "0.1.0",
+  "identifier": "com.vimclap.markdown-preview",
+  "build": {
+    "frontendDist": "frontend"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Markdown Preview",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 400,
+        "minHeight": 300,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "dragDropEnabled": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [],
+    "macOS": {
+      "minimumSystemVersion": "10.13"
+    },
+    "fileAssociations": [
+      {
+        "ext": ["md", "markdown", "mdown", "mkdn", "mkd"],
+        "mimeType": "text/markdown",
+        "description": "Markdown document"
+      }
+    ]
+  },
+  "plugins": {}
+}

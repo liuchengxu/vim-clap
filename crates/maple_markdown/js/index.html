@@ -2,6 +2,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;0,7..72,700;1,7..72,400;1,7..72,500&family=Merriweather:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown.min.css" >
     <!-- GitHub Alerts styling from markdown-it-github-alerts
          Source: https://github.com/antfu/markdown-it-github-alerts
@@ -64,6 +68,10 @@
                 <label class="option-label">Font Family</label>
                 <select id="font-family" class="option-select">
                     <option value="default">GitHub (Default)</option>
+                    <option value="inter">Inter</option>
+                    <option value="merriweather">Merriweather</option>
+                    <option value="ibm-plex">IBM Plex Sans</option>
+                    <option value="literata">Literata</option>
                     <option value="serif">Serif (LaTeX-like)</option>
                     <option value="mono">Monospace</option>
                     <option value="system">System UI</option>
@@ -120,7 +128,39 @@
 
     <div id="main-content">
         <div class="file-path-bar" id="file-path-bar" title="Click to copy path"></div>
-        <article class="markdown-body" id="content"></article>
+        <article class="markdown-body" id="content">
+            <!-- Welcome screen - shown when no file is open, replaced when content loads -->
+            <div id="welcome-screen" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 70vh; color: #666; text-align: center;">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 20px; opacity: 0.5;">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <path d="M12 18v-6"></path>
+                    <path d="M9 15h6"></path>
+                </svg>
+                <h2 style="margin: 0 0 10px 0; font-weight: 500; color: #333;">Markdown Preview</h2>
+                <p style="margin: 0 0 24px 0; font-size: 14px;">Open a markdown file to preview</p>
+                <button id="welcome-open-btn" style="
+                    padding: 12px 24px;
+                    font-size: 15px;
+                    background: #0969da;
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                " onmouseover="this.style.background='#0860ca'" onmouseout="this.style.background='#0969da'">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4l2 2h9a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5z"></path>
+                    </svg>
+                    Open File
+                </button>
+                <p style="margin-top: 16px; font-size: 12px; color: #888;">
+                    Or press <kbd style="background: #eee; padding: 2px 6px; border-radius: 3px; font-family: monospace;">⌘O</kbd> · Drag &amp; drop · Use File menu
+                </p>
+            </div>
+        </article>
     </div>
 
     <script>
@@ -130,6 +170,34 @@
     <div id="toast" class="toast">
         <div class="toast-title">Copied!</div>
         <div class="toast-path"></div>
+    </div>
+
+    <!-- Fuzzy Finder Modal -->
+    <div id="fuzzy-finder" class="fuzzy-finder-overlay">
+        <div class="fuzzy-finder-container">
+            <div class="fuzzy-finder-header">
+                <div class="fuzzy-finder-input-wrapper">
+                    <svg class="fuzzy-finder-icon" viewBox="0 0 16 16" width="16" height="16">
+                        <path fill-rule="evenodd" d="M11.5 7a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04z"></path>
+                    </svg>
+                    <input type="text" id="fuzzy-input" class="fuzzy-finder-input" placeholder="Search headings..." autocomplete="off" spellcheck="false">
+                    <div class="fuzzy-finder-mode-toggle">
+                        <button id="fuzzy-mode-headings" class="fuzzy-mode-btn active" title="Search headings only">H</button>
+                        <button id="fuzzy-mode-text" class="fuzzy-mode-btn" title="Search full text">T</button>
+                    </div>
+                </div>
+                <div class="fuzzy-finder-hint">
+                    <span class="key">↑↓</span> navigate
+                    <span class="key">Enter</span> jump
+                    <span class="key">Esc</span> close
+                    <span class="key">Tab</span> toggle mode
+                </div>
+            </div>
+            <div id="fuzzy-results" class="fuzzy-finder-results"></div>
+            <div class="fuzzy-finder-footer">
+                <span id="fuzzy-result-count">0 results</span>
+            </div>
+        </div>
     </div>
 </body>
 </html>

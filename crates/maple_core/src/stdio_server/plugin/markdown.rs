@@ -4,7 +4,7 @@ use crate::stdio_server::input::{AutocmdEvent, AutocmdEventType, PluginAction};
 use crate::stdio_server::plugin::{ClapPlugin, PluginError, Toggle};
 use crate::stdio_server::vim::Vim;
 use maple_markdown::toc::{find_toc_range, generate_toc};
-use maple_markdown::Message;
+use maple_markdown::{Message, RenderOptions};
 use serde_json::json;
 
 /// Active preview server state for the currently previewed markdown file
@@ -124,8 +124,11 @@ impl ClapPlugin for Markdown {
                         // TODO: incremental update?
                         let lines = self.vim.getbufline(bufnr, 1, "$").await?;
                         let markdown_content = lines.join("\n");
-                        let (html, _line_map) = maple_markdown::to_html(&markdown_content)?;
-                        preview.msg_tx.send_replace(Message::UpdateContent(html));
+                        let result =
+                            maple_markdown::to_html(&markdown_content, &RenderOptions::gfm())?;
+                        preview
+                            .msg_tx
+                            .send_replace(Message::UpdateContent(result.html));
                     }
                 }
             }

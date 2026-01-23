@@ -7,6 +7,488 @@
         let websocket = null;  // WebSocket connection
         let currentTheme = 'auto';  // 'auto', 'github-light', 'github-dark', 'dark', 'material-dark', 'one-dark', 'ulysses'
 
+        // Tauri detection and abstraction layer
+        var isTauri = window.__TAURI__ !== undefined;
+
+        // Unified communication bridge
+        const AppBridge = {
+            isTauri: isTauri,
+
+            // Send a message (WebSocket or Tauri IPC)
+            async send(message) {
+                if (isTauri) {
+                    const { invoke } = window.__TAURI__.core;
+                    return invoke('handle_message', { message: JSON.stringify(message) });
+                } else if (websocket && websocket.readyState === WebSocket.OPEN) {
+                    websocket.send(JSON.stringify(message));
+                }
+            },
+
+            // Request a file to be opened
+            async openFile(filePath) {
+                if (isTauri) {
+                    const { invoke } = window.__TAURI__.core;
+                    return invoke('open_file', { path: filePath });
+                } else {
+                    this.send({ type: 'switch_file', file_path: filePath });
+                }
+            },
+
+            // Open file dialog (Tauri only)
+            async showOpenDialog() {
+                if (isTauri) {
+                    const { open } = window.__TAURI__.plugin.dialog;
+                    const selected = await open({
+                        multiple: false,
+                        filters: [{ name: 'Markdown', extensions: ['md', 'markdown', 'mdown', 'mkdn', 'mkd'] }]
+                    });
+                    return selected;
+                }
+                return null;
+            },
+
+            // Get recent files
+            async getRecentFiles() {
+                if (isTauri) {
+                    const { invoke } = window.__TAURI__.core;
+                    return invoke('get_recent_files');
+                } else {
+                    // Use localStorage for browser mode
+                    const recent = localStorage.getItem('recentFiles');
+                    return recent ? JSON.parse(recent) : [];
+                }
+            },
+
+            // Watch a file for changes (Tauri only)
+            async watchFile(filePath) {
+                if (isTauri) {
+                    const { invoke } = window.__TAURI__.core;
+                    return invoke('watch_file', { path: filePath });
+                }
+            },
+
+            // Stop watching file (Tauri only)
+            async unwatchFile() {
+                if (isTauri) {
+                    const { invoke } = window.__TAURI__.core;
+                    return invoke('unwatch_file');
+                }
+            },
+
+            // Set up event listeners for Tauri
+            setupTauriListeners(onMessage) {
+                if (isTauri) {
+                    const { listen } = window.__TAURI__.event;
+
+                    // Listen for file-changed events from Rust
+                    listen('file-changed', (event) => {
+                        onMessage({ type: 'update_content', ...event.payload });
+                    });
+
+                    // Listen for menu events
+                    listen('menu-open', async () => {
+                        const filePath = await this.showOpenDialog();
+                        if (filePath) {
+                            const response = await this.openFile(filePath);
+                            onMessage({ type: 'update_content', ...response });
+                        }
+                    });
+
+                    listen('menu-reload', async () => {
+                        if (currentFilePath) {
+                            const response = await this.openFile(currentFilePath);
+                            onMessage({ type: 'update_content', ...response });
+                        }
+                    });
+
+                    listen('menu-toggle-toc', () => {
+                        tocVisible = !tocVisible;
+                        if (tocVisible) {
+                            generateTOC();
+                            document.body.classList.add('toc-visible');
+                        } else {
+                            document.body.classList.remove('toc-visible');
+                        }
+                    });
+
+                    listen('menu-theme', (event) => {
+                        changeTheme(event.payload);
+                    });
+                }
+            }
+        };
+
+        // Fuzzy finder state
+        let fuzzyFinderOpen = false;
+        let fuzzySearchMode = 'headings';  // 'headings' or 'text'
+        let fuzzySelectedIndex = 0;
+        let fuzzyResults = [];
+        let fuzzySearchIndex = { headings: [], text: [] };
+
+        // Fuzzy matching algorithm - returns score and match positions
+        function fuzzyMatch(pattern, text) {
+            if (!pattern) return { score: 0, positions: [] };
+
+            const patternLower = pattern.toLowerCase();
+            const textLower = text.toLowerCase();
+
+            let patternIdx = 0;
+            let score = 0;
+            let positions = [];
+            let lastMatchIdx = -1;
+
+            for (let i = 0; i < text.length && patternIdx < pattern.length; i++) {
+                if (textLower[i] === patternLower[patternIdx]) {
+                    positions.push(i);
+
+                    // Bonus for consecutive matches
+                    if (lastMatchIdx === i - 1) {
+                        score += 10;
+                    }
+
+                    // Bonus for matching at word boundaries
+                    if (i === 0 || /[\s\-_./]/.test(text[i - 1])) {
+                        score += 5;
+                    }
+
+                    // Bonus for exact case match
+                    if (text[i] === pattern[patternIdx]) {
+                        score += 2;
+                    }
+
+                    score += 1;
+                    lastMatchIdx = i;
+                    patternIdx++;
+                }
+            }
+
+            // Must match all characters
+            if (patternIdx !== pattern.length) {
+                return { score: 0, positions: [] };
+            }
+
+            // Bonus for shorter strings (more relevant matches)
+            score += Math.max(0, 50 - text.length);
+
+            return { score, positions };
+        }
+
+        // Highlight matched characters in text
+        function highlightMatches(text, positions) {
+            if (!positions.length) return escapeHtml(text);
+
+            let result = '';
+            let lastIdx = 0;
+
+            for (const pos of positions) {
+                result += escapeHtml(text.slice(lastIdx, pos));
+                result += `<span class="fuzzy-match">${escapeHtml(text[pos])}</span>`;
+                lastIdx = pos + 1;
+            }
+            result += escapeHtml(text.slice(lastIdx));
+
+            return result;
+        }
+
+        // Escape HTML special characters
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Build search index from current content
+        function buildFuzzyIndex() {
+            const content = document.getElementById('content');
+            if (!content) return;
+
+            fuzzySearchIndex = { headings: [], text: [] };
+
+            // Index headings
+            const headings = content.querySelectorAll('h1, h2, h3, h4, h5, h6');
+            headings.forEach((heading, index) => {
+                const text = heading.textContent.replace(/^\s*🔗?\s*/, '').trim();
+                const level = heading.tagName.toLowerCase();
+                fuzzySearchIndex.headings.push({
+                    type: level.toUpperCase(),
+                    text: text,
+                    element: heading,
+                    id: heading.id || `heading-${index}`
+                });
+            });
+
+            // Index text blocks (paragraphs, list items, code blocks)
+            const textElements = content.querySelectorAll('p, li, pre, blockquote, td, th');
+            textElements.forEach((el, index) => {
+                const text = el.textContent.trim();
+                if (text.length > 10 && text.length < 500) {  // Skip very short or very long texts
+                    // Find the nearest heading for context
+                    let context = '';
+                    let prevEl = el.previousElementSibling;
+                    while (prevEl) {
+                        if (/^H[1-6]$/.test(prevEl.tagName)) {
+                            context = prevEl.textContent.replace(/^\s*🔗?\s*/, '').trim();
+                            break;
+                        }
+                        prevEl = prevEl.previousElementSibling;
+                    }
+
+                    fuzzySearchIndex.text.push({
+                        type: el.tagName === 'PRE' ? 'CODE' : 'TEXT',
+                        text: text.slice(0, 200),  // Truncate for display
+                        fullText: text,
+                        element: el,
+                        context: context
+                    });
+                }
+            });
+        }
+
+        // Perform fuzzy search
+        function fuzzySearch(query) {
+            const index = fuzzySearchMode === 'headings' ? fuzzySearchIndex.headings : fuzzySearchIndex.text;
+
+            if (!query) {
+                // Show all items when no query (limited)
+                fuzzyResults = index.slice(0, 50).map(item => ({
+                    ...item,
+                    score: 100,
+                    positions: []
+                }));
+            } else {
+                fuzzyResults = index
+                    .map(item => {
+                        const { score, positions } = fuzzyMatch(query, item.text);
+                        return { ...item, score, positions };
+                    })
+                    .filter(item => item.score > 0)
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 50);  // Limit results
+            }
+
+            fuzzySelectedIndex = 0;
+            renderFuzzyResults();
+        }
+
+        // Render fuzzy search results
+        function renderFuzzyResults() {
+            const resultsContainer = document.getElementById('fuzzy-results');
+            const countSpan = document.getElementById('fuzzy-result-count');
+
+            if (!fuzzyResults.length) {
+                resultsContainer.innerHTML = '<div class="fuzzy-no-results">No results found</div>';
+                countSpan.textContent = '0 results';
+                return;
+            }
+
+            countSpan.textContent = `${fuzzyResults.length} result${fuzzyResults.length !== 1 ? 's' : ''}`;
+
+            resultsContainer.innerHTML = fuzzyResults.map((result, index) => {
+                const isSelected = index === fuzzySelectedIndex;
+                const highlightedText = highlightMatches(result.text, result.positions);
+                const context = result.context ? `<div class="fuzzy-result-context">in: ${escapeHtml(result.context)}</div>` : '';
+
+                return `
+                    <div class="fuzzy-result-item${isSelected ? ' selected' : ''}" data-index="${index}">
+                        <div class="fuzzy-result-title">
+                            <span class="fuzzy-result-type">${result.type}</span>
+                            ${highlightedText}
+                        </div>
+                        ${context}
+                    </div>
+                `;
+            }).join('');
+
+            // Scroll selected item into view
+            const selectedItem = resultsContainer.querySelector('.fuzzy-result-item.selected');
+            if (selectedItem) {
+                selectedItem.scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        // Open fuzzy finder
+        function openFuzzyFinder() {
+            buildFuzzyIndex();
+            fuzzyFinderOpen = true;
+            fuzzySelectedIndex = 0;
+
+            const overlay = document.getElementById('fuzzy-finder');
+            const input = document.getElementById('fuzzy-input');
+
+            overlay.classList.add('visible');
+            input.value = '';
+            input.placeholder = fuzzySearchMode === 'headings' ? 'Search headings...' : 'Search full text...';
+
+            // Show initial results
+            fuzzySearch('');
+
+            // Focus input
+            setTimeout(() => input.focus(), 50);
+        }
+
+        // Close fuzzy finder
+        function closeFuzzyFinder() {
+            fuzzyFinderOpen = false;
+            const overlay = document.getElementById('fuzzy-finder');
+            overlay.classList.remove('visible');
+        }
+
+        // Toggle search mode
+        function toggleFuzzyMode() {
+            fuzzySearchMode = fuzzySearchMode === 'headings' ? 'text' : 'headings';
+
+            const headingsBtn = document.getElementById('fuzzy-mode-headings');
+            const textBtn = document.getElementById('fuzzy-mode-text');
+            const input = document.getElementById('fuzzy-input');
+
+            headingsBtn.classList.toggle('active', fuzzySearchMode === 'headings');
+            textBtn.classList.toggle('active', fuzzySearchMode === 'text');
+            input.placeholder = fuzzySearchMode === 'headings' ? 'Search headings...' : 'Search full text...';
+
+            // Re-search with current query
+            fuzzySearch(input.value);
+        }
+
+        // Navigate to selected result
+        function selectFuzzyResult() {
+            if (fuzzyResults.length === 0) return;
+
+            const result = fuzzyResults[fuzzySelectedIndex];
+            if (result && result.element) {
+                closeFuzzyFinder();
+
+                // Navigate to the element
+                if (result.id) {
+                    navigateToHeading(result.id);
+                } else {
+                    result.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                    // Highlight briefly
+                    result.element.style.backgroundColor = '#fff8c5';
+                    result.element.style.transition = 'background-color 0.3s';
+                    setTimeout(() => {
+                        result.element.style.backgroundColor = '';
+                    }, 1500);
+                }
+            }
+        }
+
+        // Handle fuzzy finder keyboard navigation
+        function handleFuzzyKeydown(e) {
+            if (!fuzzyFinderOpen) return;
+
+            switch (e.key) {
+                case 'Escape':
+                    e.preventDefault();
+                    closeFuzzyFinder();
+                    break;
+
+                case 'ArrowDown':
+                    e.preventDefault();
+                    if (fuzzySelectedIndex < fuzzyResults.length - 1) {
+                        fuzzySelectedIndex++;
+                        renderFuzzyResults();
+                    }
+                    break;
+
+                case 'ArrowUp':
+                    e.preventDefault();
+                    if (fuzzySelectedIndex > 0) {
+                        fuzzySelectedIndex--;
+                        renderFuzzyResults();
+                    }
+                    break;
+
+                case 'Enter':
+                    e.preventDefault();
+                    selectFuzzyResult();
+                    break;
+
+                case 'Tab':
+                    e.preventDefault();
+                    toggleFuzzyMode();
+                    break;
+            }
+        }
+
+        // Request manual refresh from server
+        function requestRefresh() {
+            if (currentFilePath) {
+                AppBridge.send({
+                    type: 'switch_file',
+                    file_path: currentFilePath
+                });
+                showToast('Refreshing...');
+            }
+        }
+
+        // Initialize fuzzy finder event listeners
+        function initFuzzyFinder() {
+            const overlay = document.getElementById('fuzzy-finder');
+            const input = document.getElementById('fuzzy-input');
+            const resultsContainer = document.getElementById('fuzzy-results');
+            const headingsBtn = document.getElementById('fuzzy-mode-headings');
+            const textBtn = document.getElementById('fuzzy-mode-text');
+
+            // Global keyboard shortcut (Ctrl+P / Cmd+P)
+            document.addEventListener('keydown', (e) => {
+                // Fuzzy finder: Ctrl+P / Cmd+P
+                if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+                    e.preventDefault();
+                    if (fuzzyFinderOpen) {
+                        closeFuzzyFinder();
+                    } else {
+                        openFuzzyFinder();
+                    }
+                }
+
+                // Manual refresh: F5 or Ctrl+R / Cmd+R
+                if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key === 'r')) {
+                    e.preventDefault();
+                    requestRefresh();
+                }
+
+                // Handle navigation when finder is open
+                if (fuzzyFinderOpen) {
+                    handleFuzzyKeydown(e);
+                }
+            });
+
+            // Close on overlay click
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    closeFuzzyFinder();
+                }
+            });
+
+            // Search on input
+            input.addEventListener('input', (e) => {
+                fuzzySearch(e.target.value);
+            });
+
+            // Click on result
+            resultsContainer.addEventListener('click', (e) => {
+                const item = e.target.closest('.fuzzy-result-item');
+                if (item) {
+                    fuzzySelectedIndex = parseInt(item.dataset.index);
+                    selectFuzzyResult();
+                }
+            });
+
+            // Mode toggle buttons
+            headingsBtn.addEventListener('click', () => {
+                if (fuzzySearchMode !== 'headings') {
+                    toggleFuzzyMode();
+                }
+            });
+
+            textBtn.addEventListener('click', () => {
+                if (fuzzySearchMode !== 'text') {
+                    toggleFuzzyMode();
+                }
+            });
+        }
+
         function codeHighlight() {
             if (hljs !== undefined) {
                 document.querySelectorAll('pre code').forEach((el) => {
@@ -124,6 +606,68 @@
             }
         }
 
+        // Navigate to a heading by ID and update URL hash
+        function navigateToHeading(id, smooth = true) {
+            const heading = document.getElementById(id);
+            if (heading) {
+                // Update URL hash without triggering hashchange scroll
+                history.pushState(null, '', `#${id}`);
+                heading.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+            }
+        }
+
+        // Scroll to hash on page load or hashchange
+        function scrollToHash() {
+            const hash = window.location.hash.slice(1);
+            if (hash) {
+                // Small delay to ensure content is rendered
+                setTimeout(() => {
+                    const element = document.getElementById(hash);
+                    if (element) {
+                        element.scrollIntoView({ behavior: 'auto', block: 'start' });
+                    }
+                }, 100);
+            }
+        }
+
+        // Add GitHub-style anchor links to all headings
+        function addHeadingAnchors() {
+            const content = document.getElementById('content');
+            if (!content) return;
+
+            const headings = content.querySelectorAll('h1, h2, h3, h4, h5, h6');
+
+            headings.forEach((heading, index) => {
+                // Ensure heading has an ID
+                if (!heading.id) {
+                    heading.id = `heading-${index}`;
+                }
+
+                // Skip if anchor already exists
+                if (heading.querySelector('.heading-anchor')) return;
+
+                // Make heading a flex container for proper alignment
+                heading.style.display = 'flex';
+                heading.style.alignItems = 'center';
+                heading.style.flexWrap = 'wrap';
+
+                // Create anchor link (GitHub-style)
+                const anchor = document.createElement('a');
+                anchor.className = 'heading-anchor';
+                anchor.href = `#${heading.id}`;
+                anchor.setAttribute('aria-label', `Link to ${heading.textContent}`);
+                anchor.innerHTML = '<svg class="octicon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg>';
+
+                anchor.onclick = (e) => {
+                    e.preventDefault();
+                    navigateToHeading(heading.id);
+                };
+
+                // Insert anchor before heading content
+                heading.insertBefore(anchor, heading.firstChild);
+            });
+        }
+
         // Generate Table of Contents from headings
         function generateTOC() {
             const content = document.getElementById('content');
@@ -135,7 +679,9 @@
 
             headings.forEach((heading, index) => {
                 const level = heading.tagName.toLowerCase();
-                const text = heading.textContent;
+                // Get text content excluding the anchor link
+                const textNode = Array.from(heading.childNodes).find(n => n.nodeType === Node.TEXT_NODE || (n.nodeType === Node.ELEMENT_NODE && !n.classList.contains('heading-anchor')));
+                const text = textNode ? textNode.textContent : heading.textContent;
                 const id = heading.id || `heading-${index}`;
 
                 if (!heading.id) {
@@ -144,11 +690,11 @@
 
                 const link = document.createElement('a');
                 link.href = `#${id}`;
-                link.textContent = text;
+                link.textContent = text.trim();
                 link.className = `toc-${level}`;
                 link.onclick = (e) => {
                     e.preventDefault();
-                    heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    navigateToHeading(id);
                 };
 
                 tocContent.appendChild(link);
@@ -213,7 +759,7 @@
             if (!content) return;
 
             // Remove all font classes
-            content.classList.remove('font-serif', 'font-mono', 'font-system');
+            content.classList.remove('font-serif', 'font-mono', 'font-system', 'font-inter', 'font-merriweather', 'font-ibm-plex', 'font-literata');
 
             // Add new font class if not default
             if (family !== 'default') {
@@ -460,18 +1006,8 @@
                 return;  // Already viewing this file
             }
 
-            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
-                console.error('WebSocket not connected');
-                return;
-            }
-
-            // Send switch file request to Rust backend
-            const request = {
-                type: 'switch_file',
-                file_path: filePath
-            };
-
-            websocket.send(JSON.stringify(request));
+            // Send switch file request via AppBridge (works for both WebSocket and Tauri)
+            AppBridge.openFile(filePath);
             console.log(`Switching to: ${filePath}`);
         }
 
@@ -618,6 +1154,17 @@
             // Set up TOC resize functionality
             setupTOCResize();
 
+            // Handle browser back/forward navigation with hash
+            window.addEventListener('hashchange', () => {
+                const hash = window.location.hash.slice(1);
+                if (hash) {
+                    const element = document.getElementById(hash);
+                    if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            });
+
             document.querySelectorAll('pre code').forEach((el) => {
                 hljs.highlightElement(el);
             });
@@ -645,16 +1192,60 @@
             // Initialize recent files display
             renderRecentFiles();
 
-            const webSocketUrl = 'ws://' + window.location.host;
-            websocket = new WebSocket(webSocketUrl);
-            var socket = websocket;  // Keep local reference for compatibility
+            // Initialize fuzzy finder
+            initFuzzyFinder();
 
-            // Handle WebSocket events...
-            socket.onmessage = function(event) {
-                const message = JSON.parse(event.data);
+            // Set up welcome screen "Open File" button (Tauri only)
+            const welcomeOpenBtn = document.getElementById('welcome-open-btn');
+            if (welcomeOpenBtn && isTauri) {
+                console.log('[Welcome] Setting up Open File button, Tauri API:', window.__TAURI__);
+                welcomeOpenBtn.addEventListener('click', async () => {
+                    console.log('[Welcome] Open File clicked');
+                    try {
+                        // Tauri 2.x plugin dialog API
+                        const open = window.__TAURI__.dialog?.open || window.__TAURI__.plugin?.dialog?.open;
+                        console.log('[Welcome] Dialog open function:', open);
+                        if (!open) {
+                            console.error('[Welcome] Dialog API not found. Available:', Object.keys(window.__TAURI__));
+                            alert('Dialog API not available');
+                            return;
+                        }
+                        const selected = await open({
+                            multiple: false,
+                            filters: [{ name: 'Markdown', extensions: ['md', 'markdown', 'mdown', 'mkdn', 'mkd'] }]
+                        });
+                        console.log('[Welcome] Selected file:', selected);
+                        if (selected) {
+                            const { invoke } = window.__TAURI__.core;
+                            const result = await invoke('open_file', { path: selected });
+                            console.log('[Welcome] Open file result:', result);
+                            if (result && result.html) {
+                                document.getElementById('content').innerHTML = result.html;
+                                codeHighlight();
+                                renderMermaid();
+                                generateTOC();
+                                if (result.file_path) {
+                                    currentFilePath = result.file_path;
+                                    updateFilePathBar(result.file_path, result.git_root);
+                                }
+                                if (result.stats) {
+                                    updateDocumentStats(result.stats);
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.error('[Welcome] Failed to open file:', e);
+                        alert('Error: ' + e.message);
+                    }
+                });
+            } else {
+                console.log('[Welcome] Button not found or not Tauri:', { btn: !!welcomeOpenBtn, isTauri });
+            }
 
+            // Unified message handler for both WebSocket and Tauri
+            function handleMessage(message) {
                 if (message.type === "update_content") {
-                    document.getElementById('content').innerHTML = message.data;
+                    document.getElementById('content').innerHTML = message.data || message.html;
 
                     // Add spacer at the end for better scrolling
                     const spacer = document.createElement('div');
@@ -677,18 +1268,28 @@
                     });
                     // Render mermaid diagrams
                     renderMermaid();
+                    // Add GitHub-style anchor links to headings
+                    addHeadingAnchors();
                     // Apply line numbers with source line count and line map
                     applyLineNumberMode(lineNumberMode, message.source_lines, message.line_map);
                     // Regenerate TOC if visible
                     if (tocVisible) {
                         generateTOC();
                     }
+                    // Scroll to hash if present in URL
+                    scrollToHash();
                     // Update file path and recent files if provided
                     if (message.file_path) {
                         currentFilePath = message.file_path;
                         addToRecentFiles(currentFilePath);
                         renderRecentFiles();
                         updateFilePathBar(currentFilePath, message.git_root);
+                        // Update page title with filename
+                        document.title = getFileBasename(currentFilePath) + ' - Markdown Preview';
+                        // Start watching file for changes in Tauri mode
+                        if (isTauri) {
+                            AppBridge.watchFile(currentFilePath);
+                        }
                     }
                     // Update document stats if provided
                     if (message.stats) {
@@ -712,20 +1313,54 @@
                     // Bring the browser window to the foreground
                     window.focus();
                 } else {
-                    console.log(`Invalid message: {message}`)
+                    console.log(`Invalid message: ${JSON.stringify(message)}`);
                 }
             }
 
-            socket.onclose = function(event) {
-                // Close the browser window when WebSocket closes
-                // This happens when Vim exits or the server shuts down
-                console.log(`WebSocket closed with code ${event.code}. Closing browser.`);
-                window.open('', '_self', '');
-                window.close();
-            }
+            // Initialize communication based on mode
+            if (isTauri) {
+                console.log('Running in Tauri mode');
+                AppBridge.setupTauriListeners(handleMessage);
 
-            socket.onerror = function(error) {
-                console.error('WebSocket error:', error);
+                // Handle drag and drop for files
+                document.addEventListener('drop', async (e) => {
+                    e.preventDefault();
+                    const files = e.dataTransfer?.files;
+                    if (files && files.length > 0) {
+                        const file = files[0];
+                        if (file.name.match(/\.(md|markdown|mdown|mkdn|mkd)$/i)) {
+                            // In Tauri, we get the path from the file
+                            const path = file.path || file.name;
+                            const response = await AppBridge.openFile(path);
+                            handleMessage({ type: 'update_content', ...response });
+                        }
+                    }
+                });
+
+                document.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                });
+            } else {
+                console.log('Running in WebSocket mode');
+                const webSocketUrl = 'ws://' + window.location.host;
+                websocket = new WebSocket(webSocketUrl);
+                var socket = websocket;  // Keep local reference for compatibility
+
+                socket.onmessage = function(event) {
+                    const message = JSON.parse(event.data);
+                    handleMessage(message);
+                };
+
+                socket.onclose = function(event) {
+                    // Close the browser window when WebSocket closes
+                    // This happens when Vim exits or the server shuts down
+                    console.log(`WebSocket closed with code ${event.code}. Closing browser.`);
+                    window.open('', '_self', '');
+                    window.close();
+                };
+
+                socket.onerror = function(error) {
+                    console.error('WebSocket error:', error);
+                };
             }
         });
-    </script>
