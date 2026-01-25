@@ -90,6 +90,44 @@
         font-style: italic;
       }
 
+      /* Path tooltip */
+      .path-tooltip {
+        position: fixed;
+        z-index: 10001;
+        pointer-events: none;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.15s, visibility 0.15s;
+      }
+
+      .path-tooltip.visible {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .path-tooltip-content {
+        background: #f6f8fa;
+        color: #24292f;
+        padding: 6px 10px;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        font-size: 12px;
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+        max-width: 700px;
+        word-break: break-all;
+        line-height: 1.4;
+      }
+
+      .path-tooltip-sep {
+        color: #8b949e;
+      }
+
+      .path-tooltip-file {
+        color: #24292f;
+        font-weight: 500;
+      }
+
       .option-group {
         padding: 8px 0;
       }

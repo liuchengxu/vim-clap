@@ -544,6 +544,47 @@ function addToRecentFiles(filePath) {
     localStorage.setItem('recentFiles', JSON.stringify(recentFiles));
 }
 
+// Custom tooltip for recent files
+let pathTooltip = null;
+let tooltipTimeout = null;
+
+function createPathTooltip() {
+    if (pathTooltip) return pathTooltip;
+
+    pathTooltip = document.createElement('div');
+    pathTooltip.className = 'path-tooltip';
+    pathTooltip.innerHTML = '<div class="path-tooltip-content"></div>';
+    document.body.appendChild(pathTooltip);
+
+    return pathTooltip;
+}
+
+function showPathTooltip(element, fullPath) {
+    const tooltip = createPathTooltip();
+    const content = tooltip.querySelector('.path-tooltip-content');
+
+    // Format path with segments
+    const segments = fullPath.split('/').filter(s => s);
+    const formatted = '/' + segments.map((seg, i) => {
+        const isLast = i === segments.length - 1;
+        return isLast ? `<span class="path-tooltip-file">${seg}</span>` : seg;
+    }).join('<span class="path-tooltip-sep">/</span>');
+
+    content.innerHTML = formatted;
+
+    // Position tooltip to the right of the element
+    const rect = element.getBoundingClientRect();
+    tooltip.style.left = `${rect.right + 8}px`;
+    tooltip.style.top = `${rect.top}px`;
+    tooltip.classList.add('visible');
+}
+
+function hidePathTooltip() {
+    if (pathTooltip) {
+        pathTooltip.classList.remove('visible');
+    }
+}
+
 function renderRecentFiles(onFileClick) {
     const container = document.getElementById('recent-files');
     if (!container) return;
@@ -570,10 +611,25 @@ function renderRecentFiles(onFileClick) {
         const pathElement = document.createElement('div');
         pathElement.className = 'recent-file-path';
         pathElement.textContent = getFileDirectory(file.path);
-        pathElement.title = file.path;
 
         item.appendChild(nameElement);
         item.appendChild(pathElement);
+
+        // Custom tooltip on hover
+        item.addEventListener('mouseenter', () => {
+            if (tooltipTimeout) clearTimeout(tooltipTimeout);
+            tooltipTimeout = setTimeout(() => {
+                showPathTooltip(item, file.path);
+            }, 400);
+        });
+
+        item.addEventListener('mouseleave', () => {
+            if (tooltipTimeout) {
+                clearTimeout(tooltipTimeout);
+                tooltipTimeout = null;
+            }
+            hidePathTooltip();
+        });
 
         item.onclick = (e) => {
             if (e.shiftKey) {
