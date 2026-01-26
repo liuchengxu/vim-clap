@@ -626,6 +626,10 @@ function initCoreUI(options = {}) {
     currentTheme = savedTheme;
     document.getElementById('theme-select').value = savedTheme;
 
+    const savedZoom = parseInt(localStorage.getItem('zoomLevel')) || 100;
+    zoomLevel = savedZoom;
+    updateZoomDisplay();
+
     // Set up event listeners
     document.getElementById('line-numbers-mode').addEventListener('change', (e) => {
         changeLineNumberMode(e.target.value);
@@ -646,6 +650,15 @@ function initCoreUI(options = {}) {
     document.getElementById('theme-select').addEventListener('change', (e) => {
         changeTheme(e.target.value);
     });
+
+    // Zoom controls
+    const zoomOutBtn = document.getElementById('zoom-out-btn');
+    const zoomInBtn = document.getElementById('zoom-in-btn');
+    const zoomResetBtn = document.getElementById('zoom-reset-btn');
+
+    if (zoomOutBtn) zoomOutBtn.addEventListener('click', zoomOut);
+    if (zoomInBtn) zoomInBtn.addEventListener('click', zoomIn);
+    if (zoomResetBtn) zoomResetBtn.addEventListener('click', resetZoom);
 
     document.getElementById('file-path-bar').addEventListener('click', () => {
         if (currentFilePath) {
@@ -682,6 +695,9 @@ function initCoreUI(options = {}) {
 
     changeTheme(currentTheme);
 
+    // Apply saved zoom level
+    applyZoom(zoomLevel);
+
     renderRecentFiles(options.onFileClick);
     initFuzzyFinder();
 }
@@ -692,6 +708,7 @@ window.MarkdownPreviewCore = {
     // Getters/setters for state
     getCurrentFilePath: () => currentFilePath,
     setCurrentFilePath: (path) => { currentFilePath = path; },
+    getZoomLevel: () => zoomLevel,
 
     // Core functions
     initCoreUI,
@@ -707,7 +724,13 @@ window.MarkdownPreviewCore = {
     copyToClipboard,
     getFileBasename,
     renderRecentFiles,
-    addToRecentFiles
+    addToRecentFiles,
+
+    // Zoom functions
+    zoomIn,
+    zoomOut,
+    resetZoom,
+    applyZoom
 };
 
 // Also expose commonly used functions directly for convenience
@@ -725,4 +748,8 @@ window.copyToClipboard = copyToClipboard;
 window.getFileBasename = getFileBasename;
 window.renderRecentFiles = renderRecentFiles;
 window.addToRecentFiles = addToRecentFiles;
+window.zoomIn = zoomIn;
+window.zoomOut = zoomOut;
+window.resetZoom = resetZoom;
+window.applyZoom = applyZoom;
 

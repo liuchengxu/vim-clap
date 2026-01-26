@@ -13,6 +13,7 @@ let readerMode = false;
 let currentFilePath = '';
 let currentTheme = 'auto';
 let lineNumberMode = 'off';
+let zoomLevel = 100; // Percentage: 50-200
 
 // Fuzzy finder state
 let fuzzyFinderOpen = false;
@@ -251,6 +252,46 @@ function changeLineNumberMode(newMode) {
     lineNumberMode = newMode;
     applyLineNumberMode(lineNumberMode, currentSourceLines, currentLineMap);
     localStorage.setItem('lineNumberMode', lineNumberMode);
+}
+
+// ============================================================================
+// Zoom
+// ============================================================================
+
+const ZOOM_MIN = 50;
+const ZOOM_MAX = 200;
+const ZOOM_STEP = 10;
+
+function applyZoom(level) {
+    const content = document.getElementById('content');
+    if (!content) return;
+
+    zoomLevel = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, level));
+    content.style.fontSize = `${zoomLevel}%`;
+    localStorage.setItem('zoomLevel', zoomLevel);
+    updateZoomDisplay();
+}
+
+function updateZoomDisplay() {
+    const display = document.getElementById('zoom-level-display');
+    if (display) {
+        display.textContent = `${zoomLevel}%`;
+    }
+}
+
+function zoomIn() {
+    applyZoom(zoomLevel + ZOOM_STEP);
+    showToast(`Zoom: ${zoomLevel}%`);
+}
+
+function zoomOut() {
+    applyZoom(zoomLevel - ZOOM_STEP);
+    showToast(`Zoom: ${zoomLevel}%`);
+}
+
+function resetZoom() {
+    applyZoom(100);
+    showToast('Zoom reset to 100%');
 }
 
 // ============================================================================

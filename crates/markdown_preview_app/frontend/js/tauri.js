@@ -247,6 +247,25 @@
                     }
                 }
             }
+
+            // Zoom controls
+            // Cmd/Ctrl + Plus or Cmd/Ctrl + = to zoom in
+            if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '=')) {
+                e.preventDefault();
+                zoomIn();
+            }
+
+            // Cmd/Ctrl + Minus to zoom out
+            if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+                e.preventDefault();
+                zoomOut();
+            }
+
+            // Cmd/Ctrl + 0 to reset zoom
+            if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+                e.preventDefault();
+                resetZoom();
+            }
         });
     }
 
