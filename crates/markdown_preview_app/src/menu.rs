@@ -6,7 +6,7 @@ use tauri::{AppHandle, Emitter, Manager, Runtime};
 /// Create the application menu.
 pub fn create_menu<R: Runtime>(app: &AppHandle<R>) -> Result<Menu<R>, tauri::Error> {
     // File menu
-    let open_item = MenuItem::with_id(app, "open", "Open...", true, Some("CmdOrCtrl+O"))?;
+    let open_item = MenuItem::with_id(app, "open", "Open...", true, Some("CmdOrCtrl+Shift+O"))?;
     let close_item = MenuItem::with_id(app, "close", "Close", true, Some("CmdOrCtrl+W"))?;
 
     let file_menu = SubmenuBuilder::new(app, "File")
