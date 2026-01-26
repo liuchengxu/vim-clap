@@ -1,0 +1,227 @@
+/* Base layout styles for markdown preview */
+
+body {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Sidebar */
+#sidebar {
+  width: 250px;
+  background: #f6f8fa;
+  border-right: 1px solid #d0d7de;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  flex-shrink: 0;
+  order: 1;
+}
+
+#sidebar h3 {
+  margin: 0 0 15px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #24292f;
+}
+
+.sidebar-section {
+  margin-bottom: 20px;
+}
+
+/* Recent files */
+.recent-files {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.recent-file-item {
+  padding: 6px 8px;
+  margin: 4px 0;
+  background: #ffffff;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.recent-file-item:hover {
+  background: #f0f6fc;
+  border-color: #0969da;
+}
+
+.recent-file-item.current {
+  background: #e6f2ff;
+  border-color: #0969da;
+}
+
+.recent-file-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #24292f;
+}
+
+.recent-file-item:hover .recent-file-name {
+  color: #0969da;
+}
+
+.recent-file-item.current .recent-file-name {
+  color: #0969da;
+}
+
+.recent-file-path {
+  font-size: 11px;
+  color: #8b949e;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-file-item:hover .recent-file-path {
+  color: #6e7781;
+}
+
+.no-recent-files {
+  padding: 8px;
+  font-size: 12px;
+  color: #8b949e;
+  font-style: italic;
+}
+
+/* Path tooltip */
+.path-tooltip {
+  position: fixed;
+  z-index: 10001;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s, visibility 0.15s;
+}
+
+.path-tooltip.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.path-tooltip-content {
+  background: #f6f8fa;
+  color: #24292f;
+  padding: 6px 10px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  max-width: 700px;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.path-tooltip-sep {
+  color: #8b949e;
+}
+
+.path-tooltip-file {
+  color: #24292f;
+  font-weight: 500;
+}
+
+/* Options */
+.option-group {
+  padding: 8px 0;
+}
+
+.option-label {
+  display: block;
+  font-size: 13px;
+  color: #57606a;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.option-select {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 13px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: #24292f;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.option-select:hover {
+  border-color: #8c959f;
+}
+
+.option-select:focus {
+  outline: none;
+  border-color: #0969da;
+  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+}
+
+/* Document stats */
+.document-stats {
+  background: #ffffff;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #eaecef;
+}
+
+.stat-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.stat-row:first-child {
+  padding-top: 0;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #57606a;
+}
+
+.stat-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #24292f;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* Main content */
+#main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  order: 3;
+  overflow-y: auto;
+}
+
+#main-content > .markdown-body {
+  flex: 0 1 auto;
+  align-self: center;
+}
+
+.markdown-body {
+  box-sizing: border-box;
+  min-width: 200px;
+  max-width: 980px;
+  width: 100%;
+  padding: 45px;
+  position: relative;
+}
