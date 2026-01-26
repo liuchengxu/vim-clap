@@ -117,12 +117,30 @@
         console.log(`Switched to: ${filePath}`);
     }
 
+    // Show subtle reload indicator
+    function showReloadIndicator() {
+        const content = document.getElementById('content');
+        if (!content) return;
+
+        // Remove class if already present (to restart animation)
+        content.classList.remove('file-reloaded');
+        // Trigger reflow to restart animation
+        void content.offsetWidth;
+        content.classList.add('file-reloaded');
+
+        // Remove class after animation completes
+        setTimeout(() => {
+            content.classList.remove('file-reloaded');
+        }, 600);
+    }
+
     // Set up Tauri event listeners
     function setupTauriListeners() {
         // Listen for file-changed events from Rust (file watcher)
         listen('file-changed', (event) => {
             console.log('File changed:', event.payload);
             handleFileOpened(event.payload);
+            showReloadIndicator();
         });
 
         // Listen for menu events
