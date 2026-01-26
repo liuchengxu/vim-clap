@@ -165,12 +165,9 @@
         });
 
         listen('menu-theme', (event) => {
-            const themeSelect = document.getElementById('theme-select');
-            if (themeSelect) {
-                const themeMap = { 'light': 'github-light', 'dark': 'github-dark', 'auto': 'auto' };
-                themeSelect.value = themeMap[event.payload] || event.payload;
-                themeSelect.dispatchEvent(new Event('change'));
-            }
+            const themeMap = { 'light': 'github-light', 'dark': 'github-dark', 'auto': 'auto' };
+            const theme = themeMap[event.payload] || event.payload;
+            changeTheme(theme);
         });
 
         // Listen for initial file from command line argument

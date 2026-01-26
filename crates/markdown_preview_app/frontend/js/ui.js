@@ -624,7 +624,8 @@ function initCoreUI(options = {}) {
 
     const savedTheme = localStorage.getItem('theme') || 'auto';
     currentTheme = savedTheme;
-    document.getElementById('theme-select').value = savedTheme;
+    const themeSelect = document.getElementById('theme-select');
+    if (themeSelect) themeSelect.value = savedTheme;
 
     const savedZoom = parseInt(localStorage.getItem('zoomLevel')) || 100;
     zoomLevel = savedZoom;
@@ -647,9 +648,11 @@ function initCoreUI(options = {}) {
         toggleReaderMode(e.target.value === 'on');
     });
 
-    document.getElementById('theme-select').addEventListener('change', (e) => {
-        changeTheme(e.target.value);
-    });
+    if (themeSelect) {
+        themeSelect.addEventListener('change', (e) => {
+            changeTheme(e.target.value);
+        });
+    }
 
     // Zoom controls
     const zoomOutBtn = document.getElementById('zoom-out-btn');
