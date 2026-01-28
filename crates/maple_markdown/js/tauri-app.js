@@ -56,9 +56,69 @@
             }
         } catch (e) {
             console.error('Failed to open file:', e);
-            showToast('Failed to open file: ' + e.message);
+            showToast('Failed to open file: ' + (e.message || e));
         }
         return null;
+    }
+
+    // Check if a string is a URL
+    function isUrl(str) {
+        return str.startsWith('http://') || str.startsWith('https://');
+    }
+
+    // Open a URL
+    async function openUrl(url) {
+        try {
+            showToast('Fetching from URL...');
+            const result = await invoke('open_url', { url });
+            if (result && result.html) {
+                handleUrlOpened(result);
+                return result;
+            }
+        } catch (e) {
+            console.error('Failed to open URL:', e);
+            showToast('Failed to open URL: ' + (e.message || e));
+        }
+        return null;
+    }
+
+    // Handle URL opened result (similar to handleFileOpened but no file watching)
+    function handleUrlOpened(result) {
+        const content = document.getElementById('content');
+        content.innerHTML = result.html;
+
+        codeHighlight();
+        renderMermaid();
+        renderLatex();
+        addHeadingAnchors();
+        generateTOC();
+
+        if (result.file_path) {
+            updateFilePathBar(result.file_path, null);
+            // Extract filename from URL for title
+            try {
+                const urlPath = new URL(result.file_path).pathname;
+                const fileName = urlPath.split('/').pop() || 'Remote Markdown';
+                document.title = fileName + ' - Markdown Preview';
+            } catch {
+                document.title = 'Remote Markdown - Markdown Preview';
+            }
+        }
+
+        if (result.stats) {
+            updateDocumentStats(result.stats);
+        }
+
+        showToast('Loaded from URL');
+    }
+
+    // Open a path or URL (auto-detects)
+    async function openPathOrUrl(input) {
+        if (isUrl(input)) {
+            return await openUrl(input);
+        } else {
+            return await openFile(input);
+        }
     }
 
     // Load recent files from backend and render them
@@ -365,12 +425,12 @@
             modal.innerHTML = `
                 <div class="path-input-container">
                     <div class="path-input-header">
-                        <label>Open file by path</label>
-                        <span class="path-input-hint">Type path to autocomplete</span>
+                        <label>Open file or URL</label>
+                        <span class="path-input-hint">Type path to autocomplete, or paste a GitHub URL</span>
                     </div>
                     <div class="path-input-wrapper">
                         <input type="text" id="path-input-field" class="path-input-field"
-                               placeholder="/path/to/file.md" autocomplete="off" spellcheck="false">
+                               placeholder="/path/to/file.md or https://github.com/..." autocomplete="off" spellcheck="false">
                         <div id="path-autocomplete" class="path-autocomplete"></div>
                     </div>
                     <div class="path-input-footer">
@@ -608,11 +668,11 @@
                             return;
                         }
                     }
-                    // Otherwise use the input value
-                    const path = input.value.trim();
-                    if (path) {
+                    // Otherwise use the input value (could be path or URL)
+                    const inputValue = input.value.trim();
+                    if (inputValue) {
                         closePathInput();
-                        await openFile(path);
+                        await openPathOrUrl(inputValue);
                     }
                 } else if (e.key === 'Escape') {
                     if (isDropdownVisible) {

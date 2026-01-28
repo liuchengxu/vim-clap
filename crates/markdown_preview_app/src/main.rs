@@ -102,6 +102,7 @@ fn main() {
             commands::unwatch_file,
             commands::check_clipboard_for_markdown,
             commands::complete_path,
+            commands::open_url,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
