@@ -17,13 +17,22 @@ pub fn create_menu<R: Runtime>(app: &AppHandle<R>) -> Result<Menu<R>, tauri::Err
 
     // View menu
     let reload_item = MenuItem::with_id(app, "reload", "Reload", true, Some("CmdOrCtrl+R"))?;
-    let toggle_toc_item =
-        MenuItem::with_id(app, "toggle_toc", "Toggle Table of Contents", true, Some("CmdOrCtrl+T"))?;
+
+    // TOC submenu
+    let toc_off = MenuItem::with_id(app, "toc_off", "Off", true, None::<&str>)?;
+    let toc_left = MenuItem::with_id(app, "toc_left", "Left", true, None::<&str>)?;
+    let toc_right = MenuItem::with_id(app, "toc_right", "Right", true, None::<&str>)?;
+
+    let toc_menu = SubmenuBuilder::new(app, "Table of Contents")
+        .item(&toc_off)
+        .item(&toc_left)
+        .item(&toc_right)
+        .build()?;
 
     let view_menu = SubmenuBuilder::new(app, "View")
         .item(&reload_item)
         .separator()
-        .item(&toggle_toc_item)
+        .item(&toc_menu)
         .build()?;
 
     // Theme submenu
@@ -70,9 +79,14 @@ pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: &MenuEvent) {
             // Emit event to frontend to reload current file
             let _ = app.emit("menu-reload", ());
         }
-        "toggle_toc" => {
-            // Emit event to frontend to toggle TOC
-            let _ = app.emit("menu-toggle-toc", ());
+        "toc_off" => {
+            let _ = app.emit("menu-toc", "off");
+        }
+        "toc_left" => {
+            let _ = app.emit("menu-toc", "left");
+        }
+        "toc_right" => {
+            let _ = app.emit("menu-toc", "right");
         }
         "theme_light" => {
             let _ = app.emit("menu-theme", "light");

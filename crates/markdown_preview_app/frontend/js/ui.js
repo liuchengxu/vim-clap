@@ -612,7 +612,8 @@ function initCoreUI(options = {}) {
     } else if (window.innerWidth >= 1440) {
         tocMode = 'right';
     }
-    document.getElementById('toc-mode').value = tocMode;
+    const tocModeSelect = document.getElementById('toc-mode');
+    if (tocModeSelect) tocModeSelect.value = tocMode;
 
     const savedFont = localStorage.getItem('fontFamily') || 'default';
     fontFamily = savedFont;
@@ -636,9 +637,11 @@ function initCoreUI(options = {}) {
         changeLineNumberMode(e.target.value);
     });
 
-    document.getElementById('toc-mode').addEventListener('change', (e) => {
-        toggleTOC(e.target.value);
-    });
+    if (tocModeSelect) {
+        tocModeSelect.addEventListener('change', (e) => {
+            toggleTOC(e.target.value);
+        });
+    }
 
     document.getElementById('font-family').addEventListener('change', (e) => {
         changeFontFamily(e.target.value);

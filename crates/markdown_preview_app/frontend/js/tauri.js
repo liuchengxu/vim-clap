@@ -155,13 +155,8 @@
             }
         });
 
-        listen('menu-toggle-toc', () => {
-            const tocModeSelect = document.getElementById('toc-mode');
-            if (tocModeSelect) {
-                const current = tocModeSelect.value;
-                tocModeSelect.value = current === 'off' ? 'right' : 'off';
-                tocModeSelect.dispatchEvent(new Event('change'));
-            }
+        listen('menu-toc', (event) => {
+            toggleTOC(event.payload);
         });
 
         listen('menu-theme', (event) => {
