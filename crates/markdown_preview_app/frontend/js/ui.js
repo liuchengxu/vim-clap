@@ -562,7 +562,6 @@ function handleContentUpdate(message, options = {}) {
     renderLatex();
     renderMermaid();
     addHeadingAnchors();
-    applyLineNumberMode(lineNumberMode, message.source_lines, message.line_map);
 
     if (tocVisible) {
         generateTOC();
@@ -601,10 +600,6 @@ function handleContentUpdate(message, options = {}) {
 
 function initCoreUI(options = {}) {
     // Restore saved preferences
-    const savedMode = localStorage.getItem('lineNumberMode') || 'off';
-    lineNumberMode = savedMode;
-    document.getElementById('line-numbers-mode').value = savedMode;
-
     const savedTOCMode = localStorage.getItem('tocMode');
     let tocMode = 'off';
     if (savedTOCMode) {
@@ -633,10 +628,6 @@ function initCoreUI(options = {}) {
     updateZoomDisplay();
 
     // Set up event listeners
-    document.getElementById('line-numbers-mode').addEventListener('change', (e) => {
-        changeLineNumberMode(e.target.value);
-    });
-
     if (tocModeSelect) {
         tocModeSelect.addEventListener('change', (e) => {
             toggleTOC(e.target.value);
@@ -687,7 +678,6 @@ function initCoreUI(options = {}) {
     // Initial rendering
     codeHighlight();
     renderMermaid();
-    applyLineNumberMode(lineNumberMode, currentSourceLines, currentLineMap);
 
     if (tocMode !== 'off') {
         toggleTOC(tocMode);

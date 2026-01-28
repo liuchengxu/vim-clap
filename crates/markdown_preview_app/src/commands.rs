@@ -12,8 +12,6 @@ use tokio::sync::RwLock;
 pub struct RenderResponse {
     /// Rendered HTML content
     pub html: String,
-    /// Source line to rendered element mapping
-    pub line_map: Vec<usize>,
     /// Document statistics
     pub stats: DocumentStats,
     /// Git repository root (if applicable)
@@ -31,7 +29,6 @@ pub async fn render_markdown(content: String) -> Result<RenderResponse, String> 
 
     Ok(RenderResponse {
         html: result.html,
-        line_map: result.line_map,
         stats,
         git_root: None,
         file_path: None,
@@ -94,7 +91,6 @@ pub async fn open_file(
 
     Ok(RenderResponse {
         html: result.html,
-        line_map: result.line_map,
         stats,
         git_root,
         file_path: Some(absolute_path),
@@ -180,7 +176,6 @@ pub async fn watch_file(
 
                         let response = RenderResponse {
                             html: result.html,
-                            line_map: result.line_map,
                             stats,
                             git_root,
                             file_path: Some(path_clone.clone()),
