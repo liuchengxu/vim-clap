@@ -1222,6 +1222,75 @@
         }
       }
 
+      /* ==================== Zoom Controls ==================== */
+      .zoom-controls {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .zoom-btn {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        background: #ffffff;
+        color: #24292f;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s ease;
+      }
+
+      .zoom-btn:hover {
+        background: #f3f4f6;
+        border-color: #0969da;
+      }
+
+      .zoom-btn:active {
+        background: #e6f2ff;
+      }
+
+      .zoom-btn.zoom-reset {
+        width: auto;
+        padding: 0 10px;
+        font-size: 12px;
+      }
+
+      .zoom-display {
+        min-width: 45px;
+        text-align: center;
+        font-size: 13px;
+        font-weight: 500;
+        color: #24292f;
+      }
+
+      /* Dark mode zoom controls */
+      @media (prefers-color-scheme: dark) {
+        .zoom-btn {
+          background: #21262d;
+          border-color: #30363d;
+          color: #c9d1d9;
+        }
+
+        .zoom-btn:hover {
+          background: #30363d;
+          border-color: #58a6ff;
+        }
+
+        .zoom-btn:active {
+          background: #388bfd26;
+        }
+
+        .zoom-display {
+          color: #c9d1d9;
+        }
+      }
+
       /* ============================================
          Theme Overrides (MarkText-inspired themes)
          ============================================ */
@@ -2098,6 +2167,15 @@
                     <option value="on">Reader Mode</option>
                 </select>
             </div>
+            <div class="option-group">
+                <label class="option-label">Zoom</label>
+                <div class="zoom-controls">
+                    <button id="zoom-out-btn" class="zoom-btn" title="Zoom Out (Ctrl+-)">−</button>
+                    <span id="zoom-level-display" class="zoom-display">100%</span>
+                    <button id="zoom-in-btn" class="zoom-btn" title="Zoom In (Ctrl++)">+</button>
+                    <button id="zoom-reset-btn" class="zoom-btn zoom-reset" title="Reset Zoom (Ctrl+0)">Reset</button>
+                </div>
+            </div>
         </div>
         <div class="sidebar-section">
             <h3>Document Stats</h3>
@@ -2181,6 +2259,7 @@ let readerMode = false;
 let currentFilePath = '';
 let currentTheme = 'auto';
 let lineNumberMode = 'off';
+let zoomLevel = 100; // Percentage: 50-200
 
 // Fuzzy finder state
 let fuzzyFinderOpen = false;
@@ -2419,6 +2498,46 @@ function changeLineNumberMode(newMode) {
     lineNumberMode = newMode;
     applyLineNumberMode(lineNumberMode, currentSourceLines, currentLineMap);
     localStorage.setItem('lineNumberMode', lineNumberMode);
+}
+
+// ============================================================================
+// Zoom
+// ============================================================================
+
+const ZOOM_MIN = 50;
+const ZOOM_MAX = 200;
+const ZOOM_STEP = 10;
+
+function applyZoom(level) {
+    const content = document.getElementById('content');
+    if (!content) return;
+
+    zoomLevel = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, level));
+    content.style.fontSize = `${zoomLevel}%`;
+    localStorage.setItem('zoomLevel', zoomLevel);
+    updateZoomDisplay();
+}
+
+function updateZoomDisplay() {
+    const display = document.getElementById('zoom-level-display');
+    if (display) {
+        display.textContent = `${zoomLevel}%`;
+    }
+}
+
+function zoomIn() {
+    applyZoom(zoomLevel + ZOOM_STEP);
+    showToast(`Zoom: ${zoomLevel}%`);
+}
+
+function zoomOut() {
+    applyZoom(zoomLevel - ZOOM_STEP);
+    showToast(`Zoom: ${zoomLevel}%`);
+}
+
+function resetZoom() {
+    applyZoom(100);
+    showToast('Zoom reset to 100%');
 }
 
 // ============================================================================
@@ -3254,6 +3373,10 @@ function initCoreUI(options = {}) {
     currentTheme = savedTheme;
     document.getElementById('theme-select').value = savedTheme;
 
+    const savedZoom = parseInt(localStorage.getItem('zoomLevel')) || 100;
+    zoomLevel = savedZoom;
+    updateZoomDisplay();
+
     // Set up event listeners
     document.getElementById('line-numbers-mode').addEventListener('change', (e) => {
         changeLineNumberMode(e.target.value);
@@ -3274,6 +3397,15 @@ function initCoreUI(options = {}) {
     document.getElementById('theme-select').addEventListener('change', (e) => {
         changeTheme(e.target.value);
     });
+
+    // Zoom controls
+    const zoomOutBtn = document.getElementById('zoom-out-btn');
+    const zoomInBtn = document.getElementById('zoom-in-btn');
+    const zoomResetBtn = document.getElementById('zoom-reset-btn');
+
+    if (zoomOutBtn) zoomOutBtn.addEventListener('click', zoomOut);
+    if (zoomInBtn) zoomInBtn.addEventListener('click', zoomIn);
+    if (zoomResetBtn) zoomResetBtn.addEventListener('click', resetZoom);
 
     document.getElementById('file-path-bar').addEventListener('click', () => {
         if (currentFilePath) {
@@ -3310,6 +3442,9 @@ function initCoreUI(options = {}) {
 
     changeTheme(currentTheme);
 
+    // Apply saved zoom level
+    applyZoom(zoomLevel);
+
     renderRecentFiles(options.onFileClick);
     initFuzzyFinder();
 }
@@ -3320,6 +3455,7 @@ window.MarkdownPreviewCore = {
     // Getters/setters for state
     getCurrentFilePath: () => currentFilePath,
     setCurrentFilePath: (path) => { currentFilePath = path; },
+    getZoomLevel: () => zoomLevel,
 
     // Core functions
     initCoreUI,
@@ -3335,7 +3471,13 @@ window.MarkdownPreviewCore = {
     copyToClipboard,
     getFileBasename,
     renderRecentFiles,
-    addToRecentFiles
+    addToRecentFiles,
+
+    // Zoom functions
+    zoomIn,
+    zoomOut,
+    resetZoom,
+    applyZoom
 };
 
 // Also expose commonly used functions directly for convenience
@@ -3353,6 +3495,10 @@ window.copyToClipboard = copyToClipboard;
 window.getFileBasename = getFileBasename;
 window.renderRecentFiles = renderRecentFiles;
 window.addToRecentFiles = addToRecentFiles;
+window.zoomIn = zoomIn;
+window.zoomOut = zoomOut;
+window.resetZoom = resetZoom;
+window.applyZoom = applyZoom;
 
 
 // Markdown Preview - Tauri Mode (Standalone App)

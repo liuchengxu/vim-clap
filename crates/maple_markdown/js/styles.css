@@ -1185,3 +1185,72 @@
           color: #6e7681;
         }
       }
+
+      /* ==================== Zoom Controls ==================== */
+      .zoom-controls {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .zoom-btn {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        background: #ffffff;
+        color: #24292f;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s ease;
+      }
+
+      .zoom-btn:hover {
+        background: #f3f4f6;
+        border-color: #0969da;
+      }
+
+      .zoom-btn:active {
+        background: #e6f2ff;
+      }
+
+      .zoom-btn.zoom-reset {
+        width: auto;
+        padding: 0 10px;
+        font-size: 12px;
+      }
+
+      .zoom-display {
+        min-width: 45px;
+        text-align: center;
+        font-size: 13px;
+        font-weight: 500;
+        color: #24292f;
+      }
+
+      /* Dark mode zoom controls */
+      @media (prefers-color-scheme: dark) {
+        .zoom-btn {
+          background: #21262d;
+          border-color: #30363d;
+          color: #c9d1d9;
+        }
+
+        .zoom-btn:hover {
+          background: #30363d;
+          border-color: #58a6ff;
+        }
+
+        .zoom-btn:active {
+          background: #388bfd26;
+        }
+
+        .zoom-display {
+          color: #c9d1d9;
+        }
+      }
