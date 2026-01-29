@@ -367,6 +367,14 @@
         opacity: 0.8;
       }
 
+      .toc-content a code {
+        background: rgba(175, 184, 193, 0.2);
+        padding: 0.15em 0.4em;
+        border-radius: 4px;
+        font-size: 0.9em;
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      }
+
       #main-content {
         flex: 1;
         display: flex;
@@ -690,6 +698,10 @@
 
         .toc-content .toc-h2 {
           color: #c9d1d9;
+        }
+
+        .toc-content a code {
+          background: rgba(110, 118, 129, 0.4);
         }
 
         .toc-resize-handle:hover,
