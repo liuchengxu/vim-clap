@@ -2661,8 +2661,11 @@ function generateTOC() {
 
     headings.forEach((heading, index) => {
         const level = heading.tagName.toLowerCase();
-        const textNode = Array.from(heading.childNodes).find(n => n.nodeType === Node.TEXT_NODE || (n.nodeType === Node.ELEMENT_NODE && !n.classList.contains('heading-anchor')));
-        const text = textNode ? textNode.textContent : heading.textContent;
+        // Get all text content except the heading-anchor element
+        const text = Array.from(heading.childNodes)
+            .filter(n => !(n.nodeType === Node.ELEMENT_NODE && n.classList.contains('heading-anchor')))
+            .map(n => n.textContent)
+            .join('');
         const id = heading.id || `heading-${index}`;
 
         if (!heading.id) {
