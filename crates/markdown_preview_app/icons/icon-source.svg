@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f0f0f0;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect x="40" y="40" width="944" height="944" rx="180" ry="180" fill="url(#bgGradient)"/>
+
+  <!-- Subtle shadow/depth at bottom -->
+  <rect x="40" y="700" width="944" height="284" rx="180" ry="180" fill="rgba(0,0,0,0.03)"/>
+
+  <!-- M letter as path -->
+  <path d="M168 340 L168 684 L228 684 L228 440 L340 600 L360 600 L472 440 L472 684 L532 684 L532 340 L472 340 L350 520 L228 340 Z"
+        fill="#3a3a3a"/>
+
+  <!-- D letter as path -->
+  <path d="M580 340 L580 684 L720 684 C820 684 856 600 856 512 C856 424 820 340 720 340 Z M640 400 L700 400 C770 400 796 450 796 512 C796 574 770 624 700 624 L640 624 Z"
+        fill="#3a3a3a"/>
+
+  <!-- Subtle bottom accent line -->
+  <rect x="280" y="740" width="464" height="6" rx="3" fill="rgba(0,0,0,0.15)"/>
+</svg>
