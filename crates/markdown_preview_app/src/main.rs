@@ -53,6 +53,7 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_opener::init())
         .setup(move |app| {
             // Get app data directory for persistent config
             let config_dir = app.path().app_data_dir().ok();

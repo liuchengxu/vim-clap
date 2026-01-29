@@ -117,6 +117,9 @@
             updateDocumentStats(result.stats);
         }
 
+        // Update metadata bar (no modification time or git info for URLs)
+        updateFileMetadata(null, result.stats, null, null, null);
+
         showToast('Loaded from URL');
     }
 
@@ -172,6 +175,9 @@
         if (result.stats) {
             updateDocumentStats(result.stats);
         }
+
+        // Update metadata bar
+        updateFileMetadata(result.modified_at, result.stats, result.git_branch, result.git_branch_url, result.git_last_author);
     }
 
     // Switch to a different file
@@ -191,6 +197,8 @@
         listen('file-changed', (event) => {
             console.log('File changed:', event.payload);
             handleFileOpened(event.payload);
+            // Trigger the shimmer animation on the metadata bar
+            triggerFileChangedAnimation();
         });
 
         // Listen for menu events

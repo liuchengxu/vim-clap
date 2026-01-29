@@ -715,6 +715,128 @@ function updateDocumentStats(stats) {
 }
 
 // ============================================================================
+// File Metadata Bar
+// ============================================================================
+
+function formatRelativeTime(timestamp) {
+    if (!timestamp) return null;
+
+    const now = Date.now();
+    const diff = now - timestamp;
+
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (seconds < 5) return 'just now';
+    if (seconds < 60) return `${seconds}s ago`;
+    if (minutes < 60) return `${minutes} min ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+
+    // For older files, show the date
+    const date = new Date(timestamp);
+    return date.toLocaleDateString();
+}
+
+function updateFileMetadata(modifiedAt, stats, gitBranch, gitBranchUrl, gitLastAuthor) {
+    const metadataBar = document.getElementById('file-metadata-bar');
+    const modifiedEl = document.getElementById('modified-time');
+    const readTimeEl = document.getElementById('read-time');
+    const branchEl = document.getElementById('git-branch');
+    const branchContainer = document.getElementById('metadata-branch');
+    const authorEl = document.getElementById('git-author');
+
+    if (!metadataBar) return;
+
+    // Show/hide based on whether we have data
+    const hasModified = modifiedAt != null;
+    const hasReadTime = stats && (stats.reading_minutes || stats.reading_time_minutes);
+    const hasBranch = gitBranch != null;
+    const hasAuthor = gitLastAuthor != null;
+
+    if (hasModified || hasReadTime || hasBranch || hasAuthor) {
+        metadataBar.classList.add('visible');
+
+        if (modifiedEl) {
+            if (hasModified) {
+                modifiedEl.textContent = formatRelativeTime(modifiedAt);
+                modifiedEl.parentElement.style.display = '';
+            } else {
+                modifiedEl.parentElement.style.display = 'none';
+            }
+        }
+
+        if (readTimeEl) {
+            if (hasReadTime) {
+                readTimeEl.textContent = formatReadingTime(stats.reading_minutes || stats.reading_time_minutes);
+                readTimeEl.parentElement.style.display = '';
+            } else {
+                readTimeEl.parentElement.style.display = 'none';
+            }
+        }
+
+        if (branchEl && branchContainer) {
+            if (hasBranch) {
+                branchEl.textContent = gitBranch;
+                branchContainer.style.display = '';
+
+                // Make branch clickable if URL is available
+                if (gitBranchUrl) {
+                    branchContainer.classList.add('clickable');
+                    branchContainer.title = `Open ${gitBranch} on GitHub`;
+                    branchContainer.onclick = () => {
+                        // Use Tauri opener plugin if available, otherwise fall back to window.open
+                        if (window.__TAURI__ && window.__TAURI__.opener) {
+                            window.__TAURI__.opener.openUrl(gitBranchUrl);
+                        } else {
+                            window.open(gitBranchUrl, '_blank');
+                        }
+                    };
+                } else {
+                    branchContainer.classList.remove('clickable');
+                    branchContainer.title = 'Git branch';
+                    branchContainer.onclick = null;
+                }
+            } else {
+                branchContainer.style.display = 'none';
+            }
+        }
+
+        if (authorEl) {
+            if (hasAuthor) {
+                authorEl.textContent = gitLastAuthor;
+                authorEl.parentElement.style.display = '';
+            } else {
+                authorEl.parentElement.style.display = 'none';
+            }
+        }
+    } else {
+        metadataBar.classList.remove('visible');
+    }
+}
+
+function triggerFileChangedAnimation() {
+    const metadataBar = document.getElementById('file-metadata-bar');
+    if (!metadataBar) return;
+
+    // Remove the class first to reset animation if it's already running
+    metadataBar.classList.remove('file-changed');
+
+    // Force a reflow to restart the animation
+    void metadataBar.offsetWidth;
+
+    // Add the class to trigger animation
+    metadataBar.classList.add('file-changed');
+
+    // Remove the class after animation completes
+    setTimeout(() => {
+        metadataBar.classList.remove('file-changed');
+    }, 1200);
+}
+
+// ============================================================================
 // Fuzzy Finder
 // ============================================================================
 
@@ -1207,6 +1329,8 @@ window.renderLatex = renderLatex;
 window.generateTOC = generateTOC;
 window.updateFilePathBar = updateFilePathBar;
 window.updateDocumentStats = updateDocumentStats;
+window.updateFileMetadata = updateFileMetadata;
+window.triggerFileChangedAnimation = triggerFileChangedAnimation;
 window.addHeadingAnchors = addHeadingAnchors;
 window.showToast = showToast;
 window.copyToClipboard = copyToClipboard;

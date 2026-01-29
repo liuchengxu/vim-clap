@@ -20,6 +20,14 @@ pub struct RenderResponse {
     pub git_root: Option<String>,
     /// Path to the rendered file
     pub file_path: Option<String>,
+    /// File modification time (Unix timestamp in milliseconds)
+    pub modified_at: Option<u64>,
+    /// Git branch name
+    pub git_branch: Option<String>,
+    /// GitHub URL for the branch
+    pub git_branch_url: Option<String>,
+    /// Last commit author for this file
+    pub git_last_author: Option<String>,
 }
 
 /// Render markdown content to HTML.
@@ -34,6 +42,10 @@ pub async fn render_markdown(content: String) -> Result<RenderResponse, String> 
         stats,
         git_root: None,
         file_path: None,
+        modified_at: None,
+        git_branch: None,
+        git_branch_url: None,
+        git_last_author: None,
     })
 }
 
@@ -49,6 +61,83 @@ fn expand_tilde(path: &str) -> PathBuf {
         }
     }
     PathBuf::from(path)
+}
+
+/// Get the current git branch name for a file path.
+fn get_git_branch(file_path: &str) -> Option<String> {
+    let path = std::path::Path::new(file_path);
+    let dir = if path.is_file() { path.parent()? } else { path };
+
+    let output = std::process::Command::new("git")
+        .args(["rev-parse", "--abbrev-ref", "HEAD"])
+        .current_dir(dir)
+        .output()
+        .ok()?;
+
+    if output.status.success() {
+        let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !branch.is_empty() {
+            return Some(branch);
+        }
+    }
+    None
+}
+
+/// Get the last commit author for a specific file.
+fn get_git_last_author(file_path: &str) -> Option<String> {
+    let path = std::path::Path::new(file_path);
+    let dir = if path.is_file() { path.parent()? } else { path };
+
+    let output = std::process::Command::new("git")
+        .args(["log", "-1", "--format=%an", "--", file_path])
+        .current_dir(dir)
+        .output()
+        .ok()?;
+
+    if output.status.success() {
+        let author = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !author.is_empty() {
+            return Some(author);
+        }
+    }
+    None
+}
+
+/// Get the GitHub URL for the current branch.
+fn get_git_branch_url(file_path: &str, branch: &str) -> Option<String> {
+    let path = std::path::Path::new(file_path);
+    let dir = if path.is_file() { path.parent()? } else { path };
+
+    // Get the remote URL
+    let output = std::process::Command::new("git")
+        .args(["remote", "get-url", "origin"])
+        .current_dir(dir)
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let remote_url = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if remote_url.is_empty() {
+        return None;
+    }
+
+    // Convert git remote URL to GitHub HTTPS URL
+    let github_base = if remote_url.starts_with("git@github.com:") {
+        // git@github.com:user/repo.git -> https://github.com/user/repo
+        let path = remote_url.trim_start_matches("git@github.com:");
+        let path = path.trim_end_matches(".git");
+        format!("https://github.com/{path}")
+    } else if remote_url.starts_with("https://github.com/") {
+        // https://github.com/user/repo.git -> https://github.com/user/repo
+        remote_url.trim_end_matches(".git").to_string()
+    } else {
+        return None; // Not a GitHub repo
+    };
+
+    Some(format!("{github_base}/tree/{branch}"))
 }
 
 /// Open and render a markdown file.
@@ -74,6 +163,14 @@ pub async fn open_file(
 
     let absolute_path = path_buf.to_string_lossy().to_string();
 
+    // Get file modification time
+    let modified_at = tokio::fs::metadata(&path_buf)
+        .await
+        .ok()
+        .and_then(|m| m.modified().ok())
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as u64);
+
     // Read the file
     let content = tokio::fs::read_to_string(&path_buf)
         .await
@@ -84,6 +181,11 @@ pub async fn open_file(
 
     let stats = calculate_document_stats(&content);
     let git_root = find_git_root(&absolute_path);
+    let git_branch = get_git_branch(&absolute_path);
+    let git_branch_url = git_branch
+        .as_ref()
+        .and_then(|b| get_git_branch_url(&absolute_path, b));
+    let git_last_author = get_git_last_author(&absolute_path);
 
     // Update state
     {
@@ -97,6 +199,10 @@ pub async fn open_file(
         stats,
         git_root,
         file_path: Some(absolute_path),
+        modified_at,
+        git_branch,
+        git_branch_url,
+        git_last_author,
     })
 }
 
@@ -174,12 +280,27 @@ pub async fn watch_file(
                     if let Ok(result) = to_html(&content, &RenderOptions::gfm()) {
                         let stats = calculate_document_stats(&content);
                         let git_root = find_git_root(&path_clone);
+                        let git_branch = get_git_branch(&path_clone);
+                        let git_branch_url = git_branch
+                            .as_ref()
+                            .and_then(|b| get_git_branch_url(&path_clone, b));
+                        let git_last_author = get_git_last_author(&path_clone);
+                        let modified_at = tokio::fs::metadata(&path_clone)
+                            .await
+                            .ok()
+                            .and_then(|m| m.modified().ok())
+                            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                            .map(|d| d.as_millis() as u64);
 
                         let response = RenderResponse {
                             html: result.html,
                             stats,
                             git_root,
                             file_path: Some(path_clone.clone()),
+                            modified_at,
+                            git_branch,
+                            git_branch_url,
+                            git_last_author,
                         };
 
                         // Emit event to frontend
@@ -588,6 +709,10 @@ pub async fn open_url(url: String) -> Result<RenderResponse, String> {
         stats,
         git_root: None,
         file_path: Some(url),
+        modified_at: None,
+        git_branch: None,
+        git_branch_url: None,
+        git_last_author: None,
     })
 }
 
