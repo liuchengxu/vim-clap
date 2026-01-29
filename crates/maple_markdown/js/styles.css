@@ -16,6 +16,8 @@
         overflow-y: auto;
         flex-shrink: 0;
         order: 1;
+        display: flex;
+        flex-direction: column;
       }
 
       #sidebar h3 {
@@ -27,10 +29,20 @@
 
       .sidebar-section {
         margin-bottom: 20px;
+        flex-shrink: 0;
+      }
+
+      /* Recent Previews section takes available space */
+      .sidebar-section:first-child {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
       }
 
       .recent-files {
-        max-height: 200px;
+        flex: 1;
+        min-height: 0;
         overflow-y: auto;
       }
 
