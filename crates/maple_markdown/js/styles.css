@@ -9,6 +9,8 @@
 
       #sidebar {
         width: 250px;
+        min-width: 180px;
+        max-width: 500px;
         background: #f6f8fa;
         border-right: 1px solid #d0d7de;
         padding: 20px;
@@ -18,6 +20,30 @@
         order: 1;
         display: flex;
         flex-direction: column;
+      }
+
+      /* Sidebar resize handle */
+      .sidebar-resize-handle {
+        width: 5px;
+        background: transparent;
+        cursor: col-resize;
+        flex-shrink: 0;
+        order: 2;
+        transition: background 0.15s;
+      }
+
+      .sidebar-resize-handle:hover,
+      .sidebar-resize-handle.resizing {
+        background: rgba(9, 105, 218, 0.3);
+      }
+
+      body.sidebar-resizing {
+        cursor: col-resize;
+        user-select: none;
+      }
+
+      body.sidebar-resizing * {
+        cursor: col-resize !important;
       }
 
       #sidebar h3 {
@@ -681,6 +707,10 @@
           width: 100%;
           border-right: none;
           border-bottom: 1px solid #d0d7de;
+        }
+
+        .sidebar-resize-handle {
+          display: none;
         }
 
         .markdown-body {
