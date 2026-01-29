@@ -56,7 +56,10 @@ impl FileWatcher {
     ///
     /// * `path` - Path to the file to watch
     /// * `config` - Watcher configuration
-    pub fn new(path: &Path, config: WatcherConfig) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    pub fn new(
+        path: &Path,
+        config: WatcherConfig,
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let file_path = path.to_path_buf();
 
         // Try inotify-based watcher first
@@ -99,20 +102,22 @@ impl FileWatcher {
 
     fn try_inotify_watcher(
         file_path: &Path,
-    ) -> Result<(watch::Receiver<WatchEvent>, mpsc::Sender<()>), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<
+        (watch::Receiver<WatchEvent>, mpsc::Sender<()>),
+        Box<dyn std::error::Error + Send + Sync>,
+    > {
         let (event_tx, event_rx) = watch::channel(WatchEvent::Modified(file_path.to_path_buf()));
         let (notify_tx, notify_rx) = mpsc::channel::<()>();
         let (shutdown_tx, shutdown_rx) = mpsc::channel();
         let (started_tx, started_rx) = mpsc::channel();
 
         // Get the parent directory to watch
-        let (watch_target, file_name) = if let (Some(parent), Some(name)) =
-            (file_path.parent(), file_path.file_name())
-        {
-            (parent.to_path_buf(), name.to_os_string())
-        } else {
-            return Err("Invalid file path".into());
-        };
+        let (watch_target, file_name) =
+            if let (Some(parent), Some(name)) = (file_path.parent(), file_path.file_name()) {
+                (parent.to_path_buf(), name.to_os_string())
+            } else {
+                return Err("Invalid file path".into());
+            };
 
         let file_name_for_filter = file_name.clone();
         let file_path_for_event = file_path.to_path_buf();
@@ -189,7 +194,10 @@ impl FileWatcher {
     fn spawn_polling_watcher(
         file_path: &Path,
         config: WatcherConfig,
-    ) -> Result<(watch::Receiver<WatchEvent>, mpsc::Sender<()>), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<
+        (watch::Receiver<WatchEvent>, mpsc::Sender<()>),
+        Box<dyn std::error::Error + Send + Sync>,
+    > {
         let (event_tx, event_rx) = watch::channel(WatchEvent::Modified(file_path.to_path_buf()));
         let (shutdown_tx, shutdown_rx) = mpsc::channel();
 

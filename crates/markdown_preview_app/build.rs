@@ -19,8 +19,8 @@ fn generate_frontend_html() {
 
     // Source files from maple_markdown/js
     let js_dir = base_path.join("maple_markdown/js");
-    let html_template = fs::read_to_string(js_dir.join("index.html"))
-        .expect("Failed to read index.html template");
+    let html_template =
+        fs::read_to_string(js_dir.join("index.html")).expect("Failed to read index.html template");
     let styles_css =
         fs::read_to_string(js_dir.join("styles.css")).expect("Failed to read styles.css");
     let themes_css =

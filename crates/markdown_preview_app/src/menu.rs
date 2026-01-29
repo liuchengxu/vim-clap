@@ -49,9 +49,7 @@ pub fn create_menu<R: Runtime>(app: &AppHandle<R>) -> Result<Menu<R>, tauri::Err
     // Help menu
     let about_item = MenuItem::with_id(app, "about", "About Markdown Preview", true, None::<&str>)?;
 
-    let help_menu = SubmenuBuilder::new(app, "Help")
-        .item(&about_item)
-        .build()?;
+    let help_menu = SubmenuBuilder::new(app, "Help").item(&about_item).build()?;
 
     // Build the complete menu
     MenuBuilder::new(app)

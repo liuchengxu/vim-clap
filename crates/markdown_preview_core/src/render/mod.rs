@@ -97,7 +97,10 @@ fn byte_offset_to_line(content: &str, byte_offset: usize) -> usize {
 /// let result = to_html("# Hello\n\nWorld", &RenderOptions::gfm()).unwrap();
 /// assert!(result.html.contains("<h1"));
 /// ```
-pub fn to_html(markdown_content: &str, options: &RenderOptions) -> Result<RenderResult, Box<dyn std::error::Error + Send + Sync>> {
+pub fn to_html(
+    markdown_content: &str,
+    options: &RenderOptions,
+) -> Result<RenderResult, Box<dyn std::error::Error + Send + Sync>> {
     let pulldown_options = options.to_pulldown_options();
     let parser = Parser::new_ext(markdown_content, pulldown_options);
 

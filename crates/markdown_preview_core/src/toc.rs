@@ -257,10 +257,7 @@ pub fn generate_toc(
 pub fn find_toc_range(input_file: impl AsRef<Path>) -> std::io::Result<Option<(usize, usize)>> {
     let mut start = 0;
 
-    for (idx, line) in read_lines(input_file)?
-        .map_while(Result::ok)
-        .enumerate()
-    {
+    for (idx, line) in read_lines(input_file)?.map_while(Result::ok).enumerate() {
         let line = line.trim();
         if line == "<!-- clap-markdown-toc -->" {
             start = idx;

@@ -82,9 +82,17 @@ impl Message {
     ///
     /// * `process_file` - A function that processes a file path and returns
     ///   the rendered HTML, line map, stats, and git root.
-    pub fn to_server_message<F>(self, process_file: F) -> Result<ServerMessage, Box<dyn std::error::Error + Send + Sync>>
+    pub fn to_server_message<F>(
+        self,
+        process_file: F,
+    ) -> Result<ServerMessage, Box<dyn std::error::Error + Send + Sync>>
     where
-        F: FnOnce(&str) -> Result<(String, Vec<usize>, DocumentStats, Option<String>), Box<dyn std::error::Error + Send + Sync>>,
+        F: FnOnce(
+            &str,
+        ) -> Result<
+            (String, Vec<usize>, DocumentStats, Option<String>),
+            Box<dyn std::error::Error + Send + Sync>,
+        >,
     {
         match self {
             Message::FileChanged(path, should_focus) => {

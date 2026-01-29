@@ -5,9 +5,8 @@
 //! for rendering, statistics, and file watching.
 
 // Re-export core library types for convenience
-pub use markdown_preview_core::toc;
 pub use markdown_preview_core::{
-    calculate_document_stats, find_git_root, rewrite_image_paths, to_html, DocumentStats,
+    calculate_document_stats, find_git_root, rewrite_image_paths, to_html, toc, DocumentStats,
     RenderOptions, RenderResult,
 };
 
@@ -386,43 +385,41 @@ fn spawn_file_watcher(
     let shutdown_rx_clone = shutdown_rx;
     std::thread::spawn(move || {
         let mut watcher = match RecommendedWatcher::new(
-            move |res: Result<NotifyEvent, notify::Error>| {
-                match res {
-                    Ok(event) => {
-                        tracing::debug!(?event, target_file = ?file_name_for_filter, "File watcher received event");
+            move |res: Result<NotifyEvent, notify::Error>| match res {
+                Ok(event) => {
+                    tracing::debug!(?event, target_file = ?file_name_for_filter, "File watcher received event");
 
-                        let is_target_file = event
-                            .paths
-                            .iter()
-                            .any(|p| p.file_name() == Some(&file_name_for_filter));
+                    let is_target_file = event
+                        .paths
+                        .iter()
+                        .any(|p| p.file_name() == Some(&file_name_for_filter));
 
-                        if !is_target_file {
-                            tracing::debug!(?event.paths, "Event not for target file, ignoring");
-                            return;
-                        }
+                    if !is_target_file {
+                        tracing::debug!(?event.paths, "Event not for target file, ignoring");
+                        return;
+                    }
 
-                        if event.kind.is_modify()
-                            || event.kind.is_create()
-                            || event.kind.is_remove()
-                            || event.kind.is_access()
-                        {
-                            tracing::debug!(kind = ?event.kind, "File change detected, sending notification");
-                            match event_tx.send(()) {
-                                Ok(()) => {
-                                    tracing::debug!("Notification sent successfully to bridge task")
-                                }
-                                Err(e) => tracing::error!(
-                                    ?e,
-                                    "Failed to send notification - bridge task may have exited"
-                                ),
+                    if event.kind.is_modify()
+                        || event.kind.is_create()
+                        || event.kind.is_remove()
+                        || event.kind.is_access()
+                    {
+                        tracing::debug!(kind = ?event.kind, "File change detected, sending notification");
+                        match event_tx.send(()) {
+                            Ok(()) => {
+                                tracing::debug!("Notification sent successfully to bridge task")
                             }
-                        } else {
-                            tracing::debug!(kind = ?event.kind, "Ignoring event type");
+                            Err(e) => tracing::error!(
+                                ?e,
+                                "Failed to send notification - bridge task may have exited"
+                            ),
                         }
+                    } else {
+                        tracing::debug!(kind = ?event.kind, "Ignoring event type");
                     }
-                    Err(e) => {
-                        tracing::error!(?e, "File watcher error");
-                    }
+                }
+                Err(e) => {
+                    tracing::error!(?e, "File watcher error");
                 }
             },
             notify::Config::default(),
