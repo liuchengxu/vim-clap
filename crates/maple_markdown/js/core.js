@@ -1102,9 +1102,8 @@ function handleContentUpdate(message, options = {}) {
 
 function initCoreUI(options = {}) {
     // Restore saved preferences
-    const savedMode = localStorage.getItem('lineNumberMode') || 'off';
-    lineNumberMode = savedMode;
-    document.getElementById('line-numbers-mode').value = savedMode;
+    // Note: Line Numbers feature removed from UI (was buggy)
+    // TOC and Theme controlled via menu, not sidebar
 
     const savedTOCMode = localStorage.getItem('tocMode');
     let tocMode = 'off';
@@ -1113,7 +1112,6 @@ function initCoreUI(options = {}) {
     } else if (window.innerWidth >= 1440) {
         tocMode = 'right';
     }
-    document.getElementById('toc-mode').value = tocMode;
 
     const savedFont = localStorage.getItem('fontFamily') || 'default';
     fontFamily = savedFont;
@@ -1125,31 +1123,18 @@ function initCoreUI(options = {}) {
 
     const savedTheme = localStorage.getItem('theme') || 'auto';
     currentTheme = savedTheme;
-    document.getElementById('theme-select').value = savedTheme;
 
     const savedZoom = parseInt(localStorage.getItem('zoomLevel')) || 100;
     zoomLevel = savedZoom;
     updateZoomDisplay();
 
     // Set up event listeners
-    document.getElementById('line-numbers-mode').addEventListener('change', (e) => {
-        changeLineNumberMode(e.target.value);
-    });
-
-    document.getElementById('toc-mode').addEventListener('change', (e) => {
-        toggleTOC(e.target.value);
-    });
-
     document.getElementById('font-family').addEventListener('change', (e) => {
         changeFontFamily(e.target.value);
     });
 
     document.getElementById('reader-mode').addEventListener('change', (e) => {
         toggleReaderMode(e.target.value === 'on');
-    });
-
-    document.getElementById('theme-select').addEventListener('change', (e) => {
-        changeTheme(e.target.value);
     });
 
     // Zoom controls
@@ -1182,7 +1167,6 @@ function initCoreUI(options = {}) {
     // Initial rendering
     codeHighlight();
     renderMermaid();
-    applyLineNumberMode(lineNumberMode, currentSourceLines, currentLineMap);
 
     if (tocMode !== 'off') {
         toggleTOC(tocMode);
