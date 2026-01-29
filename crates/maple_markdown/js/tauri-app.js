@@ -197,22 +197,16 @@
             }
         });
 
-        listen('menu-toggle-toc', () => {
-            const tocModeSelect = document.getElementById('toc-mode');
-            if (tocModeSelect) {
-                const current = tocModeSelect.value;
-                tocModeSelect.value = current === 'off' ? 'right' : 'off';
-                tocModeSelect.dispatchEvent(new Event('change'));
-            }
+        listen('menu-toc', (event) => {
+            // TOC controlled via View menu: off, left, right
+            toggleTOC(event.payload);
         });
 
         listen('menu-theme', (event) => {
-            const themeSelect = document.getElementById('theme-select');
-            if (themeSelect) {
-                const themeMap = { 'light': 'github-light', 'dark': 'github-dark', 'auto': 'auto' };
-                themeSelect.value = themeMap[event.payload] || event.payload;
-                themeSelect.dispatchEvent(new Event('change'));
-            }
+            // Theme controlled via Theme menu
+            const themeMap = { 'light': 'github-light', 'dark': 'github-dark', 'auto': 'auto' };
+            const theme = themeMap[event.payload] || event.payload;
+            changeTheme(theme);
         });
 
         // Listen for initial file from command line argument

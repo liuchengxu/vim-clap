@@ -531,51 +531,6 @@
         margin-bottom: 1.2em;
       }
 
-      /* Markdown content line numbers */
-      .markdown-body.show-line-numbers {
-        padding-left: 90px;
-      }
-
-      .markdown-body.show-line-numbers > * {
-        position: relative;
-      }
-
-      /* Single line number (rendered or source) */
-      .markdown-body.show-line-numbers > *::before {
-        content: attr(data-line-number);
-        position: absolute;
-        left: -60px;
-        width: 40px;
-        text-align: right;
-        color: #999;
-        font-size: 12px;
-        user-select: none;
-        padding-right: 10px;
-        font-family: monospace;
-      }
-
-      /* Both line numbers mode */
-      .markdown-body.show-line-numbers-both {
-        padding-left: 110px;
-      }
-
-      .markdown-body.show-line-numbers-both > * {
-        position: relative;
-      }
-
-      .markdown-body.show-line-numbers-both > *::before {
-        content: attr(data-rendered-number) " / " attr(data-source-number);
-        position: absolute;
-        left: -90px;
-        width: 70px;
-        text-align: right;
-        color: #999;
-        font-size: 11px;
-        user-select: none;
-        padding-right: 10px;
-        font-family: monospace;
-      }
-
       @media (prefers-color-scheme: dark) {
         body {
           background: #0d1117;
@@ -639,11 +594,6 @@
 
         .recent-file-item:hover .recent-file-path {
           color: #8b949e;
-        }
-
-        .markdown-body.show-line-numbers > *::before,
-        .markdown-body.show-line-numbers-both > *::before {
-          color: #6e7681;
         }
 
         .document-stats {

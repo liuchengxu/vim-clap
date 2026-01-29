@@ -5,14 +5,11 @@
 // State Variables
 // ============================================================================
 
-let currentSourceLines = 0;
-let currentLineMap = [];
 let tocVisible = false;
 let fontFamily = 'default';
 let readerMode = false;
 let currentFilePath = '';
 let currentTheme = 'auto';
-let lineNumberMode = 'off';
 let zoomLevel = 100; // Percentage: 50-200
 
 // Fuzzy finder state
@@ -185,73 +182,6 @@ function renderLatex() {
             ]
         });
     }
-}
-
-// ============================================================================
-// Line Numbers
-// ============================================================================
-
-function applyLineNumberMode(mode, sourceLines, lineMap) {
-    const content = document.getElementById('content');
-    if (!content) return;
-
-    if (sourceLines) {
-        currentSourceLines = sourceLines;
-    }
-    if (lineMap) {
-        currentLineMap = lineMap;
-    }
-
-    content.classList.remove('show-line-numbers', 'show-line-numbers-both');
-    const children = Array.from(content.children);
-    children.forEach((child) => {
-        child.removeAttribute('data-line-number');
-        child.removeAttribute('data-source-line');
-        child.removeAttribute('data-rendered-number');
-        child.removeAttribute('data-source-number');
-    });
-
-    if (mode === 'off') {
-        return;
-    }
-
-    if (mode === 'rendered') {
-        content.classList.add('show-line-numbers');
-        children.forEach((child, index) => {
-            const renderedNum = index + 1;
-            child.setAttribute('data-line-number', renderedNum);
-            const sourceNum = currentLineMap[index] || renderedNum;
-            child.setAttribute('data-source-line', sourceNum);
-        });
-    } else if (mode === 'source') {
-        content.classList.add('show-line-numbers');
-        children.forEach((child, index) => {
-            const sourceNum = currentLineMap[index] || Math.min(
-                Math.floor((index / Math.max(1, children.length)) * currentSourceLines) + 1,
-                currentSourceLines
-            );
-            child.setAttribute('data-line-number', sourceNum);
-            child.setAttribute('data-source-line', sourceNum);
-        });
-    } else if (mode === 'both') {
-        content.classList.add('show-line-numbers-both');
-        children.forEach((child, index) => {
-            const renderedNum = index + 1;
-            const sourceNum = currentLineMap[index] || Math.min(
-                Math.floor((index / Math.max(1, children.length)) * currentSourceLines) + 1,
-                currentSourceLines
-            );
-            child.setAttribute('data-rendered-number', renderedNum);
-            child.setAttribute('data-source-number', sourceNum);
-            child.setAttribute('data-source-line', sourceNum);
-        });
-    }
-}
-
-function changeLineNumberMode(newMode) {
-    lineNumberMode = newMode;
-    applyLineNumberMode(lineNumberMode, currentSourceLines, currentLineMap);
-    localStorage.setItem('lineNumberMode', lineNumberMode);
 }
 
 // ============================================================================
@@ -1063,7 +993,6 @@ function handleContentUpdate(message, options = {}) {
     renderLatex();
     renderMermaid();
     addHeadingAnchors();
-    applyLineNumberMode(lineNumberMode, message.source_lines, message.line_map);
 
     if (tocVisible) {
         generateTOC();
@@ -1102,9 +1031,8 @@ function handleContentUpdate(message, options = {}) {
 
 function initCoreUI(options = {}) {
     // Restore saved preferences
-    const savedMode = localStorage.getItem('lineNumberMode') || 'off';
-    lineNumberMode = savedMode;
-    document.getElementById('line-numbers-mode').value = savedMode;
+    // Note: Line Numbers feature removed from UI (was buggy)
+    // TOC and Theme controlled via menu, not sidebar
 
     const savedTOCMode = localStorage.getItem('tocMode');
     let tocMode = 'off';
@@ -1113,7 +1041,6 @@ function initCoreUI(options = {}) {
     } else if (window.innerWidth >= 1440) {
         tocMode = 'right';
     }
-    document.getElementById('toc-mode').value = tocMode;
 
     const savedFont = localStorage.getItem('fontFamily') || 'default';
     fontFamily = savedFont;
@@ -1125,31 +1052,18 @@ function initCoreUI(options = {}) {
 
     const savedTheme = localStorage.getItem('theme') || 'auto';
     currentTheme = savedTheme;
-    document.getElementById('theme-select').value = savedTheme;
 
     const savedZoom = parseInt(localStorage.getItem('zoomLevel')) || 100;
     zoomLevel = savedZoom;
     updateZoomDisplay();
 
     // Set up event listeners
-    document.getElementById('line-numbers-mode').addEventListener('change', (e) => {
-        changeLineNumberMode(e.target.value);
-    });
-
-    document.getElementById('toc-mode').addEventListener('change', (e) => {
-        toggleTOC(e.target.value);
-    });
-
     document.getElementById('font-family').addEventListener('change', (e) => {
         changeFontFamily(e.target.value);
     });
 
     document.getElementById('reader-mode').addEventListener('change', (e) => {
         toggleReaderMode(e.target.value === 'on');
-    });
-
-    document.getElementById('theme-select').addEventListener('change', (e) => {
-        changeTheme(e.target.value);
     });
 
     // Zoom controls
@@ -1182,7 +1096,6 @@ function initCoreUI(options = {}) {
     // Initial rendering
     codeHighlight();
     renderMermaid();
-    applyLineNumberMode(lineNumberMode, currentSourceLines, currentLineMap);
 
     if (tocMode !== 'off') {
         toggleTOC(tocMode);

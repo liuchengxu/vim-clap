@@ -567,51 +567,6 @@
         margin-bottom: 1.2em;
       }
 
-      /* Markdown content line numbers */
-      .markdown-body.show-line-numbers {
-        padding-left: 90px;
-      }
-
-      .markdown-body.show-line-numbers > * {
-        position: relative;
-      }
-
-      /* Single line number (rendered or source) */
-      .markdown-body.show-line-numbers > *::before {
-        content: attr(data-line-number);
-        position: absolute;
-        left: -60px;
-        width: 40px;
-        text-align: right;
-        color: #999;
-        font-size: 12px;
-        user-select: none;
-        padding-right: 10px;
-        font-family: monospace;
-      }
-
-      /* Both line numbers mode */
-      .markdown-body.show-line-numbers-both {
-        padding-left: 110px;
-      }
-
-      .markdown-body.show-line-numbers-both > * {
-        position: relative;
-      }
-
-      .markdown-body.show-line-numbers-both > *::before {
-        content: attr(data-rendered-number) " / " attr(data-source-number);
-        position: absolute;
-        left: -90px;
-        width: 70px;
-        text-align: right;
-        color: #999;
-        font-size: 11px;
-        user-select: none;
-        padding-right: 10px;
-        font-family: monospace;
-      }
-
       @media (prefers-color-scheme: dark) {
         body {
           background: #0d1117;
@@ -675,11 +630,6 @@
 
         .recent-file-item:hover .recent-file-path {
           color: #8b949e;
-        }
-
-        .markdown-body.show-line-numbers > *::before,
-        .markdown-body.show-line-numbers-both > *::before {
-          color: #6e7681;
         }
 
         .document-stats {
@@ -2119,23 +2069,6 @@
         <div class="sidebar-section">
             <h3>Display Options</h3>
             <div class="option-group">
-                <label class="option-label">Line Numbers</label>
-                <select id="line-numbers-mode" class="option-select">
-                    <option value="off">Off</option>
-                    <option value="rendered">Rendered Elements (1, 2, 3...)</option>
-                    <option value="source">Source File (Git-style)</option>
-                    <option value="both">Both (Rendered / Source)</option>
-                </select>
-            </div>
-            <div class="option-group">
-                <label class="option-label">Table of Contents</label>
-                <select id="toc-mode" class="option-select">
-                    <option value="off">Off</option>
-                    <option value="left">Show (Left)</option>
-                    <option value="right">Show (Right)</option>
-                </select>
-            </div>
-            <div class="option-group">
                 <label class="option-label">Font Family</label>
                 <select id="font-family" class="option-select">
                     <option value="default">GitHub (Default)</option>
@@ -2146,18 +2079,6 @@
                     <option value="serif">Serif (LaTeX-like)</option>
                     <option value="mono">Monospace</option>
                     <option value="system">System UI</option>
-                </select>
-            </div>
-            <div class="option-group">
-                <label class="option-label">Theme</label>
-                <select id="theme-select" class="option-select">
-                    <option value="auto">Auto (System)</option>
-                    <option value="github-light">GitHub Light</option>
-                    <option value="github-dark">GitHub Dark</option>
-                    <option value="dark">Dark</option>
-                    <option value="material-dark">Material Dark</option>
-                    <option value="one-dark">One Dark</option>
-                    <option value="ulysses">Ulysses Light</option>
                 </select>
             </div>
             <div class="option-group">
@@ -2251,14 +2172,11 @@
 // State Variables
 // ============================================================================
 
-let currentSourceLines = 0;
-let currentLineMap = [];
 let tocVisible = false;
 let fontFamily = 'default';
 let readerMode = false;
 let currentFilePath = '';
 let currentTheme = 'auto';
-let lineNumberMode = 'off';
 let zoomLevel = 100; // Percentage: 50-200
 
 // Fuzzy finder state
@@ -2431,73 +2349,6 @@ function renderLatex() {
             ]
         });
     }
-}
-
-// ============================================================================
-// Line Numbers
-// ============================================================================
-
-function applyLineNumberMode(mode, sourceLines, lineMap) {
-    const content = document.getElementById('content');
-    if (!content) return;
-
-    if (sourceLines) {
-        currentSourceLines = sourceLines;
-    }
-    if (lineMap) {
-        currentLineMap = lineMap;
-    }
-
-    content.classList.remove('show-line-numbers', 'show-line-numbers-both');
-    const children = Array.from(content.children);
-    children.forEach((child) => {
-        child.removeAttribute('data-line-number');
-        child.removeAttribute('data-source-line');
-        child.removeAttribute('data-rendered-number');
-        child.removeAttribute('data-source-number');
-    });
-
-    if (mode === 'off') {
-        return;
-    }
-
-    if (mode === 'rendered') {
-        content.classList.add('show-line-numbers');
-        children.forEach((child, index) => {
-            const renderedNum = index + 1;
-            child.setAttribute('data-line-number', renderedNum);
-            const sourceNum = currentLineMap[index] || renderedNum;
-            child.setAttribute('data-source-line', sourceNum);
-        });
-    } else if (mode === 'source') {
-        content.classList.add('show-line-numbers');
-        children.forEach((child, index) => {
-            const sourceNum = currentLineMap[index] || Math.min(
-                Math.floor((index / Math.max(1, children.length)) * currentSourceLines) + 1,
-                currentSourceLines
-            );
-            child.setAttribute('data-line-number', sourceNum);
-            child.setAttribute('data-source-line', sourceNum);
-        });
-    } else if (mode === 'both') {
-        content.classList.add('show-line-numbers-both');
-        children.forEach((child, index) => {
-            const renderedNum = index + 1;
-            const sourceNum = currentLineMap[index] || Math.min(
-                Math.floor((index / Math.max(1, children.length)) * currentSourceLines) + 1,
-                currentSourceLines
-            );
-            child.setAttribute('data-rendered-number', renderedNum);
-            child.setAttribute('data-source-number', sourceNum);
-            child.setAttribute('data-source-line', sourceNum);
-        });
-    }
-}
-
-function changeLineNumberMode(newMode) {
-    lineNumberMode = newMode;
-    applyLineNumberMode(lineNumberMode, currentSourceLines, currentLineMap);
-    localStorage.setItem('lineNumberMode', lineNumberMode);
 }
 
 // ============================================================================
@@ -3309,7 +3160,6 @@ function handleContentUpdate(message, options = {}) {
     renderLatex();
     renderMermaid();
     addHeadingAnchors();
-    applyLineNumberMode(lineNumberMode, message.source_lines, message.line_map);
 
     if (tocVisible) {
         generateTOC();
@@ -3348,9 +3198,8 @@ function handleContentUpdate(message, options = {}) {
 
 function initCoreUI(options = {}) {
     // Restore saved preferences
-    const savedMode = localStorage.getItem('lineNumberMode') || 'off';
-    lineNumberMode = savedMode;
-    document.getElementById('line-numbers-mode').value = savedMode;
+    // Note: Line Numbers feature removed from UI (was buggy)
+    // TOC and Theme controlled via menu, not sidebar
 
     const savedTOCMode = localStorage.getItem('tocMode');
     let tocMode = 'off';
@@ -3359,7 +3208,6 @@ function initCoreUI(options = {}) {
     } else if (window.innerWidth >= 1440) {
         tocMode = 'right';
     }
-    document.getElementById('toc-mode').value = tocMode;
 
     const savedFont = localStorage.getItem('fontFamily') || 'default';
     fontFamily = savedFont;
@@ -3371,31 +3219,18 @@ function initCoreUI(options = {}) {
 
     const savedTheme = localStorage.getItem('theme') || 'auto';
     currentTheme = savedTheme;
-    document.getElementById('theme-select').value = savedTheme;
 
     const savedZoom = parseInt(localStorage.getItem('zoomLevel')) || 100;
     zoomLevel = savedZoom;
     updateZoomDisplay();
 
     // Set up event listeners
-    document.getElementById('line-numbers-mode').addEventListener('change', (e) => {
-        changeLineNumberMode(e.target.value);
-    });
-
-    document.getElementById('toc-mode').addEventListener('change', (e) => {
-        toggleTOC(e.target.value);
-    });
-
     document.getElementById('font-family').addEventListener('change', (e) => {
         changeFontFamily(e.target.value);
     });
 
     document.getElementById('reader-mode').addEventListener('change', (e) => {
         toggleReaderMode(e.target.value === 'on');
-    });
-
-    document.getElementById('theme-select').addEventListener('change', (e) => {
-        changeTheme(e.target.value);
     });
 
     // Zoom controls
@@ -3428,7 +3263,6 @@ function initCoreUI(options = {}) {
     // Initial rendering
     codeHighlight();
     renderMermaid();
-    applyLineNumberMode(lineNumberMode, currentSourceLines, currentLineMap);
 
     if (tocMode !== 'off') {
         toggleTOC(tocMode);
@@ -3700,22 +3534,16 @@ window.applyZoom = applyZoom;
             }
         });
 
-        listen('menu-toggle-toc', () => {
-            const tocModeSelect = document.getElementById('toc-mode');
-            if (tocModeSelect) {
-                const current = tocModeSelect.value;
-                tocModeSelect.value = current === 'off' ? 'right' : 'off';
-                tocModeSelect.dispatchEvent(new Event('change'));
-            }
+        listen('menu-toc', (event) => {
+            // TOC controlled via View menu: off, left, right
+            toggleTOC(event.payload);
         });
 
         listen('menu-theme', (event) => {
-            const themeSelect = document.getElementById('theme-select');
-            if (themeSelect) {
-                const themeMap = { 'light': 'github-light', 'dark': 'github-dark', 'auto': 'auto' };
-                themeSelect.value = themeMap[event.payload] || event.payload;
-                themeSelect.dispatchEvent(new Event('change'));
-            }
+            // Theme controlled via Theme menu
+            const themeMap = { 'light': 'github-light', 'dark': 'github-dark', 'auto': 'auto' };
+            const theme = themeMap[event.payload] || event.payload;
+            changeTheme(theme);
         });
 
         // Listen for initial file from command line argument
