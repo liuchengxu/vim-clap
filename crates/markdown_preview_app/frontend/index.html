@@ -2170,7 +2170,10 @@
                     Open File
                 </button>
                 <p style="margin-top: 16px; font-size: 12px; color: #888;">
-                    Or press <kbd style="background: #eee; padding: 2px 6px; border-radius: 3px; font-family: monospace;">⌘O</kbd> · Drag &amp; drop · Use File menu
+                    Or press <kbd style="background: #eee; padding: 2px 6px; border-radius: 3px; font-family: monospace;">Ctrl+O</kbd> · Drag &amp; drop · Use File menu
+                </p>
+                <p style="margin-top: 8px; font-size: 11px; color: #aaa;">
+                    Press <kbd style="background: #eee; padding: 2px 6px; border-radius: 3px; font-family: monospace;">?</kbd> for keyboard shortcuts
                 </p>
             </div>
         </article>
@@ -3678,11 +3681,262 @@ window.applyZoom = applyZoom;
                     e.preventDefault();
                     navigateHeading(-1);
                     break;
+
+                // ? - show help
+                case '?':
+                    e.preventDefault();
+                    showHelpModal();
+                    break;
             }
 
             lastKey = e.key;
             lastKeyTime = now;
         });
+    }
+
+    // Help modal state
+    let helpModalVisible = false;
+
+    // Show help modal with keybindings
+    function showHelpModal() {
+        if (helpModalVisible) {
+            closeHelpModal();
+            return;
+        }
+        helpModalVisible = true;
+
+        let modal = document.getElementById('help-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'help-modal';
+            modal.className = 'help-modal-overlay';
+            modal.innerHTML = `
+                <div class="help-modal-container">
+                    <div class="help-modal-header">
+                        <h3>Keyboard Shortcuts</h3>
+                        <button class="help-modal-close">&times;</button>
+                    </div>
+                    <div class="help-modal-content">
+                        <div class="help-section">
+                            <h4>Navigation</h4>
+                            <div class="help-row"><kbd>j</kbd> / <kbd>k</kbd><span>Scroll down / up</span></div>
+                            <div class="help-row"><kbd>d</kbd> / <kbd>u</kbd><span>Half page down / up</span></div>
+                            <div class="help-row"><kbd>f</kbd> / <kbd>b</kbd><span>Full page down / up</span></div>
+                            <div class="help-row"><kbd>G</kbd><span>Go to bottom</span></div>
+                            <div class="help-row"><kbd>gg</kbd><span>Go to top</span></div>
+                            <div class="help-row"><kbd>n</kbd> / <kbd>N</kbd><span>Next / previous heading</span></div>
+                        </div>
+                        <div class="help-section">
+                            <h4>File Operations</h4>
+                            <div class="help-row"><kbd>Ctrl+O</kbd><span>Open file by path</span></div>
+                            <div class="help-row"><kbd>Ctrl+Shift+O</kbd><span>Open file dialog</span></div>
+                            <div class="help-row"><kbd>Ctrl+R</kbd> / <kbd>F5</kbd><span>Reload current file</span></div>
+                        </div>
+                        <div class="help-section">
+                            <h4>Search & View</h4>
+                            <div class="help-row"><kbd>/</kbd><span>Open fuzzy finder</span></div>
+                            <div class="help-row"><kbd>Ctrl++</kbd> / <kbd>Ctrl+-</kbd><span>Zoom in / out</span></div>
+                            <div class="help-row"><kbd>Ctrl+0</kbd><span>Reset zoom</span></div>
+                        </div>
+                        <div class="help-section">
+                            <h4>Path Input (Ctrl+O)</h4>
+                            <div class="help-row"><kbd>↑</kbd> / <kbd>↓</kbd><span>Navigate completions</span></div>
+                            <div class="help-row"><kbd>Ctrl+k</kbd> / <kbd>Ctrl+j</kbd><span>Browse path history</span></div>
+                            <div class="help-row"><kbd>Tab</kbd><span>Accept completion</span></div>
+                        </div>
+                        <div class="help-section">
+                            <h4>Other</h4>
+                            <div class="help-row"><kbd>?</kbd><span>Show this help</span></div>
+                            <div class="help-row"><kbd>Esc</kbd><span>Close modal / cancel</span></div>
+                            <div class="help-row"><kbd>Ctrl+Q</kbd><span>Quit application</span></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            // Add styles
+            const style = document.createElement('style');
+            style.id = 'help-modal-styles';
+            style.textContent = `
+                .help-modal-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10000;
+                    opacity: 0;
+                    visibility: hidden;
+                    transition: opacity 0.15s, visibility 0.15s;
+                }
+                .help-modal-overlay.visible {
+                    opacity: 1;
+                    visibility: visible;
+                }
+                .help-modal-container {
+                    background: #fff;
+                    border-radius: 12px;
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+                    width: 520px;
+                    max-width: 90vw;
+                    max-height: 80vh;
+                    overflow: hidden;
+                    display: flex;
+                    flex-direction: column;
+                }
+                .help-modal-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 16px 20px;
+                    border-bottom: 1px solid #e1e4e8;
+                }
+                .help-modal-header h3 {
+                    margin: 0;
+                    font-size: 16px;
+                    font-weight: 600;
+                }
+                .help-modal-close {
+                    background: none;
+                    border: none;
+                    font-size: 24px;
+                    cursor: pointer;
+                    color: #666;
+                    padding: 0;
+                    line-height: 1;
+                }
+                .help-modal-close:hover {
+                    color: #333;
+                }
+                .help-modal-content {
+                    padding: 16px 20px;
+                    overflow-y: auto;
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 16px;
+                }
+                .help-section {
+                    margin-bottom: 8px;
+                }
+                .help-section h4 {
+                    margin: 0 0 8px 0;
+                    font-size: 12px;
+                    font-weight: 600;
+                    color: #666;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                .help-row {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 4px 0;
+                    font-size: 13px;
+                }
+                .help-row kbd {
+                    background: #f0f0f0;
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    font-family: ui-monospace, SFMono-Regular, monospace;
+                    font-size: 12px;
+                    border: 1px solid #ddd;
+                    min-width: 20px;
+                    text-align: center;
+                }
+                .help-row span {
+                    color: #555;
+                    text-align: right;
+                }
+                @media (max-width: 500px) {
+                    .help-modal-content {
+                        grid-template-columns: 1fr;
+                    }
+                }
+                /* Dark mode styles */
+                @media (prefers-color-scheme: dark) {
+                    .help-modal-container { background: #1c1c1e; }
+                    .help-modal-header { border-color: #3a3a3c; }
+                    .help-modal-header h3 { color: #fff; }
+                    .help-modal-close { color: #888; }
+                    .help-modal-close:hover { color: #fff; }
+                    .help-section h4 { color: #888; }
+                    .help-row span { color: #aaa; }
+                    .help-row kbd { background: #2c2c2e; border-color: #3a3a3c; color: #fff; }
+                }
+                body.theme-github-dark .help-modal-container,
+                body.theme-dark .help-modal-container,
+                body.theme-material-dark .help-modal-container,
+                body.theme-one-dark .help-modal-container {
+                    background: #1c1c1e;
+                }
+                body.theme-github-dark .help-modal-header,
+                body.theme-dark .help-modal-header,
+                body.theme-material-dark .help-modal-header,
+                body.theme-one-dark .help-modal-header {
+                    border-color: #3a3a3c;
+                }
+                body.theme-github-dark .help-modal-header h3,
+                body.theme-dark .help-modal-header h3,
+                body.theme-material-dark .help-modal-header h3,
+                body.theme-one-dark .help-modal-header h3 {
+                    color: #fff;
+                }
+                body.theme-github-dark .help-section h4,
+                body.theme-dark .help-section h4,
+                body.theme-material-dark .help-section h4,
+                body.theme-one-dark .help-section h4 {
+                    color: #888;
+                }
+                body.theme-github-dark .help-row span,
+                body.theme-dark .help-row span,
+                body.theme-material-dark .help-row span,
+                body.theme-one-dark .help-row span {
+                    color: #aaa;
+                }
+                body.theme-github-dark .help-row kbd,
+                body.theme-dark .help-row kbd,
+                body.theme-material-dark .help-row kbd,
+                body.theme-one-dark .help-row kbd {
+                    background: #2c2c2e;
+                    border-color: #3a3a3c;
+                    color: #fff;
+                }
+            `;
+            document.head.appendChild(style);
+
+            // Click outside to close
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeHelpModal();
+                }
+            });
+
+            // Close button
+            modal.querySelector('.help-modal-close').addEventListener('click', closeHelpModal);
+
+            // Escape key to close
+            document.addEventListener('keydown', function helpEscHandler(e) {
+                if (e.key === 'Escape' && helpModalVisible) {
+                    closeHelpModal();
+                }
+            });
+        }
+
+        modal.classList.add('visible');
+    }
+
+    // Close help modal
+    function closeHelpModal() {
+        helpModalVisible = false;
+        const modal = document.getElementById('help-modal');
+        if (modal) {
+            modal.classList.remove('visible');
+        }
     }
 
     // Navigate to next/previous heading
