@@ -708,12 +708,12 @@
                 const dropdown = document.getElementById('path-autocomplete');
                 const isDropdownVisible = dropdown && dropdown.style.display !== 'none';
 
-                // Ctrl+Up/Down: Navigate path history
-                if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowUp') {
+                // Ctrl+k/j: Navigate path history (Ctrl+Up/Down conflicts with macOS)
+                if (e.ctrlKey && e.key === 'k') {
                     e.preventDefault();
                     historyPrev(input);
                     return;
-                } else if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowDown') {
+                } else if (e.ctrlKey && e.key === 'j') {
                     e.preventDefault();
                     historyNext(input);
                     return;
