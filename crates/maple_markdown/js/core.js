@@ -324,11 +324,12 @@ function generateTOC() {
 
     headings.forEach((heading, index) => {
         const level = heading.tagName.toLowerCase();
-        // Get all text content except the heading-anchor element
-        const text = Array.from(heading.childNodes)
+        // Get HTML content except the heading-anchor element, preserving <code> etc.
+        const htmlContent = Array.from(heading.childNodes)
             .filter(n => !(n.nodeType === Node.ELEMENT_NODE && n.classList.contains('heading-anchor')))
-            .map(n => n.textContent)
-            .join('');
+            .map(n => n.nodeType === Node.TEXT_NODE ? escapeHtml(n.textContent) : n.outerHTML)
+            .join('')
+            .trim();
         const id = heading.id || `heading-${index}`;
 
         if (!heading.id) {
@@ -337,7 +338,7 @@ function generateTOC() {
 
         const link = document.createElement('a');
         link.href = `#${id}`;
-        link.textContent = text.trim();
+        link.innerHTML = htmlContent;
         link.className = `toc-${level}`;
         link.onclick = (e) => {
             e.preventDefault();
