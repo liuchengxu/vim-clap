@@ -6,10 +6,14 @@ use tauri::{AppHandle, Emitter, Manager, Runtime};
 /// Create the application menu.
 pub fn create_menu<R: Runtime>(app: &AppHandle<R>) -> Result<Menu<R>, tauri::Error> {
     // File menu
-    let open_item = MenuItem::with_id(app, "open", "Open...", true, Some("CmdOrCtrl+Shift+O"))?;
+    let open_path_item =
+        MenuItem::with_id(app, "open_path", "Open Path...", true, Some("CmdOrCtrl+O"))?;
+    let open_item =
+        MenuItem::with_id(app, "open", "Open File...", true, Some("CmdOrCtrl+Shift+O"))?;
     let close_item = MenuItem::with_id(app, "close", "Close", true, Some("CmdOrCtrl+W"))?;
 
     let file_menu = SubmenuBuilder::new(app, "File")
+        .item(&open_path_item)
         .item(&open_item)
         .separator()
         .item(&close_item)
@@ -63,6 +67,10 @@ pub fn create_menu<R: Runtime>(app: &AppHandle<R>) -> Result<Menu<R>, tauri::Err
 /// Handle menu events.
 pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: &MenuEvent) {
     match event.id().as_ref() {
+        "open_path" => {
+            // Emit event to frontend to show path input modal
+            let _ = app.emit("menu-open-path", ());
+        }
         "open" => {
             // Emit event to frontend to open file dialog
             let _ = app.emit("menu-open", ());

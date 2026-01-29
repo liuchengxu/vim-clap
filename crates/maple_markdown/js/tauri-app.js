@@ -217,6 +217,10 @@
             changeTheme(theme);
         });
 
+        listen('menu-open-path', () => {
+            openPathInput();
+        });
+
         // Listen for initial file from command line argument
         listen('open-initial-file', async (event) => {
             console.log('Opening initial file:', event.payload);
