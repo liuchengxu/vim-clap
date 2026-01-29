@@ -910,6 +910,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "frecency"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+]
+
+[[package]]
 name = "fsevent-sys"
 version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1759,6 +1767,7 @@ dependencies = [
  "copypasta",
  "dirs 0.1.55",
  "filter",
+ "frecency",
  "futures",
  "git2 0.15.0",
  "grep-matcher",
@@ -1848,6 +1857,7 @@ dependencies = [
 name = "markdown_preview_core"
 version = "0.1.0"
 dependencies = [
+ "frecency",
  "notify",
  "once_cell",
  "percent-encoding",

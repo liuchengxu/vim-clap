@@ -15,6 +15,7 @@ members = [
     "crates/code_tools",
     "crates/dirs",
     "crates/filter",
+    "crates/frecency",
     "crates/icon",
     "crates/maple",
     "crates/maple_config",
@@ -99,6 +100,7 @@ cli = { path = "crates/cli" }
 code_tools = { path = "crates/code_tools" }
 dirs = { path = "crates/dirs" }
 filter = { path = "crates/filter" }
+frecency = { path = "crates/frecency" }
 icon = { path = "crates/icon" }
 maple_config = { path = "crates/maple_config" }
 maple_core = { path = "crates/maple_core" }

@@ -1,7 +1,9 @@
 //! Tauri IPC commands for the markdown preview app.
 
 use crate::state::AppState;
-use markdown_preview_core::{calculate_document_stats, find_git_root, to_html, DocumentStats, RenderOptions};
+use markdown_preview_core::{
+    calculate_document_stats, find_git_root, to_html, DocumentStats, RenderOptions,
+};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::{Emitter, State};
@@ -66,7 +68,8 @@ pub async fn open_file(
     };
 
     // Canonicalize to get the real absolute path
-    let path_buf = path_buf.canonicalize()
+    let path_buf = path_buf
+        .canonicalize()
         .map_err(|e| format!("Failed to resolve path: {e}"))?;
 
     let absolute_path = path_buf.to_string_lossy().to_string();
@@ -119,9 +122,7 @@ pub async fn add_recent_file(
 
 /// Clear the recent files list.
 #[tauri::command]
-pub async fn clear_recent_files(
-    state: State<'_, Arc<RwLock<AppState>>>,
-) -> Result<(), String> {
+pub async fn clear_recent_files(state: State<'_, Arc<RwLock<AppState>>>) -> Result<(), String> {
     let mut state = state.write().await;
     state.clear_recent_files();
     Ok(())
@@ -213,9 +214,7 @@ pub async fn unwatch_file(state: State<'_, Arc<RwLock<AppState>>>) -> Result<(),
 
 /// Check clipboard for a markdown file path and return it if valid.
 #[tauri::command]
-pub async fn check_clipboard_for_markdown(
-    app: tauri::AppHandle,
-) -> Result<Option<String>, String> {
+pub async fn check_clipboard_for_markdown(app: tauri::AppHandle) -> Result<Option<String>, String> {
     use tauri_plugin_clipboard_manager::ClipboardExt;
 
     tracing::debug!("Checking clipboard for markdown file path");
@@ -246,7 +245,10 @@ pub async fn check_clipboard_for_markdown(
         if let Some(ext) = path.extension() {
             let ext_str = ext.to_string_lossy().to_lowercase();
             tracing::debug!(extension = %ext_str, "Found extension");
-            if matches!(ext_str.as_str(), "md" | "markdown" | "mdown" | "mkdn" | "mkd") {
+            if matches!(
+                ext_str.as_str(),
+                "md" | "markdown" | "mdown" | "mkdn" | "mkd"
+            ) {
                 tracing::info!(path = %text, "Found markdown file in clipboard");
                 return Ok(Some(text.to_string()));
             }
@@ -332,20 +334,22 @@ pub async fn complete_path(partial: String) -> Result<Vec<PathCompletion>, Strin
     let expanded = expand_path(partial);
 
     // Determine the directory to list and the prefix to filter by
-    let (dir_to_list, prefix, use_tilde) = if partial.ends_with('/') || partial.ends_with(std::path::MAIN_SEPARATOR) {
-        // User typed a complete directory path, list its contents
-        (expanded.clone(), String::new(), partial.starts_with('~'))
-    } else if expanded.is_dir() {
-        // Path is a directory without trailing slash, list its contents
-        (expanded.clone(), String::new(), partial.starts_with('~'))
-    } else {
-        // Partial filename - get parent directory and filter prefix
-        let parent = expanded.parent().unwrap_or(Path::new("/"));
-        let file_name = expanded.file_name()
-            .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_default();
-        (parent.to_path_buf(), file_name, partial.starts_with('~'))
-    };
+    let (dir_to_list, prefix, use_tilde) =
+        if partial.ends_with('/') || partial.ends_with(std::path::MAIN_SEPARATOR) {
+            // User typed a complete directory path, list its contents
+            (expanded.clone(), String::new(), partial.starts_with('~'))
+        } else if expanded.is_dir() {
+            // Path is a directory without trailing slash, list its contents
+            (expanded.clone(), String::new(), partial.starts_with('~'))
+        } else {
+            // Partial filename - get parent directory and filter prefix
+            let parent = expanded.parent().unwrap_or(Path::new("/"));
+            let file_name = expanded
+                .file_name()
+                .map(|s| s.to_string_lossy().to_string())
+                .unwrap_or_default();
+            (parent.to_path_buf(), file_name, partial.starts_with('~'))
+        };
 
     // Check if directory exists
     if !dir_to_list.is_dir() {
@@ -392,7 +396,10 @@ pub async fn complete_path(partial: String) -> Result<Vec<PathCompletion>, Strin
                     });
                 } else if let Some(ext) = entry_path.extension() {
                     let ext_str = ext.to_string_lossy().to_lowercase();
-                    if matches!(ext_str.as_str(), "md" | "markdown" | "mdown" | "mkdn" | "mkd") {
+                    if matches!(
+                        ext_str.as_str(),
+                        "md" | "markdown" | "mdown" | "mkdn" | "mkd"
+                    ) {
                         completions.push(PathCompletion {
                             path: display_path,
                             name,
@@ -409,18 +416,52 @@ pub async fn complete_path(partial: String) -> Result<Vec<PathCompletion>, Strin
     }
 
     // Sort: directories first, then alphabetically
-    completions.sort_by(|a, b| {
-        match (a.is_dir, b.is_dir) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-        }
+    completions.sort_by(|a, b| match (a.is_dir, b.is_dir) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
     });
 
     // Limit results
     completions.truncate(20);
 
     Ok(completions)
+}
+
+/// Get path history sorted by frecency.
+/// If a git_root is provided, paths under it get a boost.
+#[tauri::command]
+pub async fn get_path_history(
+    git_root: Option<String>,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<Vec<String>, String> {
+    let state = state.read().await;
+    Ok(state.get_path_history(git_root.as_deref()))
+}
+
+/// Add a path to the history.
+#[tauri::command]
+pub async fn add_path_to_history(
+    path: String,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<(), String> {
+    let mut state = state.write().await;
+    state.add_path_to_history(path);
+    Ok(())
+}
+
+/// Get the git root directory for the current file.
+#[tauri::command]
+pub async fn get_current_git_root(
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<Option<String>, String> {
+    let state = state.read().await;
+    if let Some(ref current_file) = state.current_file {
+        let path_str = current_file.to_string_lossy().to_string();
+        Ok(find_git_root(&path_str))
+    } else {
+        Ok(None)
+    }
 }
 
 /// Parsed GitHub URL components.

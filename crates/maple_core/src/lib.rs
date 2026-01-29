@@ -15,4 +15,5 @@ pub use self::cache::find_largest_cache_digest;
 // Re-export
 pub use {dirs, paths};
 
-pub type UtcTime = chrono::DateTime<chrono::Utc>;
+// Re-export frecency's UtcTime for backward compatibility.
+pub use frecency::UtcTime;

@@ -55,17 +55,17 @@ impl RecentFilesProvider {
             let rank_calculator = RankCalculator::default();
 
             recent_files
-                .entries
+                .entries()
                 .iter()
                 .map(|entry| {
-                    let item: Arc<dyn ClapItem> = Arc::new(entry.fpath.clone());
+                    let item: Arc<dyn ClapItem> = Arc::new(entry.item.clone());
                     // frecent_score will not be larger than i32::MAX.
                     let score = entry.frecent_score as Score;
                     let rank = rank_calculator.calculate_rank(score, 0, 0, item.raw_text().len());
                     let mut matched_item = MatchedItem::new(item, rank, Default::default());
                     matched_item
                         .output_text
-                        .replace(entry.fpath.replacen(&cwd, "", 1));
+                        .replace(entry.item.replacen(&cwd, "", 1));
                     matched_item
                 })
                 .collect::<Vec<_>>()

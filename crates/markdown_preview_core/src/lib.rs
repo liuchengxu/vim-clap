@@ -26,3 +26,6 @@ pub use render::{rewrite_image_paths, to_html, RenderOptions, RenderResult};
 pub use stats::{calculate_document_stats, DocumentStats};
 pub use toc::{find_toc_range, generate_toc, slugify, TocConfig};
 pub use watcher::{FileWatcher, WatchEvent};
+
+// Re-export frecency for path history tracking
+pub use frecency;

@@ -1,0 +1,14 @@
+[package]
+name = "frecency"
+description = "Frecency-based item tracking for recent files and input history"
+version = "0.1.0"
+edition = "2021"
+authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
+homepage = "https://github.com/liuchengxu/vim-clap"
+repository = "https://github.com/liuchengxu/vim-clap.git"
+license = "MIT"
+publish = false
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }

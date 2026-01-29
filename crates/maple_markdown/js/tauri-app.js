@@ -52,6 +52,10 @@
             const result = await invoke('open_file', { path: filePath });
             if (result && result.html) {
                 handleFileOpened(result);
+                // Add to path history (use canonical path from result)
+                if (result.file_path) {
+                    addToPathHistory(result.file_path);
+                }
                 return result;
             }
         } catch (e) {
@@ -73,6 +77,10 @@
             const result = await invoke('open_url', { url });
             if (result && result.html) {
                 handleUrlOpened(result);
+                // Add URL to path history
+                if (result.file_path) {
+                    addToPathHistory(result.file_path);
+                }
                 return result;
             }
         } catch (e) {
@@ -312,6 +320,14 @@
         debounceTimer: null
     };
 
+    // Path history state
+    let pathHistoryState = {
+        items: [],           // History items from frecency
+        currentIndex: -1,    // Current position in history (-1 = not browsing)
+        originalValue: '',   // Value before starting history navigation
+        currentGitRoot: null // Git root of current file
+    };
+
     // Fetch path completions from backend
     async function fetchCompletions(partial) {
         try {
@@ -394,6 +410,9 @@
             clearTimeout(autocompleteState.debounceTimer);
         }
 
+        // Reset history navigation when user types
+        pathHistoryState.currentIndex = -1;
+
         autocompleteState.debounceTimer = setTimeout(async () => {
             if (value.length > 0) {
                 const items = await fetchCompletions(value);
@@ -405,10 +424,73 @@
         }, 100);
     }
 
+    // Load path history from backend
+    async function loadPathHistory() {
+        try {
+            const gitRoot = pathHistoryState.currentGitRoot;
+            pathHistoryState.items = await invoke('get_path_history', { gitRoot });
+        } catch (e) {
+            console.error('Failed to load path history:', e);
+            pathHistoryState.items = [];
+        }
+    }
+
+    // Add path to history
+    async function addToPathHistory(path) {
+        try {
+            await invoke('add_path_to_history', { path });
+        } catch (e) {
+            console.error('Failed to add path to history:', e);
+        }
+    }
+
+    // Navigate to previous history item
+    function historyPrev(input) {
+        if (pathHistoryState.items.length === 0) return false;
+
+        // Save original value when starting navigation
+        if (pathHistoryState.currentIndex === -1) {
+            pathHistoryState.originalValue = input.value;
+        }
+
+        // Move to previous (older) item
+        if (pathHistoryState.currentIndex < pathHistoryState.items.length - 1) {
+            pathHistoryState.currentIndex++;
+            input.value = pathHistoryState.items[pathHistoryState.currentIndex];
+            return true;
+        }
+        return false;
+    }
+
+    // Navigate to next history item
+    function historyNext(input) {
+        if (pathHistoryState.currentIndex === -1) return false;
+
+        pathHistoryState.currentIndex--;
+
+        if (pathHistoryState.currentIndex === -1) {
+            // Back to original value
+            input.value = pathHistoryState.originalValue;
+        } else {
+            input.value = pathHistoryState.items[pathHistoryState.currentIndex];
+        }
+        return true;
+    }
+
     // Open path input modal
-    function openPathInput() {
+    async function openPathInput() {
         if (pathInputVisible) return;
         pathInputVisible = true;
+
+        // Get current git root for path history boost and default directory
+        try {
+            pathHistoryState.currentGitRoot = await invoke('get_current_git_root');
+        } catch (e) {
+            pathHistoryState.currentGitRoot = null;
+        }
+
+        // Load path history
+        await loadPathHistory();
 
         // Create modal if it doesn't exist
         let modal = document.getElementById('path-input-modal');
@@ -429,6 +511,7 @@
                     </div>
                     <div class="path-input-footer">
                         <span class="key">↑↓</span> navigate
+                        <span class="key">Ctrl+↑↓</span> history
                         <span class="key">Tab</span> complete
                         <span class="key">Enter</span> open
                         <span class="key">Esc</span> cancel
@@ -625,6 +708,17 @@
                 const dropdown = document.getElementById('path-autocomplete');
                 const isDropdownVisible = dropdown && dropdown.style.display !== 'none';
 
+                // Ctrl+Up/Down: Navigate path history
+                if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    historyPrev(input);
+                    return;
+                } else if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    historyNext(input);
+                    return;
+                }
+
                 if (e.key === 'ArrowDown') {
                     e.preventDefault();
                     if (isDropdownVisible && autocompleteState.items.length > 0) {
@@ -702,12 +796,30 @@
 
         modal.classList.add('visible');
         const input = document.getElementById('path-input-field');
-        input.value = '';
+
+        // Pre-fill with git root directory if available
+        if (pathHistoryState.currentGitRoot) {
+            input.value = pathHistoryState.currentGitRoot + '/';
+        } else {
+            input.value = '';
+        }
+
+        // Reset state
         autocompleteState.items = [];
         autocompleteState.selectedIndex = -1;
+        pathHistoryState.currentIndex = -1;
+        pathHistoryState.originalValue = input.value;
+
         const dropdown = document.getElementById('path-autocomplete');
         if (dropdown) dropdown.style.display = 'none';
-        setTimeout(() => input.focus(), 50);
+
+        setTimeout(() => {
+            input.focus();
+            // Trigger autocomplete if we have a pre-filled value
+            if (input.value) {
+                triggerAutocomplete(input.value);
+            }
+        }, 50);
     }
 
     // Close path input modal
@@ -723,6 +835,9 @@
         if (autocompleteState.debounceTimer) {
             clearTimeout(autocompleteState.debounceTimer);
         }
+        // Clear history navigation state
+        pathHistoryState.currentIndex = -1;
+        pathHistoryState.originalValue = '';
     }
 
     // Check clipboard for markdown file path (optional feature)
