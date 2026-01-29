@@ -224,6 +224,154 @@
         });
     }
 
+    // Vim navigation state
+    let lastKeyTime = 0;
+    let lastKey = '';
+
+    // Check if focus is in an input element
+    function isInInputField() {
+        const active = document.activeElement;
+        return active && (
+            active.tagName === 'INPUT' ||
+            active.tagName === 'TEXTAREA' ||
+            active.isContentEditable
+        );
+    }
+
+    // Set up vim-style navigation
+    function setupVimNavigation() {
+        const mainContent = document.getElementById('main-content');
+
+        document.addEventListener('keydown', (e) => {
+            // Skip if in input field, modal open, or modifier keys pressed
+            if (isInInputField() || pathInputVisible || e.ctrlKey || e.metaKey || e.altKey) {
+                return;
+            }
+
+            // Skip if fuzzy finder is open
+            const fuzzyFinder = document.getElementById('fuzzy-finder');
+            if (fuzzyFinder && fuzzyFinder.classList.contains('visible')) {
+                return;
+            }
+
+            const now = Date.now();
+            const scrollContainer = mainContent;
+            const scrollAmount = scrollContainer.clientHeight;
+
+            switch (e.key) {
+                // j - scroll down a little
+                case 'j':
+                    e.preventDefault();
+                    scrollContainer.scrollBy({ top: 60, behavior: 'smooth' });
+                    break;
+
+                // k - scroll up a little
+                case 'k':
+                    e.preventDefault();
+                    scrollContainer.scrollBy({ top: -60, behavior: 'smooth' });
+                    break;
+
+                // d - scroll down half page (like Ctrl+d in vim)
+                case 'd':
+                    e.preventDefault();
+                    scrollContainer.scrollBy({ top: scrollAmount / 2, behavior: 'smooth' });
+                    break;
+
+                // u - scroll up half page (like Ctrl+u in vim)
+                case 'u':
+                    e.preventDefault();
+                    scrollContainer.scrollBy({ top: -scrollAmount / 2, behavior: 'smooth' });
+                    break;
+
+                // f - scroll down full page (like Ctrl+f in vim)
+                case 'f':
+                    e.preventDefault();
+                    scrollContainer.scrollBy({ top: scrollAmount - 50, behavior: 'smooth' });
+                    break;
+
+                // b - scroll up full page (like Ctrl+b in vim)
+                case 'b':
+                    e.preventDefault();
+                    scrollContainer.scrollBy({ top: -(scrollAmount - 50), behavior: 'smooth' });
+                    break;
+
+                // G - go to bottom
+                case 'G':
+                    e.preventDefault();
+                    scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
+                    break;
+
+                // g - if gg (double g within 500ms), go to top
+                case 'g':
+                    e.preventDefault();
+                    if (lastKey === 'g' && (now - lastKeyTime) < 500) {
+                        scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+                        lastKey = '';
+                    }
+                    break;
+
+                // / - open fuzzy finder (search)
+                case '/':
+                    e.preventDefault();
+                    if (typeof openFuzzyFinder === 'function') {
+                        openFuzzyFinder();
+                    }
+                    break;
+
+                // n - next heading
+                case 'n':
+                    e.preventDefault();
+                    navigateHeading(1);
+                    break;
+
+                // N - previous heading
+                case 'N':
+                    e.preventDefault();
+                    navigateHeading(-1);
+                    break;
+            }
+
+            lastKey = e.key;
+            lastKeyTime = now;
+        });
+    }
+
+    // Navigate to next/previous heading
+    function navigateHeading(direction) {
+        const content = document.getElementById('content');
+        if (!content) return;
+
+        const headings = Array.from(content.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+        if (headings.length === 0) return;
+
+        const mainContent = document.getElementById('main-content');
+        const scrollTop = mainContent.scrollTop;
+        const buffer = 10; // Small buffer for current position detection
+
+        let currentIndex = -1;
+        for (let i = 0; i < headings.length; i++) {
+            const headingTop = headings[i].offsetTop;
+            if (headingTop <= scrollTop + buffer) {
+                currentIndex = i;
+            } else {
+                break;
+            }
+        }
+
+        let targetIndex;
+        if (direction > 0) {
+            // Next heading
+            targetIndex = Math.min(currentIndex + 1, headings.length - 1);
+        } else {
+            // Previous heading
+            targetIndex = Math.max(currentIndex - 1, 0);
+        }
+
+        if (targetIndex >= 0 && targetIndex < headings.length) {
+            headings[targetIndex].scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
     // Set up drag and drop
     function setupDragAndDrop() {
         document.addEventListener('drop', async (e) => {
@@ -899,6 +1047,7 @@
         setupDragAndDrop();
         setupWelcomeScreen();
         setupKeyboardShortcuts();
+        setupVimNavigation();
         setupClipboardMonitoring();
     });
 })();
