@@ -261,7 +261,7 @@ fn process_message(msg: Message) -> Result<serde_json::Value, Error> {
     let res = match msg {
         Message::FileChanged(path, should_focus) => {
             let markdown_content = std::fs::read_to_string(&path)?;
-            let result = to_html(&markdown_content, &RenderOptions::gfm())?;
+            let result = to_html(&markdown_content, &RenderOptions::vim_plugin())?;
             let html = rewrite_image_paths(&result.html, "/files");
             let stats = calculate_document_stats(&markdown_content);
             let git_root = find_git_root(&path);

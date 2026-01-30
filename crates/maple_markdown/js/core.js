@@ -484,6 +484,56 @@ function setupTOCResize() {
     });
 }
 
+function setupRecentFilesResize() {
+    const section = document.getElementById('recent-files-section');
+    const resizeHandle = document.getElementById('recent-files-resize-handle');
+    if (!section || !resizeHandle) return;
+
+    let isResizing = false;
+    let startY = 0;
+    let startHeight = 0;
+
+    // Restore saved height
+    const savedHeight = localStorage.getItem('recentFilesSectionHeight');
+    if (savedHeight) {
+        const height = parseInt(savedHeight);
+        if (height >= 80 && height <= 500) {
+            section.style.height = height + 'px';
+        }
+    }
+
+    resizeHandle.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startY = e.clientY;
+        startHeight = section.offsetHeight;
+        resizeHandle.classList.add('resizing');
+        document.body.classList.add('section-resizing');
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+
+        const delta = e.clientY - startY;
+        const newHeight = startHeight + delta;
+        const minHeight = 80;
+        const maxHeight = 500;
+
+        if (newHeight >= minHeight && newHeight <= maxHeight) {
+            section.style.height = newHeight + 'px';
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isResizing) {
+            isResizing = false;
+            resizeHandle.classList.remove('resizing');
+            document.body.classList.remove('section-resizing');
+            localStorage.setItem('recentFilesSectionHeight', section.offsetHeight);
+        }
+    });
+}
+
 // ============================================================================
 // Theme & Font
 // ============================================================================
@@ -777,6 +827,9 @@ function updateFileMetadata(modifiedAt, stats, gitBranch, gitBranchUrl, gitLastA
         if (modifiedEl) {
             if (hasModified) {
                 modifiedEl.textContent = formatRelativeTime(modifiedAt);
+                // Show full timestamp on hover
+                const fullDate = new Date(modifiedAt);
+                modifiedEl.parentElement.title = fullDate.toLocaleString();
                 modifiedEl.parentElement.style.display = '';
             } else {
                 modifiedEl.parentElement.style.display = 'none';
@@ -1279,6 +1332,7 @@ function initCoreUI(options = {}) {
 
     setupTOCResize();
     setupSidebarResize();
+    setupRecentFilesResize();
 
     window.addEventListener('hashchange', () => {
         const hash = window.location.hash.slice(1);

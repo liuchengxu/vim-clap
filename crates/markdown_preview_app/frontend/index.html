@@ -94,19 +94,45 @@
         flex-shrink: 0;
       }
 
-      /* Recent Previews section - flexible height based on content */
-      .sidebar-section:first-child {
-        flex: 0 1 auto;
-        min-height: 0;
+      /* Recent Previews section - resizable height */
+      #recent-files-section {
+        flex: 0 0 auto;
+        min-height: 80px;
+        max-height: 70%;
         display: flex;
         flex-direction: column;
-        max-height: 50%;
+        overflow: hidden;
       }
 
       .recent-files {
-        flex: 0 1 auto;
+        flex: 1 1 auto;
         min-height: 0;
         overflow-y: auto;
+      }
+
+      /* Section resize handle (horizontal) */
+      .section-resize-handle {
+        height: 5px;
+        background: transparent;
+        cursor: row-resize;
+        flex-shrink: 0;
+        margin: 0 -20px;
+        padding: 0 20px;
+        transition: background 0.15s;
+      }
+
+      .section-resize-handle:hover,
+      .section-resize-handle.resizing {
+        background: rgba(9, 105, 218, 0.3);
+      }
+
+      body.section-resizing {
+        cursor: row-resize;
+        user-select: none;
+      }
+
+      body.section-resizing * {
+        cursor: row-resize !important;
       }
 
       .recent-file-item {
@@ -2163,10 +2189,11 @@
 </head>
 <body>
     <div id="sidebar">
-        <div class="sidebar-section">
+        <div class="sidebar-section" id="recent-files-section">
             <h3>Recent Previews</h3>
             <div id="recent-files" class="recent-files"></div>
         </div>
+        <div id="recent-files-resize-handle" class="section-resize-handle"></div>
         <div class="sidebar-section">
             <h3>Display Options</h3>
             <div class="option-group">
@@ -2768,6 +2795,56 @@ function setupTOCResize() {
     });
 }
 
+function setupRecentFilesResize() {
+    const section = document.getElementById('recent-files-section');
+    const resizeHandle = document.getElementById('recent-files-resize-handle');
+    if (!section || !resizeHandle) return;
+
+    let isResizing = false;
+    let startY = 0;
+    let startHeight = 0;
+
+    // Restore saved height
+    const savedHeight = localStorage.getItem('recentFilesSectionHeight');
+    if (savedHeight) {
+        const height = parseInt(savedHeight);
+        if (height >= 80 && height <= 500) {
+            section.style.height = height + 'px';
+        }
+    }
+
+    resizeHandle.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startY = e.clientY;
+        startHeight = section.offsetHeight;
+        resizeHandle.classList.add('resizing');
+        document.body.classList.add('section-resizing');
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+
+        const delta = e.clientY - startY;
+        const newHeight = startHeight + delta;
+        const minHeight = 80;
+        const maxHeight = 500;
+
+        if (newHeight >= minHeight && newHeight <= maxHeight) {
+            section.style.height = newHeight + 'px';
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isResizing) {
+            isResizing = false;
+            resizeHandle.classList.remove('resizing');
+            document.body.classList.remove('section-resizing');
+            localStorage.setItem('recentFilesSectionHeight', section.offsetHeight);
+        }
+    });
+}
+
 // ============================================================================
 // Theme & Font
 // ============================================================================
@@ -3061,6 +3138,9 @@ function updateFileMetadata(modifiedAt, stats, gitBranch, gitBranchUrl, gitLastA
         if (modifiedEl) {
             if (hasModified) {
                 modifiedEl.textContent = formatRelativeTime(modifiedAt);
+                // Show full timestamp on hover
+                const fullDate = new Date(modifiedAt);
+                modifiedEl.parentElement.title = fullDate.toLocaleString();
                 modifiedEl.parentElement.style.display = '';
             } else {
                 modifiedEl.parentElement.style.display = 'none';
@@ -3563,6 +3643,7 @@ function initCoreUI(options = {}) {
 
     setupTOCResize();
     setupSidebarResize();
+    setupRecentFilesResize();
 
     window.addEventListener('hashchange', () => {
         const hash = window.location.hash.slice(1);

@@ -33,7 +33,7 @@ pub struct RenderResponse {
 /// Render markdown content to HTML.
 #[tauri::command]
 pub async fn render_markdown(content: String) -> Result<RenderResponse, String> {
-    let result = to_html(&content, &RenderOptions::gfm()).map_err(|e| e.to_string())?;
+    let result = to_html(&content, &RenderOptions::gui()).map_err(|e| e.to_string())?;
 
     let stats = calculate_document_stats(&content);
 
@@ -177,7 +177,7 @@ pub async fn open_file(
         .map_err(|e| format!("Failed to read file: {e}"))?;
 
     // Render markdown
-    let result = to_html(&content, &RenderOptions::gfm()).map_err(|e| e.to_string())?;
+    let result = to_html(&content, &RenderOptions::gui()).map_err(|e| e.to_string())?;
 
     let stats = calculate_document_stats(&content);
     let git_root = find_git_root(&absolute_path);
@@ -277,7 +277,7 @@ pub async fn watch_file(
             // Read and render the file
             match tokio::fs::read_to_string(&path_clone).await {
                 Ok(content) => {
-                    if let Ok(result) = to_html(&content, &RenderOptions::gfm()) {
+                    if let Ok(result) = to_html(&content, &RenderOptions::gui()) {
                         let stats = calculate_document_stats(&content);
                         let git_root = find_git_root(&path_clone);
                         let git_branch = get_git_branch(&path_clone);
@@ -701,7 +701,7 @@ pub async fn open_url(url: String) -> Result<RenderResponse, String> {
     };
 
     // Render the markdown
-    let result = to_html(&content, &RenderOptions::gfm()).map_err(|e| e.to_string())?;
+    let result = to_html(&content, &RenderOptions::gui()).map_err(|e| e.to_string())?;
     let stats = calculate_document_stats(&content);
 
     Ok(RenderResponse {

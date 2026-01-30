@@ -58,19 +58,45 @@
         flex-shrink: 0;
       }
 
-      /* Recent Previews section - flexible height based on content */
-      .sidebar-section:first-child {
-        flex: 0 1 auto;
-        min-height: 0;
+      /* Recent Previews section - resizable height */
+      #recent-files-section {
+        flex: 0 0 auto;
+        min-height: 80px;
+        max-height: 70%;
         display: flex;
         flex-direction: column;
-        max-height: 50%;
+        overflow: hidden;
       }
 
       .recent-files {
-        flex: 0 1 auto;
+        flex: 1 1 auto;
         min-height: 0;
         overflow-y: auto;
+      }
+
+      /* Section resize handle (horizontal) */
+      .section-resize-handle {
+        height: 5px;
+        background: transparent;
+        cursor: row-resize;
+        flex-shrink: 0;
+        margin: 0 -20px;
+        padding: 0 20px;
+        transition: background 0.15s;
+      }
+
+      .section-resize-handle:hover,
+      .section-resize-handle.resizing {
+        background: rgba(9, 105, 218, 0.3);
+      }
+
+      body.section-resizing {
+        cursor: row-resize;
+        user-select: none;
+      }
+
+      body.section-resizing * {
+        cursor: row-resize !important;
       }
 
       .recent-file-item {

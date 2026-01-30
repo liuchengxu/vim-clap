@@ -4,7 +4,7 @@
 //! - GitHub Flavored Markdown (tables, strikethrough, task lists)
 //! - GitHub-style alerts ([!NOTE], [!TIP], [!IMPORTANT], [!WARNING], [!CAUTION])
 //! - Heading IDs for anchor links
-//! - Source line mapping for scroll synchronization
+//! - Source line mapping for scroll synchronization (vim-clap mode only)
 
 mod github_alerts;
 mod heading;
@@ -14,9 +14,21 @@ use pulldown_cmark::{CowStr, Event, Options, Parser, Tag, TagEnd};
 
 pub use github_alerts::detect_github_alert;
 
+/// Preview mode determines which features are enabled.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum PreviewMode {
+    /// Standalone GUI app - no line tracking needed
+    #[default]
+    Gui,
+    /// vim-clap integration via WebSocket - needs line tracking for scroll sync
+    VimPlugin,
+}
+
 /// Options for rendering markdown to HTML.
 #[derive(Debug, Clone, Default)]
 pub struct RenderOptions {
+    /// Preview mode (Gui or VimPlugin)
+    pub mode: PreviewMode,
     /// Enable GitHub Flavored Markdown tables
     pub enable_tables: bool,
     /// Enable strikethrough syntax (~~text~~)
@@ -28,9 +40,21 @@ pub struct RenderOptions {
 }
 
 impl RenderOptions {
-    /// Create options with all GitHub Flavored Markdown features enabled.
-    pub fn gfm() -> Self {
+    /// Create options for standalone GUI app (no line tracking).
+    pub fn gui() -> Self {
         Self {
+            mode: PreviewMode::Gui,
+            enable_tables: true,
+            enable_strikethrough: true,
+            enable_tasklists: true,
+            enable_heading_attributes: true,
+        }
+    }
+
+    /// Create options for vim-clap plugin mode (with line tracking for scroll sync).
+    pub fn vim_plugin() -> Self {
+        Self {
+            mode: PreviewMode::VimPlugin,
             enable_tables: true,
             enable_strikethrough: true,
             enable_tasklists: true,
@@ -87,14 +111,14 @@ fn byte_offset_to_line(content: &str, byte_offset: usize) -> usize {
 /// # Arguments
 ///
 /// * `markdown_content` - The raw markdown text
-/// * `options` - Rendering options (use `RenderOptions::gfm()` for GitHub Flavored Markdown)
+/// * `options` - Rendering options (use `RenderOptions::gui()` for GitHub Flavored Markdown)
 ///
 /// # Example
 ///
 /// ```
 /// use markdown_preview_core::render::{to_html, RenderOptions};
 ///
-/// let result = to_html("# Hello\n\nWorld", &RenderOptions::gfm()).unwrap();
+/// let result = to_html("# Hello\n\nWorld", &RenderOptions::gui()).unwrap();
 /// assert!(result.html.contains("<h1"));
 /// ```
 pub fn to_html(
@@ -129,30 +153,33 @@ pub fn to_html(
             _ => {}
         }
 
-        // Only track top-level elements (not nested inside lists or blockquotes)
-        // Exception: We DO track the first level list/blockquote itself
-        let should_track_line = match &events[i] {
-            Event::Start(Tag::Paragraph) => list_depth == 0 && blockquote_depth == 0,
-            Event::Start(Tag::Heading { .. }) => true, // Headings are always top-level
-            Event::Start(Tag::BlockQuote) => blockquote_depth == 1, // First level only
-            Event::Start(Tag::CodeBlock(_)) => list_depth == 0 && blockquote_depth == 0,
-            Event::Start(Tag::List(_)) => list_depth == 1, // First level only
-            Event::Start(Tag::Table(_)) => list_depth == 0 && blockquote_depth == 0,
-            _ => false,
-        };
+        // Only track line numbers in VimPlugin mode (for scroll sync)
+        if options.mode == PreviewMode::VimPlugin {
+            // Only track top-level elements (not nested inside lists or blockquotes)
+            // Exception: We DO track the first level list/blockquote itself
+            let should_track_line = match &events[i] {
+                Event::Start(Tag::Paragraph) => list_depth == 0 && blockquote_depth == 0,
+                Event::Start(Tag::Heading { .. }) => true, // Headings are always top-level
+                Event::Start(Tag::BlockQuote) => blockquote_depth == 1, // First level only
+                Event::Start(Tag::CodeBlock(_)) => list_depth == 0 && blockquote_depth == 0,
+                Event::Start(Tag::List(_)) => list_depth == 1, // First level only
+                Event::Start(Tag::Table(_)) => list_depth == 0 && blockquote_depth == 0,
+                _ => false,
+            };
 
-        if should_track_line {
-            let byte_offset = events_with_offsets[i].1.start;
-            let line_number = byte_offset_to_line(markdown_content, byte_offset);
-            tracing::debug!(
-                event = ?events[i],
-                byte_offset,
-                line_number,
-                list_depth,
-                blockquote_depth,
-                "Tracking line number for element"
-            );
-            line_map.push(line_number);
+            if should_track_line {
+                let byte_offset = events_with_offsets[i].1.start;
+                let line_number = byte_offset_to_line(markdown_content, byte_offset);
+                tracing::debug!(
+                    event = ?events[i],
+                    byte_offset,
+                    line_number,
+                    list_depth,
+                    blockquote_depth,
+                    "Tracking line number for element"
+                );
+                line_map.push(line_number);
+            }
         }
 
         match &events[i] {
@@ -345,7 +372,7 @@ mod tests {
 
     #[test]
     fn test_basic_rendering() {
-        let result = to_html("# Hello\n\nWorld", &RenderOptions::gfm()).unwrap();
+        let result = to_html("# Hello\n\nWorld", &RenderOptions::gui()).unwrap();
         assert!(result.html.contains("<h1"));
         assert!(result.html.contains("Hello"));
         assert!(result.html.contains("<p>World</p>"));
@@ -353,13 +380,13 @@ mod tests {
 
     #[test]
     fn test_heading_ids() {
-        let result = to_html("# Test Heading", &RenderOptions::gfm()).unwrap();
+        let result = to_html("# Test Heading", &RenderOptions::gui()).unwrap();
         assert!(result.html.contains(r#"id="test-heading""#));
     }
 
     #[test]
     fn test_github_alert() {
-        let result = to_html("> [!NOTE]\n> This is a note", &RenderOptions::gfm()).unwrap();
+        let result = to_html("> [!NOTE]\n> This is a note", &RenderOptions::gui()).unwrap();
         assert!(result.html.contains("markdown-alert-note"));
     }
 
