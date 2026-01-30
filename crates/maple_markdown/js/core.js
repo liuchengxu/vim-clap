@@ -744,6 +744,14 @@ function formatRelativeTime(timestamp) {
     return date.toLocaleDateString();
 }
 
+function formatWordCount(words) {
+    if (words == null) return null;
+    if (words >= 1000) {
+        return (words / 1000).toFixed(1).replace(/\.0$/, '') + 'k words';
+    }
+    return words.toLocaleString() + ' words';
+}
+
 function updateFileMetadata(modifiedAt, stats, gitBranch, gitBranchUrl, gitLastAuthor) {
     const metadataBar = document.getElementById('file-metadata-bar');
     const modifiedEl = document.getElementById('modified-time');
@@ -751,6 +759,8 @@ function updateFileMetadata(modifiedAt, stats, gitBranch, gitBranchUrl, gitLastA
     const branchEl = document.getElementById('git-branch');
     const branchContainer = document.getElementById('metadata-branch');
     const authorEl = document.getElementById('git-author');
+    const wordCountEl = document.getElementById('word-count');
+    const wordCountContainer = document.getElementById('metadata-words');
 
     if (!metadataBar) return;
 
@@ -759,8 +769,9 @@ function updateFileMetadata(modifiedAt, stats, gitBranch, gitBranchUrl, gitLastA
     const hasReadTime = stats && (stats.reading_minutes || stats.reading_time_minutes);
     const hasBranch = gitBranch != null;
     const hasAuthor = gitLastAuthor != null;
+    const hasWords = stats && stats.words != null;
 
-    if (hasModified || hasReadTime || hasBranch || hasAuthor) {
+    if (hasModified || hasReadTime || hasBranch || hasAuthor || hasWords) {
         metadataBar.classList.add('visible');
 
         if (modifiedEl) {
@@ -814,6 +825,15 @@ function updateFileMetadata(modifiedAt, stats, gitBranch, gitBranchUrl, gitLastA
                 authorEl.parentElement.style.display = '';
             } else {
                 authorEl.parentElement.style.display = 'none';
+            }
+        }
+
+        if (wordCountEl && wordCountContainer) {
+            if (hasWords) {
+                wordCountEl.textContent = formatWordCount(stats.words);
+                wordCountContainer.style.display = '';
+            } else {
+                wordCountContainer.style.display = 'none';
             }
         }
     } else {
