@@ -124,8 +124,10 @@ impl ClapPlugin for Markdown {
                         // TODO: incremental update?
                         let lines = self.vim.getbufline(bufnr, 1, "$").await?;
                         let markdown_content = lines.join("\n");
-                        let result =
-                            maple_markdown::to_html(&markdown_content, &RenderOptions::vim_plugin())?;
+                        let result = maple_markdown::to_html(
+                            &markdown_content,
+                            &RenderOptions::vim_plugin(),
+                        )?;
                         preview
                             .msg_tx
                             .send_replace(Message::UpdateContent(result.html));

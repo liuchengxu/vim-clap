@@ -327,45 +327,6 @@ pub fn to_html(
     })
 }
 
-/// Rewrites relative image paths in HTML to use a specified base path prefix.
-///
-/// Converts `<img src="path/to/image.png">` to `<img src="{prefix}/path/to/image.png">`
-/// for relative paths only (absolute paths and URLs are left unchanged).
-///
-/// # Arguments
-///
-/// * `html` - The HTML content with image tags
-/// * `prefix` - The prefix to add to relative image paths (e.g., "/files")
-pub fn rewrite_image_paths(html: &str, prefix: &str) -> String {
-    // Regex to match img tags with src attribute
-    let img_regex = regex::Regex::new(r#"<img\s+([^>]*?)src="([^"]+)"([^>]*)>"#).unwrap();
-
-    img_regex
-        .replace_all(html, |caps: &regex::Captures| {
-            let before = &caps[1];
-            let src = &caps[2];
-            let after = &caps[3];
-
-            // Skip absolute URLs (http://, https://, data:, //)
-            if src.starts_with("http://")
-                || src.starts_with("https://")
-                || src.starts_with("data:")
-                || src.starts_with("//")
-                || src.starts_with('/')
-            {
-                return caps[0].to_string();
-            }
-
-            // URL-encode the path for safe transmission
-            let encoded_src =
-                percent_encoding::utf8_percent_encode(src, percent_encoding::NON_ALPHANUMERIC)
-                    .to_string();
-
-            format!(r#"<img {before}src="{prefix}/{encoded_src}"{after}>"#)
-        })
-        .to_string()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -388,17 +349,5 @@ mod tests {
     fn test_github_alert() {
         let result = to_html("> [!NOTE]\n> This is a note", &RenderOptions::gui()).unwrap();
         assert!(result.html.contains("markdown-alert-note"));
-    }
-
-    #[test]
-    fn test_rewrite_image_paths() {
-        let html = r#"<img src="images/test.png">"#;
-        let result = rewrite_image_paths(html, "/files");
-        assert!(result.contains("/files/"));
-
-        // Absolute URLs should not be modified
-        let html_absolute = r#"<img src="https://example.com/image.png">"#;
-        let result_absolute = rewrite_image_paths(html_absolute, "/files");
-        assert_eq!(result_absolute, html_absolute);
     }
 }

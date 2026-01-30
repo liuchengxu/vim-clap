@@ -11,7 +11,7 @@ publish.workspace = true
 [dependencies]
 axum = { version = "0.7.5", features = ["ws"] }
 axum-extra = { version = "0.9.3", features = ["typed-header"] }
-markdown_preview_core = { workspace = true }
+markdown_preview_core = { workspace = true, features = ["vim-plugin"] }
 notify = { workspace = true }
 percent-encoding = { workspace = true }
 serde = { workspace = true, features = ["derive"] }

@@ -5,9 +5,11 @@
 //! for rendering, statistics, and file watching.
 
 // Re-export core library types for convenience
+pub use markdown_preview_core::vim_plugin::image_paths::rewrite_image_paths;
+pub use markdown_preview_core::vim_plugin::protocol::Message;
 pub use markdown_preview_core::{
-    calculate_document_stats, find_git_root, rewrite_image_paths, to_html, toc, DocumentStats,
-    RenderOptions, RenderResult,
+    calculate_document_stats, find_git_root, to_html, toc, DocumentStats, RenderOptions,
+    RenderResult,
 };
 
 use axum::extract::ws::{Message as WsMessage, WebSocket, WebSocketUpgrade};
@@ -297,20 +299,6 @@ fn process_message(msg: Message) -> Result<serde_json::Value, Error> {
         }
     };
     Ok(res)
-}
-
-/// Worker message that the websocket server deals with.
-#[derive(Debug, Clone)]
-pub enum Message {
-    /// Markdown file was modified.
-    /// The boolean flag indicates whether to focus the browser window.
-    FileChanged(String, bool),
-    /// Refresh the page with given HTML content.
-    UpdateContent(String),
-    /// Scroll to the given position specified in a percent to the window height.
-    Scroll(usize),
-    /// Request the browser window to focus itself.
-    FocusWindow,
 }
 
 /// Spawns a polling-based file watcher as a fallback when inotify fails.

@@ -18,7 +18,7 @@ tauri-build = { version = "2.0", features = [] }
 
 [dependencies]
 # Core library from parent workspace (path dependency)
-markdown_preview_core = { path = "../markdown_preview_core" }
+markdown_preview_core = { path = "../markdown_preview_core", features = ["gui"] }
 
 # Standard dependencies
 dirs = "5.0"

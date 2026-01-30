@@ -1,7 +1,7 @@
-//! Protocol message types for client-server communication.
+//! Protocol message types for vim-plugin client-server communication.
 //!
 //! Defines the messages exchanged between the preview server and clients
-//! (browser via WebSocket or Tauri app via IPC).
+//! via WebSocket.
 
 use crate::stats::DocumentStats;
 use serde::{Deserialize, Serialize};
@@ -119,21 +119,6 @@ impl Message {
             Message::Scroll(position) => Ok(ServerMessage::Scroll { data: position }),
             Message::FocusWindow => Ok(ServerMessage::FocusWindow),
         }
-    }
-}
-
-/// Find the git repository root by walking up the directory tree.
-pub fn find_git_root(path: &str) -> Option<String> {
-    let path = std::path::Path::new(path);
-    let mut current = path.parent()?;
-
-    loop {
-        let git_dir = current.join(".git");
-        if git_dir.exists() {
-            return current.to_str().map(String::from);
-        }
-
-        current = current.parent()?;
     }
 }
 
