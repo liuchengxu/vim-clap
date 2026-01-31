@@ -159,9 +159,8 @@
       }
 
       .recent-file-name {
-        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-        font-size: 12px;
-        font-weight: 500;
+        font-size: 13px;
+        font-weight: 600;
         color: #24292f;
       }
 
@@ -4853,111 +4852,6 @@ window.applyZoom = applyZoom;
             input.addEventListener('keydown', async (e) => {
                 const dropdown = document.getElementById('path-autocomplete');
                 const isDropdownVisible = dropdown && dropdown.style.display !== 'none';
-
-                // Emacs-like keybindings
-                if (e.ctrlKey && !e.metaKey && !e.shiftKey) {
-                    switch (e.key) {
-                        case 'a': // Ctrl+A: Move to beginning of line
-                            e.preventDefault();
-                            input.selectionStart = input.selectionEnd = 0;
-                            return;
-                        case 'e': // Ctrl+E: Move to end of line
-                            e.preventDefault();
-                            input.selectionStart = input.selectionEnd = input.value.length;
-                            return;
-                        case 'f': // Ctrl+F: Move forward one character
-                            e.preventDefault();
-                            if (input.selectionStart < input.value.length) {
-                                input.selectionStart = input.selectionEnd = input.selectionStart + 1;
-                            }
-                            return;
-                        case 'b': // Ctrl+B: Move backward one character
-                            e.preventDefault();
-                            if (input.selectionStart > 0) {
-                                input.selectionStart = input.selectionEnd = input.selectionStart - 1;
-                            }
-                            return;
-                        case 'd': // Ctrl+D: Delete character under cursor
-                            e.preventDefault();
-                            if (input.selectionStart < input.value.length) {
-                                const pos = input.selectionStart;
-                                input.value = input.value.slice(0, pos) + input.value.slice(pos + 1);
-                                input.selectionStart = input.selectionEnd = pos;
-                                triggerAutocomplete(input.value);
-                            }
-                            return;
-                        case 'h': // Ctrl+H: Delete character before cursor (backspace)
-                            e.preventDefault();
-                            if (input.selectionStart > 0) {
-                                const pos = input.selectionStart;
-                                input.value = input.value.slice(0, pos - 1) + input.value.slice(pos);
-                                input.selectionStart = input.selectionEnd = pos - 1;
-                                triggerAutocomplete(input.value);
-                            }
-                            return;
-                        case 'u': // Ctrl+U: Delete to beginning of line
-                            e.preventDefault();
-                            {
-                                const pos = input.selectionStart;
-                                input.value = input.value.slice(pos);
-                                input.selectionStart = input.selectionEnd = 0;
-                                triggerAutocomplete(input.value);
-                            }
-                            return;
-                        case 'w': // Ctrl+W: Delete word backward
-                            e.preventDefault();
-                            {
-                                const pos = input.selectionStart;
-                                const before = input.value.slice(0, pos);
-                                const after = input.value.slice(pos);
-                                // Find word boundary (handle path separators too)
-                                const match = before.match(/(?:^|[\s\/])([^\s\/]*)$/);
-                                const deleteLen = match ? match[1].length : 0;
-                                input.value = before.slice(0, pos - deleteLen) + after;
-                                input.selectionStart = input.selectionEnd = pos - deleteLen;
-                                triggerAutocomplete(input.value);
-                            }
-                            return;
-                    }
-                }
-
-                // Alt-based Emacs keybindings (word movement)
-                if (e.altKey && !e.ctrlKey && !e.metaKey) {
-                    switch (e.key) {
-                        case 'f': // Alt+F: Move forward one word
-                            e.preventDefault();
-                            {
-                                const pos = input.selectionStart;
-                                const after = input.value.slice(pos);
-                                const match = after.match(/^[\s\/]*[^\s\/]+/);
-                                const moveLen = match ? match[0].length : after.length;
-                                input.selectionStart = input.selectionEnd = pos + moveLen;
-                            }
-                            return;
-                        case 'b': // Alt+B: Move backward one word
-                            e.preventDefault();
-                            {
-                                const pos = input.selectionStart;
-                                const before = input.value.slice(0, pos);
-                                const match = before.match(/[^\s\/]+[\s\/]*$/);
-                                const moveLen = match ? match[0].length : before.length;
-                                input.selectionStart = input.selectionEnd = pos - moveLen;
-                            }
-                            return;
-                        case 'd': // Alt+D: Delete word forward
-                            e.preventDefault();
-                            {
-                                const pos = input.selectionStart;
-                                const after = input.value.slice(pos);
-                                const match = after.match(/^[\s\/]*[^\s\/]+/);
-                                const deleteLen = match ? match[0].length : after.length;
-                                input.value = input.value.slice(0, pos) + input.value.slice(pos + deleteLen);
-                                input.selectionStart = input.selectionEnd = pos;
-                                triggerAutocomplete(input.value);
-                            }
-                            return;
-                    }
-                }
 
                 // Ctrl+k/j: Navigate path history (Ctrl+Up/Down conflicts with macOS)
                 if (e.ctrlKey && e.key === 'k') {

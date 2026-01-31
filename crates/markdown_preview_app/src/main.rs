@@ -107,6 +107,7 @@ fn main() {
             commands::get_path_history,
             commands::add_path_to_history,
             commands::get_current_git_root,
+            commands::refresh_file_metadata,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

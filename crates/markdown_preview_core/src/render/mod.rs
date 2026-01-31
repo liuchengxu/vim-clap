@@ -315,11 +315,14 @@ pub fn to_html(
 
     pulldown_cmark::html::push_html(&mut html_output, processed_events.into_iter());
 
-    tracing::debug!(
-        line_map_length = line_map.len(),
-        line_map = ?&line_map[..line_map.len().min(20)],
-        "Generated line map"
-    );
+    // Only log line map in VimPlugin mode where it's actually used
+    if options.mode == PreviewMode::VimPlugin {
+        tracing::debug!(
+            line_map_length = line_map.len(),
+            line_map = ?&line_map[..line_map.len().min(20)],
+            "Generated line map"
+        );
+    }
 
     Ok(RenderResult {
         html: html_output,

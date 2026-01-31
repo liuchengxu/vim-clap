@@ -585,6 +585,63 @@ pub async fn get_current_git_root(
     }
 }
 
+/// File metadata response (subset of RenderResponse for metadata-only updates).
+#[derive(Clone, serde::Serialize)]
+pub struct FileMetadata {
+    /// File modification time (Unix timestamp in milliseconds)
+    pub modified_at: Option<u64>,
+    /// Document statistics
+    pub stats: DocumentStats,
+    /// Git branch name
+    pub git_branch: Option<String>,
+    /// GitHub URL for the branch
+    pub git_branch_url: Option<String>,
+    /// Last commit author for this file
+    pub git_last_author: Option<String>,
+}
+
+/// Refresh metadata for the currently open file.
+/// Returns updated modification time, git info, and document stats.
+#[tauri::command]
+pub async fn refresh_file_metadata(
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<Option<FileMetadata>, String> {
+    let state = state.read().await;
+    let Some(ref current_file) = state.current_file else {
+        return Ok(None);
+    };
+
+    let path_str = current_file.to_string_lossy().to_string();
+
+    // Get file modification time
+    let modified_at = tokio::fs::metadata(current_file)
+        .await
+        .ok()
+        .and_then(|m| m.modified().ok())
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as u64);
+
+    // Read the file to get updated stats
+    let content = tokio::fs::read_to_string(current_file)
+        .await
+        .map_err(|e| format!("Failed to read file: {e}"))?;
+
+    let stats = calculate_document_stats(&content);
+    let git_branch = get_git_branch(&path_str);
+    let git_branch_url = git_branch
+        .as_ref()
+        .and_then(|b| get_git_branch_url(&path_str, b));
+    let git_last_author = get_git_last_author(&path_str);
+
+    Ok(Some(FileMetadata {
+        modified_at,
+        stats,
+        git_branch,
+        git_branch_url,
+        git_last_author,
+    }))
+}
+
 /// Parsed GitHub URL components.
 struct GitHubUrl {
     owner: String,
