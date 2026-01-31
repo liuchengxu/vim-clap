@@ -849,11 +849,35 @@
         display: inline-flex;
         align-items: center;
         gap: 5px;
+        position: relative;
       }
 
       .metadata-item svg {
         opacity: 0.6;
         flex-shrink: 0;
+      }
+
+      /* Refresh indicator dot */
+      .metadata-refresh-dot {
+        position: absolute;
+        top: -2px;
+        right: -6px;
+        width: 6px;
+        height: 6px;
+        background: #2da44e;
+        border-radius: 50%;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+      }
+
+      .metadata-refresh-dot.visible {
+        opacity: 1;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .metadata-refresh-dot {
+          background: #3fb950;
+        }
       }
 
       .metadata-item.clickable {
@@ -2243,6 +2267,7 @@
                     <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0zm7-3.25v2.992l2.028.812a.75.75 0 0 1-.557 1.392l-2.5-1A.75.75 0 0 1 7 8.25v-3.5a.75.75 0 0 1 1.5 0z"/>
                 </svg>
                 <span id="modified-time">-</span>
+                <span class="metadata-refresh-dot" id="metadata-refresh-dot"></span>
             </span>
             <span class="metadata-item" id="metadata-readtime" title="Estimated read time">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
@@ -4999,6 +5024,42 @@ window.applyZoom = applyZoom;
         return null;
     }
 
+    // Show refresh indicator dot briefly
+    function showRefreshDot() {
+        const dot = document.getElementById('metadata-refresh-dot');
+        if (!dot) return;
+
+        dot.classList.add('visible');
+        setTimeout(() => {
+            dot.classList.remove('visible');
+        }, 1000);
+    }
+
+    // Refresh file metadata from the backend
+    async function refreshFileMetadata() {
+        const current = window.MarkdownPreviewCore.getCurrentFilePath();
+        // Only refresh if a file is currently open (not a URL)
+        if (!current || current.startsWith('http://') || current.startsWith('https://')) {
+            return;
+        }
+
+        try {
+            const metadata = await window.__TAURI__.core.invoke('refresh_file_metadata');
+            if (metadata) {
+                updateFileMetadata(
+                    metadata.modified_at,
+                    metadata.stats,
+                    metadata.git_branch,
+                    metadata.git_branch_url,
+                    metadata.git_last_author
+                );
+                showRefreshDot();
+            }
+        } catch (e) {
+            console.error('Failed to refresh file metadata:', e);
+        }
+    }
+
     // Set up clipboard monitoring on window focus
     function setupClipboardMonitoring() {
         let lastClipboardPath = null;
@@ -5024,6 +5085,7 @@ window.applyZoom = applyZoom;
             currentWindow.onFocusChanged(({ payload: focused }) => {
                 if (focused) {
                     checkClipboard();
+                    refreshFileMetadata();
                 }
             });
         }
