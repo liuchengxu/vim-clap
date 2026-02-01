@@ -4,6 +4,8 @@
   "version": "0.1.0",
   "identifier": "com.vimclap.markdown-preview",
   "build": {
+    "beforeBuildCommand": "mkdir -p frontend && [ -f frontend/index.html ] || echo '<!DOCTYPE html><html><body>Building...</body></html>' > frontend/index.html",
+    "beforeDevCommand": "mkdir -p frontend && [ -f frontend/index.html ] || echo '<!DOCTYPE html><html><body>Building...</body></html>' > frontend/index.html",
     "frontendDist": "frontend"
   },
   "app": {
