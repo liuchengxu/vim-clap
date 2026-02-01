@@ -644,6 +644,24 @@ class PdfViewerClass {
     }
 
     /**
+     * Recalculate base scale when container width changes (e.g., content width setting)
+     */
+    async recalculateBaseScale() {
+        if (!this.pdf || !this.container) return;
+
+        // Get first page to calculate new base scale
+        const firstPage = await this.pdf.getPage(1);
+        const firstViewport = firstPage.getViewport({ scale: 1.0 });
+
+        // Recalculate base scale based on current container width
+        const containerWidth = this.container.clientWidth - 40;
+        this.baseScale = containerWidth / firstViewport.width;
+
+        // Re-apply current zoom to trigger re-render with new base scale
+        await this.setZoom(this.scale);
+    }
+
+    /**
      * Handle double-click to zoom
      * - If at normal zoom: zoom to 2x centered on click point
      * - If already zoomed via double-click: zoom back to previous level

@@ -606,6 +606,14 @@ function changeContentWidth(width) {
     }
 
     localStorage.setItem('contentWidth', width);
+
+    // If PDF viewer is active, recalculate its base scale after a brief delay
+    // to allow the CSS width change to take effect
+    if (window.PdfViewer && window.PdfViewer.isActive()) {
+        setTimeout(() => {
+            window.PdfViewer.recalculateBaseScale();
+        }, 50);
+    }
 }
 
 function changeTheme(theme) {
