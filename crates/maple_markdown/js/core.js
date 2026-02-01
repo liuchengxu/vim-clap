@@ -399,7 +399,12 @@ function toggleTOC(mode) {
             tocPanel.classList.add('toc-right');
         }
 
-        generateTOC();
+        // Use PDF TOC if PDF viewer is active, otherwise use markdown TOC
+        if (window.PdfViewer && window.PdfViewer.isActive()) {
+            window.PdfViewer.refreshTOC();
+        } else {
+            generateTOC();
+        }
 
         const savedWidth = localStorage.getItem('tocWidth');
         if (savedWidth) {

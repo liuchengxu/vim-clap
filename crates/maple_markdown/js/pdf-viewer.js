@@ -38,6 +38,7 @@ class PdfViewerClass {
         this.pendingRenders = new Set(); // Pages currently being rendered
         this.zoomLevels = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0];
         this.zoomIndex = 2;           // Default to 1.0
+        this.outline = null;          // PDF outline for TOC
     }
 
     /**
@@ -138,8 +139,8 @@ class PdfViewerClass {
         this.notifyStatsUpdate();
 
         // Extract and render TOC
-        const outline = await this.pdf.getOutline();
-        this.renderTOC(outline);
+        this.outline = await this.pdf.getOutline();
+        this.renderTOC(this.outline);
 
         // Create page placeholders
         await this.createPagePlaceholders();
@@ -489,6 +490,18 @@ class PdfViewerClass {
                 }
             });
         });
+    }
+
+    /**
+     * Refresh/re-render the TOC (called when TOC panel is toggled)
+     */
+    refreshTOC() {
+        // Ensure the pdf-toc container exists
+        const tocContent = document.getElementById('toc-content');
+        if (tocContent && !document.getElementById('pdf-toc')) {
+            tocContent.innerHTML = '<div id="pdf-toc" class="pdf-toc"></div>';
+        }
+        this.renderTOC(this.outline);
     }
 
     /**
