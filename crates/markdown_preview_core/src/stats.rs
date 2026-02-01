@@ -95,25 +95,33 @@ pub fn calculate_document_stats(content: &str) -> DocumentStats {
 ///
 /// # Arguments
 ///
-/// * `page_count` - The number of pages in the PDF document
+/// * `page_count` - The number of pages in the PDF document, or None if not yet known
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
-/// use markdown_preview_core::stats::calculate_pdf_stats;
+/// use markdown_preview_core::calculate_pdf_stats;
 ///
-/// let stats = calculate_pdf_stats(10);
+/// // Known page count
+/// let stats = calculate_pdf_stats(Some(10));
 /// assert_eq!(stats.pages, Some(10));
 /// assert_eq!(stats.reading_minutes, 20);  // 2 min/page
+///
+/// // Page count unknown (will be filled in by frontend)
+/// let stats = calculate_pdf_stats(None);
+/// assert_eq!(stats.pages, None);
+/// assert_eq!(stats.reading_minutes, 0);
 /// ```
-pub fn calculate_pdf_stats(page_count: usize) -> DocumentStats {
+pub fn calculate_pdf_stats(page_count: Option<usize>) -> DocumentStats {
+    let pages = page_count;
+    let reading_minutes = page_count.map(|c| c.saturating_mul(2)).unwrap_or(0);
     DocumentStats {
         words: 0,
         characters: 0,
         characters_with_spaces: 0,
         lines: 0,
-        reading_minutes: page_count.saturating_mul(2), // ~2 min/page estimate
-        pages: Some(page_count),
+        reading_minutes,
+        pages,
     }
 }
 
@@ -171,7 +179,7 @@ mod tests {
 
     #[test]
     fn test_pdf_stats() {
-        let stats = calculate_pdf_stats(10);
+        let stats = calculate_pdf_stats(Some(10));
         assert_eq!(stats.pages, Some(10));
         assert_eq!(stats.words, 0);
         assert_eq!(stats.characters, 0);
@@ -181,8 +189,15 @@ mod tests {
 
     #[test]
     fn test_pdf_stats_zero_pages() {
-        let stats = calculate_pdf_stats(0);
+        let stats = calculate_pdf_stats(Some(0));
         assert_eq!(stats.pages, Some(0));
+        assert_eq!(stats.reading_minutes, 0);
+    }
+
+    #[test]
+    fn test_pdf_stats_unknown_pages() {
+        let stats = calculate_pdf_stats(None);
+        assert_eq!(stats.pages, None);
         assert_eq!(stats.reading_minutes, 0);
     }
 

@@ -29,7 +29,8 @@ struct PersistedConfig {
 pub struct AppState {
     /// Currently open file path
     pub current_file: Option<PathBuf>,
-    /// Type of the currently open document
+    /// Type of the currently open document (reserved for future use)
+    #[allow(dead_code)]
     pub current_document_type: Option<DocumentType>,
     /// Recently opened files
     pub recent_files: VecDeque<PathBuf>,

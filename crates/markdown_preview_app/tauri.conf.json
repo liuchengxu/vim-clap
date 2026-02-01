@@ -45,7 +45,15 @@
         "ext": ["md", "markdown", "mdown", "mkdn", "mkd"],
         "mimeType": "text/markdown",
         "description": "Markdown document"
+      },
+      {
+        "ext": ["pdf"],
+        "mimeType": "application/pdf",
+        "description": "PDF document"
       }
+    ],
+    "resources": [
+      "frontend/vendor/**/*"
     ]
   },
   "plugins": {}

@@ -5,6 +5,9 @@ fn main() {
     // Generate the HTML file with inlined CSS and JS for Tauri
     generate_frontend_html();
 
+    // Copy PDF.js vendor files to frontend
+    copy_vendor_files();
+
     tauri_build::build()
 }
 
@@ -12,6 +15,7 @@ fn main() {
 ///
 /// The JS is split into:
 /// - core.js: Shared UI functionality (TOC, themes, fuzzy finder, etc.)
+/// - pdf-viewer.js: PDF.js based PDF viewer
 /// - tauri-app.js: Tauri-specific IPC and initialization
 fn generate_frontend_html() {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
@@ -28,11 +32,17 @@ fn generate_frontend_html() {
 
     // Load modular JS files
     let core_js = fs::read_to_string(js_dir.join("core.js")).expect("Failed to read core.js");
+    let pdf_viewer_js = js_dir.join("pdf-viewer.js");
+    let pdf_viewer_js = if pdf_viewer_js.exists() {
+        fs::read_to_string(&pdf_viewer_js).expect("Failed to read pdf-viewer.js")
+    } else {
+        String::new()
+    };
     let tauri_app_js =
         fs::read_to_string(js_dir.join("tauri-app.js")).expect("Failed to read tauri-app.js");
 
-    // Combine core + tauri-app for standalone app
-    let combined_js = format!("{core_js}\n\n{tauri_app_js}");
+    // Combine core + pdf-viewer + tauri-app for standalone app
+    let combined_js = format!("{core_js}\n\n{pdf_viewer_js}\n\n{tauri_app_js}");
 
     // Replace placeholders
     let mut html = html_template;
@@ -54,4 +64,63 @@ fn generate_frontend_html() {
     println!("cargo:rerun-if-changed=../maple_markdown/js/themes.css");
     println!("cargo:rerun-if-changed=../maple_markdown/js/core.js");
     println!("cargo:rerun-if-changed=../maple_markdown/js/tauri-app.js");
+    println!("cargo:rerun-if-changed=../maple_markdown/js/pdf-viewer.js");
+}
+
+/// Copy PDF.js vendor files to frontend/vendor directory.
+fn copy_vendor_files() {
+    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+    let base_path = Path::new(&manifest_dir).parent().unwrap();
+
+    let source_vendor = base_path.join("maple_markdown/js/vendor");
+    let target_vendor = Path::new(&manifest_dir).join("frontend/vendor");
+
+    // Create target vendor directory
+    fs::create_dir_all(&target_vendor).expect("Failed to create frontend/vendor directory");
+
+    // Copy main PDF.js files
+    let files_to_copy = ["pdf.min.js", "pdf.worker.min.js"];
+    for file in files_to_copy {
+        let src = source_vendor.join(file);
+        let dst = target_vendor.join(file);
+        if src.exists() {
+            fs::copy(&src, &dst).unwrap_or_else(|e| panic!("Failed to copy {file}: {e}"));
+        }
+    }
+
+    // Copy cmaps directory
+    let cmaps_src = source_vendor.join("cmaps");
+    let cmaps_dst = target_vendor.join("cmaps");
+    if cmaps_src.exists() {
+        copy_dir_recursive(&cmaps_src, &cmaps_dst).expect("Failed to copy cmaps directory");
+    }
+
+    // Copy standard_fonts directory
+    let fonts_src = source_vendor.join("standard_fonts");
+    let fonts_dst = target_vendor.join("standard_fonts");
+    if fonts_src.exists() {
+        copy_dir_recursive(&fonts_src, &fonts_dst).expect("Failed to copy standard_fonts directory");
+    }
+
+    // Rerun if vendor files change
+    println!("cargo:rerun-if-changed=../maple_markdown/js/vendor");
+}
+
+/// Recursively copy a directory and its contents.
+fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
+    fs::create_dir_all(dst)?;
+
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+
+        if src_path.is_dir() {
+            copy_dir_recursive(&src_path, &dst_path)?;
+        } else {
+            fs::copy(&src_path, &dst_path)?;
+        }
+    }
+
+    Ok(())
 }

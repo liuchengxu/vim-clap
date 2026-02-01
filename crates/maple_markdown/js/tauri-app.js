@@ -91,7 +91,8 @@
     async function openFile(filePath) {
         try {
             const result = await invoke('open_file', { path: filePath });
-            if (result && result.html) {
+            // Check for valid result - either HTML content (markdown) or output (PDF/other)
+            if (result && (result.html || result.output)) {
                 handleFileOpened(result);
                 // Add to path history (use canonical path from result)
                 if (result.file_path) {
@@ -195,20 +196,33 @@
         const docType = result.document_type;
         const output = result.output;
 
+        // Clean up PDF viewer if switching away from PDF
+        if (docType !== 'pdf' && window.PdfViewer && window.PdfViewer.isActive()) {
+            window.PdfViewer.cleanup();
+        }
+
         if (docType === 'pdf' && output?.type === 'file_url') {
-            // PDF: Use Tauri's asset protocol to load the file
-            const pdfUrl = window.__TAURI__.core.convertFileSrc(output.path);
-            // Future: Initialize PDF.js viewer with pdfUrl
-            content.innerHTML = `<div id="pdf-viewer" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 70vh; color: #666; text-align: center;">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 20px; opacity: 0.5;">
-                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                </svg>
-                <h2 style="margin: 0 0 10px 0; font-weight: 500; color: #333;">PDF Preview</h2>
-                <p style="margin: 0 0 8px 0; font-size: 14px;">PDF support coming soon</p>
-                <p style="margin: 0; font-size: 12px; color: #888;">${output.path}</p>
-            </div>`;
-            updateDocumentStatsForType(result.stats, docType);
+            // PDF: Use PDF.js viewer, reading file via Tauri fs plugin
+            if (window.PdfViewer) {
+                window.PdfViewer.onStatsUpdate = (stats) => {
+                    updateDocumentStatsForType(stats, 'pdf');
+                };
+
+                // Open PDF with PDF.js viewer (pass file path, not URL)
+                window.PdfViewer.open(output.path).catch(err => {
+                    console.error('Failed to open PDF:', err);
+                    content.innerHTML = `<div class="error" style="padding: 40px; text-align: center; color: #cf222e;">
+                        <h2>Failed to load PDF</h2>
+                        <p>${err.message || err}</p>
+                    </div>`;
+                });
+            } else {
+                console.error('PdfViewer not available');
+                content.innerHTML = `<div class="error" style="padding: 40px; text-align: center; color: #cf222e;">
+                    <h2>PDF viewer not available</h2>
+                    <p>PDF.js failed to load</p>
+                </div>`;
+            }
         } else if (docType === 'markdown' || !docType) {
             // Markdown: use output.content if available, fallback to html for legacy
             const html = output?.type === 'html' ? output.content : result.html;

@@ -2,8 +2,8 @@
 
 use crate::state::AppState;
 use markdown_preview_core::{
-    calculate_document_stats, find_git_root, to_html, DocumentStats, DocumentType, RenderOptions,
-    RenderOutput,
+    calculate_document_stats, calculate_pdf_stats, find_git_root, to_html, DocumentStats,
+    DocumentType, RenderOptions, RenderOutput,
 };
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -207,7 +207,7 @@ fn get_git_branch_url(file_path: &str, branch: &str) -> Option<String> {
     Some(format!("{github_base}/tree/{branch}"))
 }
 
-/// Open and render a markdown file.
+/// Open and render a document file (markdown or PDF).
 #[tauri::command]
 pub async fn open_file(
     path: String,
@@ -230,6 +230,10 @@ pub async fn open_file(
 
     let absolute_path = path_buf.to_string_lossy().to_string();
 
+    // Detect document type
+    let doc_type = DocumentType::from_path(&path_buf)
+        .ok_or_else(|| format!("Unsupported file type: {}", path_buf.display()))?;
+
     // Get file modification time
     let modified_at = tokio::fs::metadata(&path_buf)
         .await
@@ -238,15 +242,7 @@ pub async fn open_file(
         .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
         .map(|d| d.as_millis() as u64);
 
-    // Read the file
-    let content = tokio::fs::read_to_string(&path_buf)
-        .await
-        .map_err(|e| format!("Failed to read file: {e}"))?;
-
-    // Render markdown
-    let result = to_html(&content, &RenderOptions::gui()).map_err(|e| e.to_string())?;
-
-    let stats = calculate_document_stats(&content);
+    // Get git metadata (applies to all document types)
     let git_root = find_git_root(&absolute_path);
     let git_branch = get_git_branch(&absolute_path);
     let git_branch_url = git_branch
@@ -261,9 +257,30 @@ pub async fn open_file(
         state.add_recent_file(path_buf);
     }
 
-    Ok(RenderResponse::from_markdown(result, stats)
-        .with_file_info(Some(absolute_path), modified_at)
-        .with_git_metadata(git_root, git_branch, git_branch_url, git_last_author))
+    // Handle based on document type
+    match doc_type {
+        DocumentType::Pdf => {
+            // PDF: Return file URL for frontend PDF.js viewer
+            // Stats will be computed by frontend after PDF loads
+            let stats = calculate_pdf_stats(None); // No page count yet
+            Ok(RenderResponse::pdf(absolute_path.clone(), stats)
+                .with_file_info(Some(absolute_path), modified_at)
+                .with_git_metadata(git_root, git_branch, git_branch_url, git_last_author))
+        }
+        DocumentType::Markdown => {
+            // Markdown: Read, render, and return HTML
+            let content = tokio::fs::read_to_string(&absolute_path)
+                .await
+                .map_err(|e| format!("Failed to read file: {e}"))?;
+
+            let result = to_html(&content, &RenderOptions::gui()).map_err(|e| e.to_string())?;
+            let stats = calculate_document_stats(&content);
+
+            Ok(RenderResponse::from_markdown(result, stats)
+                .with_file_info(Some(absolute_path), modified_at)
+                .with_git_metadata(git_root, git_branch, git_branch_url, git_last_author))
+        }
+    }
 }
 
 /// Get the list of recently opened files.

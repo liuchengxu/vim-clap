@@ -10,8 +10,15 @@
     "core:window:allow-set-title",
     "fs:default",
     "fs:allow-read-text-file",
+    "fs:allow-read-file",
     "fs:allow-exists",
-    "fs:scope-home-recursive",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "$HOME/**" },
+        { "path": "/**" }
+      ]
+    },
     "dialog:default",
     "dialog:allow-open",
     "dialog:allow-message",

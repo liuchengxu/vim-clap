@@ -1354,3 +1354,183 @@
           color: #c9d1d9;
         }
       }
+
+      /* ==================== PDF Viewer Styles ==================== */
+
+      /* PDF container */
+      .pdf-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        padding: 20px;
+        background: #525659;
+        min-height: 100%;
+      }
+
+      /* PDF page wrapper */
+      .pdf-page {
+        position: relative;
+        background: #ffffff;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Page placeholder label */
+      .pdf-page-label {
+        color: #8b949e;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      /* PDF canvas */
+      .pdf-canvas {
+        display: block;
+      }
+
+      /* Text layer - required for text selection */
+      .textLayer {
+        position: absolute;
+        left: 0;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        overflow: hidden;
+        opacity: 0.25;
+        line-height: 1.0;
+        pointer-events: auto;
+      }
+
+      .textLayer > span {
+        color: transparent;
+        position: absolute;
+        white-space: pre;
+        cursor: text;
+        transform-origin: 0% 0%;
+      }
+
+      .textLayer ::selection {
+        background: rgba(0, 0, 255, 0.3);
+      }
+
+      .textLayer ::-moz-selection {
+        background: rgba(0, 0, 255, 0.3);
+      }
+
+      /* Annotation layer - required for links */
+      .annotationLayer {
+        position: absolute;
+        left: 0;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+        overflow: hidden;
+      }
+
+      .annotationLayer a,
+      .pdf-link-annotation {
+        position: absolute;
+        pointer-events: auto;
+        cursor: pointer;
+        display: block;
+        border-radius: 2px;
+        transition: background 0.15s ease;
+      }
+
+      .annotationLayer a:hover,
+      .pdf-link-annotation:hover {
+        background: rgba(255, 255, 0, 0.3);
+      }
+
+      /* PDF TOC styles */
+      .pdf-toc {
+        font-size: 13px;
+      }
+
+      .pdf-toc-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .pdf-toc-list .pdf-toc-list {
+        padding-left: 16px;
+      }
+
+      .pdf-toc-item {
+        margin: 2px 0;
+      }
+
+      .pdf-toc-item a {
+        display: block;
+        padding: 6px 8px;
+        color: #57606a;
+        text-decoration: none;
+        border-radius: 4px;
+        transition: all 0.15s ease;
+      }
+
+      .pdf-toc-item a:hover {
+        background: #f0f6fc;
+        color: #0969da;
+      }
+
+      .pdf-toc-item.level-0 > a {
+        font-weight: 600;
+        color: #24292f;
+      }
+
+      .pdf-toc-item.level-1 > a {
+        font-weight: 500;
+      }
+
+      .toc-empty {
+        color: #8b949e;
+        font-style: italic;
+        padding: 10px 0;
+      }
+
+      /* Dark mode for PDF viewer */
+      @media (prefers-color-scheme: dark) {
+        .pdf-container {
+          background: #1c1f21;
+        }
+
+        .pdf-page {
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .pdf-page-label {
+          color: #6e7681;
+        }
+
+        .textLayer ::selection,
+        .textLayer ::-moz-selection {
+          background: rgba(88, 166, 255, 0.3);
+        }
+
+        .annotationLayer a:hover,
+        .pdf-link-annotation:hover {
+          background: rgba(255, 255, 0, 0.2);
+        }
+
+        .pdf-toc-item a {
+          color: #8b949e;
+        }
+
+        .pdf-toc-item a:hover {
+          background: #21262d;
+          color: #58a6ff;
+        }
+
+        .pdf-toc-item.level-0 > a {
+          color: #c9d1d9;
+        }
+
+        .toc-empty {
+          color: #6e7681;
+        }
+      }

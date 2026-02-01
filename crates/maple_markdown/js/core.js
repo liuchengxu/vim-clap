@@ -210,16 +210,36 @@ function updateZoomDisplay() {
 }
 
 function zoomIn() {
+    // Check if PDF viewer is active
+    if (window.PdfViewer && window.PdfViewer.isActive()) {
+        window.PdfViewer.zoomIn();
+        const scale = window.PdfViewer.scale;
+        showToast(`Zoom: ${Math.round(scale * 100)}%`);
+        return;
+    }
     applyZoom(zoomLevel + ZOOM_STEP);
     showToast(`Zoom: ${zoomLevel}%`);
 }
 
 function zoomOut() {
+    // Check if PDF viewer is active
+    if (window.PdfViewer && window.PdfViewer.isActive()) {
+        window.PdfViewer.zoomOut();
+        const scale = window.PdfViewer.scale;
+        showToast(`Zoom: ${Math.round(scale * 100)}%`);
+        return;
+    }
     applyZoom(zoomLevel - ZOOM_STEP);
     showToast(`Zoom: ${zoomLevel}%`);
 }
 
 function resetZoom() {
+    // Check if PDF viewer is active
+    if (window.PdfViewer && window.PdfViewer.isActive()) {
+        window.PdfViewer.resetZoom();
+        showToast('Zoom reset to 100%');
+        return;
+    }
     applyZoom(100);
     showToast('Zoom reset to 100%');
 }
