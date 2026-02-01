@@ -2,18 +2,35 @@
 
 use crate::state::AppState;
 use markdown_preview_core::{
-    calculate_document_stats, find_git_root, to_html, DocumentStats, RenderOptions,
+    calculate_document_stats, find_git_root, to_html, DocumentStats, DocumentType, RenderOptions,
+    RenderOutput,
 };
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::{Emitter, State};
 use tokio::sync::RwLock;
 
-/// Result of rendering markdown, sent to the frontend.
+/// Result of rendering a document, sent to the frontend.
+///
+/// Maintains backward compatibility: `html` field always present for markdown.
+/// New consumers should use the `output` field which provides type-safe access
+/// to rendered content.
 #[derive(Clone, serde::Serialize)]
 pub struct RenderResponse {
-    /// Rendered HTML content
+    // === Legacy fields (always present for markdown) ===
+    /// HTML content (for backward compatibility with existing frontend code).
     pub html: String,
+
+    // === New fields ===
+    /// Document type that was rendered. Always present.
+    pub document_type: DocumentType,
+
+    /// Generic render output (new consumers should use this).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output: Option<RenderOutput>,
+
+    // === Existing metadata fields (unchanged) ===
     /// Document statistics
     pub stats: DocumentStats,
     /// Git repository root (if applicable)
@@ -30,6 +47,65 @@ pub struct RenderResponse {
     pub git_last_author: Option<String>,
 }
 
+impl RenderResponse {
+    /// Create response for markdown from render result (preserves line_map for scroll sync).
+    pub fn from_markdown(
+        result: markdown_preview_core::RenderResult,
+        stats: DocumentStats,
+    ) -> Self {
+        Self {
+            html: result.html.clone(), // Legacy field for backward compatibility
+            document_type: DocumentType::Markdown,
+            output: Some(result.into_render_output()), // Preserves line_map
+            stats,
+            git_root: None,
+            file_path: None,
+            modified_at: None,
+            git_branch: None,
+            git_branch_url: None,
+            git_last_author: None,
+        }
+    }
+
+    /// Create response for PDF (file path for frontend).
+    pub fn pdf(path: String, stats: DocumentStats) -> Self {
+        Self {
+            html: String::new(), // Empty for non-HTML
+            document_type: DocumentType::Pdf,
+            output: Some(RenderOutput::file_url(path, "application/pdf")),
+            stats,
+            git_root: None,
+            file_path: None,
+            modified_at: None,
+            git_branch: None,
+            git_branch_url: None,
+            git_last_author: None,
+        }
+    }
+
+    /// Set git metadata on the response.
+    pub fn with_git_metadata(
+        mut self,
+        git_root: Option<String>,
+        git_branch: Option<String>,
+        git_branch_url: Option<String>,
+        git_last_author: Option<String>,
+    ) -> Self {
+        self.git_root = git_root;
+        self.git_branch = git_branch;
+        self.git_branch_url = git_branch_url;
+        self.git_last_author = git_last_author;
+        self
+    }
+
+    /// Set file path and modification time on the response.
+    pub fn with_file_info(mut self, file_path: Option<String>, modified_at: Option<u64>) -> Self {
+        self.file_path = file_path;
+        self.modified_at = modified_at;
+        self
+    }
+}
+
 /// Render markdown content to HTML.
 #[tauri::command]
 pub async fn render_markdown(content: String) -> Result<RenderResponse, String> {
@@ -37,23 +113,14 @@ pub async fn render_markdown(content: String) -> Result<RenderResponse, String> 
 
     let stats = calculate_document_stats(&content);
 
-    Ok(RenderResponse {
-        html: result.html,
-        stats,
-        git_root: None,
-        file_path: None,
-        modified_at: None,
-        git_branch: None,
-        git_branch_url: None,
-        git_last_author: None,
-    })
+    Ok(RenderResponse::from_markdown(result, stats))
 }
 
 /// Expand ~ to home directory for open_file.
 fn expand_tilde(path: &str) -> PathBuf {
-    if path.starts_with("~/") {
+    if let Some(stripped) = path.strip_prefix("~/") {
         if let Some(home) = dirs::home_dir() {
-            return home.join(&path[2..]);
+            return home.join(stripped);
         }
     } else if path == "~" {
         if let Some(home) = dirs::home_dir() {
@@ -194,16 +261,9 @@ pub async fn open_file(
         state.add_recent_file(path_buf);
     }
 
-    Ok(RenderResponse {
-        html: result.html,
-        stats,
-        git_root,
-        file_path: Some(absolute_path),
-        modified_at,
-        git_branch,
-        git_branch_url,
-        git_last_author,
-    })
+    Ok(RenderResponse::from_markdown(result, stats)
+        .with_file_info(Some(absolute_path), modified_at)
+        .with_git_metadata(git_root, git_branch, git_branch_url, git_last_author))
 }
 
 /// Get the list of recently opened files.
@@ -292,16 +352,14 @@ pub async fn watch_file(
                             .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
                             .map(|d| d.as_millis() as u64);
 
-                        let response = RenderResponse {
-                            html: result.html,
-                            stats,
-                            git_root,
-                            file_path: Some(path_clone.clone()),
-                            modified_at,
-                            git_branch,
-                            git_branch_url,
-                            git_last_author,
-                        };
+                        let response = RenderResponse::from_markdown(result, stats)
+                            .with_file_info(Some(path_clone.clone()), modified_at)
+                            .with_git_metadata(
+                                git_root,
+                                git_branch,
+                                git_branch_url,
+                                git_last_author,
+                            );
 
                         // Emit event to frontend
                         let _ = window_clone.emit("file-changed", response);
@@ -361,18 +419,12 @@ pub async fn check_clipboard_for_markdown(app: tauri::AppHandle) -> Result<Optio
     let path = std::path::Path::new(text);
     tracing::debug!(path = %path.display(), is_absolute = path.is_absolute(), exists = path.exists(), "Checking path");
 
-    // Check if it looks like a file path and is a markdown file
+    // Check if it looks like a file path and is a supported document
     if path.is_absolute() && path.exists() {
-        if let Some(ext) = path.extension() {
-            let ext_str = ext.to_string_lossy().to_lowercase();
-            tracing::debug!(extension = %ext_str, "Found extension");
-            if matches!(
-                ext_str.as_str(),
-                "md" | "markdown" | "mdown" | "mkdn" | "mkd"
-            ) {
-                tracing::info!(path = %text, "Found markdown file in clipboard");
-                return Ok(Some(text.to_string()));
-            }
+        if let Some(doc_type) = DocumentType::from_path(path) {
+            tracing::debug!(doc_type = ?doc_type, "Found supported document type");
+            tracing::info!(path = %text, "Found supported document in clipboard");
+            return Ok(Some(text.to_string()));
         }
     }
 
@@ -394,9 +446,9 @@ pub struct PathCompletion {
 /// Expand ~ to home directory and resolve relative paths.
 fn expand_path(partial: &str) -> PathBuf {
     // Expand ~ to home directory
-    let expanded = if partial.starts_with("~/") {
+    if let Some(stripped) = partial.strip_prefix("~/") {
         if let Some(home) = dirs::home_dir() {
-            home.join(&partial[2..])
+            home.join(stripped)
         } else {
             PathBuf::from(partial)
         }
@@ -410,9 +462,7 @@ fn expand_path(partial: &str) -> PathBuf {
         std::env::current_dir()
             .unwrap_or_else(|_| PathBuf::from("."))
             .join(partial)
-    };
-
-    expanded
+    }
 }
 
 /// Format path for display, using ~ for home directory.
@@ -508,25 +558,19 @@ pub async fn complete_path(partial: String) -> Result<Vec<PathCompletion>, Strin
                     entry_path.to_string_lossy().to_string()
                 };
 
-                // Include directories and markdown files
+                // Include directories and supported document files
                 if is_dir {
                     completions.push(PathCompletion {
                         path: display_path,
                         name: format!("{name}/"),
                         is_dir: true,
                     });
-                } else if let Some(ext) = entry_path.extension() {
-                    let ext_str = ext.to_string_lossy().to_lowercase();
-                    if matches!(
-                        ext_str.as_str(),
-                        "md" | "markdown" | "mdown" | "mkdn" | "mkd"
-                    ) {
-                        completions.push(PathCompletion {
-                            path: display_path,
-                            name,
-                            is_dir: false,
-                        });
-                    }
+                } else if DocumentType::from_path(&entry_path).is_some() {
+                    completions.push(PathCompletion {
+                        path: display_path,
+                        name,
+                        is_dir: false,
+                    });
                 }
             }
         }
@@ -761,16 +805,7 @@ pub async fn open_url(url: String) -> Result<RenderResponse, String> {
     let result = to_html(&content, &RenderOptions::gui()).map_err(|e| e.to_string())?;
     let stats = calculate_document_stats(&content);
 
-    Ok(RenderResponse {
-        html: result.html,
-        stats,
-        git_root: None,
-        file_path: Some(url),
-        modified_at: None,
-        git_branch: None,
-        git_branch_url: None,
-        git_last_author: None,
-    })
+    Ok(RenderResponse::from_markdown(result, stats).with_file_info(Some(url), None))
 }
 
 /// Fetch content from a URL (with GitHub raw URL conversion).
@@ -797,4 +832,42 @@ async fn fetch_raw_url(url: &str) -> Result<String, String> {
         .text()
         .await
         .map_err(|e| format!("Failed to read response: {e}"))
+}
+
+/// Supported file extensions response.
+///
+/// Contains both grouped (by document type) and flat list for convenience.
+#[derive(Clone, serde::Serialize)]
+pub struct SupportedExtensions {
+    /// Extensions grouped by document type name.
+    pub by_type: HashMap<String, Vec<String>>,
+    /// All supported extensions as a flat list.
+    pub all: Vec<String>,
+}
+
+/// Returns supported file extensions grouped by document type.
+///
+/// This is the single source of truth - frontend fetches this on init.
+#[tauri::command]
+pub fn get_supported_extensions() -> SupportedExtensions {
+    let by_type: HashMap<String, Vec<String>> = DocumentType::ALL
+        .iter()
+        .map(|doc_type| {
+            (
+                doc_type.name().to_string(),
+                doc_type
+                    .extensions()
+                    .iter()
+                    .map(|s| (*s).to_string())
+                    .collect(),
+            )
+        })
+        .collect();
+
+    let all: Vec<String> = DocumentType::all_extensions()
+        .iter()
+        .map(|s| (*s).to_string())
+        .collect();
+
+    SupportedExtensions { by_type, all }
 }

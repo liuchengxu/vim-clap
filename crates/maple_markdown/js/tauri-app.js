@@ -17,6 +17,36 @@
     const { invoke } = window.__TAURI__.core;
     const { listen } = window.__TAURI__.event;
 
+    // ========================================
+    // Extension support - single source of truth from backend
+    // ========================================
+    let SUPPORTED_EXTENSIONS = { by_type: {}, all: [] };
+
+    // Initialize IMMEDIATELY - must happen before any event handlers
+    const extensionsReady = initSupportedExtensions();
+
+    async function initSupportedExtensions() {
+        try {
+            const result = await invoke('get_supported_extensions');
+            SUPPORTED_EXTENSIONS = result;
+            console.log('Loaded supported extensions:', SUPPORTED_EXTENSIONS);
+        } catch (e) {
+            console.error('Failed to load supported extensions:', e);
+            // Fallback to hardcoded values if backend fails
+            SUPPORTED_EXTENSIONS = {
+                by_type: { markdown: ['md', 'markdown', 'mdown', 'mkdn', 'mkd'], pdf: ['pdf'] },
+                all: ['md', 'markdown', 'mdown', 'mkdn', 'mkd', 'pdf']
+            };
+        }
+    }
+
+    // Check if a file is supported (for drag-drop validation)
+    async function isSupported(filename) {
+        await extensionsReady;
+        const ext = filename.split('.').pop()?.toLowerCase();
+        return ext && SUPPORTED_EXTENSIONS.all.includes(ext);
+    }
+
     // Get dialog API (Tauri 2.x)
     function getDialogOpen() {
         return window.__TAURI__.dialog?.open || window.__TAURI__.plugin?.dialog?.open;
@@ -24,6 +54,8 @@
 
     // Open file dialog and load selected file
     async function openFileDialog() {
+        await extensionsReady;  // Readiness gate
+
         const open = getDialogOpen();
         if (!open) {
             console.error('Dialog API not available');
@@ -31,9 +63,18 @@
         }
 
         try {
+            // Build filters from backend-provided extensions
+            const filters = [
+                { name: 'All Documents', extensions: SUPPORTED_EXTENSIONS.all },
+                ...Object.entries(SUPPORTED_EXTENSIONS.by_type).map(([name, exts]) => ({
+                    name: name.charAt(0).toUpperCase() + name.slice(1),
+                    extensions: exts
+                }))
+            ];
+
             const selected = await open({
                 multiple: false,
-                filters: [{ name: 'Markdown', extensions: ['md', 'markdown', 'mdown', 'mkdn', 'mkd'] }]
+                filters: filters
             });
 
             if (selected) {
@@ -149,13 +190,45 @@
     // Handle file opened result
     function handleFileOpened(result) {
         const content = document.getElementById('content');
-        content.innerHTML = result.html;
 
-        codeHighlight();
-        renderMermaid();
-        renderLatex();
-        addHeadingAnchors();
-        generateTOC();
+        // Get document type (required field from backend)
+        const docType = result.document_type;
+        const output = result.output;
+
+        if (docType === 'pdf' && output?.type === 'file_url') {
+            // PDF: Use Tauri's asset protocol to load the file
+            const pdfUrl = window.__TAURI__.core.convertFileSrc(output.path);
+            // Future: Initialize PDF.js viewer with pdfUrl
+            content.innerHTML = `<div id="pdf-viewer" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 70vh; color: #666; text-align: center;">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 20px; opacity: 0.5;">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <h2 style="margin: 0 0 10px 0; font-weight: 500; color: #333;">PDF Preview</h2>
+                <p style="margin: 0 0 8px 0; font-size: 14px;">PDF support coming soon</p>
+                <p style="margin: 0; font-size: 12px; color: #888;">${output.path}</p>
+            </div>`;
+            updateDocumentStatsForType(result.stats, docType);
+        } else if (docType === 'markdown' || !docType) {
+            // Markdown: use output.content if available, fallback to html for legacy
+            const html = output?.type === 'html' ? output.content : result.html;
+            content.innerHTML = html;
+
+            codeHighlight();
+            renderMermaid();
+            renderLatex();
+            addHeadingAnchors();
+            generateTOC();
+
+            if (result.stats) {
+                updateDocumentStatsForType(result.stats, docType || 'markdown');
+            }
+        } else {
+            // Unknown document type
+            content.innerHTML = `<div class="error" style="padding: 40px; text-align: center; color: #cf222e;">
+                <h2>Unsupported document type: ${docType}</h2>
+            </div>`;
+        }
 
         if (result.file_path) {
             // Update currentFilePath via the core module's setter
@@ -172,12 +245,35 @@
             });
         }
 
-        if (result.stats) {
-            updateDocumentStats(result.stats);
-        }
-
         // Update metadata bar
         updateFileMetadata(result.modified_at, result.stats, result.git_branch, result.git_branch_url, result.git_last_author);
+    }
+
+    // Update document stats display based on document type
+    function updateDocumentStatsForType(stats, docType) {
+        if (!stats) return;
+
+        if (docType === 'pdf') {
+            // PDF-specific display
+            const wordCountEl = document.getElementById('word-count');
+            const metadataWords = document.getElementById('metadata-words');
+            if (stats.pages) {
+                wordCountEl.textContent = `${stats.pages} pages`;
+                if (metadataWords) metadataWords.title = 'Page count';
+            } else {
+                wordCountEl.textContent = '-';
+            }
+            // Update reading time
+            const readTimeEl = document.getElementById('read-time');
+            if (stats.reading_minutes) {
+                readTimeEl.textContent = `~${stats.reading_minutes} min`;
+            } else {
+                readTimeEl.textContent = '-';
+            }
+        } else {
+            // Markdown display (existing logic)
+            updateDocumentStats(stats);
+        }
     }
 
     // Switch to a different file
@@ -642,9 +738,11 @@
             const files = e.dataTransfer?.files;
             if (files && files.length > 0) {
                 const file = files[0];
-                if (file.name.match(/\.(md|markdown|mdown|mkdn|mkd)$/i)) {
+                if (await isSupported(file.name)) {
                     const path = file.path || file.name;
                     await openFile(path);
+                } else {
+                    showToast('Unsupported file type');
                 }
             }
         });
@@ -1265,6 +1363,40 @@
         return null;
     }
 
+    // Show the metadata refresh indicator dot
+    function showRefreshDot() {
+        const dot = document.getElementById('metadata-refresh-dot');
+        if (dot) {
+            dot.classList.add('visible');
+            // Auto-hide after 2 seconds
+            setTimeout(() => {
+                dot.classList.remove('visible');
+            }, 2000);
+        }
+    }
+
+    // Refresh file metadata when window gains focus
+    async function refreshFileMetadata() {
+        const currentPath = window.MarkdownPreviewCore.getCurrentFilePath();
+        if (!currentPath) return;
+
+        try {
+            const metadata = await invoke('get_file_metadata', { path: currentPath });
+            if (metadata) {
+                updateFileMetadata(
+                    metadata.modified_at,
+                    metadata.stats,
+                    metadata.git_branch,
+                    metadata.git_branch_url,
+                    metadata.git_last_author
+                );
+                showRefreshDot();
+            }
+        } catch (e) {
+            console.error('Failed to refresh file metadata:', e);
+        }
+    }
+
     // Set up clipboard monitoring on window focus
     function setupClipboardMonitoring() {
         let lastClipboardPath = null;
@@ -1290,6 +1422,8 @@
             currentWindow.onFocusChanged(({ payload: focused }) => {
                 if (focused) {
                     checkClipboard();
+                    // Also refresh file metadata when window gains focus
+                    refreshFileMetadata();
                 }
             });
         }

@@ -1263,6 +1263,29 @@
         }
       }
 
+      /* ==================== Metadata Refresh Dot ==================== */
+      .metadata-refresh-dot {
+        position: absolute;
+        top: -2px;
+        right: -6px;
+        width: 6px;
+        height: 6px;
+        background: #2da44e;
+        border-radius: 50%;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+      }
+
+      .metadata-refresh-dot.visible {
+        opacity: 1;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .metadata-refresh-dot {
+          background: #3fb950;
+        }
+      }
+
       /* ==================== Zoom Controls ==================== */
       .zoom-controls {
         display: flex;

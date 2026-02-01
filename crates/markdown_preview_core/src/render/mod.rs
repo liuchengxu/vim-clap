@@ -8,11 +8,17 @@
 
 mod github_alerts;
 mod heading;
+mod markdown_renderer;
+mod output;
+mod traits;
 
 use crate::toc;
 use pulldown_cmark::{CowStr, Event, Options, Parser, Tag, TagEnd};
 
 pub use github_alerts::detect_github_alert;
+pub use markdown_renderer::MarkdownRenderer;
+pub use output::RenderOutput;
+pub use traits::{BinaryRenderer, RenderError, TextRenderer};
 
 /// Preview mode determines which features are enabled.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -87,6 +93,15 @@ pub struct RenderResult {
     pub html: String,
     /// Mapping from rendered element index to source line number (1-indexed)
     pub line_map: Vec<usize>,
+}
+
+impl RenderResult {
+    /// Convert to generic [`RenderOutput`].
+    ///
+    /// This preserves the line map for scroll synchronization support.
+    pub fn into_render_output(self) -> RenderOutput {
+        RenderOutput::html_with_line_map(self.html, self.line_map)
+    }
 }
 
 /// Convert byte offset to line number (1-indexed).

@@ -1,6 +1,7 @@
 //! Application state management with persistence.
 
 use markdown_preview_core::frecency::FrecentItems;
+use markdown_preview_core::DocumentType;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::path::PathBuf;
@@ -28,6 +29,8 @@ struct PersistedConfig {
 pub struct AppState {
     /// Currently open file path
     pub current_file: Option<PathBuf>,
+    /// Type of the currently open document
+    pub current_document_type: Option<DocumentType>,
     /// Recently opened files
     pub recent_files: VecDeque<PathBuf>,
     /// Path input history with frecency scoring
@@ -44,6 +47,7 @@ impl AppState {
     pub fn new(config_dir: Option<PathBuf>) -> Self {
         let mut state = Self {
             current_file: None,
+            current_document_type: None,
             recent_files: VecDeque::new(),
             path_history: FrecentItems::with_max_entries(MAX_PATH_HISTORY),
             watcher_handle: None,

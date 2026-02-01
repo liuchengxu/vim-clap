@@ -21,6 +21,7 @@ mod commands;
 mod menu;
 mod state;
 
+use markdown_preview_core::DocumentType;
 use state::AppState;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -43,7 +44,7 @@ fn main() {
     let initial_file = std::env::args()
         .nth(1)
         .map(PathBuf::from)
-        .filter(|p| p.exists() && is_markdown_file(p));
+        .filter(|p| p.exists() && is_supported_file(p));
 
     if let Some(ref path) = initial_file {
         tracing::info!(path = %path.display(), "Opening file from command line");
@@ -108,17 +109,13 @@ fn main() {
             commands::add_path_to_history,
             commands::get_current_git_root,
             commands::refresh_file_metadata,
+            commands::get_supported_extensions,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 
-/// Check if a path is a markdown file.
-fn is_markdown_file(path: &PathBuf) -> bool {
-    path.extension()
-        .map(|ext| {
-            let ext = ext.to_string_lossy().to_lowercase();
-            matches!(ext.as_str(), "md" | "markdown" | "mdown" | "mkdn" | "mkd")
-        })
-        .unwrap_or(false)
+/// Check if a path is a supported document file.
+fn is_supported_file(path: &std::path::Path) -> bool {
+    DocumentType::from_path(path).is_some()
 }

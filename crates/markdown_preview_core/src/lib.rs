@@ -22,6 +22,7 @@
 
 pub mod assets;
 pub mod common;
+pub mod document;
 pub mod render;
 pub mod stats;
 pub mod toc;
@@ -32,8 +33,9 @@ pub mod vim_plugin;
 
 // Re-export commonly used types at crate root
 pub use common::git::find_git_root;
-pub use render::{to_html, PreviewMode, RenderOptions, RenderResult};
-pub use stats::{calculate_document_stats, DocumentStats};
+pub use document::DocumentType;
+pub use render::{to_html, PreviewMode, RenderOptions, RenderOutput, RenderResult};
+pub use stats::{calculate_document_stats, calculate_pdf_stats, DocumentStats};
 pub use toc::{find_toc_range, generate_toc, slugify, TocConfig};
 pub use watcher::{FileWatcher, WatchEvent};
 
