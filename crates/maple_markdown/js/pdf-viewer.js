@@ -41,6 +41,8 @@ class PdfViewerClass {
         this.outline = null;          // PDF outline for TOC
         this.doubleClickZoomActive = false;  // Track if zoomed via double-click
         this.preDoubleClickZoomIndex = 2;    // Zoom level before double-click
+        this.resizeHandler = null;    // Window resize handler
+        this.resizeTimeout = null;    // Debounce timeout for resize
     }
 
     /**
@@ -99,6 +101,9 @@ class PdfViewerClass {
 
         // Set up the container
         this.setupContainer();
+
+        // Set up window resize handler (debounced)
+        this.setupResizeHandler();
 
         // Read the PDF file using Tauri's fs plugin and create a blob URL
         let pdfData;
@@ -182,6 +187,30 @@ class PdfViewerClass {
                 tocContent.innerHTML = '<div id="pdf-toc" class="pdf-toc"></div>';
             }
         }
+    }
+
+    /**
+     * Set up window resize handler with debouncing
+     */
+    setupResizeHandler() {
+        // Remove existing handler if any
+        if (this.resizeHandler) {
+            window.removeEventListener('resize', this.resizeHandler);
+        }
+
+        this.resizeHandler = () => {
+            // Debounce: wait for resize to settle
+            if (this.resizeTimeout) {
+                clearTimeout(this.resizeTimeout);
+            }
+            this.resizeTimeout = setTimeout(() => {
+                if (this.isActive()) {
+                    this.recalculateBaseScale();
+                }
+            }, 150);
+        };
+
+        window.addEventListener('resize', this.resizeHandler);
     }
 
     /**
@@ -808,6 +837,16 @@ class PdfViewerClass {
      * Clean up resources
      */
     cleanup() {
+        // Remove resize handler
+        if (this.resizeHandler) {
+            window.removeEventListener('resize', this.resizeHandler);
+            this.resizeHandler = null;
+        }
+        if (this.resizeTimeout) {
+            clearTimeout(this.resizeTimeout);
+            this.resizeTimeout = null;
+        }
+
         // Disconnect observer
         if (this.observer) {
             this.observer.disconnect();
