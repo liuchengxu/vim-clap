@@ -39,6 +39,8 @@ class PdfViewerClass {
         this.zoomLevels = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0];
         this.zoomIndex = 2;           // Default to 1.0
         this.outline = null;          // PDF outline for TOC
+        this.doubleClickZoomActive = false;  // Track if zoomed via double-click
+        this.preDoubleClickZoomIndex = 2;    // Zoom level before double-click
     }
 
     /**
@@ -167,6 +169,11 @@ class PdfViewerClass {
         this.container.id = 'pdf-container';
         this.container.className = 'pdf-container';
         contentEl.appendChild(this.container);
+
+        // Add double-click to zoom handler
+        this.container.addEventListener('dblclick', (e) => {
+            this.handleDoubleClick(e);
+        });
 
         // Create TOC container if not exists
         if (!document.getElementById('pdf-toc')) {
@@ -632,7 +639,69 @@ class PdfViewerClass {
      */
     resetZoom() {
         this.zoomIndex = 2; // 1.0 index
+        this.doubleClickZoomActive = false;
         this.setZoom(1.0);
+    }
+
+    /**
+     * Handle double-click to zoom
+     * - If at normal zoom: zoom to 2x centered on click point
+     * - If already zoomed via double-click: zoom back to previous level
+     */
+    async handleDoubleClick(e) {
+        if (!this.container || !this.pdf) return;
+
+        // Get click position relative to the scrollable container
+        const containerRect = this.container.getBoundingClientRect();
+        const mainContent = document.getElementById('main-content');
+        if (!mainContent) return;
+
+        // Calculate click position as ratio of visible area
+        const clickX = e.clientX - containerRect.left;
+        const clickY = e.clientY - containerRect.top;
+
+        // Get current scroll position and container dimensions
+        const scrollLeft = mainContent.scrollLeft || 0;
+        const scrollTop = mainContent.scrollTop || 0;
+        const viewWidth = mainContent.clientWidth;
+        const viewHeight = mainContent.clientHeight;
+
+        // Calculate the absolute position in the document
+        const docX = scrollLeft + clickX;
+        const docY = scrollTop + clickY;
+
+        // Calculate position ratios (where in the document was clicked)
+        const ratioX = docX / (this.container.scrollWidth || 1);
+        const ratioY = docY / (this.container.scrollHeight || 1);
+
+        if (this.doubleClickZoomActive) {
+            // Zoom back to previous level
+            this.doubleClickZoomActive = false;
+            this.zoomIndex = this.preDoubleClickZoomIndex;
+            await this.setZoom(this.zoomLevels[this.zoomIndex]);
+        } else {
+            // Zoom in to 2x (or next level if already above 1x)
+            this.preDoubleClickZoomIndex = this.zoomIndex;
+            this.doubleClickZoomActive = true;
+
+            // Find the 2.0 zoom level index, or go 2 steps up from current
+            const targetScale = Math.min(this.scale * 2, 4.0);
+            const targetIndex = this.zoomLevels.findIndex(z => z >= targetScale);
+            this.zoomIndex = targetIndex >= 0 ? targetIndex : this.zoomLevels.length - 1;
+
+            await this.setZoom(this.zoomLevels[this.zoomIndex]);
+
+            // After zoom, scroll to keep the clicked point centered
+            // Wait a frame for the DOM to update
+            requestAnimationFrame(() => {
+                const newDocX = ratioX * this.container.scrollWidth;
+                const newDocY = ratioY * this.container.scrollHeight;
+
+                // Scroll so the clicked point is centered in the viewport
+                mainContent.scrollLeft = newDocX - (viewWidth / 2);
+                mainContent.scrollTop = newDocY - (viewHeight / 2);
+            });
+        }
     }
 
     /**
