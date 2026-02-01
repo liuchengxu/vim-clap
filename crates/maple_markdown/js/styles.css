@@ -518,6 +518,22 @@
         font-family: "Literata", Georgia, serif;
       }
 
+      /* Content Width presets */
+      .markdown-body.content-width-narrow {
+        max-width: 650px;
+      }
+
+      /* Default is 980px (defined in .markdown-body) */
+
+      .markdown-body.content-width-wide {
+        max-width: 1200px;
+      }
+
+      .markdown-body.content-width-full {
+        max-width: none;
+        width: calc(100% - 40px);
+      }
+
       /* Reader Mode - optimized for focused reading */
       .markdown-body.reader-mode {
         max-width: 750px;

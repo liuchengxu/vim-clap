@@ -8,6 +8,7 @@
 let tocVisible = false;
 let fontFamily = 'default';
 let readerMode = false;
+let contentWidth = 'default'; // narrow, default, wide, full
 let currentFilePath = '';
 let currentTheme = 'auto';
 let zoomLevel = 100; // Percentage: 50-200
@@ -584,6 +585,22 @@ function toggleReaderMode(enabled) {
     }
 
     localStorage.setItem('readerMode', enabled);
+}
+
+function changeContentWidth(width) {
+    contentWidth = width;
+    const content = document.getElementById('content');
+    if (!content) return;
+
+    // Remove all width classes
+    content.classList.remove('content-width-narrow', 'content-width-wide', 'content-width-full');
+
+    // Add the selected width class (default uses the base max-width: 980px)
+    if (width !== 'default') {
+        content.classList.add('content-width-' + width);
+    }
+
+    localStorage.setItem('contentWidth', width);
 }
 
 function changeTheme(theme) {
@@ -1319,6 +1336,13 @@ function initCoreUI(options = {}) {
     readerMode = savedReaderMode;
     document.getElementById('reader-mode').value = savedReaderMode ? 'on' : 'off';
 
+    const savedContentWidth = localStorage.getItem('contentWidth') || 'default';
+    contentWidth = savedContentWidth;
+    const contentWidthEl = document.getElementById('content-width');
+    if (contentWidthEl) {
+        contentWidthEl.value = savedContentWidth;
+    }
+
     const savedTheme = localStorage.getItem('theme') || 'auto';
     currentTheme = savedTheme;
 
@@ -1334,6 +1358,13 @@ function initCoreUI(options = {}) {
     document.getElementById('reader-mode').addEventListener('change', (e) => {
         toggleReaderMode(e.target.value === 'on');
     });
+
+    const contentWidthSelect = document.getElementById('content-width');
+    if (contentWidthSelect) {
+        contentWidthSelect.addEventListener('change', (e) => {
+            changeContentWidth(e.target.value);
+        });
+    }
 
     // Zoom controls
     const zoomOutBtn = document.getElementById('zoom-out-btn');
@@ -1376,6 +1407,11 @@ function initCoreUI(options = {}) {
 
     if (readerMode) {
         toggleReaderMode(true);
+    }
+
+    // Apply saved content width
+    if (contentWidth !== 'default') {
+        changeContentWidth(contentWidth);
     }
 
     changeTheme(currentTheme);
@@ -1439,3 +1475,6 @@ window.zoomIn = zoomIn;
 window.zoomOut = zoomOut;
 window.resetZoom = resetZoom;
 window.applyZoom = applyZoom;
+window.changeContentWidth = changeContentWidth;
+window.toggleTOC = toggleTOC;
+window.changeTheme = changeTheme;
