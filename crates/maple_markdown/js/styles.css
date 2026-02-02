@@ -1320,21 +1320,46 @@
         position: absolute;
         top: -2px;
         right: -6px;
-        width: 6px;
-        height: 6px;
+        width: 8px;
+        height: 8px;
         background: #2da44e;
         border-radius: 50%;
         opacity: 0;
         transition: opacity 0.15s ease;
+        box-shadow: 0 0 0 0 rgba(45, 164, 78, 0.4);
       }
 
       .metadata-refresh-dot.visible {
         opacity: 1;
+        animation: pulse-dot 1.5s ease-in-out infinite;
+      }
+
+      @keyframes pulse-dot {
+        0%, 100% {
+          box-shadow: 0 0 0 0 rgba(45, 164, 78, 0.4);
+          transform: scale(1);
+        }
+        50% {
+          box-shadow: 0 0 0 4px rgba(45, 164, 78, 0);
+          transform: scale(1.1);
+        }
       }
 
       @media (prefers-color-scheme: dark) {
         .metadata-refresh-dot {
           background: #3fb950;
+          box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.4);
+        }
+
+        @keyframes pulse-dot {
+          0%, 100% {
+            box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.4);
+            transform: scale(1);
+          }
+          50% {
+            box-shadow: 0 0 0 4px rgba(63, 185, 80, 0);
+            transform: scale(1.1);
+          }
         }
       }
 
