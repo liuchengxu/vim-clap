@@ -765,8 +765,11 @@ class PdfViewerClass {
             zoomDisplay.textContent = `${Math.round(scale * 100)}%`;
         }
 
-        // Save scroll position ratio
-        const scrollRatio = this.container.scrollTop / (this.container.scrollHeight || 1);
+        // Save scroll position ratio (use main-content as it's the scrolling element)
+        const mainContent = document.getElementById('main-content');
+        const scrollRatio = mainContent
+            ? mainContent.scrollTop / (mainContent.scrollHeight || 1)
+            : 0;
 
         // Get first page to calculate default dimensions (avoid loading all pages)
         const firstPage = await this.pdf.getPage(1);
@@ -808,11 +811,48 @@ class PdfViewerClass {
             }
         }
 
-        // Restore scroll position
-        this.container.scrollTop = scrollRatio * this.container.scrollHeight;
+        // Restore scroll position (use main-content as it's the scrolling element)
+        if (mainContent) {
+            mainContent.scrollTop = scrollRatio * mainContent.scrollHeight;
+        }
 
         // Trigger re-render of visible pages by re-observing
         this.setupIntersectionObserver();
+
+        // Force re-render of visible pages (observer might not fire for already-visible elements)
+        requestAnimationFrame(() => {
+            this.renderVisiblePages();
+        });
+    }
+
+    /**
+     * Render pages that are currently visible in the viewport
+     */
+    renderVisiblePages() {
+        if (!this.container) return;
+
+        const mainContent = document.getElementById('main-content');
+        if (!mainContent) return;
+
+        const scrollTop = mainContent.scrollTop;
+        const viewHeight = mainContent.clientHeight;
+        const viewBottom = scrollTop + viewHeight;
+
+        // Check each page to see if it's in view
+        for (const [pageNum, pageData] of this.pages) {
+            const rect = pageData.container.getBoundingClientRect();
+            const containerRect = mainContent.getBoundingClientRect();
+
+            // Convert to scroll-relative coordinates
+            const pageTop = rect.top - containerRect.top + scrollTop;
+            const pageBottom = pageTop + rect.height;
+
+            // Check if page is visible (with some margin)
+            const margin = 200;
+            if (pageBottom >= scrollTop - margin && pageTop <= viewBottom + margin) {
+                this.renderPage(pageNum);
+            }
+        }
     }
 
     /**
