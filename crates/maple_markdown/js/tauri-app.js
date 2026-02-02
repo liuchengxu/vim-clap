@@ -1395,7 +1395,7 @@
         if (!currentPath) return;
 
         try {
-            const metadata = await invoke('get_file_metadata', { path: currentPath });
+            const metadata = await invoke('refresh_file_metadata');
             if (metadata) {
                 updateFileMetadata(
                     metadata.modified_at,
