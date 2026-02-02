@@ -63,6 +63,12 @@
       body.theme-dark .recent-file-path {
         color: rgba(255, 255, 255, .4);
       }
+      body.theme-dark .recent-file-icon-md {
+        color: #409eff;
+      }
+      body.theme-dark .recent-file-icon-pdf {
+        color: #f85149;
+      }
       body.theme-dark #toc-panel {
         background: #1e1e1e;
         border-color: #363839;
@@ -211,6 +217,12 @@
       body.theme-material-dark .recent-file-path {
         color: rgba(255, 255, 255, .4);
       }
+      body.theme-material-dark .recent-file-icon-md {
+        color: #82aaff;
+      }
+      body.theme-material-dark .recent-file-icon-pdf {
+        color: #f07178;
+      }
       body.theme-material-dark #toc-panel {
         background: #1a2129;
         border-color: #4f585e;
@@ -355,6 +367,12 @@
       }
       body.theme-one-dark .recent-file-path {
         color: #5c6370;
+      }
+      body.theme-one-dark .recent-file-icon-md {
+        color: #61afef;
+      }
+      body.theme-one-dark .recent-file-icon-pdf {
+        color: #e06c75;
       }
       body.theme-one-dark #toc-panel {
         background: #21252b;
@@ -508,6 +526,12 @@
       body.theme-ulysses .recent-file-path {
         color: rgba(101, 101, 101, .4);
       }
+      body.theme-ulysses .recent-file-icon-md {
+        color: rgb(12, 139, 186);
+      }
+      body.theme-ulysses .recent-file-icon-pdf {
+        color: #d14;
+      }
       body.theme-ulysses #toc-panel {
         background: #f8f8f8;
         border-color: #e5e5e5;
@@ -659,6 +683,12 @@
       }
       body.theme-github-dark .recent-file-item:hover .recent-file-path {
         color: #8b949e;
+      }
+      body.theme-github-dark .recent-file-icon-md {
+        color: #58a6ff;
+      }
+      body.theme-github-dark .recent-file-icon-pdf {
+        color: #f85149;
       }
       body.theme-github-dark .markdown-body.show-line-numbers > *::before,
       body.theme-github-dark .markdown-body.show-line-numbers-both > *::before {

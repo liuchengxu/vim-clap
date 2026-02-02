@@ -122,10 +122,38 @@
         border-color: #0969da;
       }
 
+      .recent-file-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .recent-file-icon-wrapper {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+      }
+
+      .recent-file-icon {
+        width: 14px;
+        height: 14px;
+      }
+
+      .recent-file-icon-md {
+        color: #0969da;
+      }
+
+      .recent-file-icon-pdf {
+        color: #cf222e;
+      }
+
       .recent-file-name {
         font-size: 13px;
         font-weight: 600;
         color: #24292f;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .recent-file-item:hover .recent-file-name {
@@ -648,6 +676,14 @@
 
         .recent-file-item:hover .recent-file-path {
           color: #8b949e;
+        }
+
+        .recent-file-icon-md {
+          color: #58a6ff;
+        }
+
+        .recent-file-icon-pdf {
+          color: #f85149;
         }
 
         #toc-panel {

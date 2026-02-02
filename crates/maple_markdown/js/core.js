@@ -710,6 +710,26 @@ function hidePathTooltip() {
     }
 }
 
+/**
+ * Get file type icon SVG based on file extension
+ */
+function getFileTypeIcon(filePath) {
+    const ext = filePath.split('.').pop()?.toLowerCase() || '';
+
+    if (ext === 'pdf') {
+        // PDF icon
+        return `<svg class="recent-file-icon recent-file-icon-pdf" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M14.5 2H1.5C.67 2 0 2.67 0 3.5v9c0 .83.67 1.5 1.5 1.5h13c.83 0 1.5-.67 1.5-1.5v-9c0-.83-.67-1.5-1.5-1.5zM1.5 3h13c.28 0 .5.22.5.5V5H1V3.5c0-.28.22-.5.5-.5zM1 12.5V6h14v6.5c0 .28-.22.5-.5.5h-13c-.28 0-.5-.22-.5-.5z"/>
+            <path d="M4 8h1.5c.55 0 1 .45 1 1s-.45 1-1 1H4.5v1H4V8zm.5.5v1h1c.28 0 .5-.22.5-.5s-.22-.5-.5-.5h-1zM7 8h1.2c.77 0 1.3.53 1.3 1.5S9 11 8.2 11H7V8zm.5.5v2h.7c.5 0 .8-.33.8-1s-.3-1-.8-1h-.7zM10 8h2.5v.5H10.5v.75h1.5v.5h-1.5V11H10V8z"/>
+        </svg>`;
+    } else {
+        // Markdown icon (default)
+        return `<svg class="recent-file-icon recent-file-icon-md" viewBox="0 0 16 16" fill="currentColor">
+            <path fill-rule="evenodd" d="M14.85 3H1.15C.52 3 0 3.52 0 4.15v7.7C0 12.48.52 13 1.15 13h13.7c.63 0 1.15-.52 1.15-1.15v-7.7C16 3.52 15.48 3 14.85 3zM9 11H7V8L5.5 9.92 4 8v3H2V5h2l1.5 2L7 5h2v6zm2.99.5L9.5 8H11V5h2v3h1.5l-2.51 3.5z"/>
+        </svg>`;
+    }
+}
+
 function renderRecentFiles(onFileClick) {
     const container = document.getElementById('recent-files');
     if (!container) return;
@@ -729,15 +749,26 @@ function renderRecentFiles(onFileClick) {
             item.classList.add('current');
         }
 
-        const nameElement = document.createElement('div');
+        // Create header row with icon and name
+        const headerRow = document.createElement('div');
+        headerRow.className = 'recent-file-header';
+
+        const iconWrapper = document.createElement('span');
+        iconWrapper.className = 'recent-file-icon-wrapper';
+        iconWrapper.innerHTML = getFileTypeIcon(file.path);
+
+        const nameElement = document.createElement('span');
         nameElement.className = 'recent-file-name';
         nameElement.textContent = getFileBasename(file.path);
+
+        headerRow.appendChild(iconWrapper);
+        headerRow.appendChild(nameElement);
 
         const pathElement = document.createElement('div');
         pathElement.className = 'recent-file-path';
         pathElement.textContent = getFileDirectory(file.path);
 
-        item.appendChild(nameElement);
+        item.appendChild(headerRow);
         item.appendChild(pathElement);
 
         // Custom tooltip on hover
