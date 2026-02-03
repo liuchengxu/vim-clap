@@ -501,3 +501,309 @@ function setupTOCResize() {
 }
 
 // ============================================================================
+// Code Block Copy Button
+// ============================================================================
+
+function addCodeCopyButtons() {
+    document.querySelectorAll('.markdown-body pre > code').forEach(block => {
+        const pre = block.parentElement;
+        if (pre.querySelector('.code-copy-btn')) return;
+
+        const btn = document.createElement('button');
+        btn.className = 'code-copy-btn';
+        btn.title = 'Copy code';
+        btn.innerHTML = `<svg viewBox="0 0 16 16" fill="currentColor">
+            <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/>
+            <path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/>
+        </svg>`;
+
+        btn.onclick = async (e) => {
+            e.stopPropagation();
+            const code = block.textContent;
+            try {
+                await navigator.clipboard.writeText(code);
+                btn.classList.add('copied');
+                btn.innerHTML = `<svg viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/>
+                </svg>`;
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.innerHTML = `<svg viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/>
+                        <path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/>
+                    </svg>`;
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy code:', err);
+            }
+        };
+
+        pre.appendChild(btn);
+    });
+}
+
+// ============================================================================
+// Reading Progress Bar
+// ============================================================================
+
+function setupReadingProgress() {
+    const progressBar = document.getElementById('reading-progress');
+    const mainContent = document.getElementById('main-content');
+    if (!progressBar || !mainContent) return;
+
+    mainContent.addEventListener('scroll', () => {
+        const scrollHeight = mainContent.scrollHeight - mainContent.clientHeight;
+        if (scrollHeight <= 0) {
+            progressBar.style.width = '0%';
+            return;
+        }
+        const progress = (mainContent.scrollTop / scrollHeight) * 100;
+        progressBar.style.width = `${Math.min(100, Math.max(0, progress))}%`;
+    });
+}
+
+// ============================================================================
+// Image Lightbox
+// ============================================================================
+
+function setupImageLightbox() {
+    const overlay = document.getElementById('lightbox-overlay');
+    const lightboxImg = document.getElementById('lightbox-img');
+    if (!overlay || !lightboxImg) return;
+
+    const closeBtn = overlay.querySelector('.lightbox-close');
+
+    document.querySelectorAll('.markdown-body img').forEach(img => {
+        if (img.naturalWidth < 50 || img.naturalHeight < 50) {
+            img.classList.add('lightbox-disabled');
+            return;
+        }
+        if (img.closest('.mermaid') || img.closest('svg')) {
+            img.classList.add('lightbox-disabled');
+            return;
+        }
+        if (img.dataset.lightboxSetup) return;
+        img.dataset.lightboxSetup = 'true';
+
+        img.onclick = (e) => {
+            e.preventDefault();
+            lightboxImg.src = img.src;
+            lightboxImg.alt = img.alt || 'Full-size image';
+            overlay.classList.add('active');
+        };
+    });
+
+    if (!overlay.dataset.setupDone) {
+        overlay.dataset.setupDone = 'true';
+        overlay.onclick = (e) => {
+            if (e.target === overlay || e.target === lightboxImg) {
+                overlay.classList.remove('active');
+            }
+        };
+        if (closeBtn) {
+            closeBtn.onclick = () => overlay.classList.remove('active');
+        }
+    }
+}
+
+function closeLightbox() {
+    const overlay = document.getElementById('lightbox-overlay');
+    if (overlay) overlay.classList.remove('active');
+}
+
+// ============================================================================
+// Focus Mode
+// ============================================================================
+
+let focusModeEnabled = false;
+
+function toggleFocusMode(enabled) {
+    focusModeEnabled = enabled;
+    document.body.classList.toggle('focus-mode', enabled);
+
+    if (enabled) {
+        setupFocusTracking();
+    } else {
+        document.querySelectorAll('.focus-active').forEach(el => {
+            el.classList.remove('focus-active');
+        });
+    }
+    localStorage.setItem('focusMode', enabled);
+}
+
+function setupFocusTracking() {
+    const content = document.getElementById('content');
+    const mainContent = document.getElementById('main-content');
+    if (!content || !mainContent) return;
+
+    const updateFocus = () => {
+        if (!focusModeEnabled) return;
+
+        const contentRect = mainContent.getBoundingClientRect();
+        const centerY = contentRect.top + contentRect.height / 2;
+        const elements = content.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, pre, blockquote, table');
+
+        elements.forEach(el => el.classList.remove('focus-active'));
+
+        let closestElement = null;
+        let closestDistance = Infinity;
+
+        for (const el of elements) {
+            const rect = el.getBoundingClientRect();
+            const elCenterY = rect.top + rect.height / 2;
+            const distance = Math.abs(elCenterY - centerY);
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestElement = el;
+            }
+        }
+
+        if (closestElement) closestElement.classList.add('focus-active');
+    };
+
+    updateFocus();
+
+    if (!mainContent.dataset.focusSetup) {
+        mainContent.dataset.focusSetup = 'true';
+        mainContent.addEventListener('scroll', updateFocus, { passive: true });
+    }
+}
+
+// ============================================================================
+// Presentation Mode
+// ============================================================================
+
+let presentationMode = false;
+let presentationSlides = [];
+let currentSlide = 0;
+
+function enterPresentationMode() {
+    const content = document.getElementById('content');
+    if (!content) return;
+
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = content.innerHTML;
+
+    const slides = [];
+    let currentSlideContent = [];
+
+    Array.from(tempDiv.children).forEach(child => {
+        if (child.tagName === 'HR') {
+            if (currentSlideContent.length > 0) {
+                slides.push(currentSlideContent.map(el => el.outerHTML).join(''));
+                currentSlideContent = [];
+            }
+        } else {
+            currentSlideContent.push(child);
+        }
+    });
+
+    if (currentSlideContent.length > 0) {
+        slides.push(currentSlideContent.map(el => el.outerHTML).join(''));
+    }
+
+    if (slides.length <= 1) {
+        slides.length = 0;
+        currentSlideContent = [];
+        Array.from(tempDiv.children).forEach(child => {
+            if (child.tagName === 'H1' && currentSlideContent.length > 0) {
+                slides.push(currentSlideContent.map(el => el.outerHTML).join(''));
+                currentSlideContent = [child];
+            } else {
+                currentSlideContent.push(child);
+            }
+        });
+        if (currentSlideContent.length > 0) {
+            slides.push(currentSlideContent.map(el => el.outerHTML).join(''));
+        }
+    }
+
+    if (slides.length === 0) slides.push(content.innerHTML);
+
+    presentationSlides = slides;
+    currentSlide = 0;
+
+    const slidesContainer = document.getElementById('presentation-slides');
+    slidesContainer.innerHTML = slides.map((slideContent, index) =>
+        `<div class="presentation-slide${index === 0 ? ' active' : ''}" data-index="${index}">
+            <div class="slide-content">${slideContent}</div>
+        </div>`
+    ).join('');
+
+    updateSlideCounter();
+    presentationMode = true;
+    document.body.classList.add('presentation-mode');
+
+    if (typeof hljs !== 'undefined') {
+        slidesContainer.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+    }
+}
+
+function exitPresentationMode() {
+    presentationMode = false;
+    document.body.classList.remove('presentation-mode');
+    presentationSlides = [];
+    currentSlide = 0;
+}
+
+function nextSlide() {
+    if (currentSlide < presentationSlides.length - 1) goToSlide(currentSlide + 1);
+}
+
+function prevSlide() {
+    if (currentSlide > 0) goToSlide(currentSlide - 1);
+}
+
+function goToSlide(index) {
+    if (index < 0 || index >= presentationSlides.length) return;
+    document.querySelectorAll('.presentation-slide').forEach((slide, i) => {
+        slide.classList.toggle('active', i === index);
+    });
+    currentSlide = index;
+    updateSlideCounter();
+}
+
+function updateSlideCounter() {
+    const currentEl = document.getElementById('pres-current');
+    const totalEl = document.getElementById('pres-total');
+    const prevBtn = document.getElementById('pres-prev');
+    const nextBtn = document.getElementById('pres-next');
+
+    if (currentEl) currentEl.textContent = currentSlide + 1;
+    if (totalEl) totalEl.textContent = presentationSlides.length;
+    if (prevBtn) prevBtn.disabled = currentSlide === 0;
+    if (nextBtn) nextBtn.disabled = currentSlide === presentationSlides.length - 1;
+}
+
+function setupPresentationMode() {
+    const prevBtn = document.getElementById('pres-prev');
+    const nextBtn = document.getElementById('pres-next');
+    const exitBtn = document.getElementById('pres-exit');
+
+    if (prevBtn) prevBtn.onclick = prevSlide;
+    if (nextBtn) nextBtn.onclick = nextSlide;
+    if (exitBtn) exitBtn.onclick = exitPresentationMode;
+
+    document.addEventListener('keydown', (e) => {
+        if (!presentationMode) return;
+        switch (e.key) {
+            case 'ArrowRight':
+            case ' ':
+            case 'PageDown':
+                e.preventDefault();
+                nextSlide();
+                break;
+            case 'ArrowLeft':
+            case 'PageUp':
+                e.preventDefault();
+                prevSlide();
+                break;
+            case 'Escape':
+                e.preventDefault();
+                exitPresentationMode();
+                break;
+        }
+    });
+}
+
+// ============================================================================

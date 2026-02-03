@@ -84,6 +84,13 @@ function addToRecentFiles(filePath) {
     localStorage.setItem('recentFiles', JSON.stringify(recentFiles));
 }
 
+function removeFromRecentFiles(filePath) {
+    if (!filePath) return;
+    let recentFiles = getRecentFiles();
+    recentFiles = recentFiles.filter(f => f.path !== filePath);
+    localStorage.setItem('recentFiles', JSON.stringify(recentFiles));
+}
+
 // Custom tooltip for recent files
 let pathTooltip = null;
 let tooltipTimeout = null;
@@ -125,7 +132,7 @@ function hidePathTooltip() {
     }
 }
 
-function renderRecentFiles(onFileClick) {
+function renderRecentFiles(onFileClick, onRemove) {
     const container = document.getElementById('recent-files');
     if (!container) return;
 
@@ -154,6 +161,26 @@ function renderRecentFiles(onFileClick) {
 
         item.appendChild(nameElement);
         item.appendChild(pathElement);
+
+        // Add remove button
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'recent-file-remove-btn';
+        removeBtn.title = 'Remove from list';
+        removeBtn.innerHTML = '×';
+        removeBtn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Remove from localStorage
+            removeFromRecentFiles(file.path);
+            // Call backend removal if provided
+            if (onRemove) {
+                onRemove(file.path);
+            }
+            // Re-render the list
+            renderRecentFiles(onFileClick, onRemove);
+            showToast('Removed from recent files');
+        };
+        item.appendChild(removeBtn);
 
         // Custom tooltip on hover
         item.addEventListener('mouseenter', () => {
@@ -572,8 +599,8 @@ function handleContentUpdate(message, options = {}) {
     if (message.file_path) {
         currentFilePath = message.file_path;
         addToRecentFiles(currentFilePath);
-        if (options.onFileClick) {
-            renderRecentFiles(options.onFileClick);
+        if (options.onFileClick || options.onRemove) {
+            renderRecentFiles(options.onFileClick, options.onRemove);
         } else {
             renderRecentFiles();
         }
@@ -591,6 +618,13 @@ function handleContentUpdate(message, options = {}) {
 
     if (message.should_focus) {
         window.focus();
+    }
+
+    // Apply new feature enhancements to loaded content
+    addCodeCopyButtons();
+    setupImageLightbox();
+    if (focusModeEnabled) {
+        setupFocusTracking();
     }
 }
 
@@ -694,8 +728,29 @@ function initCoreUI(options = {}) {
     // Apply saved zoom level
     applyZoom(zoomLevel);
 
-    renderRecentFiles(options.onFileClick);
+    renderRecentFiles(options.onFileClick, options.onRemove);
     initFuzzyFinder();
+
+    // Initialize new features
+    setupReadingProgress();
+    setupPresentationMode();
+    addCodeCopyButtons();
+
+    // Restore focus mode
+    const savedFocusMode = localStorage.getItem('focusMode') === 'true';
+    const focusModeSelect = document.getElementById('focus-mode');
+    if (savedFocusMode) {
+        toggleFocusMode(true);
+        if (focusModeSelect) focusModeSelect.value = 'on';
+    }
+
+    // Focus mode control
+    if (focusModeSelect) {
+        focusModeSelect.addEventListener('change', (e) => {
+            toggleFocusMode(e.target.value === 'on');
+        });
+    }
+
 }
 
 // Export for use in platform-specific modules (browser global scope)
@@ -726,7 +781,17 @@ window.MarkdownPreviewCore = {
     zoomIn,
     zoomOut,
     resetZoom,
-    applyZoom
+    applyZoom,
+
+    // New features
+    addCodeCopyButtons,
+    setupReadingProgress,
+    setupImageLightbox,
+    closeLightbox,
+    toggleFocusMode,
+    enterPresentationMode,
+    exitPresentationMode,
+    setupPresentationMode
 };
 
 // Also expose commonly used functions directly for convenience
@@ -744,8 +809,15 @@ window.copyToClipboard = copyToClipboard;
 window.getFileBasename = getFileBasename;
 window.renderRecentFiles = renderRecentFiles;
 window.addToRecentFiles = addToRecentFiles;
+window.removeFromRecentFiles = removeFromRecentFiles;
 window.zoomIn = zoomIn;
 window.zoomOut = zoomOut;
 window.resetZoom = resetZoom;
 window.applyZoom = applyZoom;
+window.addCodeCopyButtons = addCodeCopyButtons;
+window.setupImageLightbox = setupImageLightbox;
+window.closeLightbox = closeLightbox;
+window.toggleFocusMode = toggleFocusMode;
+window.enterPresentationMode = enterPresentationMode;
+window.exitPresentationMode = exitPresentationMode;
 

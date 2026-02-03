@@ -311,6 +311,17 @@ pub async fn clear_recent_files(state: State<'_, Arc<RwLock<AppState>>>) -> Resu
     Ok(())
 }
 
+/// Remove a specific file from the recent files list.
+#[tauri::command]
+pub async fn remove_recent_file(
+    path: String,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<(), String> {
+    let mut state = state.write().await;
+    state.remove_recent_file(std::path::Path::new(&path));
+    Ok(())
+}
+
 /// Start watching a file for changes.
 #[tauri::command]
 pub async fn watch_file(

@@ -100,6 +100,7 @@ fn main() {
             commands::get_recent_files,
             commands::add_recent_file,
             commands::clear_recent_files,
+            commands::remove_recent_file,
             commands::watch_file,
             commands::unwatch_file,
             commands::check_clipboard_for_markdown,

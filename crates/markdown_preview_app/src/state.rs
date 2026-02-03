@@ -166,6 +166,12 @@ impl AppState {
         self.save_config();
     }
 
+    /// Remove a specific file from the recent files list.
+    pub fn remove_recent_file(&mut self, path: &std::path::Path) {
+        self.recent_files.retain(|p| p != path);
+        self.save_config();
+    }
+
     /// Get the path history file path.
     fn path_history_path(&self) -> Option<PathBuf> {
         self.config_dir

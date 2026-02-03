@@ -65,6 +65,19 @@
     color: #8b949e;
   }
 
+  .recent-file-remove-btn {
+    color: #6e7681;
+  }
+
+  .recent-file-remove-btn:hover {
+    background: rgba(248, 81, 73, 0.15);
+    color: #f85149;
+  }
+
+  .recent-file-remove-btn:active {
+    background: rgba(248, 81, 73, 0.25);
+  }
+
   .markdown-body.show-line-numbers > *::before,
   .markdown-body.show-line-numbers-both > *::before {
     color: #6e7681;

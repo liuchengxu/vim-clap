@@ -119,6 +119,15 @@
         }
     }
 
+    // Remove a file from the backend recent files list
+    async function removeRecentFileFromBackend(filePath) {
+        try {
+            await invoke('remove_recent_file', { path: filePath });
+        } catch (e) {
+            console.error('Failed to remove from backend:', e);
+        }
+    }
+
     // Load recent files from backend and render them
     async function loadRecentFilesFromBackend() {
         try {
@@ -127,7 +136,7 @@
             const recentFiles = files.map(path => ({ path, timestamp: Date.now() }));
             // Store in localStorage so renderRecentFiles can use it
             localStorage.setItem('recentFiles', JSON.stringify(recentFiles));
-            renderRecentFiles(switchToFile);
+            renderRecentFiles(switchToFile, removeRecentFileFromBackend);
         } catch (e) {
             console.error('Failed to load recent files from backend:', e);
         }
@@ -1057,9 +1066,10 @@
 
     // Initialize on DOM ready
     document.addEventListener('DOMContentLoaded', async function() {
-        // Initialize core UI with file switch callback
+        // Initialize core UI with file switch and remove callbacks
         initCoreUI({
-            onFileClick: switchToFile
+            onFileClick: switchToFile,
+            onRemove: removeRecentFileFromBackend
         });
 
         // Load recent files from backend (persistent storage)

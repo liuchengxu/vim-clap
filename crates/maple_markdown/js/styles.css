@@ -110,6 +110,43 @@
         display: flex;
         flex-direction: column;
         gap: 2px;
+        position: relative;
+      }
+
+      /* Remove button for recent files */
+      .recent-file-remove-btn {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 18px;
+        height: 18px;
+        padding: 0;
+        border: none;
+        border-radius: 4px;
+        background: transparent;
+        color: #8b949e;
+        font-size: 16px;
+        font-weight: 500;
+        line-height: 1;
+        cursor: pointer;
+        opacity: 0;
+        transition: all 0.15s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .recent-file-item:hover .recent-file-remove-btn {
+        opacity: 1;
+      }
+
+      .recent-file-remove-btn:hover {
+        background: rgba(207, 34, 46, 0.1);
+        color: #cf222e;
+      }
+
+      .recent-file-remove-btn:active {
+        background: rgba(207, 34, 46, 0.2);
       }
 
       .recent-file-item:hover {
@@ -684,6 +721,19 @@
 
         .recent-file-icon-pdf {
           color: #f85149;
+        }
+
+        .recent-file-remove-btn {
+          color: #6e7681;
+        }
+
+        .recent-file-remove-btn:hover {
+          background: rgba(248, 81, 73, 0.15);
+          color: #f85149;
+        }
+
+        .recent-file-remove-btn:active {
+          background: rgba(248, 81, 73, 0.25);
         }
 
         #toc-panel {
@@ -1611,3 +1661,336 @@
           color: #6e7681;
         }
       }
+
+/* ==================== Code Block Copy Button ==================== */
+.markdown-body pre {
+  position: relative;
+}
+
+.code-copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s, transform 0.1s;
+  z-index: 10;
+}
+
+.code-copy-btn:hover {
+  background: #f6f8fa;
+  transform: scale(1.05);
+}
+
+.code-copy-btn:active {
+  transform: scale(0.95);
+}
+
+.markdown-body pre:hover .code-copy-btn {
+  opacity: 1;
+}
+
+.code-copy-btn svg {
+  width: 16px;
+  height: 16px;
+  color: #57606a;
+}
+
+.code-copy-btn.copied {
+  background: #2da44e;
+  border-color: #2da44e;
+}
+
+.code-copy-btn.copied svg {
+  color: white;
+}
+
+@media (prefers-color-scheme: dark) {
+  .code-copy-btn {
+    background: rgba(22, 27, 34, 0.9);
+    border-color: #30363d;
+  }
+  .code-copy-btn:hover {
+    background: #21262d;
+  }
+  .code-copy-btn svg {
+    color: #8b949e;
+  }
+}
+
+/* ==================== Reading Progress Bar ==================== */
+#main-content {
+  position: relative;
+}
+
+#reading-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 0;
+  background: linear-gradient(90deg, #0969da, #1f6feb);
+  z-index: 100;
+  transition: width 0.1s ease-out;
+  pointer-events: none;
+  border-radius: 0 2px 2px 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  #reading-progress {
+    background: linear-gradient(90deg, #58a6ff, #1f6feb);
+  }
+}
+
+/* ==================== Image Lightbox ==================== */
+#lightbox-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+  cursor: zoom-out;
+}
+
+#lightbox-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+#lightbox-img {
+  max-width: 95vw;
+  max-height: 95vh;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  transform: scale(0.9);
+  transition: transform 0.3s;
+}
+
+#lightbox-overlay.active #lightbox-img {
+  transform: scale(1);
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.lightbox-close svg {
+  width: 24px;
+  height: 24px;
+  color: white;
+}
+
+.markdown-body img:not(.lightbox-disabled) {
+  cursor: zoom-in;
+  transition: transform 0.2s;
+}
+
+.markdown-body img:not(.lightbox-disabled):hover {
+  transform: scale(1.02);
+}
+
+/* ==================== Presentation Mode ==================== */
+#presentation-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #1a1a2e;
+  z-index: 10002;
+  display: none;
+  flex-direction: column;
+}
+
+body.presentation-mode #presentation-container {
+  display: flex;
+}
+
+body.presentation-mode #sidebar,
+body.presentation-mode #toc-panel,
+body.presentation-mode #main-content,
+body.presentation-mode #reading-progress {
+  display: none !important;
+}
+
+.presentation-slide {
+  flex: 1;
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 80px;
+  overflow: auto;
+  color: #e0e0e0;
+  font-size: 1.5em;
+  line-height: 1.6;
+}
+
+.presentation-slide.active {
+  display: flex;
+}
+
+.presentation-slide .slide-content {
+  max-width: 1200px;
+  width: 100%;
+  text-align: left;
+}
+
+.presentation-slide h1 {
+  font-size: 2.5em;
+  color: #58a6ff;
+  margin-bottom: 0.5em;
+  border-bottom: 2px solid #30363d;
+  padding-bottom: 0.3em;
+}
+
+.presentation-slide h2 {
+  font-size: 2em;
+  color: #79c0ff;
+  margin-bottom: 0.5em;
+}
+
+.presentation-slide h3 {
+  font-size: 1.5em;
+  color: #a5d6ff;
+}
+
+.presentation-slide code {
+  background: rgba(110, 118, 129, 0.4);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+}
+
+.presentation-slide pre {
+  background: #161b22;
+  padding: 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.presentation-slide pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.presentation-slide a {
+  color: #58a6ff;
+}
+
+.presentation-slide img {
+  max-width: 100%;
+  max-height: 60vh;
+  margin: 1em auto;
+  display: block;
+}
+
+.presentation-slide blockquote {
+  border-left: 4px solid #58a6ff;
+  padding-left: 1em;
+  color: #8b949e;
+  font-style: italic;
+}
+
+.presentation-controls {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 24px;
+  background: rgba(33, 38, 45, 0.95);
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  z-index: 10003;
+}
+
+.presentation-controls button {
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  color: #c9d1d9;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.presentation-controls button:hover {
+  background: #30363d;
+  border-color: #58a6ff;
+}
+
+.presentation-controls button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.presentation-controls button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.presentation-slide-number {
+  color: #8b949e;
+  font-size: 14px;
+  min-width: 60px;
+  text-align: center;
+}
+
+.presentation-exit-hint {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  color: #6e7681;
+  font-size: 13px;
+  padding: 8px 12px;
+  background: rgba(33, 38, 45, 0.8);
+  border-radius: 6px;
+  z-index: 10003;
+}
+
+.presentation-exit-hint kbd {
+  background: #30363d;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+}

@@ -97,6 +97,7 @@
     </div>
 
     <div id="main-content">
+        <div id="reading-progress"></div>
         <div class="file-path-bar" id="file-path-bar" title="Click to copy path"></div>
         <div class="file-metadata-bar" id="file-metadata-bar">
             <span class="metadata-item" id="metadata-modified" title="Last modified" style="position: relative;">
@@ -207,6 +208,37 @@
             <div class="fuzzy-finder-footer">
                 <span id="fuzzy-result-count">0 results</span>
             </div>
+        </div>
+    </div>
+
+    <!-- Image Lightbox Overlay -->
+    <div id="lightbox-overlay">
+        <img id="lightbox-img" src="" alt="Full size image">
+        <button class="lightbox-close" onclick="closeLightbox()" title="Close (Esc)">&times;</button>
+    </div>
+
+    <!-- Presentation Mode Container -->
+    <div id="presentation-container">
+        <div id="presentation-slides"></div>
+        <div class="presentation-controls">
+            <button class="presentation-nav-btn" onclick="prevSlide()" title="Previous slide (←)">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <span class="presentation-counter" id="slide-counter">1 / 1</span>
+            <button class="presentation-nav-btn" onclick="nextSlide()" title="Next slide (→)">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </button>
+            <button class="presentation-exit-btn" onclick="exitPresentationMode()" title="Exit presentation (Esc)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                Exit
+            </button>
         </div>
     </div>
 </body>
