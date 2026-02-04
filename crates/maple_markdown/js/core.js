@@ -730,7 +730,7 @@ function showPathTooltip(element, fullPath, previewInfo = {}) {
     const tooltip = createPathTooltip();
     const content = tooltip.querySelector('.path-tooltip-content');
 
-    const { title, modified_at } = previewInfo;
+    const { title, digest, modified_at } = previewInfo;
 
     // Format path with segments
     const segments = fullPath.split('/').filter(s => s);
@@ -751,6 +751,11 @@ function showPathTooltip(element, fullPath, previewInfo = {}) {
         const relativeTime = formatRelativeTime(modified_at);
         const fullDate = new Date(modified_at).toLocaleString();
         html += `<div class="path-tooltip-modified" title="${fullDate}">Modified ${relativeTime}</div>`;
+    }
+
+    // Add digest (first paragraph preview) if available
+    if (digest) {
+        html += `<div class="path-tooltip-digest">${escapeHtml(digest)}</div>`;
     }
 
     content.innerHTML = html;
