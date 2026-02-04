@@ -111,6 +111,7 @@ fn main() {
             commands::get_current_git_root,
             commands::refresh_file_metadata,
             commands::get_supported_extensions,
+            commands::get_markdown_title,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

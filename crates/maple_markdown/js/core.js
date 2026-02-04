@@ -684,6 +684,8 @@ function removeFromRecentFiles(filePath) {
 // Custom tooltip for recent files
 let pathTooltip = null;
 let tooltipTimeout = null;
+// Cache for markdown titles to avoid repeated file reads
+const markdownTitleCache = new Map();
 
 function createPathTooltip() {
     if (pathTooltip) return pathTooltip;
@@ -696,7 +698,39 @@ function createPathTooltip() {
     return pathTooltip;
 }
 
-function showPathTooltip(element, fullPath) {
+// Check if a path is a markdown file
+function isMarkdownFile(path) {
+    const ext = path.split('.').pop().toLowerCase();
+    return ['md', 'markdown', 'mdown', 'mkdn', 'mkd'].includes(ext);
+}
+
+// Fetch markdown title with caching (Tauri only)
+async function getMarkdownTitle(path) {
+    // Return cached value if available
+    if (markdownTitleCache.has(path)) {
+        return markdownTitleCache.get(path);
+    }
+
+    // Only fetch for markdown files
+    if (!isMarkdownFile(path)) {
+        return null;
+    }
+
+    try {
+        // Check if we're in Tauri environment
+        if (window.__TAURI__ && window.__TAURI__.core) {
+            const title = await window.__TAURI__.core.invoke('get_markdown_title', { path });
+            markdownTitleCache.set(path, title);
+            return title;
+        }
+    } catch (e) {
+        console.error('Failed to get markdown title:', e);
+    }
+
+    return null;
+}
+
+function showPathTooltip(element, fullPath, title = null) {
     const tooltip = createPathTooltip();
     const content = tooltip.querySelector('.path-tooltip-content');
 
@@ -707,7 +741,14 @@ function showPathTooltip(element, fullPath) {
         return isLast ? `<span class="path-tooltip-file">${seg}</span>` : seg;
     }).join('<span class="path-tooltip-sep">/</span>');
 
-    content.innerHTML = formatted;
+    // Build tooltip content with optional title
+    let html = '';
+    if (title) {
+        html += `<div class="path-tooltip-title">${escapeHtml(title)}</div>`;
+    }
+    html += formatted;
+
+    content.innerHTML = html;
 
     // Position tooltip to the right of the element
     const rect = element.getBoundingClientRect();
@@ -803,11 +844,12 @@ function renderRecentFiles(onFileClick, onRemove) {
         };
         item.appendChild(removeBtn);
 
-        // Custom tooltip on hover
+        // Custom tooltip on hover with markdown title
         item.addEventListener('mouseenter', () => {
             if (tooltipTimeout) clearTimeout(tooltipTimeout);
-            tooltipTimeout = setTimeout(() => {
-                showPathTooltip(item, file.path);
+            tooltipTimeout = setTimeout(async () => {
+                const title = await getMarkdownTitle(file.path);
+                showPathTooltip(item, file.path, title);
             }, 400);
         });
 

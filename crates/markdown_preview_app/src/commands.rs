@@ -873,6 +873,93 @@ pub struct SupportedExtensions {
     pub all: Vec<String>,
 }
 
+/// Extract the title from a markdown file.
+///
+/// Looks for:
+/// 1. YAML frontmatter `title:` field
+/// 2. First H1 heading (`# Title`)
+///
+/// Returns None if the file is not a markdown file or has no title.
+#[tauri::command]
+pub async fn get_markdown_title(path: String) -> Result<Option<String>, String> {
+    tracing::debug!(path = %path, "Getting markdown title");
+    let path_buf = std::path::Path::new(&path);
+
+    // Only process markdown files
+    if DocumentType::from_path(path_buf) != Some(DocumentType::Markdown) {
+        tracing::debug!("Not a markdown file");
+        return Ok(None);
+    }
+
+    // Read the first part of the file (titles are usually at the top)
+    let content = match tokio::fs::read_to_string(path_buf).await {
+        Ok(c) => c,
+        Err(_) => return Ok(None),
+    };
+
+    // Limit to first 2000 chars for performance
+    let content = if content.len() > 2000 {
+        &content[..2000]
+    } else {
+        &content
+    };
+
+    // Track content after frontmatter
+    let content_after_frontmatter;
+
+    // Try YAML frontmatter first
+    if let Some(after_prefix) = content.strip_prefix("---") {
+        if let Some(end_idx) = after_prefix.find("---") {
+            let frontmatter = &after_prefix[..end_idx];
+            for line in frontmatter.lines() {
+                let line = line.trim();
+                if let Some(title) = line.strip_prefix("title:") {
+                    let title = title.trim();
+                    // Remove quotes if present
+                    let title = title
+                        .strip_prefix('"')
+                        .and_then(|s| s.strip_suffix('"'))
+                        .or_else(|| title.strip_prefix('\'').and_then(|s| s.strip_suffix('\'')))
+                        .unwrap_or(title);
+                    if !title.is_empty() {
+                        return Ok(Some(title.to_string()));
+                    }
+                }
+            }
+            // Skip past frontmatter for H1 search
+            content_after_frontmatter = &after_prefix[end_idx + 3..];
+        } else {
+            content_after_frontmatter = content;
+        }
+    } else {
+        content_after_frontmatter = content;
+    }
+
+    // Try first H1 heading (after frontmatter if present)
+    for line in content_after_frontmatter.lines() {
+        let line = line.trim();
+        // Skip empty lines
+        if line.is_empty() {
+            continue;
+        }
+        // Check for H1 heading
+        if let Some(title) = line.strip_prefix("# ") {
+            let title = title.trim();
+            if !title.is_empty() {
+                tracing::debug!(title = %title, "Found H1 title");
+                return Ok(Some(title.to_string()));
+            }
+        }
+        // Stop after first non-empty, non-heading line (title should be at the top)
+        if !line.starts_with('#') {
+            break;
+        }
+    }
+
+    tracing::debug!("No title found");
+    Ok(None)
+}
+
 /// Returns supported file extensions grouped by document type.
 ///
 /// This is the single source of truth - frontend fetches this on init.
