@@ -100,15 +100,16 @@ function createPathTooltip() {
 
     pathTooltip = document.createElement('div');
     pathTooltip.className = 'path-tooltip';
-    pathTooltip.innerHTML = '<div class="path-tooltip-content"></div>';
+    pathTooltip.innerHTML = '<div class="path-tooltip-content"><div class="path-tooltip-path"></div><div class="path-tooltip-digest"></div></div>';
     document.body.appendChild(pathTooltip);
 
     return pathTooltip;
 }
 
-function showPathTooltip(element, fullPath) {
+async function showPathTooltip(element, fullPath) {
     const tooltip = createPathTooltip();
-    const content = tooltip.querySelector('.path-tooltip-content');
+    const pathEl = tooltip.querySelector('.path-tooltip-path');
+    const digestEl = tooltip.querySelector('.path-tooltip-digest');
 
     // Format path with segments
     const segments = fullPath.split('/').filter(s => s);
@@ -117,13 +118,29 @@ function showPathTooltip(element, fullPath) {
         return isLast ? `<span class="path-tooltip-file">${seg}</span>` : seg;
     }).join('<span class="path-tooltip-sep">/</span>');
 
-    content.innerHTML = formatted;
+    pathEl.innerHTML = formatted;
+    digestEl.style.display = 'none';
+    digestEl.textContent = '';
 
     // Position tooltip to the right of the element
     const rect = element.getBoundingClientRect();
     tooltip.style.left = `${rect.right + 8}px`;
     tooltip.style.top = `${rect.top}px`;
     tooltip.classList.add('visible');
+
+    // Fetch digest asynchronously
+    try {
+        if (window.__TAURI__ && window.__TAURI__.core) {
+            const info = await window.__TAURI__.core.invoke('get_file_preview_info', { path: fullPath });
+            // Only update if tooltip is still visible (user hasn't moved away)
+            if (tooltip.classList.contains('visible') && info && info.digest) {
+                digestEl.textContent = info.digest;
+                digestEl.style.display = 'block';
+            }
+        }
+    } catch (e) {
+        console.error('Failed to fetch file digest:', e);
+    }
 }
 
 function hidePathTooltip() {

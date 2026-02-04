@@ -714,6 +714,164 @@ pub async fn refresh_file_metadata(
     }))
 }
 
+/// Extract the first paragraph from markdown content.
+///
+/// Skips headings, code blocks, frontmatter, and empty lines.
+/// Returns the first substantial paragraph text, truncated to max_chars.
+fn extract_first_paragraph(content: &str, max_chars: usize) -> Option<String> {
+    let mut in_frontmatter = false;
+    let mut in_code_block = false;
+    let mut frontmatter_delimiter_count = 0;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+
+        // Handle YAML frontmatter (---)
+        if trimmed == "---" {
+            frontmatter_delimiter_count += 1;
+            if frontmatter_delimiter_count == 1 {
+                in_frontmatter = true;
+                continue;
+            } else if frontmatter_delimiter_count == 2 {
+                in_frontmatter = false;
+                continue;
+            }
+        }
+
+        if in_frontmatter {
+            continue;
+        }
+
+        // Handle code blocks
+        if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
+            in_code_block = !in_code_block;
+            continue;
+        }
+
+        if in_code_block {
+            continue;
+        }
+
+        // Skip empty lines
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        // Skip headings
+        if trimmed.starts_with('#') {
+            continue;
+        }
+
+        // Skip blockquotes (often used for alerts)
+        if trimmed.starts_with('>') {
+            continue;
+        }
+
+        // Skip list items at the start
+        if trimmed.starts_with('-')
+            || trimmed.starts_with('*')
+            || trimmed.starts_with('+')
+            || trimmed.chars().next().is_some_and(|c| c.is_ascii_digit())
+        {
+            continue;
+        }
+
+        // Skip HTML comments
+        if trimmed.starts_with("<!--") {
+            continue;
+        }
+
+        // Found a paragraph - clean and truncate it
+        let cleaned = trimmed
+            // Remove inline links but keep text: [text](url) -> text
+            .replace(['[', ']'], "")
+            // Remove bold/italic markers
+            .replace("**", "")
+            .replace("__", "")
+            .replace('*', "")
+            .replace('_', " ");
+
+        if cleaned.len() <= max_chars {
+            return Some(cleaned);
+        } else {
+            // Truncate at word boundary
+            let truncated: String = cleaned.chars().take(max_chars).collect();
+            if let Some(last_space) = truncated.rfind(' ') {
+                return Some(format!("{}...", &truncated[..last_space]));
+            } else {
+                return Some(format!("{truncated}..."));
+            }
+        }
+    }
+
+    None
+}
+
+/// Extract title from markdown content.
+///
+/// Looks for title in YAML frontmatter or first H1 heading.
+fn extract_markdown_title(content: &str) -> Option<String> {
+    // Limit to first 2000 chars for performance
+    let content = if content.len() > 2000 {
+        &content[..2000]
+    } else {
+        content
+    };
+
+    // Track content after frontmatter
+    let content_after_frontmatter;
+
+    // Try YAML frontmatter first
+    if let Some(after_prefix) = content.strip_prefix("---") {
+        if let Some(end_idx) = after_prefix.find("---") {
+            let frontmatter = &after_prefix[..end_idx];
+            for line in frontmatter.lines() {
+                let line = line.trim();
+                if let Some(title) = line.strip_prefix("title:") {
+                    let title = title.trim();
+                    // Remove quotes if present
+                    let title = title
+                        .strip_prefix('"')
+                        .and_then(|s| s.strip_suffix('"'))
+                        .or_else(|| title.strip_prefix('\'').and_then(|s| s.strip_suffix('\'')))
+                        .unwrap_or(title);
+                    if !title.is_empty() {
+                        return Some(title.to_string());
+                    }
+                }
+            }
+            // Skip past frontmatter for H1 search
+            content_after_frontmatter = &after_prefix[end_idx + 3..];
+        } else {
+            content_after_frontmatter = content;
+        }
+    } else {
+        content_after_frontmatter = content;
+    }
+
+    // Try first H1 heading (after frontmatter if present)
+    for line in content_after_frontmatter.lines() {
+        let line = line.trim();
+        // Skip empty lines
+        if line.is_empty() {
+            continue;
+        }
+        // Check for H1 heading
+        if let Some(title) = line.strip_prefix("# ") {
+            let title = title.trim();
+            if !title.is_empty() {
+                return Some(title.to_string());
+            }
+        }
+        // Stop after first non-empty, non-heading line (title should be at the top)
+        if !line.starts_with('#') {
+            break;
+        }
+    }
+
+    None
+}
+
 /// Parsed GitHub URL components.
 struct GitHubUrl {
     owner: String,
@@ -878,11 +1036,13 @@ pub struct SupportedExtensions {
 pub struct FilePreviewInfo {
     /// Document title (from frontmatter or H1 heading)
     pub title: Option<String>,
+    /// First paragraph digest for preview
+    pub digest: Option<String>,
     /// File modification time (Unix timestamp in milliseconds)
     pub modified_at: Option<u64>,
 }
 
-/// Get file preview info (title and modification time) for tooltip display.
+/// Get file preview info (title, digest, and modification time) for tooltip display.
 #[tauri::command]
 pub async fn get_file_preview_info(path: String) -> Result<FilePreviewInfo, String> {
     let path_buf = std::path::Path::new(&path);
@@ -895,14 +1055,27 @@ pub async fn get_file_preview_info(path: String) -> Result<FilePreviewInfo, Stri
         .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
         .map(|d| d.as_millis() as u64);
 
-    // Get title based on document type
-    let title = match DocumentType::from_path(path_buf) {
-        Some(DocumentType::Markdown) => get_markdown_title_internal(path_buf).await,
-        Some(DocumentType::Pdf) => get_pdf_title(path_buf),
-        None => None,
+    // Get title and digest based on document type
+    let (title, digest) = match DocumentType::from_path(path_buf) {
+        Some(DocumentType::Markdown) => {
+            let content = tokio::fs::read_to_string(path_buf).await.ok();
+            let title = if let Some(ref content) = content {
+                extract_markdown_title(content)
+            } else {
+                None
+            };
+            let digest = content.as_ref().and_then(|c| extract_first_paragraph(c, 150));
+            (title, digest)
+        }
+        Some(DocumentType::Pdf) => (get_pdf_title(path_buf), None),
+        None => (None, None),
     };
 
-    Ok(FilePreviewInfo { title, modified_at })
+    Ok(FilePreviewInfo {
+        title,
+        digest,
+        modified_at,
+    })
 }
 
 /// Extract title from PDF metadata.
