@@ -873,29 +873,89 @@ pub struct SupportedExtensions {
     pub all: Vec<String>,
 }
 
-/// Extract the title from a markdown file.
-///
-/// Looks for:
-/// 1. YAML frontmatter `title:` field
-/// 2. First H1 heading (`# Title`)
-///
-/// Returns None if the file is not a markdown file or has no title.
+/// File preview info for tooltips.
+#[derive(Clone, serde::Serialize)]
+pub struct FilePreviewInfo {
+    /// Document title (from frontmatter or H1 heading)
+    pub title: Option<String>,
+    /// File modification time (Unix timestamp in milliseconds)
+    pub modified_at: Option<u64>,
+}
+
+/// Get file preview info (title and modification time) for tooltip display.
 #[tauri::command]
-pub async fn get_markdown_title(path: String) -> Result<Option<String>, String> {
-    tracing::debug!(path = %path, "Getting markdown title");
+pub async fn get_file_preview_info(path: String) -> Result<FilePreviewInfo, String> {
     let path_buf = std::path::Path::new(&path);
 
+    // Get modification time
+    let modified_at = tokio::fs::metadata(path_buf)
+        .await
+        .ok()
+        .and_then(|m| m.modified().ok())
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as u64);
+
+    // Get title based on document type
+    let title = match DocumentType::from_path(path_buf) {
+        Some(DocumentType::Markdown) => get_markdown_title_internal(path_buf).await,
+        Some(DocumentType::Pdf) => get_pdf_title(path_buf),
+        None => None,
+    };
+
+    Ok(FilePreviewInfo { title, modified_at })
+}
+
+/// Extract title from PDF metadata.
+fn get_pdf_title(path: &std::path::Path) -> Option<String> {
+    use lopdf::Document;
+
+    let doc = Document::load(path).ok()?;
+
+    // Try to get the Info dictionary from the trailer
+    let info_ref = doc.trailer.get(b"Info").ok()?;
+    let info_obj = doc.get_object(info_ref.as_reference().ok()?).ok()?;
+    let info_dict = info_obj.as_dict().ok()?;
+
+    // Get the Title field
+    let title_obj = info_dict.get(b"Title").ok()?;
+
+    // Handle different string encodings in PDF
+    match title_obj {
+        lopdf::Object::String(bytes, _) => {
+            // Try UTF-16 BE (starts with BOM 0xFE 0xFF)
+            if bytes.len() >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF {
+                let utf16: Vec<u16> = bytes[2..]
+                    .chunks(2)
+                    .filter_map(|chunk| {
+                        if chunk.len() == 2 {
+                            Some(u16::from_be_bytes([chunk[0], chunk[1]]))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                String::from_utf16(&utf16).ok()
+            } else {
+                // Try as UTF-8 or Latin-1
+                String::from_utf8(bytes.clone())
+                    .ok()
+                    .or_else(|| Some(bytes.iter().map(|&b| b as char).collect()))
+            }
+        }
+        _ => None,
+    }
+    .filter(|s| !s.trim().is_empty())
+}
+
+/// Internal function to extract markdown title.
+async fn get_markdown_title_internal(path_buf: &std::path::Path) -> Option<String> {
     // Only process markdown files
     if DocumentType::from_path(path_buf) != Some(DocumentType::Markdown) {
-        tracing::debug!("Not a markdown file");
-        return Ok(None);
+        return None;
     }
 
     // Read the first part of the file (titles are usually at the top)
-    let content = match tokio::fs::read_to_string(path_buf).await {
-        Ok(c) => c,
-        Err(_) => return Ok(None),
-    };
+    let content = tokio::fs::read_to_string(path_buf).await.ok()?;
 
     // Limit to first 2000 chars for performance
     let content = if content.len() > 2000 {
@@ -922,7 +982,7 @@ pub async fn get_markdown_title(path: String) -> Result<Option<String>, String> 
                         .or_else(|| title.strip_prefix('\'').and_then(|s| s.strip_suffix('\'')))
                         .unwrap_or(title);
                     if !title.is_empty() {
-                        return Ok(Some(title.to_string()));
+                        return Some(title.to_string());
                     }
                 }
             }
@@ -946,8 +1006,7 @@ pub async fn get_markdown_title(path: String) -> Result<Option<String>, String> 
         if let Some(title) = line.strip_prefix("# ") {
             let title = title.trim();
             if !title.is_empty() {
-                tracing::debug!(title = %title, "Found H1 title");
-                return Ok(Some(title.to_string()));
+                return Some(title.to_string());
             }
         }
         // Stop after first non-empty, non-heading line (title should be at the top)
@@ -956,8 +1015,14 @@ pub async fn get_markdown_title(path: String) -> Result<Option<String>, String> 
         }
     }
 
-    tracing::debug!("No title found");
-    Ok(None)
+    None
+}
+
+/// Extract the title from a markdown file (legacy command, use get_file_preview_info instead).
+#[tauri::command]
+pub async fn get_markdown_title(path: String) -> Result<Option<String>, String> {
+    let path_buf = std::path::Path::new(&path);
+    Ok(get_markdown_title_internal(path_buf).await)
 }
 
 /// Returns supported file extensions grouped by document type.

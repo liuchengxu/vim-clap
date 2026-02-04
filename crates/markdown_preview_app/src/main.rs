@@ -112,6 +112,7 @@ fn main() {
             commands::refresh_file_metadata,
             commands::get_supported_extensions,
             commands::get_markdown_title,
+            commands::get_file_preview_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

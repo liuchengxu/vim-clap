@@ -704,35 +704,33 @@ function isMarkdownFile(path) {
     return ['md', 'markdown', 'mdown', 'mkdn', 'mkd'].includes(ext);
 }
 
-// Fetch markdown title with caching (Tauri only)
-async function getMarkdownTitle(path) {
+// Fetch file preview info with caching (Tauri only)
+// Returns { title, modified_at } for the tooltip
+async function getFilePreviewInfo(path) {
     // Return cached value if available
     if (markdownTitleCache.has(path)) {
         return markdownTitleCache.get(path);
     }
 
-    // Only fetch for markdown files
-    if (!isMarkdownFile(path)) {
-        return null;
-    }
-
     try {
         // Check if we're in Tauri environment
         if (window.__TAURI__ && window.__TAURI__.core) {
-            const title = await window.__TAURI__.core.invoke('get_markdown_title', { path });
-            markdownTitleCache.set(path, title);
-            return title;
+            const info = await window.__TAURI__.core.invoke('get_file_preview_info', { path });
+            markdownTitleCache.set(path, info);
+            return info;
         }
     } catch (e) {
-        console.error('Failed to get markdown title:', e);
+        console.error('Failed to get file preview info:', e);
     }
 
-    return null;
+    return { title: null, modified_at: null };
 }
 
-function showPathTooltip(element, fullPath, title = null) {
+function showPathTooltip(element, fullPath, previewInfo = {}) {
     const tooltip = createPathTooltip();
     const content = tooltip.querySelector('.path-tooltip-content');
+
+    const { title, modified_at } = previewInfo;
 
     // Format path with segments
     const segments = fullPath.split('/').filter(s => s);
@@ -748,11 +746,18 @@ function showPathTooltip(element, fullPath, title = null) {
     }
     html += formatted;
 
+    // Add modification time if available
+    if (modified_at) {
+        const relativeTime = formatRelativeTime(modified_at);
+        const fullDate = new Date(modified_at).toLocaleString();
+        html += `<div class="path-tooltip-modified" title="${fullDate}">Modified ${relativeTime}</div>`;
+    }
+
     content.innerHTML = html;
 
-    // Position tooltip to the right of the element
+    // Position tooltip to the right of the element (offset to avoid sidebar border)
     const rect = element.getBoundingClientRect();
-    tooltip.style.left = `${rect.right + 8}px`;
+    tooltip.style.left = `${rect.right + 20}px`;
     tooltip.style.top = `${rect.top}px`;
     tooltip.classList.add('visible');
 }
@@ -844,12 +849,12 @@ function renderRecentFiles(onFileClick, onRemove) {
         };
         item.appendChild(removeBtn);
 
-        // Custom tooltip on hover with markdown title
+        // Custom tooltip on hover with title and modification time
         item.addEventListener('mouseenter', () => {
             if (tooltipTimeout) clearTimeout(tooltipTimeout);
             tooltipTimeout = setTimeout(async () => {
-                const title = await getMarkdownTitle(file.path);
-                showPathTooltip(item, file.path, title);
+                const previewInfo = await getFilePreviewInfo(file.path);
+                showPathTooltip(item, file.path, previewInfo);
             }, 400);
         });
 
