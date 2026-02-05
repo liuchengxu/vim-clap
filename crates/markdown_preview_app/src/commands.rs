@@ -718,10 +718,17 @@ pub async fn refresh_file_metadata(
 ///
 /// Skips headings, code blocks, frontmatter, and empty lines.
 /// Returns the first substantial paragraph text, truncated to max_chars.
-fn extract_first_paragraph(content: &str, max_chars: usize) -> Option<String> {
+/// Extract a multi-line digest showing the document structure (headings + paragraphs).
+///
+/// Returns lines joined by `\n`. Heading lines are prefixed with `# ` so the
+/// frontend can style them differently from paragraph text.
+fn extract_digest(content: &str, max_lines: usize, max_chars: usize) -> Option<String> {
     let mut in_frontmatter = false;
     let mut in_code_block = false;
     let mut frontmatter_delimiter_count = 0;
+    let mut lines: Vec<String> = Vec::new();
+    let mut total_chars = 0;
+    let mut found_first_heading = false;
 
     for line in content.lines() {
         let trimmed = line.trim();
@@ -752,13 +759,8 @@ fn extract_first_paragraph(content: &str, max_chars: usize) -> Option<String> {
             continue;
         }
 
-        // Skip empty lines
-        if trimmed.is_empty() {
-            continue;
-        }
-
-        // Skip headings
-        if trimmed.starts_with('#') {
+        // Skip empty lines, HTML comments
+        if trimmed.is_empty() || trimmed.starts_with("<!--") {
             continue;
         }
 
@@ -767,7 +769,28 @@ fn extract_first_paragraph(content: &str, max_chars: usize) -> Option<String> {
             continue;
         }
 
-        // Skip list items at the start
+        // Sub-headings (## and deeper) — keep as structural markers
+        // Skip the top-level `# Title` since it duplicates the title field
+        if trimmed.starts_with('#') {
+            let heading_text = trimmed.trim_start_matches('#').trim();
+            if !found_first_heading {
+                // Skip first heading (usually the document title shown separately)
+                found_first_heading = true;
+                continue;
+            }
+            if heading_text.is_empty() {
+                continue;
+            }
+            let entry = format!("# {heading_text}");
+            total_chars += entry.len();
+            lines.push(entry);
+            if lines.len() >= max_lines || total_chars >= max_chars {
+                break;
+            }
+            continue;
+        }
+
+        // Skip list items
         if trimmed.starts_with('-')
             || trimmed.starts_with('*')
             || trimmed.starts_with('+')
@@ -776,35 +799,43 @@ fn extract_first_paragraph(content: &str, max_chars: usize) -> Option<String> {
             continue;
         }
 
-        // Skip HTML comments
-        if trimmed.starts_with("<!--") {
-            continue;
-        }
-
-        // Found a paragraph - clean and truncate it
+        // Paragraph text — clean markdown formatting
         let cleaned = trimmed
-            // Remove inline links but keep text: [text](url) -> text
             .replace(['[', ']'], "")
-            // Remove bold/italic markers
             .replace("**", "")
             .replace("__", "")
             .replace('*', "")
             .replace('_', " ");
 
-        if cleaned.len() <= max_chars {
-            return Some(cleaned);
-        } else {
-            // Truncate at word boundary
-            let truncated: String = cleaned.chars().take(max_chars).collect();
+        if cleaned.is_empty() {
+            continue;
+        }
+
+        // Truncate long paragraphs at word boundary
+        let remaining = max_chars.saturating_sub(total_chars);
+        let entry = if cleaned.len() > remaining {
+            let truncated: String = cleaned.chars().take(remaining).collect();
             if let Some(last_space) = truncated.rfind(' ') {
-                return Some(format!("{}...", &truncated[..last_space]));
+                format!("{}...", &truncated[..last_space])
             } else {
-                return Some(format!("{truncated}..."));
+                format!("{truncated}...")
             }
+        } else {
+            cleaned
+        };
+
+        total_chars += entry.len();
+        lines.push(entry);
+        if lines.len() >= max_lines || total_chars >= max_chars {
+            break;
         }
     }
 
-    None
+    if lines.is_empty() {
+        None
+    } else {
+        Some(lines.join("\n"))
+    }
 }
 
 /// Extract title from markdown content.
@@ -1089,7 +1120,7 @@ pub async fn get_file_preview_info(path: String) -> Result<FilePreviewInfo, Stri
             };
             let digest = content
                 .as_ref()
-                .and_then(|c| extract_first_paragraph(c, 150));
+                .and_then(|c| extract_digest(c, 5, 500));
             (title, digest)
         }
         Some(DocumentType::Pdf) => (get_pdf_title(path_buf), None),

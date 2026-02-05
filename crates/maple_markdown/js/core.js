@@ -684,6 +684,7 @@ function removeFromRecentFiles(filePath) {
 // Custom tooltip for recent files
 let pathTooltip = null;
 let tooltipTimeout = null;
+let tooltipHoveredElement = null;  // tracks which item the mouse is currently over
 // Cache for markdown titles to avoid repeated file reads
 const markdownTitleCache = new Map();
 
@@ -753,9 +754,15 @@ function showPathTooltip(element, fullPath, previewInfo = {}) {
         html += `<div class="path-tooltip-modified" title="${fullDate}">Modified ${relativeTime}</div>`;
     }
 
-    // Add digest (first paragraph preview) if available
+    // Add digest (structural preview) if available
     if (digest) {
-        html += `<div class="path-tooltip-digest">${escapeHtml(digest)}</div>`;
+        const digestLines = digest.split('\n').map(line => {
+            if (line.startsWith('# ')) {
+                return `<div class="path-tooltip-digest-heading">${escapeHtml(line.slice(2))}</div>`;
+            }
+            return `<div class="path-tooltip-digest-text">${escapeHtml(line)}</div>`;
+        }).join('');
+        html += `<div class="path-tooltip-digest">${digestLines}</div>`;
     }
 
     content.innerHTML = html;
@@ -856,14 +863,19 @@ function renderRecentFiles(onFileClick, onRemove) {
 
         // Custom tooltip on hover with title and modification time
         item.addEventListener('mouseenter', () => {
+            tooltipHoveredElement = item;
             if (tooltipTimeout) clearTimeout(tooltipTimeout);
             tooltipTimeout = setTimeout(async () => {
                 const previewInfo = await getFilePreviewInfo(file.path);
-                showPathTooltip(item, file.path, previewInfo);
+                // Guard: only show if mouse is still over this item
+                if (tooltipHoveredElement === item) {
+                    showPathTooltip(item, file.path, previewInfo);
+                }
             }, 400);
         });
 
         item.addEventListener('mouseleave', () => {
+            tooltipHoveredElement = null;
             if (tooltipTimeout) {
                 clearTimeout(tooltipTimeout);
                 tooltipTimeout = null;
