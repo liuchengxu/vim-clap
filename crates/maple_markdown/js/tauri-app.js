@@ -56,6 +56,29 @@
     async function openFileDialog() {
         await extensionsReady;  // Readiness gate
 
+        // Check clipboard first — if it contains a valid path or URL, open directly
+        try {
+            const clipboardApi = window.__TAURI__.clipboard
+                || window.__TAURI__.clipboardManager
+                || window.__TAURI__.plugin?.clipboardManager;
+            if (clipboardApi && clipboardApi.readText) {
+                const clipText = (await clipboardApi.readText() || '').trim();
+                if (clipText) {
+                    if (isUrl(clipText)) {
+                        await openUrl(clipText);
+                        return;
+                    }
+                    const validPath = await invoke('check_clipboard_for_markdown');
+                    if (validPath) {
+                        await openFile(validPath);
+                        return;
+                    }
+                }
+            }
+        } catch (e) {
+            console.debug('Clipboard check skipped:', e);
+        }
+
         const open = getDialogOpen();
         if (!open) {
             console.error('Dialog API not available');
@@ -72,9 +95,29 @@
                 }))
             ];
 
+            // Determine default directory for the dialog
+            let defaultPath;
+            const currentPath = window.MarkdownPreviewCore.getCurrentFilePath();
+            if (currentPath) {
+                try {
+                    const gitRoot = await invoke('get_current_git_root');
+                    if (gitRoot) {
+                        defaultPath = gitRoot;
+                    }
+                } catch (_) { /* no git root */ }
+                if (!defaultPath) {
+                    const sep = currentPath.includes('\\') ? '\\' : '/';
+                    const lastSep = currentPath.lastIndexOf(sep);
+                    if (lastSep > 0) {
+                        defaultPath = currentPath.substring(0, lastSep);
+                    }
+                }
+            }
+
             const selected = await open({
                 multiple: false,
-                filters: filters
+                filters: filters,
+                ...(defaultPath ? { defaultPath } : {})
             });
 
             if (selected) {
