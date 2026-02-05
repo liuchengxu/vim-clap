@@ -964,34 +964,52 @@ async fn fetch_github_api(github_url: &GitHubUrl, token: &str) -> Result<String,
 /// Fetch and render markdown from a URL.
 #[tauri::command]
 pub async fn open_url(url: String) -> Result<RenderResponse, String> {
-    tracing::info!(url = %url, "Opening URL");
+    open_url_impl(&url, get_github_token().as_deref()).await
+}
 
-    let content = if let Some(github_url) = parse_github_url(&url) {
+/// Fetch and render markdown from a URL with a user-provided GitHub token.
+///
+/// This is used when the user provides a token via the UI after initial fetch fails.
+#[tauri::command]
+pub async fn open_url_with_token(url: String, token: String) -> Result<RenderResponse, String> {
+    let token = if token.trim().is_empty() {
+        None
+    } else {
+        Some(token)
+    };
+    open_url_impl(&url, token.as_deref()).await
+}
+
+/// Internal implementation for URL fetching with optional token.
+async fn open_url_impl(url: &str, token: Option<&str>) -> Result<RenderResponse, String> {
+    tracing::info!(url = %url, has_token = token.is_some(), "Opening URL");
+
+    let content = if let Some(github_url) = parse_github_url(url) {
         // It's a GitHub URL - try API first if we have a token
-        if let Some(token) = get_github_token() {
+        if let Some(token) = token {
             tracing::info!("Using GitHub API with token");
-            match fetch_github_api(&github_url, &token).await {
+            match fetch_github_api(&github_url, token).await {
                 Ok(content) => content,
                 Err(e) => {
                     tracing::warn!(error = %e, "GitHub API failed, trying raw URL");
                     // Fall back to raw URL
-                    fetch_raw_url(&url).await?
+                    fetch_raw_url(url).await?
                 }
             }
         } else {
             // No token, use raw URL (public repos only)
-            fetch_raw_url(&url).await?
+            fetch_raw_url(url).await?
         }
     } else {
         // Not a GitHub URL, fetch directly
-        fetch_raw_url(&url).await?
+        fetch_raw_url(url).await?
     };
 
     // Render the markdown
     let result = to_html(&content, &RenderOptions::gui()).map_err(|e| e.to_string())?;
     let stats = calculate_document_stats(&content);
 
-    Ok(RenderResponse::from_markdown(result, stats).with_file_info(Some(url), None))
+    Ok(RenderResponse::from_markdown(result, stats).with_file_info(Some(url.to_string()), None))
 }
 
 /// Fetch content from a URL (with GitHub raw URL conversion).
@@ -1006,9 +1024,14 @@ async fn fetch_raw_url(url: &str) -> Result<String, String> {
 
     if !response.status().is_success() {
         let status = response.status();
-        if status.as_u16() == 404 && url.contains("github.com") {
+        let status_code = status.as_u16();
+        // 404 on GitHub could mean private repo, 401/403 means auth required
+        if url.contains("github.com")
+            && (status_code == 404 || status_code == 401 || status_code == 403)
+        {
+            // Use AUTH_REQUIRED: prefix so frontend can detect and prompt for token
             return Err(format!(
-                "HTTP {status}: File not found. If this is a private repo, set GITHUB_TOKEN or GH_TOKEN environment variable."
+                "AUTH_REQUIRED:HTTP {status}: This may be a private repository. Would you like to provide a GitHub token to access it?"
             ));
         }
         return Err(format!("Failed to fetch URL: HTTP {status}"));
@@ -1064,7 +1087,9 @@ pub async fn get_file_preview_info(path: String) -> Result<FilePreviewInfo, Stri
             } else {
                 None
             };
-            let digest = content.as_ref().and_then(|c| extract_first_paragraph(c, 150));
+            let digest = content
+                .as_ref()
+                .and_then(|c| extract_first_paragraph(c, 150));
             (title, digest)
         }
         Some(DocumentType::Pdf) => (get_pdf_title(path_buf), None),

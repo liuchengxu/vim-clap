@@ -126,10 +126,240 @@
                 return result;
             }
         } catch (e) {
-            console.error('Failed to open URL:', e);
-            showToast('Failed to open URL: ' + (e.message || e));
+            const errorStr = '' + e;
+            // Check if auth is required (private GitHub repo)
+            if (errorStr.indexOf('AUTH_REQUIRED:') !== -1) {
+                const message = errorStr.substring(errorStr.indexOf('AUTH_REQUIRED:') + 14);
+                showGitHubTokenDialog(url, message);
+            } else {
+                console.error('Failed to open URL:', e);
+                showToast('Failed to open URL: ' + (e.message || e));
+            }
         }
         return null;
+    }
+
+    // Open a URL with a user-provided GitHub token
+    // Returns { success: true, result } or { success: false, error }
+    async function openUrlWithToken(url, token) {
+        try {
+            const result = await invoke('open_url_with_token', { url, token });
+            if (result && result.html) {
+                handleUrlOpened(result);
+                if (result.file_path) {
+                    addToPathHistory(result.file_path);
+                }
+                return { success: true, result };
+            }
+            return { success: false, error: 'No content returned' };
+        } catch (e) {
+            console.error('Failed to open URL with token:', e);
+            return { success: false, error: '' + (e.message || e) };
+        }
+    }
+
+    // Show dialog to prompt for GitHub token
+    let tokenDialogVisible = false;
+    function showGitHubTokenDialog(url, message) {
+        if (tokenDialogVisible) return;
+        tokenDialogVisible = true;
+
+        const existing = document.getElementById('github-token-dialog');
+        if (existing) existing.remove();
+
+        const dialog = document.createElement('div');
+        dialog.id = 'github-token-dialog';
+        dialog.innerHTML = `
+            <div class="github-token-overlay">
+                <div class="github-token-container">
+                    <div class="github-token-header">
+                        <div class="github-token-title">GitHub Authentication Required</div>
+                        <div class="github-token-message">${message}</div>
+                    </div>
+                    <div class="github-token-body">
+                        <p>Enter a GitHub personal access token to access this private repository:</p>
+                        <input type="password" id="github-token-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+                        <p class="github-token-tip">Tip: Set GITHUB_TOKEN or GH_TOKEN environment variable to avoid this prompt.</p>
+                    </div>
+                    <div class="github-token-footer">
+                        <button id="github-token-cancel" class="btn-cancel">Cancel</button>
+                        <button id="github-token-submit" class="btn-submit">Fetch with Token</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(dialog);
+
+        // Add styles if not already present
+        if (!document.getElementById('github-token-styles')) {
+            const style = document.createElement('style');
+            style.id = 'github-token-styles';
+            style.textContent = `
+                .github-token-overlay {
+                    position: fixed;
+                    top: 0; left: 0; right: 0; bottom: 0;
+                    background: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    align-items: flex-start;
+                    justify-content: center;
+                    padding-top: 15vh;
+                    z-index: 10001;
+                }
+                .github-token-container {
+                    background: #fff;
+                    border-radius: 8px;
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+                    width: 480px;
+                    max-width: 90vw;
+                }
+                .github-token-header {
+                    padding: 16px;
+                    border-bottom: 1px solid #e1e4e8;
+                }
+                .github-token-title {
+                    font-weight: 600;
+                    font-size: 16px;
+                    margin-bottom: 8px;
+                }
+                .github-token-message {
+                    font-size: 13px;
+                    color: #666;
+                }
+                .github-token-body {
+                    padding: 16px;
+                }
+                .github-token-body p {
+                    margin: 0 0 12px 0;
+                    font-size: 14px;
+                }
+                .github-token-body input {
+                    width: 100%;
+                    padding: 10px 12px;
+                    border: 1px solid #d1d5db;
+                    border-radius: 6px;
+                    font-size: 14px;
+                    font-family: ui-monospace, SFMono-Regular, monospace;
+                    box-sizing: border-box;
+                }
+                .github-token-body input:focus {
+                    outline: none;
+                    border-color: #2563eb;
+                    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+                }
+                .github-token-tip {
+                    font-size: 12px !important;
+                    color: #666 !important;
+                    margin-top: 12px !important;
+                }
+                .github-token-footer {
+                    padding: 12px 16px;
+                    background: #f6f8fa;
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 8px;
+                    border-radius: 0 0 8px 8px;
+                }
+                .github-token-footer button {
+                    padding: 8px 16px;
+                    border-radius: 6px;
+                    font-size: 14px;
+                    font-weight: 500;
+                    cursor: pointer;
+                }
+                .github-token-footer .btn-cancel {
+                    background: #fff;
+                    border: 1px solid #d1d5db;
+                    color: #374151;
+                }
+                .github-token-footer .btn-cancel:hover {
+                    background: #f3f4f6;
+                }
+                .github-token-footer .btn-submit {
+                    background: #2563eb;
+                    border: 1px solid #2563eb;
+                    color: #fff;
+                }
+                .github-token-footer .btn-submit:hover {
+                    background: #1d4ed8;
+                }
+                @media (prefers-color-scheme: dark) {
+                    .github-token-container { background: #1e1e1e; }
+                    .github-token-header { border-color: #333; }
+                    .github-token-title { color: #fff; }
+                    .github-token-message { color: #999; }
+                    .github-token-body { color: #fff; }
+                    .github-token-body input { background: #2d2d2d; border-color: #444; color: #fff; }
+                    .github-token-tip { color: #999 !important; }
+                    .github-token-footer { background: #252525; }
+                    .github-token-footer .btn-cancel { background: #333; border-color: #444; color: #fff; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        const input = document.getElementById('github-token-input');
+        const cancelBtn = document.getElementById('github-token-cancel');
+        const submitBtn = document.getElementById('github-token-submit');
+        const messageEl = dialog.querySelector('.github-token-message');
+
+        function closeDialog() {
+            tokenDialogVisible = false;
+            dialog.remove();
+        }
+
+        function setError(errorMsg) {
+            messageEl.textContent = errorMsg;
+            messageEl.style.color = '#dc2626';
+            input.style.borderColor = '#dc2626';
+        }
+
+        function setLoading(loading) {
+            submitBtn.disabled = loading;
+            submitBtn.textContent = loading ? 'Fetching...' : 'Fetch with Token';
+            input.disabled = loading;
+        }
+
+        async function submitToken() {
+            const token = input.value.trim();
+            if (!token) {
+                input.focus();
+                setError('Please enter a token');
+                return;
+            }
+
+            setLoading(true);
+            const { success, error } = await openUrlWithToken(url, token);
+            setLoading(false);
+
+            if (success) {
+                closeDialog();
+            } else {
+                setError(error || 'Failed to fetch. Please check your token.');
+                input.select();
+            }
+        }
+
+        cancelBtn.onclick = closeDialog;
+        submitBtn.onclick = submitToken;
+
+        input.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                submitToken();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                closeDialog();
+            }
+        };
+
+        // Click outside to close
+        dialog.querySelector('.github-token-overlay').onclick = (e) => {
+            if (e.target.classList.contains('github-token-overlay')) {
+                closeDialog();
+            }
+        };
+
+        input.focus();
     }
 
     // Handle URL opened result (similar to handleFileOpened but no file watching)

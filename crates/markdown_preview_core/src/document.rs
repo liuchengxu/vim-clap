@@ -150,10 +150,7 @@ mod tests {
             DocumentType::from_extension("Md"),
             Some(DocumentType::Markdown)
         );
-        assert_eq!(
-            DocumentType::from_extension("PDF"),
-            Some(DocumentType::Pdf)
-        );
+        assert_eq!(DocumentType::from_extension("PDF"), Some(DocumentType::Pdf));
     }
 
     #[test]

@@ -121,7 +121,8 @@ fn copy_vendor_files() {
     let fonts_src = source_vendor.join("standard_fonts");
     let fonts_dst = target_vendor.join("standard_fonts");
     if fonts_src.exists() {
-        copy_dir_recursive(&fonts_src, &fonts_dst).expect("Failed to copy standard_fonts directory");
+        copy_dir_recursive(&fonts_src, &fonts_dst)
+            .expect("Failed to copy standard_fonts directory");
     }
 
     // Rerun if vendor files change
