@@ -780,6 +780,213 @@ function hidePathTooltip() {
     }
 }
 
+// Greek letter tooltip for unfamiliar characters
+const GREEK_LETTERS = {
+    // Lowercase
+    'α': 'alpha (AL-fuh)',
+    'β': 'beta (BAY-tuh)',
+    'γ': 'gamma (GAM-uh)',
+    'δ': 'delta (DEL-tuh)',
+    'ε': 'epsilon (EP-sih-lon)',
+    'ζ': 'zeta (ZAY-tuh)',
+    'η': 'eta (AY-tuh)',
+    'θ': 'theta (THAY-tuh)',
+    'ι': 'iota (eye-OH-tuh)',
+    'κ': 'kappa (KAP-uh)',
+    'λ': 'lambda (LAM-duh)',
+    'μ': 'mu (MYOO)',
+    'ν': 'nu (NOO)',
+    'ξ': 'xi (KSEE / ZYE)',
+    'ο': 'omicron (OM-ih-kron)',
+    'π': 'pi (PIE)',
+    'ρ': 'rho (ROH)',
+    'σ': 'sigma (SIG-muh)',
+    'ς': 'sigma final (SIG-muh)',
+    'τ': 'tau (TAW / TOW)',
+    'υ': 'upsilon (OOP-sih-lon)',
+    'φ': 'phi (FYE / FEE)',
+    'χ': 'chi (KYE / KHEE)',
+    'ψ': 'psi (PSYE / SEE)',
+    'ω': 'omega (oh-MAY-guh)',
+    // Uppercase
+    'Α': 'Alpha (AL-fuh)',
+    'Β': 'Beta (BAY-tuh)',
+    'Γ': 'Gamma (GAM-uh)',
+    'Δ': 'Delta (DEL-tuh)',
+    'Ε': 'Epsilon (EP-sih-lon)',
+    'Ζ': 'Zeta (ZAY-tuh)',
+    'Η': 'Eta (AY-tuh)',
+    'Θ': 'Theta (THAY-tuh)',
+    'Ι': 'Iota (eye-OH-tuh)',
+    'Κ': 'Kappa (KAP-uh)',
+    'Λ': 'Lambda (LAM-duh)',
+    'Μ': 'Mu (MYOO)',
+    'Ν': 'Nu (NOO)',
+    'Ξ': 'Xi (KSEE / ZYE)',
+    'Ο': 'Omicron (OM-ih-kron)',
+    'Π': 'Pi (PIE)',
+    'Ρ': 'Rho (ROH)',
+    'Σ': 'Sigma (SIG-muh)',
+    'Τ': 'Tau (TAW / TOW)',
+    'Υ': 'Upsilon (OOP-sih-lon)',
+    'Φ': 'Phi (FYE / FEE)',
+    'Χ': 'Chi (KYE / KHEE)',
+    'Ψ': 'Psi (PSYE / SEE)',
+    'Ω': 'Omega (oh-MAY-guh)',
+    // Common math variants
+    'ϕ': 'phi variant (FYE / FEE)',
+    'ϑ': 'theta variant (THAY-tuh)',
+    'ϵ': 'epsilon variant (EP-sih-lon)',
+    'ϰ': 'kappa variant (KAP-uh)',
+    'ϱ': 'rho variant (ROH)',
+    'ϖ': 'pi variant (PIE)',
+    // Hebrew (common in math)
+    'ℵ': 'aleph (AH-lef)',
+    'ℶ': 'beth (BET)',
+    'ℷ': 'gimel (GIM-el)',
+    'ℸ': 'daleth (DAH-let)',
+    // Common math symbols
+    '∞': 'infinity',
+    '∂': 'partial derivative',
+    '∇': 'nabla / del',
+    '∑': 'summation',
+    '∏': 'product',
+    '∫': 'integral',
+    '∮': 'contour integral',
+    '√': 'square root',
+    '∝': 'proportional to',
+    '∈': 'element of',
+    '∉': 'not element of',
+    '⊂': 'subset of',
+    '⊃': 'superset of',
+    '⊆': 'subset or equal',
+    '⊇': 'superset or equal',
+    '∪': 'union',
+    '∩': 'intersection',
+    '∅': 'empty set',
+    '∀': 'for all',
+    '∃': 'there exists',
+    '∄': 'there does not exist',
+    '∧': 'logical and',
+    '∨': 'logical or',
+    '¬': 'logical not',
+    '⊕': 'xor / direct sum',
+    '⊗': 'tensor product',
+    '≈': 'approximately equal',
+    '≠': 'not equal',
+    '≤': 'less than or equal',
+    '≥': 'greater than or equal',
+    '≪': 'much less than',
+    '≫': 'much greater than',
+    '≡': 'identical / congruent',
+    '≢': 'not identical',
+    '⟨': 'left angle bracket',
+    '⟩': 'right angle bracket',
+    '†': 'dagger / adjoint',
+    '‡': 'double dagger',
+    '⊥': 'perpendicular / bottom',
+    '∥': 'parallel',
+    '∠': 'angle',
+    '°': 'degree',
+    '′': 'prime',
+    '″': 'double prime',
+    'ℏ': 'h-bar (Planck constant)',
+    'ℓ': 'script l',
+    'ℜ': 'real part',
+    'ℑ': 'imaginary part',
+    '℘': 'Weierstrass p',
+};
+
+let symbolTooltip = null;
+
+function createSymbolTooltip() {
+    if (!symbolTooltip) {
+        symbolTooltip = document.createElement('div');
+        symbolTooltip.className = 'symbol-tooltip';
+        document.body.appendChild(symbolTooltip);
+    }
+    return symbolTooltip;
+}
+
+function showSymbolTooltip(event, char, description) {
+    const tooltip = createSymbolTooltip();
+    tooltip.innerHTML = `<span class="symbol-char">${char}</span> — ${description}`;
+
+    // Position near cursor
+    const x = event.clientX + 12;
+    const y = event.clientY + 12;
+
+    tooltip.style.left = `${x}px`;
+    tooltip.style.top = `${y}px`;
+    tooltip.classList.add('visible');
+
+    // Ensure tooltip stays in viewport
+    requestAnimationFrame(() => {
+        const rect = tooltip.getBoundingClientRect();
+        if (rect.right > window.innerWidth) {
+            tooltip.style.left = `${event.clientX - rect.width - 8}px`;
+        }
+        if (rect.bottom > window.innerHeight) {
+            tooltip.style.top = `${event.clientY - rect.height - 8}px`;
+        }
+    });
+}
+
+function hideSymbolTooltip() {
+    if (symbolTooltip) {
+        symbolTooltip.classList.remove('visible');
+    }
+}
+
+function setupSymbolTooltips(container) {
+    let currentChar = null;
+
+    container.addEventListener('mousemove', (e) => {
+        // Get character under cursor using document.caretPositionFromPoint or caretRangeFromPoint
+        let range;
+        if (document.caretPositionFromPoint) {
+            const pos = document.caretPositionFromPoint(e.clientX, e.clientY);
+            if (pos && pos.offsetNode && pos.offsetNode.nodeType === Node.TEXT_NODE) {
+                range = document.createRange();
+                range.setStart(pos.offsetNode, pos.offset);
+                range.setEnd(pos.offsetNode, Math.min(pos.offset + 1, pos.offsetNode.length));
+            }
+        } else if (document.caretRangeFromPoint) {
+            range = document.caretRangeFromPoint(e.clientX, e.clientY);
+            if (range && range.startContainer.nodeType === Node.TEXT_NODE) {
+                range.setEnd(range.startContainer, Math.min(range.startOffset + 1, range.startContainer.length));
+            }
+        }
+
+        if (range && range.startContainer.nodeType === Node.TEXT_NODE) {
+            const text = range.startContainer.textContent;
+            const offset = range.startOffset;
+            if (offset < text.length) {
+                const char = text[offset];
+                const description = GREEK_LETTERS[char];
+                if (description) {
+                    if (char !== currentChar) {
+                        currentChar = char;
+                        showSymbolTooltip(e, char, description);
+                    }
+                    return;
+                }
+            }
+        }
+
+        // No matching symbol under cursor
+        if (currentChar) {
+            currentChar = null;
+            hideSymbolTooltip();
+        }
+    });
+
+    container.addEventListener('mouseleave', () => {
+        currentChar = null;
+        hideSymbolTooltip();
+    });
+}
+
 /**
  * Get file type icon SVG based on file extension
  */
@@ -1570,6 +1777,12 @@ function initCoreUI(options = {}) {
     setupReadingProgress();
     setupPresentationMode();
     addCodeCopyButtons();
+
+    // Set up Greek/math symbol tooltips on content area
+    const content = document.querySelector('.markdown-body');
+    if (content) {
+        setupSymbolTooltips(content);
+    }
 }
 
 // ============================================================================

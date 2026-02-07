@@ -313,6 +313,35 @@
         margin-top: 2px;
       }
 
+      /* Symbol tooltip (Greek letters, math symbols) */
+      .symbol-tooltip {
+        position: fixed;
+        z-index: 10002;
+        pointer-events: none;
+        opacity: 0;
+        visibility: hidden;
+        background: #1f2328;
+        color: #f0f6fc;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        white-space: nowrap;
+      }
+
+      .symbol-tooltip.visible {
+        opacity: 1;
+        visibility: visible;
+        transition: opacity 0.1s;
+      }
+
+      .symbol-tooltip .symbol-char {
+        font-size: 16px;
+        font-weight: 600;
+        color: #79c0ff;
+      }
+
       .option-group {
         padding: 8px 0;
       }
