@@ -2078,3 +2078,202 @@ body.presentation-mode #reading-progress {
   border-radius: 4px;
   margin-left: 4px;
 }
+
+/* ==================== Diff Overlay ==================== */
+.diff-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 10003;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+}
+
+.diff-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.diff-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 24px;
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+  flex-shrink: 0;
+}
+
+.diff-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #f0f6fc;
+}
+
+.diff-timestamps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #8b949e;
+  margin-left: auto;
+}
+
+.diff-from {
+  color: #f85149;
+}
+
+.diff-arrow {
+  color: #6e7681;
+}
+
+.diff-to {
+  color: #3fb950;
+}
+
+.diff-close-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin-left: 16px;
+  background: transparent;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #8b949e;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.diff-close-btn:hover {
+  background: #21262d;
+  color: #f0f6fc;
+  border-color: #8b949e;
+}
+
+.diff-content {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 24px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  background: #0d1117;
+}
+
+.diff-line {
+  display: flex;
+  white-space: pre-wrap;
+  word-break: break-all;
+  padding: 1px 8px;
+  border-radius: 2px;
+  margin: 1px 0;
+}
+
+.diff-marker {
+  width: 20px;
+  flex-shrink: 0;
+  color: #6e7681;
+  user-select: none;
+  text-align: center;
+}
+
+.diff-line-add {
+  background: rgba(46, 160, 67, 0.15);
+  color: #3fb950;
+}
+
+.diff-line-add .diff-marker {
+  color: #3fb950;
+}
+
+.diff-line-remove {
+  background: rgba(248, 81, 73, 0.15);
+  color: #f85149;
+}
+
+.diff-line-remove .diff-marker {
+  color: #f85149;
+}
+
+.diff-line-equal {
+  color: #8b949e;
+}
+
+/* Light mode diff styles */
+@media (prefers-color-scheme: light) {
+  .diff-overlay {
+    background: rgba(255, 255, 255, 0.95);
+  }
+
+  .diff-header {
+    background: #f6f8fa;
+    border-bottom-color: #d0d7de;
+  }
+
+  .diff-title {
+    color: #24292f;
+  }
+
+  .diff-timestamps {
+    color: #57606a;
+  }
+
+  .diff-from {
+    color: #cf222e;
+  }
+
+  .diff-to {
+    color: #1a7f37;
+  }
+
+  .diff-close-btn {
+    border-color: #d0d7de;
+    color: #57606a;
+  }
+
+  .diff-close-btn:hover {
+    background: #f3f4f6;
+    color: #24292f;
+    border-color: #8c959f;
+  }
+
+  .diff-content {
+    background: #ffffff;
+  }
+
+  .diff-marker {
+    color: #8c959f;
+  }
+
+  .diff-line-add {
+    background: rgba(46, 160, 67, 0.15);
+    color: #1a7f37;
+  }
+
+  .diff-line-add .diff-marker {
+    color: #1a7f37;
+  }
+
+  .diff-line-remove {
+    background: rgba(255, 129, 130, 0.2);
+    color: #cf222e;
+  }
+
+  .diff-line-remove .diff-marker {
+    color: #cf222e;
+  }
+
+  .diff-line-equal {
+    color: #57606a;
+  }
+}

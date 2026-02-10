@@ -114,6 +114,7 @@ fn main() {
             commands::get_supported_extensions,
             commands::get_markdown_title,
             commands::get_file_preview_info,
+            commands::get_file_diff,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -140,6 +140,8 @@
                 // Add to path history (use canonical path from result)
                 if (result.file_path) {
                     addToPathHistory(result.file_path);
+                    // Fetch diff for the file (async, don't block)
+                    fetchFileDiff(result.file_path);
                 }
                 return result;
             }
@@ -148,6 +150,20 @@
             showToast('Failed to open file: ' + (e.message || e));
         }
         return null;
+    }
+
+    // Fetch file diff from backend and store for later display
+    async function fetchFileDiff(filePath) {
+        try {
+            const diff = await invoke('get_file_diff', { path: filePath });
+            setCurrentDiff(diff);
+            if (diff && diff.has_changes) {
+                console.log('File has changes since last view');
+            }
+        } catch (e) {
+            console.error('Failed to fetch file diff:', e);
+            setCurrentDiff(null);
+        }
     }
 
     // Check if a string is a URL
@@ -787,6 +803,7 @@
                         <div class="help-section">
                             <h4>Search & View</h4>
                             <div class="help-row"><kbd>/</kbd><span>Open fuzzy finder</span></div>
+                            <div class="help-row"><kbd>Ctrl+D</kbd><span>Show file changes</span></div>
                             <div class="help-row"><kbd>Ctrl++</kbd> / <kbd>Ctrl+-</kbd><span>Zoom in / out</span></div>
                             <div class="help-row"><kbd>Ctrl+0</kbd><span>Reset zoom</span></div>
                         </div>
@@ -1084,9 +1101,19 @@
                 }
             }
 
-            // Escape to close path input
-            if (e.key === 'Escape' && pathInputVisible) {
-                closePathInput();
+            // Escape to close path input or diff overlay
+            if (e.key === 'Escape') {
+                if (isDiffOverlayVisible()) {
+                    hideDiffOverlay();
+                } else if (pathInputVisible) {
+                    closePathInput();
+                }
+            }
+
+            // Ctrl+D to toggle diff overlay
+            if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+                e.preventDefault();
+                toggleDiffOverlay();
             }
 
             // Cmd+Q / Ctrl+Q to quit the app

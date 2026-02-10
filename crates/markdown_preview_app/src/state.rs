@@ -3,7 +3,7 @@
 use markdown_preview_core::frecency::FrecentItems;
 use markdown_preview_core::DocumentType;
 use serde::{Deserialize, Serialize};
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 
 /// Maximum number of recent files to keep
@@ -17,6 +17,28 @@ const CONFIG_FILE: &str = "config.json";
 
 /// Path history file name
 const PATH_HISTORY_FILE: &str = "path_history.json";
+
+/// File snapshots file name
+const SNAPSHOTS_FILE: &str = "file_snapshots.json";
+
+/// Maximum number of file snapshots to keep (aligned with recent files)
+const MAX_SNAPSHOTS: usize = MAX_RECENT_FILES;
+
+/// A snapshot of a file's content at a point in time.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileSnapshot {
+    /// The file content at the time of snapshot
+    pub content: String,
+    /// Unix timestamp in milliseconds when the snapshot was taken
+    pub timestamp: u64,
+}
+
+/// Storage for file snapshots (persisted to disk).
+#[derive(Debug, Default, Serialize, Deserialize)]
+struct FileSnapshots {
+    /// Map from file path to snapshot
+    snapshots: HashMap<String, FileSnapshot>,
+}
 
 /// Persisted configuration data
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -38,6 +60,8 @@ pub struct AppState {
     pub path_history: FrecentItems<String>,
     /// Active file watcher handle
     pub watcher_handle: Option<tokio::task::JoinHandle<()>>,
+    /// File snapshots for diff tracking
+    file_snapshots: FileSnapshots,
     /// Path to the config directory for persistence
     config_dir: Option<PathBuf>,
 }
@@ -52,10 +76,12 @@ impl AppState {
             recent_files: VecDeque::new(),
             path_history: FrecentItems::with_max_entries(MAX_PATH_HISTORY),
             watcher_handle: None,
+            file_snapshots: FileSnapshots::default(),
             config_dir,
         };
         state.load_config();
         state.load_path_history();
+        state.load_snapshots();
         state
     }
 
@@ -265,5 +291,108 @@ impl AppState {
                 .cloned()
                 .collect()
         }
+    }
+
+    /// Get the snapshots file path.
+    fn snapshots_path(&self) -> Option<PathBuf> {
+        self.config_dir.as_ref().map(|dir| dir.join(SNAPSHOTS_FILE))
+    }
+
+    /// Load file snapshots from disk.
+    fn load_snapshots(&mut self) {
+        let Some(path) = self.snapshots_path() else {
+            return;
+        };
+
+        if !path.exists() {
+            tracing::debug!(path = %path.display(), "No snapshots file found");
+            return;
+        }
+
+        match std::fs::read_to_string(&path) {
+            Ok(content) => match serde_json::from_str::<FileSnapshots>(&content) {
+                Ok(snapshots) => {
+                    self.file_snapshots = snapshots;
+                    tracing::info!(
+                        count = self.file_snapshots.snapshots.len(),
+                        "Loaded file snapshots"
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "Failed to parse snapshots file");
+                }
+            },
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to read snapshots file");
+            }
+        }
+    }
+
+    /// Save file snapshots to disk.
+    fn save_snapshots(&self) {
+        let Some(path) = self.snapshots_path() else {
+            return;
+        };
+
+        // Ensure config directory exists
+        if let Some(parent) = path.parent() {
+            if let Err(e) = std::fs::create_dir_all(parent) {
+                tracing::warn!(error = %e, "Failed to create config directory");
+                return;
+            }
+        }
+
+        match serde_json::to_string_pretty(&self.file_snapshots) {
+            Ok(content) => {
+                if let Err(e) = std::fs::write(&path, content) {
+                    tracing::warn!(error = %e, "Failed to write snapshots file");
+                } else {
+                    tracing::debug!(path = %path.display(), "Saved file snapshots");
+                }
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to serialize snapshots");
+            }
+        }
+    }
+
+    /// Get the snapshot for a file path.
+    pub fn get_snapshot(&self, path: &str) -> Option<&FileSnapshot> {
+        self.file_snapshots.snapshots.get(path)
+    }
+
+    /// Save a snapshot for a file path.
+    /// Enforces the maximum snapshot limit by removing the oldest entries.
+    pub fn save_snapshot(&mut self, path: &str, content: &str) {
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+
+        self.file_snapshots.snapshots.insert(
+            path.to_string(),
+            FileSnapshot {
+                content: content.to_string(),
+                timestamp,
+            },
+        );
+
+        // Enforce max snapshots limit by removing oldest entries
+        while self.file_snapshots.snapshots.len() > MAX_SNAPSHOTS {
+            // Find the oldest snapshot
+            if let Some(oldest_path) = self
+                .file_snapshots
+                .snapshots
+                .iter()
+                .min_by_key(|(_, snap)| snap.timestamp)
+                .map(|(path, _)| path.clone())
+            {
+                self.file_snapshots.snapshots.remove(&oldest_path);
+            } else {
+                break;
+            }
+        }
+
+        self.save_snapshots();
     }
 }
