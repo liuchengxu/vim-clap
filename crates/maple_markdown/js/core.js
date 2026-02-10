@@ -1073,7 +1073,11 @@ function renderRecentFiles(onFileClick, onRemove) {
         item.appendChild(removeBtn);
 
         // Custom tooltip on hover with title and modification time
+        // Skip tooltip for the currently previewed file (user is already viewing it)
         item.addEventListener('mouseenter', () => {
+            if (file.path === currentFilePath) {
+                return;
+            }
             tooltipHoveredElement = item;
             if (tooltipTimeout) clearTimeout(tooltipTimeout);
             tooltipTimeout = setTimeout(async () => {
