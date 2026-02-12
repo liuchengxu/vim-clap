@@ -65,6 +65,7 @@ fn main() {
             // Initialize state with config directory for persistence
             let state = AppState::new(config_dir);
             app.manage(Arc::new(RwLock::new(state)));
+            app.manage(commands::terminal::TerminalState::default());
 
             // Set up the menu
             let menu = menu::create_menu(app.handle())?;
@@ -115,6 +116,10 @@ fn main() {
             commands::metadata::get_markdown_title,
             commands::metadata::get_file_preview_info,
             commands::diff::get_file_diff,
+            commands::terminal::spawn_terminal,
+            commands::terminal::write_terminal,
+            commands::terminal::resize_terminal,
+            commands::terminal::kill_terminal,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

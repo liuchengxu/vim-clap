@@ -23,6 +23,7 @@ markdown_preview_core = { path = "../markdown_preview_core", features = ["gui"] 
 # Standard dependencies
 dirs = "5.0"
 lopdf = "0.34"
+portable-pty = "0.9"
 reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

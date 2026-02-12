@@ -39,6 +39,26 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// DOMPurify config: preserve MathML (KaTeX) and data-line (scroll sync)
+const DOMPURIFY_CONFIG = {
+    ADD_TAGS: ['math', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub',
+               'mfrac', 'msqrt', 'mover', 'munder', 'mtable', 'mtr', 'mtd',
+               'annotation', 'annotation-xml'],
+    ADD_ATTR: ['encoding', 'data-line'],
+};
+
+/**
+ * Sanitize HTML content using DOMPurify (fail-closed).
+ */
+function sanitizeHtml(html) {
+    if (typeof DOMPurify === 'undefined') {
+        return '<div class="error" style="padding: 40px; text-align: center; color: #cf222e;">'
+             + '<h2>Content sanitizer not loaded</h2>'
+             + '<p>DOMPurify failed to load. Cannot safely render content.</p></div>';
+    }
+    return DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
+}
+
 function formatNumber(num) {
     return num.toLocaleString();
 }
@@ -741,7 +761,7 @@ function showPathTooltip(element, fullPath, previewInfo = {}) {
     const segments = fullPath.split('/').filter(s => s);
     const formatted = '/' + segments.map((seg, i) => {
         const isLast = i === segments.length - 1;
-        return isLast ? `<span class="path-tooltip-file">${seg}</span>` : seg;
+        return isLast ? `<span class="path-tooltip-file">${escapeHtml(seg)}</span>` : escapeHtml(seg);
     }).join('<span class="path-tooltip-sep">/</span>');
 
     // Build tooltip content with optional title
@@ -1133,7 +1153,7 @@ function updateFilePathBar(filePath, gitRoot) {
         if (gitRoot && filePath.startsWith(gitRoot)) {
             const gitRootName = gitRoot.split('/').filter(p => p).pop() || gitRoot;
             const relativePath = filePath.substring(gitRoot.length);
-            pathBar.innerHTML = `<span class="git-root">${gitRootName}</span><span class="path-separator">/</span><span class="relative-path">${relativePath.replace(/^\//, '')}</span>`;
+            pathBar.innerHTML = `<span class="git-root">${escapeHtml(gitRootName)}</span><span class="path-separator">/</span><span class="relative-path">${escapeHtml(relativePath.replace(/^\//, ''))}</span>`;
         } else {
             pathBar.textContent = filePath;
         }
@@ -1622,7 +1642,7 @@ function initFuzzyFinder() {
 
 function handleContentUpdate(message, options = {}) {
     const content = document.getElementById('content');
-    content.innerHTML = message.data || message.html;
+    content.innerHTML = sanitizeHtml(message.data || message.html);
 
     // Add spacer at the end for better scrolling
     const spacer = document.createElement('div');
@@ -2245,7 +2265,10 @@ window.MarkdownPreviewCore = {
 
     // Shortcut registry
     registerShortcut,
-    setupShortcutListener
+    setupShortcutListener,
+
+    // Sanitization
+    sanitizeHtml
 };
 
 // Also expose commonly used functions directly for convenience
@@ -2285,3 +2308,4 @@ window.hideDiffOverlay = hideDiffOverlay;
 window.isDiffOverlayVisible = isDiffOverlayVisible;
 window.registerShortcut = registerShortcut;
 window.setupShortcutListener = setupShortcutListener;
+window.sanitizeHtml = sanitizeHtml;

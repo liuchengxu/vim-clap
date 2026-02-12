@@ -33,8 +33,17 @@ pub fn create_menu<R: Runtime>(app: &AppHandle<R>) -> Result<Menu<R>, tauri::Err
         .item(&toc_right)
         .build()?;
 
+    let terminal_item = MenuItem::with_id(
+        app,
+        "toggle_terminal",
+        "Toggle Terminal",
+        true,
+        Some("CmdOrCtrl+`"),
+    )?;
+
     let view_menu = SubmenuBuilder::new(app, "View")
         .item(&reload_item)
+        .item(&terminal_item)
         .separator()
         .item(&toc_menu)
         .build()?;
@@ -102,6 +111,9 @@ pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: &MenuEvent) {
         }
         "theme_auto" => {
             let _ = app.emit("menu-theme", "auto");
+        }
+        "toggle_terminal" => {
+            let _ = app.emit("menu-toggle-terminal", ());
         }
         "about" => {
             // Show about dialog

@@ -89,9 +89,7 @@ pub async fn get_file_diff(
                 })
                 .collect();
 
-            let has_changes = changes
-                .iter()
-                .any(|c| !matches!(c.kind, ChangeKind::Equal));
+            let has_changes = changes.iter().any(|c| !matches!(c.kind, ChangeKind::Equal));
 
             Some(FileDiff {
                 has_changes,

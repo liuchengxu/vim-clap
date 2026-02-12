@@ -2277,3 +2277,102 @@ body.presentation-mode #reading-progress {
     color: #57606a;
   }
 }
+
+/* ============================================================================
+   Terminal Panel
+   ============================================================================ */
+
+#terminal-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 300px;
+    z-index: 10004;
+    display: flex;
+    flex-direction: column;
+    background: #0d1117;
+    transform: translateY(100%);
+    transition: transform 0.2s ease;
+}
+
+#terminal-panel.visible {
+    transform: translateY(0);
+}
+
+.terminal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 16px;
+    background: #161b22;
+    border-top: 1px solid #30363d;
+    border-bottom: 1px solid #30363d;
+    flex-shrink: 0;
+}
+
+.terminal-title {
+    color: #f0f6fc;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.terminal-header-buttons {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.terminal-minimize-btn,
+.terminal-close-btn {
+    background: none;
+    border: none;
+    color: #8b949e;
+    cursor: pointer;
+    padding: 2px 8px;
+    border-radius: 4px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.terminal-close-btn {
+    font-size: 18px;
+}
+
+.terminal-minimize-btn:hover,
+.terminal-close-btn:hover {
+    background: #30363d;
+    color: #f0f6fc;
+}
+
+.terminal-resize-handle {
+    height: 5px;
+    cursor: ns-resize;
+    background: transparent;
+    position: absolute;
+    top: -2px;
+    left: 0;
+    right: 0;
+    z-index: 1;
+}
+
+.terminal-resize-handle:hover {
+    background: #30363d;
+}
+
+.terminal-body {
+    flex: 1;
+    overflow: hidden;
+    padding: 4px;
+}
+
+#terminal-panel.minimized {
+    height: auto !important;
+}
+
+#terminal-panel.minimized .terminal-body,
+#terminal-panel.minimized .terminal-resize-handle {
+    display: none;
+}

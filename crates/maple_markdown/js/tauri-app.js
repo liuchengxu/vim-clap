@@ -233,7 +233,7 @@
                 <div class="github-token-container">
                     <div class="github-token-header">
                         <div class="github-token-title">GitHub Authentication Required</div>
-                        <div class="github-token-message">${message}</div>
+                        <div class="github-token-message">${escapeHtml(message)}</div>
                     </div>
                     <div class="github-token-body">
                         <p>Enter a GitHub personal access token to access this private repository:</p>
@@ -424,7 +424,7 @@
     // Handle URL opened result (similar to handleFileOpened but no file watching)
     function handleUrlOpened(result) {
         const content = document.getElementById('content');
-        content.innerHTML = result.html;
+        content.innerHTML = sanitizeHtml(result.html);
 
         codeHighlight();
         renderMermaid();
@@ -511,7 +511,7 @@
                     console.error('Failed to open PDF:', err);
                     content.innerHTML = `<div class="error" style="padding: 40px; text-align: center; color: #cf222e;">
                         <h2>Failed to load PDF</h2>
-                        <p>${err.message || err}</p>
+                        <p>${escapeHtml(String(err.message || err))}</p>
                     </div>`;
                 });
             } else {
@@ -524,7 +524,7 @@
         } else if (docType === 'markdown' || !docType) {
             // Markdown: use output.content if available, fallback to html for legacy
             const html = output?.type === 'html' ? output.content : result.html;
-            content.innerHTML = html;
+            content.innerHTML = sanitizeHtml(html);
 
             codeHighlight();
             renderMermaid();
@@ -538,7 +538,7 @@
         } else {
             // Unknown document type
             content.innerHTML = `<div class="error" style="padding: 40px; text-align: center; color: #cf222e;">
-                <h2>Unsupported document type: ${docType}</h2>
+                <h2>Unsupported document type: ${escapeHtml(String(docType))}</h2>
             </div>`;
         }
 
@@ -635,6 +635,10 @@
 
         listen('menu-open-path', () => {
             openPathInput();
+        });
+
+        listen('menu-toggle-terminal', () => {
+            toggleTerminalPanel();
         });
 
         // Listen for initial file from command line argument
@@ -1093,12 +1097,15 @@
 
     // Set up keyboard shortcuts
     function setupKeyboardShortcuts() {
-        // Modifier shortcuts via registry
-        registerShortcut('o', { ctrl: true }, () => openPathInput());
-        registerShortcut('o', { ctrl: true, shift: true }, () => openFileDialog());
-        registerShortcut('r', { ctrl: true }, () => refreshCurrentFile());
-        registerShortcut('d', { ctrl: true }, () => toggleDiffOverlay());
-        registerShortcut('q', { ctrl: true }, () => quitApp());
+        const notInTerminal = () => !isTerminalPanelFocused();
+
+        // Modifier shortcuts via registry (guarded to not fire while terminal is focused)
+        registerShortcut('o', { ctrl: true }, () => openPathInput(), { when: notInTerminal });
+        registerShortcut('o', { ctrl: true, shift: true }, () => openFileDialog(), { when: notInTerminal });
+        registerShortcut('r', { ctrl: true }, () => refreshCurrentFile(), { when: notInTerminal });
+        registerShortcut('d', { ctrl: true }, () => toggleDiffOverlay(), { when: notInTerminal });
+        registerShortcut('q', { ctrl: true }, () => quitApp(), { when: notInTerminal });
+        registerShortcut('`', { ctrl: true }, () => toggleTerminalPanel());
 
         // Start the listener
         setupShortcutListener();
@@ -1132,8 +1139,9 @@
 
             // Escape priority chain
             if (e.key === 'Escape') {
-                if (isDiffOverlayVisible()) { hideDiffOverlay(); }
-                else if (pathInputVisible) { closePathInput(); }
+                if (isTerminalPanelOpen()) { closeTerminalPanel(); return; }
+                if (isDiffOverlayVisible()) { hideDiffOverlay(); return; }
+                if (pathInputVisible) { closePathInput(); return; }
             }
         });
     }
@@ -1180,7 +1188,7 @@
         dropdown.innerHTML = items.map((item, index) => `
             <div class="autocomplete-item ${index === 0 ? 'selected' : ''}" data-index="${index}">
                 <span class="autocomplete-icon">${item.is_dir ? '📁' : '📄'}</span>
-                <span class="autocomplete-name">${item.name}</span>
+                <span class="autocomplete-name">${escapeHtml(item.name)}</span>
             </div>
         `).join('');
 

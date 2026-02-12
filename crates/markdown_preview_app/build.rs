@@ -38,11 +38,17 @@ fn generate_frontend_html() {
     } else {
         String::new()
     };
+    let terminal_js = js_dir.join("terminal.js");
+    let terminal_js = if terminal_js.exists() {
+        fs::read_to_string(&terminal_js).expect("Failed to read terminal.js")
+    } else {
+        String::new()
+    };
     let tauri_app_js =
         fs::read_to_string(js_dir.join("tauri-app.js")).expect("Failed to read tauri-app.js");
 
-    // Combine core + pdf-viewer + tauri-app for standalone app
-    let combined_js = format!("{core_js}\n\n{pdf_viewer_js}\n\n{tauri_app_js}");
+    // Combine core + pdf-viewer + terminal + tauri-app for standalone app
+    let combined_js = format!("{core_js}\n\n{pdf_viewer_js}\n\n{terminal_js}\n\n{tauri_app_js}");
 
     // Replace placeholders
     let mut html = html_template;
@@ -63,6 +69,7 @@ fn generate_frontend_html() {
     │    - maple_markdown/js/styles.css    (base styles)                          │
     │    - maple_markdown/js/themes.css    (theme styles)                         │
     │    - maple_markdown/js/core.js       (core UI functionality)                │
+    │    - maple_markdown/js/terminal.js   (terminal panel)                       │
     │    - maple_markdown/js/tauri-app.js  (Tauri-specific code)                  │
     │    - maple_markdown/js/pdf-viewer.js (PDF viewer)                           │
     │                                                                             │
@@ -86,6 +93,7 @@ fn generate_frontend_html() {
     println!("cargo:rerun-if-changed=../maple_markdown/js/themes.css");
     println!("cargo:rerun-if-changed=../maple_markdown/js/core.js");
     println!("cargo:rerun-if-changed=../maple_markdown/js/tauri-app.js");
+    println!("cargo:rerun-if-changed=../maple_markdown/js/terminal.js");
     println!("cargo:rerun-if-changed=../maple_markdown/js/pdf-viewer.js");
 }
 

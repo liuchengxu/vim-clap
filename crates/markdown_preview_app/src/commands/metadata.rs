@@ -407,9 +407,7 @@ pub async fn get_file_preview_info(path: String) -> Result<FilePreviewInfo, Stri
             } else {
                 None
             };
-            let digest = content
-                .as_ref()
-                .and_then(|c| extract_digest(c, 5, 500));
+            let digest = content.as_ref().and_then(|c| extract_digest(c, 5, 500));
             (title, digest)
         }
         Some(DocumentType::Pdf) => (get_pdf_title(path_buf), None),

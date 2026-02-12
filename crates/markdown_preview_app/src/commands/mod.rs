@@ -8,6 +8,7 @@ pub mod metadata;
 pub mod path;
 pub mod recent;
 pub mod render;
+pub mod terminal;
 pub mod url;
 
 use markdown_preview_core::{DocumentStats, DocumentType, RenderOutput};
