@@ -2170,6 +2170,49 @@ function isDiffOverlayVisible() {
     return diffOverlayVisible;
 }
 
+// ============================================================================
+// Keyboard Shortcut Registry
+// ============================================================================
+
+const registeredShortcuts = [];
+
+/**
+ * Register a keyboard shortcut.
+ * @param {string} key - Single character, compared lowercase.
+ * @param {object} modifiers - { ctrl: bool, shift: bool } — ctrl means ctrlKey || metaKey.
+ * @param {function} handler - Handler to call when shortcut matches.
+ * @param {object} [options] - Optional config.
+ * @param {function} [options.when] - Guard function; skip if returns false.
+ */
+function registerShortcut(key, modifiers, handler, options = {}) {
+    registeredShortcuts.push({ key: key.toLowerCase(), modifiers, handler, options });
+}
+
+/**
+ * Check if a keyboard event matches a shortcut definition.
+ */
+function matchesShortcut(e, s) {
+    const ctrlMatch = (e.ctrlKey || e.metaKey) === !!s.modifiers.ctrl;
+    const shiftMatch = e.shiftKey === !!s.modifiers.shift;
+    const keyMatch = e.key.toLowerCase() === s.key;
+    return ctrlMatch && shiftMatch && keyMatch;
+}
+
+/**
+ * Set up the global keydown listener that dispatches registered shortcuts.
+ */
+function setupShortcutListener() {
+    document.addEventListener('keydown', (e) => {
+        for (const s of registeredShortcuts) {
+            if (!matchesShortcut(e, s)) continue;
+            if (s.options.when && !s.options.when()) continue;
+            e.preventDefault();
+            s.handler(e);
+            return;
+        }
+    });
+}
+
 // Export for use in platform-specific modules (browser global scope)
 // These are needed because core.js uses 'let' which doesn't add to window
 window.MarkdownPreviewCore = {
@@ -2198,7 +2241,11 @@ window.MarkdownPreviewCore = {
     zoomIn,
     zoomOut,
     resetZoom,
-    applyZoom
+    applyZoom,
+
+    // Shortcut registry
+    registerShortcut,
+    setupShortcutListener
 };
 
 // Also expose commonly used functions directly for convenience
@@ -2236,3 +2283,5 @@ window.getCurrentDiff = getCurrentDiff;
 window.toggleDiffOverlay = toggleDiffOverlay;
 window.hideDiffOverlay = hideDiffOverlay;
 window.isDiffOverlayVisible = isDiffOverlayVisible;
+window.registerShortcut = registerShortcut;
+window.setupShortcutListener = setupShortcutListener;

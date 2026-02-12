@@ -1076,54 +1076,42 @@
         }
     }
 
+    // Refresh the currently open file
+    async function refreshCurrentFile() {
+        const current = window.MarkdownPreviewCore.getCurrentFilePath();
+        if (current) {
+            await openFile(current);
+            showToast('Refreshed');
+        }
+    }
+
+    // Quit the application
+    function quitApp() {
+        const { getCurrentWindow } = window.__TAURI__.window;
+        getCurrentWindow().close();
+    }
+
     // Set up keyboard shortcuts
     function setupKeyboardShortcuts() {
+        // Modifier shortcuts via registry
+        registerShortcut('o', { ctrl: true }, () => openPathInput());
+        registerShortcut('o', { ctrl: true, shift: true }, () => openFileDialog());
+        registerShortcut('r', { ctrl: true }, () => refreshCurrentFile());
+        registerShortcut('d', { ctrl: true }, () => toggleDiffOverlay());
+        registerShortcut('q', { ctrl: true }, () => quitApp());
+
+        // Start the listener
+        setupShortcutListener();
+
+        // Manual handlers that don't go in the registry
         document.addEventListener('keydown', async (e) => {
-            // Cmd+O / Ctrl+O to open file by path (with autocomplete)
-            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'o') {
+            // F5 refresh (no modifier)
+            if (e.key === 'F5') {
                 e.preventDefault();
-                openPathInput();
+                await refreshCurrentFile();
             }
 
-            // Cmd+Shift+O / Ctrl+Shift+O to open file dialog
-            if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'O' || e.key === 'o')) {
-                e.preventDefault();
-                await openFileDialog();
-            }
-
-            // F5 or Cmd+R / Ctrl+R to refresh
-            if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key === 'r')) {
-                e.preventDefault();
-                const current = window.MarkdownPreviewCore.getCurrentFilePath();
-                if (current) {
-                    await openFile(current);
-                    showToast('Refreshed');
-                }
-            }
-
-            // Escape to close path input or diff overlay
-            if (e.key === 'Escape') {
-                if (isDiffOverlayVisible()) {
-                    hideDiffOverlay();
-                } else if (pathInputVisible) {
-                    closePathInput();
-                }
-            }
-
-            // Ctrl+D to toggle diff overlay
-            if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
-                e.preventDefault();
-                toggleDiffOverlay();
-            }
-
-            // Cmd+Q / Ctrl+Q to quit the app
-            if ((e.ctrlKey || e.metaKey) && e.key === 'q') {
-                e.preventDefault();
-                const { getCurrentWindow } = window.__TAURI__.window;
-                getCurrentWindow().close();
-            }
-
-            // Cmd+C / Ctrl+C to copy selected text
+            // Ctrl+C with selection check (conditional preventDefault)
             if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
                 const selection = window.getSelection();
                 const selectedText = selection ? selection.toString() : '';
@@ -1140,6 +1128,12 @@
                         console.error('Failed to copy:', err);
                     }
                 }
+            }
+
+            // Escape priority chain
+            if (e.key === 'Escape') {
+                if (isDiffOverlayVisible()) { hideDiffOverlay(); }
+                else if (pathInputVisible) { closePathInput(); }
             }
         });
     }
