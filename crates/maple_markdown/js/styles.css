@@ -342,6 +342,46 @@
         color: #79c0ff;
       }
 
+      /* Link hover tooltip */
+      .link-tooltip {
+        position: fixed;
+        z-index: 10003;
+        pointer-events: none;
+        opacity: 0;
+        visibility: hidden;
+        background: #1f2328;
+        color: #f0f6fc;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        max-width: 500px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .link-tooltip.visible {
+        opacity: 1;
+        visibility: visible;
+        transition: opacity 0.15s;
+      }
+
+      .link-tooltip-icon {
+        flex-shrink: 0;
+        color: #8b949e;
+        display: flex;
+        align-items: center;
+      }
+
+      .link-tooltip-url {
+        color: #79c0ff;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
       .option-group {
         padding: 8px 0;
       }

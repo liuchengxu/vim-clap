@@ -1011,6 +1011,143 @@ function setupSymbolTooltips(container) {
     });
 }
 
+// ============================================================================
+// Link Hover Tooltips
+// ============================================================================
+
+let linkTooltip = null;
+let linkTooltipTimeout = null;
+
+function createLinkTooltip() {
+    if (!linkTooltip) {
+        linkTooltip = document.createElement('div');
+        linkTooltip.className = 'link-tooltip';
+        document.body.appendChild(linkTooltip);
+    }
+    return linkTooltip;
+}
+
+function classifyUrl(href) {
+    if (!href) return { type: 'unknown', display: '' };
+
+    // Anchor link
+    if (href.startsWith('#')) {
+        const id = href.slice(1);
+        const target = document.getElementById(id);
+        const heading = target ? target.textContent.trim() : id;
+        return { type: 'anchor', display: heading, icon: '#' };
+    }
+
+    try {
+        const url = new URL(href, window.location.href);
+
+        // External link
+        if (url.protocol === 'http:' || url.protocol === 'https:') {
+            // GitHub
+            const gh = url.hostname === 'github.com' || url.hostname === 'www.github.com';
+            if (gh) {
+                const parts = url.pathname.split('/').filter(Boolean);
+                if (parts.length >= 2) {
+                    const repo = `${parts[0]}/${parts[1]}`;
+                    const rest = parts.slice(2).join('/');
+                    return { type: 'github', display: rest ? `${repo} / ${rest}` : repo, url: href };
+                }
+            }
+
+            // Generic external
+            const path = url.pathname === '/' ? '' : url.pathname;
+            const display = url.hostname + path + (url.hash || '');
+            return { type: 'external', display, url: href };
+        }
+
+        // mailto
+        if (url.protocol === 'mailto:') {
+            return { type: 'email', display: href.replace('mailto:', ''), icon: 'mail' };
+        }
+    } catch {
+        // Relative path / file link
+    }
+
+    // Relative link (file path)
+    return { type: 'file', display: href, icon: 'file' };
+}
+
+function showLinkTooltip(anchor, event) {
+    const href = anchor.getAttribute('href');
+    if (!href) return;
+
+    const info = classifyUrl(href);
+    const tooltip = createLinkTooltip();
+
+    // Build tooltip content
+    let icon = '';
+    switch (info.type) {
+        case 'anchor':
+            icon = '<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"/></svg>';
+            break;
+        case 'github':
+            icon = '<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>';
+            break;
+        case 'email':
+            icon = '<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M1.75 2h12.5c.966 0 1.75.784 1.75 1.75v8.5A1.75 1.75 0 0114.25 14H1.75A1.75 1.75 0 010 12.25v-8.5C0 2.784.784 2 1.75 2zM1.5 3.75v.736l6.5 3.9 6.5-3.9V3.75a.25.25 0 00-.25-.25H1.75a.25.25 0 00-.25.25zm13 2.164l-6.5 3.9-6.5-3.9v6.336c0 .138.112.25.25.25h12.5a.25.25 0 00.25-.25V5.914z"/></svg>';
+            break;
+        default:
+            icon = '<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M3.75 2h3.5a.75.75 0 010 1.5h-3.5a.25.25 0 00-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 00.25-.25v-3.5a.75.75 0 011.5 0v3.5A1.75 1.75 0 0112.25 14h-8.5A1.75 1.75 0 012 12.25v-8.5C2 2.784 2.784 2 3.75 2zm6.854-.22a.75.75 0 011.396.53v3.94a.75.75 0 01-1.5 0V4.56L7.28 7.78a.75.75 0 01-1.06-1.06l3.22-3.22H7.75a.75.75 0 010-1.5h2.604l.25-.22z"/></svg>';
+            break;
+    }
+
+    tooltip.innerHTML = `<span class="link-tooltip-icon">${icon}</span><span class="link-tooltip-url">${escapeHtml(info.display)}</span>`;
+
+    // Position below the link
+    const rect = anchor.getBoundingClientRect();
+    tooltip.style.left = `${rect.left}px`;
+    tooltip.style.top = `${rect.bottom + 6}px`;
+    tooltip.classList.add('visible');
+
+    // Ensure tooltip stays in viewport
+    requestAnimationFrame(() => {
+        const tr = tooltip.getBoundingClientRect();
+        if (tr.right > window.innerWidth - 8) {
+            tooltip.style.left = `${window.innerWidth - tr.width - 8}px`;
+        }
+        if (tr.bottom > window.innerHeight - 8) {
+            tooltip.style.top = `${rect.top - tr.height - 6}px`;
+        }
+    });
+}
+
+function hideLinkTooltip() {
+    if (linkTooltip) {
+        linkTooltip.classList.remove('visible');
+    }
+}
+
+function setupLinkTooltips(container) {
+    let currentAnchor = null;
+
+    container.addEventListener('mouseover', (e) => {
+        const anchor = e.target.closest('.markdown-body a:not(.heading-anchor)');
+        if (!anchor || anchor === currentAnchor) return;
+
+        currentAnchor = anchor;
+        clearTimeout(linkTooltipTimeout);
+        linkTooltipTimeout = setTimeout(() => {
+            showLinkTooltip(anchor, e);
+        }, 300);
+    });
+
+    container.addEventListener('mouseout', (e) => {
+        const anchor = e.target.closest('.markdown-body a:not(.heading-anchor)');
+        if (anchor === currentAnchor || (!anchor && currentAnchor)) {
+            const related = e.relatedTarget;
+            if (related && currentAnchor && currentAnchor.contains(related)) return;
+            currentAnchor = null;
+            clearTimeout(linkTooltipTimeout);
+            hideLinkTooltip();
+        }
+    });
+}
+
 /**
  * Get file type icon SVG based on file extension
  */
@@ -1806,10 +1943,11 @@ function initCoreUI(options = {}) {
     setupPresentationMode();
     addCodeCopyButtons();
 
-    // Set up Greek/math symbol tooltips on content area
+    // Set up tooltips on content area
     const content = document.querySelector('.markdown-body');
     if (content) {
         setupSymbolTooltips(content);
+        setupLinkTooltips(content);
     }
 }
 
