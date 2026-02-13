@@ -102,6 +102,7 @@ pub async fn spawn_terminal(
     // Build command
     let mut cmd = CommandBuilder::new(&shell);
     cmd.cwd(&cwd);
+    cmd.env("TERM", "xterm-256color");
 
     // Spawn child
     let mut child = pair

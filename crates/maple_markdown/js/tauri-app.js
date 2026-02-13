@@ -1112,6 +1112,10 @@
 
         // Manual handlers that don't go in the registry
         document.addEventListener('keydown', async (e) => {
+            // Let the terminal handle all keys when it's focused
+            // (except Ctrl+` which is the toggle shortcut, handled by the registry)
+            if (isTerminalPanelFocused()) return;
+
             // F5 refresh (no modifier)
             if (e.key === 'F5') {
                 e.preventDefault();

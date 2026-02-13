@@ -2322,22 +2322,59 @@ body.presentation-mode #reading-progress {
    Terminal Panel
    ============================================================================ */
 
+/* Shared base styles */
 #terminal-panel {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 300px;
     z-index: 10004;
     display: flex;
     flex-direction: column;
     background: #0d1117;
-    transform: translateY(100%);
     transition: transform 0.2s ease;
 }
 
-#terminal-panel.visible {
+/* Bottom position (default) */
+#terminal-panel.position-bottom {
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 300px;
+    transform: translateY(100%);
+}
+
+#terminal-panel.position-bottom.visible {
     transform: translateY(0);
+}
+
+/* Right position */
+#terminal-panel.position-right {
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 500px;
+    transform: translateX(100%);
+}
+
+#terminal-panel.position-right.visible {
+    transform: translateX(0);
+}
+
+#terminal-panel.position-right .terminal-resize-handle {
+    width: 5px;
+    height: auto;
+    cursor: ew-resize;
+    top: 0;
+    bottom: 0;
+    left: -2px;
+    right: auto;
+}
+
+#terminal-panel.position-right .terminal-header {
+    border-top: none;
+    border-left: 1px solid #30363d;
+}
+
+#terminal-panel.position-right.minimized {
+    width: auto !important;
 }
 
 .terminal-header {
@@ -2364,6 +2401,7 @@ body.presentation-mode #reading-progress {
 }
 
 .terminal-minimize-btn,
+.terminal-position-btn,
 .terminal-close-btn {
     background: none;
     border: none;
@@ -2382,6 +2420,7 @@ body.presentation-mode #reading-progress {
 }
 
 .terminal-minimize-btn:hover,
+.terminal-position-btn:hover,
 .terminal-close-btn:hover {
     background: #30363d;
     color: #f0f6fc;
@@ -2408,11 +2447,11 @@ body.presentation-mode #reading-progress {
     padding: 4px;
 }
 
-#terminal-panel.minimized {
-    height: auto !important;
-}
-
 #terminal-panel.minimized .terminal-body,
 #terminal-panel.minimized .terminal-resize-handle {
     display: none;
+}
+
+#terminal-panel.position-bottom.minimized {
+    height: auto !important;
 }

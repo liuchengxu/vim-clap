@@ -1728,6 +1728,9 @@ function initFuzzyFinder() {
     const textBtn = document.getElementById('fuzzy-mode-text');
 
     document.addEventListener('keydown', (e) => {
+        // Skip when terminal is focused — let terminal handle all keys
+        if (typeof isTerminalPanelFocused === 'function' && isTerminalPanelFocused()) return;
+
         if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
             e.preventDefault();
             if (fuzzyFinderOpen) {
