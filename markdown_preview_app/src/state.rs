@@ -162,11 +162,16 @@ impl AppState {
     }
 
     /// Add a file to the recent files list.
+    ///
+    /// If the file is already in the list, its position is preserved (no reordering).
+    /// New files are added to the front.
     pub fn add_recent_file(&mut self, path: PathBuf) {
-        // Remove if already in list
-        self.recent_files.retain(|p| p != &path);
+        // Don't reorder if already in list
+        if self.recent_files.contains(&path) {
+            return;
+        }
 
-        // Add to front
+        // Add new file to front
         self.recent_files.push_front(path);
 
         // Keep only MAX_RECENT_FILES

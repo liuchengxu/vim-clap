@@ -689,7 +689,9 @@ function addToRecentFiles(filePath) {
     if (!filePath) return;
 
     let recentFiles = getRecentFiles();
-    recentFiles = recentFiles.filter(f => f.path !== filePath);
+    // Don't reorder if already in the list
+    if (recentFiles.some(f => f.path === filePath)) return;
+
     recentFiles.unshift({
         path: filePath,
         timestamp: Date.now()
@@ -757,19 +759,13 @@ function showPathTooltip(element, fullPath, previewInfo = {}) {
 
     const { title, digest, modified_at } = previewInfo;
 
-    // Format path with segments
-    const segments = fullPath.split('/').filter(s => s);
-    const formatted = '/' + segments.map((seg, i) => {
-        const isLast = i === segments.length - 1;
-        return isLast ? `<span class="path-tooltip-file">${escapeHtml(seg)}</span>` : escapeHtml(seg);
-    }).join('<span class="path-tooltip-sep">/</span>');
-
     // Build tooltip content with optional title
     let html = '';
     if (title) {
-        html += `<div class="path-tooltip-title">${escapeHtml(title)}</div>`;
+        // Render backtick-wrapped text as inline code
+        const rendered = escapeHtml(title).replace(/`([^`]+)`/g, '<code>$1</code>');
+        html += `<div class="path-tooltip-title">${rendered}</div>`;
     }
-    html += formatted;
 
     // Add modification time if available
     if (modified_at) {
