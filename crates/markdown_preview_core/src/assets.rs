@@ -10,25 +10,25 @@
 //! - `tauri-app.js`: Tauri IPC for standalone app mode
 
 /// HTML template with placeholders for CSS and JS.
-pub const HTML_TEMPLATE: &str = include_str!("../../maple_markdown/js/index.html");
+pub const HTML_TEMPLATE: &str = include_str!("../js/index.html");
 
 /// Main CSS styles.
-pub const STYLES_CSS: &str = include_str!("../../maple_markdown/js/styles.css");
+pub const STYLES_CSS: &str = include_str!("../js/styles.css");
 
 /// Theme CSS styles.
-pub const THEMES_CSS: &str = include_str!("../../maple_markdown/js/themes.css");
+pub const THEMES_CSS: &str = include_str!("../js/themes.css");
 
 /// Core JavaScript - shared UI functionality.
-pub const CORE_JS: &str = include_str!("../../maple_markdown/js/core.js");
+pub const CORE_JS: &str = include_str!("../js/core.js");
 
 /// WebSocket JavaScript - vim-clap mode communication.
-pub const WEBSOCKET_APP_JS: &str = include_str!("../../maple_markdown/js/websocket-app.js");
+pub const WEBSOCKET_APP_JS: &str = include_str!("../js/websocket-app.js");
 
 /// Tauri JavaScript - standalone app mode communication.
-pub const TAURI_APP_JS: &str = include_str!("../../maple_markdown/js/tauri-app.js");
+pub const TAURI_APP_JS: &str = include_str!("../js/tauri-app.js");
 
 /// Legacy: Combined app.js (deprecated, use CORE_JS + mode-specific JS instead)
-pub const APP_JS: &str = include_str!("../../maple_markdown/js/app.js");
+pub const APP_JS: &str = include_str!("../js/app.js");
 
 /// Options for building the HTML page.
 #[derive(Debug, Clone, Default)]

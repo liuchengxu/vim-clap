@@ -11,8 +11,8 @@ __pycache__
 /doc/tags
 target
 /bin
-# Auto-generated frontend files (built from maple_markdown/js sources)
-crates/markdown_preview_app/frontend/index.html
+# Auto-generated frontend files (built from markdown_preview_core/js sources)
+markdown_preview_app/frontend/index.html
 testdata.txt
 publish.sh
 crates/Cargo.lock
