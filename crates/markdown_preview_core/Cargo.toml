@@ -13,8 +13,6 @@ publish = false
 default = []
 # Enable vim-plugin specific code (protocol messages, image path rewriting)
 vim-plugin = []
-# Enable GUI-specific code
-gui = []
 
 [dependencies]
 frecency = { path = "../frecency" }
