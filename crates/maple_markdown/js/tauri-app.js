@@ -806,10 +806,15 @@
                         </div>
                         <div class="help-section">
                             <h4>Search & View</h4>
-                            <div class="help-row"><kbd>/</kbd><span>Open fuzzy finder</span></div>
+                            <div class="help-row"><kbd>/</kbd> / <kbd>Ctrl+P</kbd><span>Open fuzzy finder</span></div>
                             <div class="help-row"><kbd>Ctrl+D</kbd><span>Show file changes</span></div>
                             <div class="help-row"><kbd>Ctrl++</kbd> / <kbd>Ctrl+-</kbd><span>Zoom in / out</span></div>
                             <div class="help-row"><kbd>Ctrl+0</kbd><span>Reset zoom</span></div>
+                        </div>
+                        <div class="help-section">
+                            <h4>Terminal</h4>
+                            <div class="help-row"><kbd>Ctrl+\`</kbd><span>Toggle terminal panel</span></div>
+                            <div class="help-row"><kbd>Esc</kbd><span>Close terminal (when focused)</span></div>
                         </div>
                         <div class="help-section">
                             <h4>Path Input (Ctrl+O)</h4>
