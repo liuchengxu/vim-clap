@@ -40,7 +40,7 @@ members = [
     "crates/xtask",
 ]
 
-exclude = ["pythonx/clap/fuzzymatch-rs", "crates/markdown_preview_app"]
+exclude = ["pythonx/clap/fuzzymatch-rs", "markdown_preview_app"]
 
 default-members = ["crates/maple"]
 
