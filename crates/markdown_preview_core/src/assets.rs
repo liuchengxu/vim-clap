@@ -1,8 +1,7 @@
 //! Embedded web assets for the markdown preview.
 //!
 //! This module provides access to the HTML, CSS, and JavaScript files
-//! needed for the preview UI. Assets can be served either from CDN
-//! (for online mode) or bundled (for offline mode).
+//! needed for the preview UI.
 //!
 //! The JavaScript is split into modules:
 //! - `core.js`: Shared UI functionality (TOC, themes, fuzzy finder, etc.)
@@ -27,15 +26,9 @@ pub const WEBSOCKET_APP_JS: &str = include_str!("../js/websocket-app.js");
 /// Tauri JavaScript - standalone app mode communication.
 pub const TAURI_APP_JS: &str = include_str!("../js/tauri-app.js");
 
-/// Legacy: Combined app.js (deprecated, use CORE_JS + mode-specific JS instead)
-pub const APP_JS: &str = include_str!("../js/app.js");
-
 /// Options for building the HTML page.
 #[derive(Debug, Clone, Default)]
 pub struct AssetOptions {
-    /// If true, use bundled offline assets instead of CDN links.
-    /// Requires the "offline" feature to be enabled.
-    pub offline: bool,
     /// If true, include Tauri-specific JavaScript.
     pub tauri: bool,
 }
@@ -74,12 +67,6 @@ impl Assets {
         TAURI_APP_JS
     }
 
-    /// Get the legacy combined JavaScript application code.
-    #[deprecated(note = "Use core_js() + websocket_app_js() or tauri_app_js() instead")]
-    pub fn app_js() -> &'static str {
-        APP_JS
-    }
-
     /// Build the complete HTML page with inlined CSS and JS.
     ///
     /// This replaces placeholder comments in the template with actual content:
@@ -108,21 +95,6 @@ impl Assets {
 
         html = html.replace("/*__APP_JS__*/", &js);
 
-        // Handle offline mode (replace CDN links with bundled assets)
-        #[cfg(feature = "offline")]
-        if options.offline {
-            html = Self::replace_cdn_with_bundled(html);
-        }
-
-        html
-    }
-
-    /// Replace CDN links with bundled assets (for offline mode).
-    #[cfg(feature = "offline")]
-    fn replace_cdn_with_bundled(html: String) -> String {
-        // This would replace CDN URLs with data: URIs or local paths
-        // For now, we keep the CDN links and this is a placeholder
-        // for future offline bundle support
         html
     }
 }
