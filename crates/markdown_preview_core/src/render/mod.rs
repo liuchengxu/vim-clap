@@ -242,25 +242,31 @@ pub fn to_html(
                 i += 1;
             }
             Event::Start(Tag::BlockQuote) => {
-                // Check if this is a GitHub alert by looking at the first text content
+                // Check if this is a GitHub alert by looking at the first text content.
+                // pulldown-cmark 0.10 splits `[!NOTE]` into three Text events:
+                // Text("["), Text("!NOTE"), Text("]"), so we must collect consecutive
+                // Text events to reconstruct the full alert marker.
                 let mut j = i + 1;
                 let mut first_text = String::new();
 
+                // Skip past Start events to reach text content
+                while j < events.len() {
+                    match &events[j] {
+                        Event::Start(_) => {
+                            j += 1;
+                        }
+                        _ => break,
+                    }
+                }
+
+                // Collect consecutive Text events
                 while j < events.len() {
                     match &events[j] {
                         Event::Text(text) => {
                             first_text.push_str(text);
-                            break;
-                        }
-                        Event::Start(_) => {
                             j += 1;
                         }
-                        Event::End(TagEnd::BlockQuote) => {
-                            break;
-                        }
-                        _ => {
-                            j += 1;
-                        }
+                        _ => break,
                     }
                 }
 
