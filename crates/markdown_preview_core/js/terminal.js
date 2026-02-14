@@ -98,7 +98,11 @@ async function openTerminalPanel() {
             term.write(new Uint8Array(message.data));
         } else if (message.event === 'Exit') {
             const code = message.data?.code ?? '?';
-            term.writeln(`\r\n[Process exited with code ${code}]`);
+            if (code === 0) {
+                closeTerminalPanel();
+            } else {
+                term.writeln(`\r\n[Process exited with code ${code}]`);
+            }
         }
     };
 
