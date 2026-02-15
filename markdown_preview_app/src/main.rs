@@ -22,9 +22,11 @@ mod commands;
 mod menu;
 mod state;
 
+use futures::stream::StreamExt;
 use markdown_preview_core::DocumentType;
 use state::AppState;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tauri::{Emitter, Manager};
 use tokio::sync::RwLock;
@@ -237,35 +239,45 @@ async fn generate_recent_file_summaries(
         serde_json::json!({ "status": "batch_started", "total": total }),
     );
 
-    let mut completed = 0usize;
-    for (file_path, mtime) in &eligible_files {
-        let path = std::path::Path::new(file_path);
+    let concurrency = ai_config.provider.max_concurrency();
+    let completed = Arc::new(AtomicUsize::new(0));
+    let ai_config = Arc::new(ai_config);
 
-        // Read content and generate summary
-        let content = match tokio::fs::read_to_string(path).await {
-            Ok(content) => content,
-            Err(_) => continue,
-        };
+    futures::stream::iter(eligible_files)
+        .map(|(file_path, mtime)| {
+            let state = Arc::clone(&state);
+            let app_handle = app_handle.clone();
+            let completed = Arc::clone(&completed);
+            let ai_config = Arc::clone(&ai_config);
 
-        if let Some(summary) = ai::summarize(&ai_config, &content).await {
-            let mut state_guard = state.write().await;
-            state_guard.set_ai_summary(file_path.clone(), summary, *mtime);
-        }
+            async move {
+                let path = std::path::Path::new(&file_path);
 
-        completed = completed.saturating_add(1);
-        let _ = app_handle.emit(
-            "ai-summary-progress",
-            serde_json::json!({
-                "status": "file_done",
-                "filePath": file_path,
-                "completed": completed,
-                "total": total
-            }),
-        );
+                let content = match tokio::fs::read_to_string(path).await {
+                    Ok(content) => content,
+                    Err(_) => return,
+                };
 
-        // Small delay between requests to avoid overwhelming the provider
-        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-    }
+                if let Some(summary) = ai::summarize(&ai_config, &content).await {
+                    let mut state_guard = state.write().await;
+                    state_guard.set_ai_summary(file_path.clone(), summary, mtime);
+                }
+
+                let done = completed.fetch_add(1, Ordering::Relaxed).saturating_add(1);
+                let _ = app_handle.emit(
+                    "ai-summary-progress",
+                    serde_json::json!({
+                        "status": "file_done",
+                        "filePath": file_path,
+                        "completed": done,
+                        "total": total
+                    }),
+                );
+            }
+        })
+        .buffer_unordered(concurrency)
+        .collect::<()>()
+        .await;
 
     let _ = app_handle.emit(
         "ai-summary-progress",

@@ -30,6 +30,17 @@ impl AiProvider {
         }
     }
 
+    /// Maximum concurrent summarization requests for this provider.
+    pub fn max_concurrency(&self) -> usize {
+        match self {
+            // Ollama runs locally — limit to 1 to avoid resource contention
+            Self::Ollama => 1,
+            // Cloud APIs can handle parallel requests
+            Self::Anthropic | Self::OpenAi => 4,
+            Self::None => 1,
+        }
+    }
+
     /// Default model for this provider.
     fn default_model(&self) -> &str {
         match self {

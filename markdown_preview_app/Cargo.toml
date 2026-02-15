@@ -22,6 +22,7 @@ markdown_preview_core = { path = "../crates/markdown_preview_core" }
 
 # Standard dependencies
 dirs = "5.0"
+futures = "0.3"
 lopdf = "0.34"
 portable-pty = "0.9"
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
