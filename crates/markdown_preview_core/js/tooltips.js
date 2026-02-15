@@ -83,7 +83,13 @@ function showPathTooltip(element, fullPath, previewInfo = {}) {
 
     // Position tooltip to the right of the element (offset to avoid sidebar border)
     const rect = element.getBoundingClientRect();
-    tooltip.style.left = `${rect.right + 20}px`;
+    const gap = 20;
+    const margin = 16;
+    const availableWidth = window.innerWidth - rect.right - gap - margin;
+    // Use ~40% of viewport as ideal width, clamped to available space
+    const idealWidth = Math.round(window.innerWidth * 0.4);
+    content.style.width = `${Math.min(idealWidth, availableWidth)}px`;
+    tooltip.style.left = `${rect.right + gap}px`;
     tooltip.style.top = `${rect.top}px`;
     tooltip.classList.add('visible');
 }

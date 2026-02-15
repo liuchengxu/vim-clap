@@ -253,7 +253,8 @@
         font-size: 12px;
         font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-        max-width: 700px;
+        min-width: 240px;
+        max-width: 500px;
         word-break: break-all;
         line-height: 1.4;
       }
