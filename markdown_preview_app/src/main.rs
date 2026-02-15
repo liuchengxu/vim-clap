@@ -262,6 +262,18 @@ async fn generate_recent_file_summaries(
                     Ok(summary) => {
                         let mut state_guard = state.write().await;
                         state_guard.set_ai_summary(file_path.clone(), summary, mtime);
+
+                        let done =
+                            completed.fetch_add(1, Ordering::Relaxed).saturating_add(1);
+                        let _ = app_handle.emit(
+                            "ai-summary-progress",
+                            serde_json::json!({
+                                "status": "file_done",
+                                "filePath": file_path,
+                                "completed": done,
+                                "total": total
+                            }),
+                        );
                     }
                     Err(error) => {
                         let _ = app_handle.emit(
@@ -273,17 +285,6 @@ async fn generate_recent_file_summaries(
                         );
                     }
                 }
-
-                let done = completed.fetch_add(1, Ordering::Relaxed).saturating_add(1);
-                let _ = app_handle.emit(
-                    "ai-summary-progress",
-                    serde_json::json!({
-                        "status": "file_done",
-                        "filePath": file_path,
-                        "completed": done,
-                        "total": total
-                    }),
-                );
             }
         })
         .buffer_unordered(concurrency)
