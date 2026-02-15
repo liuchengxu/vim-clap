@@ -331,12 +331,12 @@ pub async fn get_file_preview_info(
         .map(|d| d.as_millis() as u64);
 
     // Check for cached AI summary (mtime must match)
-    let ai_digest = modified_at.and_then(|mtime| {
-        // We need a blocking read to check the cache synchronously.
-        // Use try_read to avoid blocking the async runtime.
-        let state_guard = state.try_read().ok()?;
+    let ai_digest = if let Some(mtime) = modified_at {
+        let state_guard = state.read().await;
         state_guard.get_ai_summary(&path, mtime).map(String::from)
-    });
+    } else {
+        None
+    };
 
     // Get title and digest based on document type
     let (title, digest) = match DocumentType::from_path(path_buf) {
