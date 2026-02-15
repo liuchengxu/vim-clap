@@ -314,80 +314,12 @@ fn get_pdf_title(path: &std::path::Path) -> Option<String> {
     .filter(|s| !s.trim().is_empty())
 }
 
-/// Internal function to extract markdown title.
-async fn get_markdown_title_internal(path_buf: &std::path::Path) -> Option<String> {
-    // Only process markdown files
-    if DocumentType::from_path(path_buf) != Some(DocumentType::Markdown) {
-        return None;
-    }
-
-    // Read the first part of the file (titles are usually at the top)
-    let content = tokio::fs::read_to_string(path_buf).await.ok()?;
-
-    // Limit to first 2000 chars for performance
-    let content = if content.len() > 2000 {
-        &content[..2000]
-    } else {
-        &content
-    };
-
-    // Track content after frontmatter
-    let content_after_frontmatter;
-
-    // Try YAML frontmatter first
-    if let Some(after_prefix) = content.strip_prefix("---") {
-        if let Some(end_idx) = after_prefix.find("---") {
-            let frontmatter = &after_prefix[..end_idx];
-            for line in frontmatter.lines() {
-                let line = line.trim();
-                if let Some(title) = line.strip_prefix("title:") {
-                    let title = title.trim();
-                    // Remove quotes if present
-                    let title = title
-                        .strip_prefix('"')
-                        .and_then(|s| s.strip_suffix('"'))
-                        .or_else(|| title.strip_prefix('\'').and_then(|s| s.strip_suffix('\'')))
-                        .unwrap_or(title);
-                    if !title.is_empty() {
-                        return Some(title.to_string());
-                    }
-                }
-            }
-            // Skip past frontmatter for H1 search
-            content_after_frontmatter = &after_prefix[end_idx + 3..];
-        } else {
-            content_after_frontmatter = content;
-        }
-    } else {
-        content_after_frontmatter = content;
-    }
-
-    // Try first H1 heading (after frontmatter if present)
-    for line in content_after_frontmatter.lines() {
-        let line = line.trim();
-        // Skip empty lines
-        if line.is_empty() {
-            continue;
-        }
-        // Check for H1 heading
-        if let Some(title) = line.strip_prefix("# ") {
-            let title = title.trim();
-            if !title.is_empty() {
-                return Some(title.to_string());
-            }
-        }
-        // Stop after first non-empty, non-heading line (title should be at the top)
-        if !line.starts_with('#') {
-            break;
-        }
-    }
-
-    None
-}
-
 /// Get file preview info (title, digest, and modification time) for tooltip display.
 #[tauri::command]
-pub async fn get_file_preview_info(path: String) -> Result<FilePreviewInfo, String> {
+pub async fn get_file_preview_info(
+    path: String,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<FilePreviewInfo, String> {
     let path_buf = std::path::Path::new(&path);
 
     // Get modification time
@@ -398,6 +330,14 @@ pub async fn get_file_preview_info(path: String) -> Result<FilePreviewInfo, Stri
         .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
         .map(|d| d.as_millis() as u64);
 
+    // Check for cached AI summary (mtime must match)
+    let ai_digest = modified_at.and_then(|mtime| {
+        // We need a blocking read to check the cache synchronously.
+        // Use try_read to avoid blocking the async runtime.
+        let state_guard = state.try_read().ok()?;
+        state_guard.get_ai_summary(&path, mtime).map(String::from)
+    });
+
     // Get title and digest based on document type
     let (title, digest) = match DocumentType::from_path(path_buf) {
         Some(DocumentType::Markdown) => {
@@ -407,11 +347,13 @@ pub async fn get_file_preview_info(path: String) -> Result<FilePreviewInfo, Stri
             } else {
                 None
             };
-            let digest = content.as_ref().and_then(|c| extract_digest(c, 12, 1000));
+            // Prefer AI summary over text-based digest
+            let digest =
+                ai_digest.or_else(|| content.as_ref().and_then(|c| extract_digest(c, 12, 1000)));
             (title, digest)
         }
-        Some(DocumentType::Pdf) => (get_pdf_title(path_buf), None),
-        None => (None, None),
+        Some(DocumentType::Pdf) => (get_pdf_title(path_buf), ai_digest),
+        None => (None, ai_digest),
     };
 
     Ok(FilePreviewInfo {
@@ -425,7 +367,13 @@ pub async fn get_file_preview_info(path: String) -> Result<FilePreviewInfo, Stri
 #[tauri::command]
 pub async fn get_markdown_title(path: String) -> Result<Option<String>, String> {
     let path_buf = std::path::Path::new(&path);
-    Ok(get_markdown_title_internal(path_buf).await)
+    if DocumentType::from_path(path_buf) != Some(DocumentType::Markdown) {
+        return Ok(None);
+    }
+    let content = tokio::fs::read_to_string(path_buf)
+        .await
+        .map_err(|e| format!("Failed to read file: {e}"))?;
+    Ok(extract_markdown_title(&content))
 }
 
 /// Returns supported file extensions grouped by document type.
@@ -453,4 +401,110 @@ pub fn get_supported_extensions() -> SupportedExtensions {
         .collect();
 
     SupportedExtensions { by_type, all }
+}
+
+/// AI configuration response for the frontend.
+#[derive(Clone, serde::Serialize)]
+pub struct AiConfigResponse {
+    /// Provider name ("ollama", "anthropic", "openai") or null if disabled.
+    pub provider: Option<String>,
+    /// Model override or null for provider default.
+    pub model: Option<String>,
+}
+
+/// Get the current AI summarization configuration.
+#[tauri::command]
+pub async fn get_ai_config(
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<AiConfigResponse, String> {
+    let state_guard = state.read().await;
+    Ok(AiConfigResponse {
+        provider: state_guard.ai_provider().map(String::from),
+        model: state_guard.ai_model().map(String::from),
+    })
+}
+
+/// Set the AI summarization configuration (legacy — use set_app_config instead).
+///
+/// Only updates provider and model. Preserves other config fields.
+/// Clears AI summary cache and triggers re-summarization if changed.
+#[tauri::command]
+pub async fn set_ai_config(
+    provider: Option<String>,
+    model: Option<String>,
+    state: State<'_, Arc<RwLock<AppState>>>,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    let ai_changed = {
+        let mut state_guard = state.write().await;
+        state_guard.set_ai_config(provider, model)
+    };
+
+    if ai_changed {
+        let state_arc = state.inner().clone();
+        tauri::async_runtime::spawn(async move {
+            crate::generate_recent_file_summaries(state_arc, app_handle).await;
+        });
+    }
+
+    Ok(())
+}
+
+/// Unified application configuration for the Settings dialog.
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct AppConfig {
+    /// GitHub personal access token.
+    pub github_token: Option<String>,
+    /// AI provider name ("ollama", "anthropic", "openai") or null if disabled.
+    pub ai_provider: Option<String>,
+    /// AI model override or null for provider default.
+    pub ai_model: Option<String>,
+    /// AI API key for Anthropic/OpenAI.
+    pub ai_api_key: Option<String>,
+    /// Ollama URL override.
+    pub ollama_url: Option<String>,
+}
+
+/// Get the full application configuration for the Settings dialog.
+#[tauri::command]
+pub async fn get_app_config(state: State<'_, Arc<RwLock<AppState>>>) -> Result<AppConfig, String> {
+    let state_guard = state.read().await;
+    Ok(AppConfig {
+        github_token: state_guard.github_token().map(String::from),
+        ai_provider: state_guard.ai_provider().map(String::from),
+        ai_model: state_guard.ai_model().map(String::from),
+        ai_api_key: state_guard.ai_api_key().map(String::from),
+        ollama_url: state_guard.ollama_url().map(String::from),
+    })
+}
+
+/// Set the full application configuration from the Settings dialog.
+///
+/// Normalizes all inputs, clears AI summary cache if AI config changed,
+/// and triggers background re-summarization.
+#[tauri::command]
+pub async fn set_app_config(
+    config: AppConfig,
+    state: State<'_, Arc<RwLock<AppState>>>,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    let ai_changed = {
+        let mut state_guard = state.write().await;
+        state_guard.set_app_config(
+            config.ai_provider,
+            config.ai_model,
+            config.ai_api_key,
+            config.ollama_url,
+            config.github_token,
+        )
+    };
+
+    if ai_changed {
+        let state_arc = state.inner().clone();
+        tauri::async_runtime::spawn(async move {
+            crate::generate_recent_file_summaries(state_arc, app_handle).await;
+        });
+    }
+
+    Ok(())
 }

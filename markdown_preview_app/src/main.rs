@@ -17,6 +17,7 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod ai;
 mod commands;
 mod menu;
 mod state;
@@ -98,6 +99,16 @@ fn main() {
                 menu::handle_menu_event(app, &event);
             });
 
+            // Spawn background AI summarization for recent files
+            {
+                let state_arc: Arc<RwLock<AppState>> =
+                    app.state::<Arc<RwLock<AppState>>>().inner().clone();
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    generate_recent_file_summaries(state_arc, handle).await;
+                });
+            }
+
             // If we have an initial file from command line, open it after the window is ready
             if let Some(path) = initial_file.clone() {
                 let handle = app.handle().clone();
@@ -137,6 +148,10 @@ fn main() {
             commands::metadata::get_supported_extensions,
             commands::metadata::get_markdown_title,
             commands::metadata::get_file_preview_info,
+            commands::metadata::get_ai_config,
+            commands::metadata::set_ai_config,
+            commands::metadata::get_app_config,
+            commands::metadata::set_app_config,
             commands::diff::get_file_diff,
             commands::terminal::spawn_terminal,
             commands::terminal::write_terminal,
@@ -150,4 +165,172 @@ fn main() {
 /// Check if a path is a supported document file.
 fn is_supported_file(path: &std::path::Path) -> bool {
     DocumentType::from_path(path).is_some()
+}
+
+/// Get the file modification time in Unix millis.
+async fn get_file_mtime(path: &std::path::Path) -> Option<u64> {
+    tokio::fs::metadata(path)
+        .await
+        .ok()
+        .and_then(|m| m.modified().ok())
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as u64)
+}
+
+/// Background task: generate AI summaries for recent files that are missing or stale.
+async fn generate_recent_file_summaries(
+    state: Arc<RwLock<AppState>>,
+    app_handle: tauri::AppHandle,
+) {
+    // Small delay to let the app finish initializing
+    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+
+    // Read config and recent files list
+    let (ai_config, recent_files) = {
+        let state_guard = state.read().await;
+        let config = ai::AiConfig::from_state(
+            state_guard.ai_provider(),
+            state_guard.ai_model(),
+            state_guard.ai_api_key(),
+            state_guard.ollama_url(),
+        );
+        let files = state_guard.get_recent_files();
+        (config, files)
+    };
+
+    if !ai_config.is_enabled() {
+        tracing::debug!("AI summarization not configured, skipping startup summaries");
+        return;
+    }
+
+    // Pre-scan: collect files that actually need summarization
+    let mut eligible_files: Vec<(String, u64)> = Vec::new();
+    {
+        let state_guard = state.read().await;
+        for file_path in &recent_files {
+            let path = std::path::Path::new(file_path);
+            if DocumentType::from_path(path) != Some(DocumentType::Markdown) {
+                continue;
+            }
+            if let Some(mtime) = get_file_mtime(path).await {
+                if state_guard.get_ai_summary(file_path, mtime).is_none() {
+                    eligible_files.push((file_path.clone(), mtime));
+                }
+            }
+        }
+    }
+
+    let total = eligible_files.len();
+    if total == 0 {
+        tracing::debug!("All recent files already have fresh summaries");
+        return;
+    }
+
+    tracing::info!(
+        provider = ?ai_config.provider,
+        total,
+        "Starting background AI summarization for recent files"
+    );
+
+    let _ = app_handle.emit(
+        "ai-summary-progress",
+        serde_json::json!({ "status": "batch_started", "total": total }),
+    );
+
+    let mut completed = 0usize;
+    for (file_path, mtime) in &eligible_files {
+        let path = std::path::Path::new(file_path);
+
+        // Read content and generate summary
+        let content = match tokio::fs::read_to_string(path).await {
+            Ok(content) => content,
+            Err(_) => continue,
+        };
+
+        if let Some(summary) = ai::summarize(&ai_config, &content).await {
+            let mut state_guard = state.write().await;
+            state_guard.set_ai_summary(file_path.clone(), summary, *mtime);
+        }
+
+        completed = completed.saturating_add(1);
+        let _ = app_handle.emit(
+            "ai-summary-progress",
+            serde_json::json!({
+                "status": "file_done",
+                "filePath": file_path,
+                "completed": completed,
+                "total": total
+            }),
+        );
+
+        // Small delay between requests to avoid overwhelming the provider
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+    }
+
+    let _ = app_handle.emit(
+        "ai-summary-progress",
+        serde_json::json!({ "status": "batch_done" }),
+    );
+
+    tracing::info!("Background AI summarization complete");
+}
+
+/// Spawn a background AI summary task for a single file.
+///
+/// Called from file open to ensure newly opened files get summarized.
+pub fn spawn_summary_for_file(
+    state: Arc<RwLock<AppState>>,
+    file_path: String,
+    app_handle: tauri::AppHandle,
+) {
+    tauri::async_runtime::spawn(async move {
+        let path = std::path::Path::new(&file_path);
+
+        if DocumentType::from_path(path) != Some(DocumentType::Markdown) {
+            return;
+        }
+
+        let mtime = match get_file_mtime(path).await {
+            Some(mtime) => mtime,
+            None => return,
+        };
+
+        // Check config and cache
+        let ai_config = {
+            let state_guard = state.read().await;
+            if state_guard.get_ai_summary(&file_path, mtime).is_some() {
+                return;
+            }
+            ai::AiConfig::from_state(
+                state_guard.ai_provider(),
+                state_guard.ai_model(),
+                state_guard.ai_api_key(),
+                state_guard.ollama_url(),
+            )
+        };
+
+        if !ai_config.is_enabled() {
+            return;
+        }
+
+        let _ = app_handle.emit(
+            "ai-summary-progress",
+            serde_json::json!({ "status": "file_started", "filePath": &file_path }),
+        );
+
+        let content = match tokio::fs::read_to_string(path).await {
+            Ok(content) => content,
+            Err(_) => return,
+        };
+
+        if let Some(summary) = ai::summarize(&ai_config, &content).await {
+            let mut state_guard = state.write().await;
+            state_guard.set_ai_summary(file_path.clone(), summary, mtime);
+
+            let _ = app_handle.emit(
+                "ai-summary-progress",
+                serde_json::json!({ "status": "file_done", "filePath": &file_path }),
+            );
+        }
+    });
 }

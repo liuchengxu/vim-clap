@@ -107,6 +107,7 @@ pub(super) fn get_git_branch_url(file_path: &str, branch: &str) -> Option<String
 pub async fn open_file(
     path: String,
     state: State<'_, Arc<RwLock<AppState>>>,
+    app_handle: tauri::AppHandle,
 ) -> Result<RenderResponse, String> {
     // Expand ~ and resolve to absolute path
     let path_buf = expand_tilde(&path);
@@ -147,10 +148,13 @@ pub async fn open_file(
 
     // Update state
     {
-        let mut state = state.write().await;
-        state.current_file = Some(path_buf.clone());
-        state.add_recent_file(path_buf);
+        let mut state_guard = state.write().await;
+        state_guard.current_file = Some(path_buf.clone());
+        state_guard.add_recent_file(path_buf);
     }
+
+    // Spawn background AI summary generation for the opened file
+    crate::spawn_summary_for_file(state.inner().clone(), absolute_path.clone(), app_handle);
 
     // Handle based on document type
     match doc_type {

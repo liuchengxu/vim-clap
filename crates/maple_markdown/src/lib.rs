@@ -305,9 +305,7 @@ fn process_message(msg: Message) -> Result<serde_json::Value, Error> {
 ///
 /// Returns a `watch::Receiver<Message>` (bridging `WatchEvent` → `Message::FileChanged`)
 /// and the `FileWatcher` itself, which must be kept alive to prevent shutdown via `Drop`.
-fn create_file_watcher(
-    file_path: &str,
-) -> Result<(Receiver<Message>, FileWatcher), Error> {
+fn create_file_watcher(file_path: &str) -> Result<(Receiver<Message>, FileWatcher), Error> {
     let config = WatcherConfig {
         watch_access: true,
         ..Default::default()

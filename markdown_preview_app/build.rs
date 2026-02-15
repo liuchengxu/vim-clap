@@ -34,8 +34,7 @@ fn generate_frontend_html() {
     let core_js = fs::read_to_string(js_dir.join("core.js")).expect("Failed to read core.js");
     let tooltips_js =
         fs::read_to_string(js_dir.join("tooltips.js")).expect("Failed to read tooltips.js");
-    let search_js =
-        fs::read_to_string(js_dir.join("search.js")).expect("Failed to read search.js");
+    let search_js = fs::read_to_string(js_dir.join("search.js")).expect("Failed to read search.js");
     let diff_js = fs::read_to_string(js_dir.join("diff.js")).expect("Failed to read diff.js");
     let pdf_viewer_js = js_dir.join("pdf-viewer.js");
     let pdf_viewer_js = if pdf_viewer_js.exists() {

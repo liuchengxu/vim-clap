@@ -1,7 +1,11 @@
 //! URL fetching and rendering commands.
 
 use super::RenderResponse;
+use crate::state::AppState;
 use markdown_preview_core::{calculate_document_stats, to_html, RenderOptions};
+use std::sync::Arc;
+use tauri::State;
+use tokio::sync::RwLock;
 
 /// Parsed GitHub URL components.
 struct GitHubUrl {
@@ -51,12 +55,19 @@ fn convert_to_raw_github_url(url: &str) -> Option<String> {
     None
 }
 
-/// Get GitHub token from environment.
-fn get_github_token() -> Option<String> {
-    std::env::var("GITHUB_TOKEN")
-        .or_else(|_| std::env::var("GH_TOKEN"))
-        .ok()
+/// Get GitHub token: config value first, then environment variables.
+fn get_github_token(config_token: Option<&str>) -> Option<String> {
+    config_token
+        .map(str::trim)
         .filter(|t| !t.is_empty())
+        .map(String::from)
+        .or_else(|| {
+            std::env::var("GITHUB_TOKEN")
+                .or_else(|_| std::env::var("GH_TOKEN"))
+                .ok()
+                .map(|s| s.trim().to_string())
+                .filter(|t| !t.is_empty())
+        })
 }
 
 /// Fetch content from GitHub API (works for private repos with token).
@@ -94,8 +105,15 @@ async fn fetch_github_api(github_url: &GitHubUrl, token: &str) -> Result<String,
 
 /// Fetch and render markdown from a URL.
 #[tauri::command]
-pub async fn open_url(url: String) -> Result<RenderResponse, String> {
-    open_url_impl(&url, get_github_token().as_deref()).await
+pub async fn open_url(
+    url: String,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<RenderResponse, String> {
+    let config_token = {
+        let state_guard = state.read().await;
+        state_guard.github_token().map(String::from)
+    };
+    open_url_impl(&url, get_github_token(config_token.as_deref()).as_deref()).await
 }
 
 /// Fetch and render markdown from a URL with a user-provided GitHub token.
@@ -137,8 +155,8 @@ async fn open_url_impl(url: &str, token: Option<&str>) -> Result<RenderResponse,
     };
 
     // Render the markdown
-    let result =
-        to_html(&content, &RenderOptions::gui()).map_err(|e| format!("Failed to render markdown: {e}"))?;
+    let result = to_html(&content, &RenderOptions::gui())
+        .map_err(|e| format!("Failed to render markdown: {e}"))?;
     let stats = calculate_document_stats(&content);
 
     Ok(RenderResponse::from_markdown(result, stats).with_file_info(Some(url.to_string()), None))

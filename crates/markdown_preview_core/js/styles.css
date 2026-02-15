@@ -82,6 +82,47 @@
         scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
       }
 
+      /* AI summary progress indicator */
+      .ai-progress-indicator {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 0 6px 0;
+        font-size: 11px;
+        color: #656d76;
+        opacity: 0;
+        max-height: 0;
+        overflow: hidden;
+        transition: opacity 0.3s, max-height 0.3s;
+      }
+
+      .ai-progress-indicator.visible {
+        opacity: 1;
+        max-height: 28px;
+      }
+
+      .ai-progress-indicator.done .ai-progress-spinner {
+        display: none;
+      }
+
+      .ai-progress-indicator.done .ai-progress-text {
+        color: #1a7f37;
+      }
+
+      .ai-progress-spinner {
+        width: 10px;
+        height: 10px;
+        border: 1.5px solid #d0d7de;
+        border-top-color: #0969da;
+        border-radius: 50%;
+        animation: ai-spin 0.8s linear infinite;
+        flex-shrink: 0;
+      }
+
+      @keyframes ai-spin {
+        to { transform: rotate(360deg); }
+      }
+
       /* Section resize handle (horizontal) */
       .section-resize-handle {
         height: 5px;
@@ -786,6 +827,19 @@
 
         #sidebar h3 {
           color: #c9d1d9;
+        }
+
+        .ai-progress-indicator {
+          color: #8b949e;
+        }
+
+        .ai-progress-indicator.done .ai-progress-text {
+          color: #3fb950;
+        }
+
+        .ai-progress-spinner {
+          border-color: #30363d;
+          border-top-color: #58a6ff;
         }
 
         .option-label {

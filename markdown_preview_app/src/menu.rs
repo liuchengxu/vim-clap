@@ -10,11 +10,15 @@ pub fn create_menu<R: Runtime>(app: &AppHandle<R>) -> Result<Menu<R>, tauri::Err
         MenuItem::with_id(app, "open_path", "Open Path...", true, Some("CmdOrCtrl+O"))?;
     let open_item =
         MenuItem::with_id(app, "open", "Open File...", true, Some("CmdOrCtrl+Shift+O"))?;
+    let settings_item =
+        MenuItem::with_id(app, "settings", "Settings...", true, Some("CmdOrCtrl+,"))?;
     let close_item = MenuItem::with_id(app, "close", "Close", true, Some("CmdOrCtrl+W"))?;
 
     let file_menu = SubmenuBuilder::new(app, "File")
         .item(&open_path_item)
         .item(&open_item)
+        .separator()
+        .item(&settings_item)
         .separator()
         .item(&close_item)
         .build()?;
@@ -114,6 +118,9 @@ pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: &MenuEvent) {
         }
         "toggle_terminal" => {
             let _ = app.emit("menu-toggle-terminal", ());
+        }
+        "settings" => {
+            let _ = app.emit("menu-settings", ());
         }
         "about" => {
             // Show about dialog
