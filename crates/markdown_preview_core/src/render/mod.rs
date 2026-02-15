@@ -18,7 +18,7 @@ use pulldown_cmark::{CowStr, Event, Options, Parser, Tag, TagEnd};
 pub use github_alerts::detect_github_alert;
 pub use markdown_renderer::MarkdownRenderer;
 pub use output::RenderOutput;
-pub use traits::{BinaryRenderer, RenderError, TextRenderer};
+pub use traits::{RenderError, TextRenderer};
 
 /// Preview mode determines which features are enabled.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -104,18 +104,25 @@ impl RenderResult {
     }
 }
 
-/// Convert byte offset to line number (1-indexed).
-fn byte_offset_to_line(content: &str, byte_offset: usize) -> usize {
-    let mut line = 1;
+/// Build a table of byte offsets where each line starts (0-indexed into content bytes).
+///
+/// The returned vector has one entry per line: `offsets[0]` is always 0 (line 1 starts
+/// at byte 0), `offsets[1]` is the byte after the first `\n`, etc.
+fn build_line_offsets(content: &str) -> Vec<usize> {
+    let mut offsets = vec![0];
     for (i, byte) in content.bytes().enumerate() {
-        if i >= byte_offset {
-            break;
-        }
         if byte == b'\n' {
-            line += 1;
+            offsets.push(i + 1);
         }
     }
-    line
+    offsets
+}
+
+/// Convert byte offset to line number (1-indexed) using a precomputed offset table.
+fn byte_offset_to_line(line_offsets: &[usize], byte_offset: usize) -> usize {
+    // partition_point returns the number of entries <= byte_offset,
+    // which equals the 1-indexed line number.
+    line_offsets.partition_point(|&start| start <= byte_offset)
 }
 
 /// Render markdown content to HTML.
@@ -145,6 +152,9 @@ pub fn to_html(
 
     let mut html_output = String::new();
     let mut heading_text = String::new();
+
+    // Build line offset table once for O(log n) line lookups
+    let line_offsets = build_line_offsets(markdown_content);
 
     // Use into_offset_iter to get byte offsets for each event
     let events_with_offsets: Vec<(Event, std::ops::Range<usize>)> =
@@ -184,7 +194,7 @@ pub fn to_html(
 
             if should_track_line {
                 let byte_offset = events_with_offsets[i].1.start;
-                let line_number = byte_offset_to_line(markdown_content, byte_offset);
+                let line_number = byte_offset_to_line(&line_offsets, byte_offset);
                 tracing::debug!(
                     event = ?events[i],
                     byte_offset,

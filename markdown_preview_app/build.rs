@@ -32,6 +32,11 @@ fn generate_frontend_html() {
 
     // Load modular JS files
     let core_js = fs::read_to_string(js_dir.join("core.js")).expect("Failed to read core.js");
+    let tooltips_js =
+        fs::read_to_string(js_dir.join("tooltips.js")).expect("Failed to read tooltips.js");
+    let search_js =
+        fs::read_to_string(js_dir.join("search.js")).expect("Failed to read search.js");
+    let diff_js = fs::read_to_string(js_dir.join("diff.js")).expect("Failed to read diff.js");
     let pdf_viewer_js = js_dir.join("pdf-viewer.js");
     let pdf_viewer_js = if pdf_viewer_js.exists() {
         fs::read_to_string(&pdf_viewer_js).expect("Failed to read pdf-viewer.js")
@@ -47,8 +52,10 @@ fn generate_frontend_html() {
     let tauri_app_js =
         fs::read_to_string(js_dir.join("tauri-app.js")).expect("Failed to read tauri-app.js");
 
-    // Combine core + pdf-viewer + terminal + tauri-app for standalone app
-    let combined_js = format!("{core_js}\n\n{pdf_viewer_js}\n\n{terminal_js}\n\n{tauri_app_js}");
+    // Combine core + tooltips + search + diff + pdf-viewer + terminal + tauri-app for standalone app
+    let combined_js = format!(
+        "{core_js}\n\n{tooltips_js}\n\n{search_js}\n\n{diff_js}\n\n{pdf_viewer_js}\n\n{terminal_js}\n\n{tauri_app_js}"
+    );
 
     // Replace placeholders
     let mut html = html_template;
@@ -69,6 +76,9 @@ fn generate_frontend_html() {
     │    - markdown_preview_core/js/styles.css    (base styles)                          │
     │    - markdown_preview_core/js/themes.css    (theme styles)                         │
     │    - markdown_preview_core/js/core.js       (core UI functionality)                │
+    │    - markdown_preview_core/js/tooltips.js   (tooltip system)                       │
+    │    - markdown_preview_core/js/search.js     (fuzzy finder)                         │
+    │    - markdown_preview_core/js/diff.js       (diff overlay)                         │
     │    - markdown_preview_core/js/terminal.js   (terminal panel)                       │
     │    - markdown_preview_core/js/tauri-app.js  (Tauri-specific code)                  │
     │    - markdown_preview_core/js/pdf-viewer.js (PDF viewer)                           │
@@ -92,6 +102,9 @@ fn generate_frontend_html() {
     println!("cargo:rerun-if-changed=../crates/markdown_preview_core/js/styles.css");
     println!("cargo:rerun-if-changed=../crates/markdown_preview_core/js/themes.css");
     println!("cargo:rerun-if-changed=../crates/markdown_preview_core/js/core.js");
+    println!("cargo:rerun-if-changed=../crates/markdown_preview_core/js/tooltips.js");
+    println!("cargo:rerun-if-changed=../crates/markdown_preview_core/js/search.js");
+    println!("cargo:rerun-if-changed=../crates/markdown_preview_core/js/diff.js");
     println!("cargo:rerun-if-changed=../crates/markdown_preview_core/js/tauri-app.js");
     println!("cargo:rerun-if-changed=../crates/markdown_preview_core/js/terminal.js");
     println!("cargo:rerun-if-changed=../crates/markdown_preview_core/js/pdf-viewer.js");

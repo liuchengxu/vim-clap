@@ -24,12 +24,19 @@ pub enum WatchEvent {
 pub struct WatcherConfig {
     /// Polling interval in milliseconds for fallback polling mode
     pub poll_interval_ms: u64,
+    /// Whether to trigger on file access events (not just modifications).
+    ///
+    /// When true, the watcher also fires on `is_access()` events (e.g. `cat file`).
+    /// Only affects inotify-based watching; polling watchers use mtime comparison
+    /// which inherently only detects modifications.
+    pub watch_access: bool,
 }
 
 impl Default for WatcherConfig {
     fn default() -> Self {
         Self {
             poll_interval_ms: 1000,
+            watch_access: false,
         }
     }
 }
@@ -63,7 +70,7 @@ impl FileWatcher {
         let file_path = path.to_path_buf();
 
         // Try inotify-based watcher first
-        match Self::try_inotify_watcher(&file_path) {
+        match Self::try_inotify_watcher(&file_path, &config) {
             Ok((event_rx, shutdown_tx)) => {
                 tracing::info!(path = ?file_path, "Started inotify-based file watcher");
                 Ok(Self {
@@ -102,6 +109,7 @@ impl FileWatcher {
 
     fn try_inotify_watcher(
         file_path: &Path,
+        config: &WatcherConfig,
     ) -> Result<
         (watch::Receiver<WatchEvent>, mpsc::Sender<()>),
         Box<dyn std::error::Error + Send + Sync>,
@@ -121,6 +129,7 @@ impl FileWatcher {
 
         let file_name_for_filter = file_name.clone();
         let file_path_for_event = file_path.to_path_buf();
+        let watch_access = config.watch_access;
 
         // Spawn the watcher thread
         std::thread::spawn(move || {
@@ -141,6 +150,7 @@ impl FileWatcher {
                             if event.kind.is_modify()
                                 || event.kind.is_create()
                                 || event.kind.is_remove()
+                                || (watch_access && event.kind.is_access())
                             {
                                 let _ = notify_tx.send(());
                             }

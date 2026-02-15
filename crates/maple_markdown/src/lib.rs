@@ -19,7 +19,7 @@ use axum::response::{Html, IntoResponse};
 use axum::routing::get;
 use axum::Router;
 use markdown_preview_core::assets::Assets;
-use notify::{Event as NotifyEvent, RecommendedWatcher, RecursiveMode, Watcher};
+use markdown_preview_core::watcher::{FileWatcher, WatcherConfig};
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
@@ -301,178 +301,32 @@ fn process_message(msg: Message) -> Result<serde_json::Value, Error> {
     Ok(res)
 }
 
-/// Spawns a polling-based file watcher as a fallback when inotify fails.
-fn spawn_polling_file_watcher(
-    file_path: String,
-) -> (Receiver<Message>, std::sync::mpsc::Sender<()>) {
-    let (msg_tx, msg_rx) = tokio::sync::watch::channel(Message::UpdateContent(String::new()));
-    let (shutdown_tx, shutdown_rx) = std::sync::mpsc::channel();
-
-    tokio::spawn(async move {
-        let path = std::path::Path::new(&file_path);
-        let mut last_mtime = std::fs::metadata(path).and_then(|m| m.modified()).ok();
-
-        tracing::info!(
-            path = %file_path,
-            "Started polling-based file watcher (checking every second)"
-        );
-
-        loop {
-            if shutdown_rx.try_recv().is_ok() {
-                tracing::debug!("Polling file watcher shutting down");
-                break;
-            }
-
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-
-            if let Ok(metadata) = std::fs::metadata(path) {
-                if let Ok(current_mtime) = metadata.modified() {
-                    if let Some(last) = last_mtime {
-                        if current_mtime > last {
-                            tracing::debug!(path = %file_path, "File modified, sending update");
-                            msg_tx.send_replace(Message::FileChanged(file_path.clone(), false));
-                            last_mtime = Some(current_mtime);
-                        }
-                    } else {
-                        last_mtime = Some(current_mtime);
-                    }
-                }
-            }
-        }
-
-        tracing::debug!("Polling file watcher task exited");
-    });
-
-    (msg_rx, shutdown_tx)
-}
-
-/// Spawns a file watcher that monitors changes to the given file.
-fn spawn_file_watcher(
-    file_path: String,
-) -> Result<(Receiver<Message>, std::sync::mpsc::Sender<()>), Error> {
-    let (msg_tx, msg_rx) = tokio::sync::watch::channel(Message::UpdateContent(String::new()));
-    let (event_tx, event_rx) = std::sync::mpsc::channel();
-    let (shutdown_tx, shutdown_rx) = std::sync::mpsc::channel();
-    let (started_tx, started_rx) = std::sync::mpsc::channel();
-
-    let file_path_for_async = file_path.clone();
-    let file_path_for_thread = file_path.clone();
-
-    let watch_path = Path::new(&file_path_for_thread);
-    let (watch_target, file_name) = if let (Some(parent), Some(name)) =
-        (watch_path.parent(), watch_path.file_name())
-    {
-        (parent.to_path_buf(), name.to_os_string())
-    } else {
-        tracing::error!(path = ?file_path_for_thread, "Invalid file path - cannot determine parent directory");
-        return Err("Invalid file path".into());
+/// Creates a file watcher using the shared `FileWatcher` from `markdown_preview_core`.
+///
+/// Returns a `watch::Receiver<Message>` (bridging `WatchEvent` → `Message::FileChanged`)
+/// and the `FileWatcher` itself, which must be kept alive to prevent shutdown via `Drop`.
+fn create_file_watcher(
+    file_path: &str,
+) -> Result<(Receiver<Message>, FileWatcher), Error> {
+    let config = WatcherConfig {
+        watch_access: true,
+        ..Default::default()
     };
+    let watcher = FileWatcher::new(Path::new(file_path), config)?;
+    let mut event_rx = watcher.subscribe();
 
-    let file_name_for_filter = file_name.clone();
-
-    let shutdown_rx_clone = shutdown_rx;
-    std::thread::spawn(move || {
-        let mut watcher = match RecommendedWatcher::new(
-            move |res: Result<NotifyEvent, notify::Error>| match res {
-                Ok(event) => {
-                    tracing::debug!(?event, target_file = ?file_name_for_filter, "File watcher received event");
-
-                    let is_target_file = event
-                        .paths
-                        .iter()
-                        .any(|p| p.file_name() == Some(&file_name_for_filter));
-
-                    if !is_target_file {
-                        tracing::debug!(?event.paths, "Event not for target file, ignoring");
-                        return;
-                    }
-
-                    if event.kind.is_modify()
-                        || event.kind.is_create()
-                        || event.kind.is_remove()
-                        || event.kind.is_access()
-                    {
-                        tracing::debug!(kind = ?event.kind, "File change detected, sending notification");
-                        match event_tx.send(()) {
-                            Ok(()) => {
-                                tracing::debug!("Notification sent successfully to bridge task")
-                            }
-                            Err(e) => tracing::error!(
-                                ?e,
-                                "Failed to send notification - bridge task may have exited"
-                            ),
-                        }
-                    } else {
-                        tracing::debug!(kind = ?event.kind, "Ignoring event type");
-                    }
-                }
-                Err(e) => {
-                    tracing::error!(?e, "File watcher error");
-                }
-            },
-            notify::Config::default(),
-        ) {
-            Ok(w) => w,
-            Err(err) => {
-                tracing::error!(?err, "Failed to create file watcher");
-                return;
-            }
-        };
-
-        if let Err(err) = watcher.watch(&watch_target, RecursiveMode::NonRecursive) {
-            tracing::error!(?err, path = ?watch_target, "Failed to watch directory");
-            let _ = started_tx.send(Err(err.to_string()));
-            return;
+    // Bridge WatchEvent → Message::FileChanged via a small adapter task
+    let (msg_tx, msg_rx) = tokio::sync::watch::channel(Message::UpdateContent(String::new()));
+    let file_path_owned = file_path.to_string();
+    tokio::spawn(async move {
+        while event_rx.changed().await.is_ok() {
+            tracing::debug!(path = %file_path_owned, "File change detected, bridging to message channel");
+            msg_tx.send_replace(Message::FileChanged(file_path_owned.clone(), false));
         }
-
-        let _ = started_tx.send(Ok(()));
-
-        tracing::debug!(
-            watch_dir = ?watch_target,
-            target_file = ?file_name,
-            "File watcher started on parent directory"
-        );
-
-        loop {
-            match shutdown_rx_clone.recv_timeout(std::time::Duration::from_secs(1)) {
-                Ok(_) | Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
-                    tracing::debug!(path = ?file_path_for_thread, "File watcher shutting down");
-                    break;
-                }
-                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
-            }
-        }
+        tracing::debug!("File watcher bridge task exiting");
     });
 
-    tokio::task::spawn_blocking(move || {
-        while let Ok(()) = event_rx.recv() {
-            tracing::debug!(path = ?file_path_for_async, "File changed detected by watcher, bridging to async channel");
-            let receiver_count = msg_tx.receiver_count();
-            tracing::debug!(receiver_count, "Current receiver count");
-            if receiver_count == 0 {
-                tracing::debug!("No receivers left, exiting bridge task");
-                break;
-            }
-            msg_tx.send_replace(Message::FileChanged(file_path_for_async.clone(), false));
-            tracing::debug!("Message sent via send_replace, waiting for next file event");
-        }
-        tracing::debug!("File watcher bridge task exiting - event_rx closed");
-    });
-
-    match started_rx.recv_timeout(std::time::Duration::from_secs(2)) {
-        Ok(Ok(())) => {
-            tracing::debug!("File watcher started successfully");
-            Ok((msg_rx, shutdown_tx))
-        }
-        Ok(Err(err_msg)) => {
-            tracing::error!(error = %err_msg, "File watcher failed to start");
-            Err(err_msg.into())
-        }
-        Err(_) => {
-            tracing::error!("Timeout waiting for file watcher to start");
-            Err("Watcher startup timeout".into())
-        }
-    }
+    Ok((msg_rx, watcher))
 }
 
 /// Configuration for opening a markdown preview in the browser.
@@ -498,19 +352,17 @@ pub async fn open_preview_in_browser(config: PreviewConfig) -> Result<(), Error>
         disconnect_tx,
     } = config;
 
-    let (watcher_rx, _watcher_shutdown) = if let Some(ref path) = file_path {
-        match spawn_file_watcher(path.clone()) {
-            Ok((watcher_rx, shutdown)) => {
-                tracing::info!("Started inotify-based file watcher");
-                (Some(watcher_rx), Some(shutdown))
+    // Create file watcher using shared implementation from markdown_preview_core.
+    // _watcher must be kept alive — dropping it triggers shutdown via Drop.
+    let (watcher_rx, _watcher) = if let Some(ref path) = file_path {
+        match create_file_watcher(path) {
+            Ok((rx, watcher)) => {
+                tracing::info!("Started file watcher");
+                (Some(rx), Some(watcher))
             }
             Err(err) => {
-                tracing::warn!(
-                    ?err,
-                    "inotify file watcher failed, falling back to polling (checks every 1 second)"
-                );
-                let (polling_rx, shutdown) = spawn_polling_file_watcher(path.clone());
-                (Some(polling_rx), Some(shutdown))
+                tracing::warn!(?err, "Failed to create file watcher");
+                (None, None)
             }
         }
     } else {

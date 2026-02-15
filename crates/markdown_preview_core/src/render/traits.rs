@@ -1,12 +1,11 @@
 //! Renderer traits for different document types.
 //!
-//! This module defines the [`TextRenderer`] and [`BinaryRenderer`] traits
-//! that provide a common interface for rendering different document formats.
+//! This module defines the [`TextRenderer`] trait that provides a common
+//! interface for rendering text-based document formats.
 
 use crate::document::DocumentType;
 use crate::render::output::RenderOutput;
 use crate::stats::DocumentStats;
-use std::path::Path;
 
 /// Error type for rendering operations.
 #[derive(Debug, thiserror::Error)]
@@ -46,26 +45,6 @@ pub trait TextRenderer: Send + Sync {
 
     /// Calculate statistics from text content.
     fn calculate_text_stats(&self, content: &str) -> DocumentStats;
-}
-
-/// Trait for binary document renderers (PDF, images, etc.).
-///
-/// Binary renderers process files from the filesystem and return
-/// file URLs for the frontend to handle directly.
-pub trait BinaryRenderer: Send + Sync {
-    /// Render binary document.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - Path to the binary document file
-    ///
-    /// # Returns
-    ///
-    /// Returns [`RenderOutput::FileUrl`] with the path for frontend rendering.
-    fn render_binary(&self, path: &Path) -> Result<RenderOutput, RenderError>;
-
-    /// Calculate statistics from binary file.
-    fn calculate_binary_stats(&self, path: &Path) -> Result<DocumentStats, RenderError>;
 }
 
 #[cfg(test)]

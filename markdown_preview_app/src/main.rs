@@ -63,7 +63,29 @@ fn main() {
             }
 
             // Initialize state with config directory for persistence
-            let state = AppState::new(config_dir);
+            let mut state = AppState::new(config_dir);
+
+            // Set up background snapshot writer for non-blocking, ordered persistence
+            let (snap_tx, mut snap_rx) =
+                tokio::sync::mpsc::unbounded_channel::<(std::path::PathBuf, String)>();
+            state.set_snapshot_writer(snap_tx);
+            tauri::async_runtime::spawn(async move {
+                while let Some((path, content)) = snap_rx.recv().await {
+                    // Write on blocking thread, await completion before processing next
+                    let _ = tokio::task::spawn_blocking(move || {
+                        if let Some(parent) = path.parent() {
+                            let _ = std::fs::create_dir_all(parent);
+                        }
+                        if let Err(e) = std::fs::write(&path, &content) {
+                            tracing::warn!(error = %e, "Failed to write snapshots file");
+                        } else {
+                            tracing::debug!(path = %path.display(), "Saved file snapshots");
+                        }
+                    })
+                    .await;
+                }
+            });
+
             app.manage(Arc::new(RwLock::new(state)));
             app.manage(commands::terminal::TerminalState::default());
 

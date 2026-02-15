@@ -5,6 +5,7 @@ use markdown_preview_core::DocumentType;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
+use tokio::sync::mpsc;
 
 /// Maximum number of recent files to keep
 const MAX_RECENT_FILES: usize = 20;
@@ -47,7 +48,6 @@ struct PersistedConfig {
 }
 
 /// Application state shared across commands.
-#[derive(Debug, Default)]
 pub struct AppState {
     /// Currently open file path
     pub current_file: Option<PathBuf>,
@@ -64,6 +64,8 @@ pub struct AppState {
     file_snapshots: FileSnapshots,
     /// Path to the config directory for persistence
     config_dir: Option<PathBuf>,
+    /// Channel for ordered, non-blocking snapshot writes
+    snapshot_writer: Option<mpsc::UnboundedSender<(PathBuf, String)>>,
 }
 
 impl AppState {
@@ -78,11 +80,20 @@ impl AppState {
             watcher_handle: None,
             file_snapshots: FileSnapshots::default(),
             config_dir,
+            snapshot_writer: None,
         };
         state.load_config();
         state.load_path_history();
         state.load_snapshots();
         state
+    }
+
+    /// Set the snapshot writer channel for non-blocking persistence.
+    ///
+    /// Must be called after the Tokio runtime is available. The receiving end
+    /// should be driven by a background task that writes snapshots sequentially.
+    pub fn set_snapshot_writer(&mut self, tx: mpsc::UnboundedSender<(PathBuf, String)>) {
+        self.snapshot_writer = Some(tx);
     }
 
     /// Get the config file path.
@@ -334,30 +345,42 @@ impl AppState {
     }
 
     /// Save file snapshots to disk.
+    ///
+    /// If a snapshot writer channel is available, serializes in-place and sends
+    /// to the background writer task (non-blocking, ordered). Falls back to
+    /// synchronous write if no writer is configured.
     fn save_snapshots(&self) {
         let Some(path) = self.snapshots_path() else {
             return;
         };
 
-        // Ensure config directory exists
+        let content = match serde_json::to_string_pretty(&self.file_snapshots) {
+            Ok(content) => content,
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to serialize snapshots");
+                return;
+            }
+        };
+
+        // Use background writer if available (non-blocking, ordered)
+        if let Some(ref tx) = self.snapshot_writer {
+            if tx.send((path, content)).is_err() {
+                tracing::warn!("Snapshot writer channel closed");
+            }
+            return;
+        }
+
+        // Fallback: synchronous write (used before runtime is ready)
         if let Some(parent) = path.parent() {
             if let Err(e) = std::fs::create_dir_all(parent) {
                 tracing::warn!(error = %e, "Failed to create config directory");
                 return;
             }
         }
-
-        match serde_json::to_string_pretty(&self.file_snapshots) {
-            Ok(content) => {
-                if let Err(e) = std::fs::write(&path, content) {
-                    tracing::warn!(error = %e, "Failed to write snapshots file");
-                } else {
-                    tracing::debug!(path = %path.display(), "Saved file snapshots");
-                }
-            }
-            Err(e) => {
-                tracing::warn!(error = %e, "Failed to serialize snapshots");
-            }
+        if let Err(e) = std::fs::write(&path, &content) {
+            tracing::warn!(error = %e, "Failed to write snapshots file");
+        } else {
+            tracing::debug!(path = %path.display(), "Saved file snapshots");
         }
     }
 

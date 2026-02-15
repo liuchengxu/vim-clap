@@ -4,7 +4,10 @@
 //! needed for the preview UI.
 //!
 //! The JavaScript is split into modules:
-//! - `core.js`: Shared UI functionality (TOC, themes, fuzzy finder, etc.)
+//! - `core.js`: Shared UI functionality (TOC, themes, etc.)
+//! - `tooltips.js`: Symbol, link, and path hover tooltips
+//! - `search.js`: Fuzzy finder for searching headings and full text
+//! - `diff.js`: Diff overlay for showing changes since last view
 //! - `websocket-app.js`: WebSocket communication for vim-clap mode
 //! - `tauri-app.js`: Tauri IPC for standalone app mode
 
@@ -19,6 +22,15 @@ pub const THEMES_CSS: &str = include_str!("../js/themes.css");
 
 /// Core JavaScript - shared UI functionality.
 pub const CORE_JS: &str = include_str!("../js/core.js");
+
+/// Tooltips JavaScript - symbol, link, and path hover tooltips.
+pub const TOOLTIPS_JS: &str = include_str!("../js/tooltips.js");
+
+/// Search JavaScript - fuzzy finder for headings and full text.
+pub const SEARCH_JS: &str = include_str!("../js/search.js");
+
+/// Diff JavaScript - diff overlay for showing changes since last view.
+pub const DIFF_JS: &str = include_str!("../js/diff.js");
 
 /// WebSocket JavaScript - vim-clap mode communication.
 pub const WEBSOCKET_APP_JS: &str = include_str!("../js/websocket-app.js");
@@ -57,6 +69,21 @@ impl Assets {
         CORE_JS
     }
 
+    /// Get the tooltips JavaScript (symbol, link, and path tooltips).
+    pub fn tooltips_js() -> &'static str {
+        TOOLTIPS_JS
+    }
+
+    /// Get the search JavaScript (fuzzy finder).
+    pub fn search_js() -> &'static str {
+        SEARCH_JS
+    }
+
+    /// Get the diff JavaScript (diff overlay).
+    pub fn diff_js() -> &'static str {
+        DIFF_JS
+    }
+
     /// Get the WebSocket JavaScript (vim-clap mode).
     pub fn websocket_app_js() -> &'static str {
         WEBSOCKET_APP_JS
@@ -75,8 +102,8 @@ impl Assets {
     /// - `/*__APP_JS__*/` -> combined JavaScript content
     ///
     /// The JavaScript is built from modular files:
-    /// - For WebSocket mode (default): core.js + websocket-app.js
-    /// - For Tauri mode: core.js + tauri-app.js
+    /// - For WebSocket mode (default): core.js + tooltips.js + search.js + diff.js + websocket-app.js
+    /// - For Tauri mode: core.js + tooltips.js + search.js + diff.js + tauri-app.js
     pub fn build_html(options: &AssetOptions) -> String {
         let mut html = HTML_TEMPLATE.to_string();
 
@@ -86,11 +113,11 @@ impl Assets {
 
         // Build JavaScript based on mode
         let js = if options.tauri {
-            // Tauri mode: core + tauri-app
-            format!("{CORE_JS}\n\n{TAURI_APP_JS}")
+            // Tauri mode: core + tooltips + search + diff + tauri-app
+            format!("{CORE_JS}\n\n{TOOLTIPS_JS}\n\n{SEARCH_JS}\n\n{DIFF_JS}\n\n{TAURI_APP_JS}")
         } else {
-            // WebSocket mode: core + websocket-app
-            format!("{CORE_JS}\n\n{WEBSOCKET_APP_JS}")
+            // WebSocket mode: core + tooltips + search + diff + websocket-app
+            format!("{CORE_JS}\n\n{TOOLTIPS_JS}\n\n{SEARCH_JS}\n\n{DIFF_JS}\n\n{WEBSOCKET_APP_JS}")
         };
 
         html = html.replace("/*__APP_JS__*/", &js);
@@ -118,6 +145,9 @@ mod tests {
     #[test]
     fn test_js_modules_exist() {
         assert!(!CORE_JS.is_empty());
+        assert!(!TOOLTIPS_JS.is_empty());
+        assert!(!SEARCH_JS.is_empty());
+        assert!(!DIFF_JS.is_empty());
         assert!(!WEBSOCKET_APP_JS.is_empty());
         assert!(!TAURI_APP_JS.is_empty());
     }

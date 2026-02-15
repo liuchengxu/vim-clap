@@ -1844,7 +1844,6 @@ dependencies = [
  "axum",
  "axum-extra",
  "markdown_preview_core",
- "notify",
  "percent-encoding",
  "serde",
  "serde_json",

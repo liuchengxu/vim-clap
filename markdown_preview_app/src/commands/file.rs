@@ -168,7 +168,8 @@ pub async fn open_file(
                 .await
                 .map_err(|e| format!("Failed to read file: {e}"))?;
 
-            let result = to_html(&content, &RenderOptions::gui()).map_err(|e| e.to_string())?;
+            let result = to_html(&content, &RenderOptions::gui())
+                .map_err(|e| format!("Failed to render markdown: {e}"))?;
             let stats = calculate_document_stats(&content);
 
             Ok(RenderResponse::from_markdown(result, stats)

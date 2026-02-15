@@ -137,7 +137,8 @@ async fn open_url_impl(url: &str, token: Option<&str>) -> Result<RenderResponse,
     };
 
     // Render the markdown
-    let result = to_html(&content, &RenderOptions::gui()).map_err(|e| e.to_string())?;
+    let result =
+        to_html(&content, &RenderOptions::gui()).map_err(|e| format!("Failed to render markdown: {e}"))?;
     let stats = calculate_document_stats(&content);
 
     Ok(RenderResponse::from_markdown(result, stats).with_file_info(Some(url.to_string()), None))
