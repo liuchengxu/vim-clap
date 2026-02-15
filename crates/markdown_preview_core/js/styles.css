@@ -109,6 +109,14 @@
         color: #1a7f37;
       }
 
+      .ai-progress-indicator.error .ai-progress-spinner {
+        display: none;
+      }
+
+      .ai-progress-indicator.error .ai-progress-text {
+        color: #cf222e;
+      }
+
       .ai-progress-spinner {
         width: 10px;
         height: 10px;
@@ -835,6 +843,10 @@
 
         .ai-progress-indicator.done .ai-progress-text {
           color: #3fb950;
+        }
+
+        .ai-progress-indicator.error .ai-progress-text {
+          color: #f85149;
         }
 
         .ai-progress-spinner {

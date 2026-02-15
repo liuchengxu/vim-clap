@@ -950,6 +950,9 @@
                 case 'batch_done':
                     hideAiProgressIndicator();
                     break;
+                case 'error':
+                    showAiProgressError(event.payload.error);
+                    break;
             }
         });
     }
@@ -986,6 +989,7 @@
             clearTimeout(aiProgressHideTimeout);
             aiProgressHideTimeout = null;
         }
+        aiLastError = null;
 
         const el = getOrCreateAiProgress();
         const text = el.querySelector('.ai-progress-text');
@@ -997,7 +1001,7 @@
         }
 
         el.classList.add('visible');
-        el.classList.remove('done');
+        el.classList.remove('done', 'error');
     }
 
     function hideAiProgressIndicator() {
@@ -1012,6 +1016,28 @@
             aiProgressElement.classList.remove('visible', 'done');
             aiProgressHideTimeout = null;
         }, 2000);
+    }
+
+    // Deduplicate errors — only show each unique message once per batch
+    let aiLastError = null;
+
+    function showAiProgressError(error) {
+        if (error === aiLastError) return;
+        aiLastError = error;
+
+        const el = getOrCreateAiProgress();
+        const text = el.querySelector('.ai-progress-text');
+        text.textContent = error;
+        el.classList.add('visible', 'error');
+        el.classList.remove('done');
+
+        // Auto-hide after 5s
+        if (aiProgressHideTimeout) clearTimeout(aiProgressHideTimeout);
+        aiProgressHideTimeout = setTimeout(() => {
+            aiProgressElement.classList.remove('visible', 'error');
+            aiLastError = null;
+            aiProgressHideTimeout = null;
+        }, 5000);
     }
 
     // Vim navigation state

@@ -139,15 +139,16 @@ const MAX_CONTENT_LEN: usize = 3000;
 
 /// Generate a summary for markdown content.
 ///
-/// Returns `None` if the provider is `None` or the request fails.
-pub async fn summarize(config: &AiConfig, content: &str) -> Option<String> {
+/// Returns `Ok(summary)` on success, `Err(message)` on failure,
+/// or `Ok` with empty content if the provider is disabled or content is empty.
+pub async fn summarize(config: &AiConfig, content: &str) -> Result<String, String> {
     if !config.is_enabled() {
-        return None;
+        return Err("AI provider not configured".to_string());
     }
 
     let prepared = prepare_content(content);
     if prepared.is_empty() {
-        return None;
+        return Err("No content to summarize".to_string());
     }
 
     let result = match config.provider {
@@ -157,29 +158,22 @@ pub async fn summarize(config: &AiConfig, content: &str) -> Option<String> {
         }
         AiProvider::Anthropic => match config.effective_api_key("ANTHROPIC_API_KEY") {
             Ok(key) => summarize_anthropic(config.model(), &prepared, &key).await,
-            Err(error) => {
-                tracing::warn!(error = %error, "Missing API key for Anthropic");
-                return None;
-            }
+            Err(error) => return Err(error),
         },
         AiProvider::OpenAi => match config.effective_api_key("OPENAI_API_KEY") {
             Ok(key) => summarize_openai(config.model(), &prepared, &key).await,
-            Err(error) => {
-                tracing::warn!(error = %error, "Missing API key for OpenAI");
-                return None;
-            }
+            Err(error) => return Err(error),
         },
-        AiProvider::None => return None,
+        AiProvider::None => return Err("AI provider not configured".to_string()),
     };
 
-    match result {
+    match &result {
         Ok(summary) => {
             tracing::debug!(
                 provider = ?config.provider,
                 summary_len = summary.len(),
                 "AI summary generated"
             );
-            Some(summary)
         }
         Err(error) => {
             tracing::warn!(
@@ -187,9 +181,10 @@ pub async fn summarize(config: &AiConfig, content: &str) -> Option<String> {
                 error = %error,
                 "AI summarization failed"
             );
-            None
         }
     }
+
+    result
 }
 
 /// Strip frontmatter, code blocks, and truncate content for the AI prompt.

@@ -258,9 +258,20 @@ async fn generate_recent_file_summaries(
                     Err(_) => return,
                 };
 
-                if let Some(summary) = ai::summarize(&ai_config, &content).await {
-                    let mut state_guard = state.write().await;
-                    state_guard.set_ai_summary(file_path.clone(), summary, mtime);
+                match ai::summarize(&ai_config, &content).await {
+                    Ok(summary) => {
+                        let mut state_guard = state.write().await;
+                        state_guard.set_ai_summary(file_path.clone(), summary, mtime);
+                    }
+                    Err(error) => {
+                        let _ = app_handle.emit(
+                            "ai-summary-progress",
+                            serde_json::json!({
+                                "status": "error",
+                                "error": error,
+                            }),
+                        );
+                    }
                 }
 
                 let done = completed.fetch_add(1, Ordering::Relaxed).saturating_add(1);
@@ -335,14 +346,25 @@ pub fn spawn_summary_for_file(
             Err(_) => return,
         };
 
-        if let Some(summary) = ai::summarize(&ai_config, &content).await {
-            let mut state_guard = state.write().await;
-            state_guard.set_ai_summary(file_path.clone(), summary, mtime);
+        match ai::summarize(&ai_config, &content).await {
+            Ok(summary) => {
+                let mut state_guard = state.write().await;
+                state_guard.set_ai_summary(file_path.clone(), summary, mtime);
 
-            let _ = app_handle.emit(
-                "ai-summary-progress",
-                serde_json::json!({ "status": "file_done", "filePath": &file_path }),
-            );
+                let _ = app_handle.emit(
+                    "ai-summary-progress",
+                    serde_json::json!({ "status": "file_done", "filePath": &file_path }),
+                );
+            }
+            Err(error) => {
+                let _ = app_handle.emit(
+                    "ai-summary-progress",
+                    serde_json::json!({
+                        "status": "error",
+                        "error": error,
+                    }),
+                );
+            }
         }
     });
 }
