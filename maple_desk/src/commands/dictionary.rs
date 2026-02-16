@@ -1,12 +1,13 @@
-//! Dictionary lookup commands: AI-powered and offline (StarDict/MDict).
+//! Dictionary lookup commands: AI-powered, online (Free Dictionary API),
+//! and offline (StarDict/MDict).
 
 use std::sync::Arc;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::State;
 use tokio::sync::RwLock;
 
-use crate::ai::{self, AiConfig, DictionaryEntry};
+use crate::ai::{self, AiConfig, DictionaryDefinition, DictionaryEntry};
 use crate::state::{AppState, DictLoadResult, OfflineDictState};
 
 /// Type alias for the managed dictionary load serializer.
@@ -116,6 +117,182 @@ pub async fn ask_ai(
     }
 
     ai::ask_ai(&config, &question).await
+}
+
+// ---------------------------------------------------------------------------
+// Free Dictionary API (dictionaryapi.dev) — online lookup
+// ---------------------------------------------------------------------------
+
+/// Response from an online dictionary lookup, pairing the structured entry
+/// with the original source name (e.g. "Wiktionary").
+#[derive(Serialize)]
+pub struct OnlineLookupResult {
+    /// The dictionary entry (same shape as AI lookups).
+    #[serde(flatten)]
+    pub entry: DictionaryEntry,
+    /// Human-readable source name extracted from `sourceUrls`.
+    pub source: String,
+}
+
+/// Top-level entry from the Free Dictionary API response.
+#[derive(Deserialize)]
+struct FreeDictEntry {
+    phonetic: Option<String>,
+    #[serde(default)]
+    meanings: Vec<FreeDictMeaning>,
+    #[serde(default, rename = "sourceUrls")]
+    source_urls: Vec<String>,
+}
+
+/// A meaning group (one per part of speech).
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FreeDictMeaning {
+    part_of_speech: String,
+    #[serde(default)]
+    definitions: Vec<FreeDictDefinition>,
+    #[serde(default)]
+    synonyms: Vec<String>,
+    #[serde(default)]
+    antonyms: Vec<String>,
+}
+
+/// A single definition inside a meaning group.
+#[derive(Deserialize)]
+struct FreeDictDefinition {
+    definition: String,
+    example: Option<String>,
+    #[serde(default)]
+    synonyms: Vec<String>,
+    #[serde(default)]
+    antonyms: Vec<String>,
+}
+
+/// Convert Free Dictionary API entries into a [`DictionaryEntry`].
+///
+/// Merges all entries into a single result, collecting synonyms/antonyms from
+/// both the meaning-group and per-definition levels.
+fn free_dict_to_entry(word: String, raw: &[FreeDictEntry]) -> DictionaryEntry {
+    let phonetic = raw
+        .iter()
+        .find_map(|e| e.phonetic.clone())
+        .unwrap_or_default();
+
+    let mut definitions = Vec::new();
+    let mut synonyms = Vec::new();
+    let mut antonyms = Vec::new();
+
+    for entry in raw {
+        for meaning in &entry.meanings {
+            // Collect top-level synonyms/antonyms from the meaning group.
+            synonyms.extend(meaning.synonyms.iter().cloned());
+            antonyms.extend(meaning.antonyms.iter().cloned());
+
+            for def in &meaning.definitions {
+                definitions.push(DictionaryDefinition {
+                    part_of_speech: meaning.part_of_speech.clone(),
+                    meaning: def.definition.clone(),
+                    example: def.example.clone().unwrap_or_default(),
+                });
+                synonyms.extend(def.synonyms.iter().cloned());
+                antonyms.extend(def.antonyms.iter().cloned());
+            }
+        }
+    }
+
+    // De-duplicate while preserving order.
+    synonyms.dedup();
+    antonyms.dedup();
+
+    DictionaryEntry {
+        word,
+        phonetic,
+        definitions,
+        synonyms,
+        antonyms,
+    }
+}
+
+/// Extract a human-readable source name from a URL.
+///
+/// For example, `https://en.wiktionary.org/wiki/hello` → `"Wiktionary"`.
+/// Falls back to the domain segment if the name isn't recognised.
+fn source_name_from_url(url: &str) -> Option<String> {
+    // Extract host from URL: skip "https://" or "http://", take up to next '/'.
+    let after_scheme = url.split("://").nth(1)?;
+    let host = after_scheme.split('/').next()?;
+
+    // Strip leading "en." / "www." etc.
+    let base = host
+        .strip_prefix("en.")
+        .or_else(|| host.strip_prefix("www."))
+        .unwrap_or(host);
+
+    // Capitalise the first segment before the first dot.
+    let name = base.split('.').next().unwrap_or(base);
+    let mut chars = name.chars();
+    let capitalised: String = match chars.next() {
+        Some(c) => c.to_uppercase().chain(chars).collect(),
+        None => return None,
+    };
+    Some(capitalised)
+}
+
+/// Look up a word using the Free Dictionary API (dictionaryapi.dev).
+///
+/// Returns an [`OnlineLookupResult`] containing the structured entry and the
+/// original source name (e.g. "Wiktionary").
+/// Returns `None` when the word is not found (HTTP 404).
+#[tauri::command]
+pub async fn lookup_word_online(word: String) -> Result<Option<OnlineLookupResult>, String> {
+    let word = word.trim().to_string();
+    if word.is_empty() {
+        return Err("No word provided".to_string());
+    }
+
+    let url = format!("https://api.dictionaryapi.dev/api/v2/entries/en/{word}");
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|error| format!("HTTP client error: {error}"))?;
+
+    let response = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|error| format!("Network error: {error}"))?;
+
+    if response.status() == reqwest::StatusCode::NOT_FOUND {
+        return Ok(None);
+    }
+
+    if !response.status().is_success() {
+        return Err(format!(
+            "Free Dictionary API returned status {}",
+            response.status()
+        ));
+    }
+
+    let entries: Vec<FreeDictEntry> = response
+        .json()
+        .await
+        .map_err(|error| format!("Failed to parse Free Dictionary response: {error}"))?;
+
+    if entries.is_empty() {
+        return Ok(None);
+    }
+
+    let source = entries
+        .iter()
+        .flat_map(|e| e.source_urls.iter())
+        .find_map(|u| source_name_from_url(u))
+        .unwrap_or_else(|| "Free Dictionary".to_string());
+
+    Ok(Some(OnlineLookupResult {
+        entry: free_dict_to_entry(word, &entries),
+        source,
+    }))
 }
 
 /// Look up a word in all loaded offline dictionaries.

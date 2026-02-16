@@ -3042,6 +3042,7 @@ body.presentation-mode #reading-progress {
     }
 
     .dict-source-badge.offline { background: #0d2240; color: #58a6ff; }
+    .dict-source-badge.online { background: #0d2d1a; color: #3fb950; }
     .dict-source-badge.ai { background: #3d2e00; color: #d29922; }
     .dict-offline-entry { border-bottom-color: #30363d; }
     .dict-ai-loading { color: #8b949e; }
@@ -3064,6 +3065,7 @@ body.presentation-mode #reading-progress {
     margin-bottom: 12px;
 }
 .dict-source-badge.offline { background: #ddf4ff; color: #0969da; }
+.dict-source-badge.online { background: #dafbe1; color: #116329; }
 .dict-source-badge.ai { background: #fff8c5; color: #9a6700; }
 
 /* Offline dictionary entry container */
@@ -3072,14 +3074,14 @@ body.presentation-mode #reading-progress {
     padding-bottom: 20px;
     border-bottom: 1px solid #d0d7de;
 }
-.dict-offline-content { font-size: 14px; line-height: 1.6; }
+.dict-offline-content { font-size: 14px; line-height: 1.6; overflow: auto; position: relative; }
 
 /* AI loading indicator */
 .dict-ai-loading {
     font-size: 12px; color: #656d76; padding: 12px 0;
     font-style: italic;
 }
-.dict-ai-entry {
+.dict-entry {
     margin-top: 8px;
 }
 

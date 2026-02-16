@@ -1,6 +1,6 @@
 //! Native menu implementation for the markdown preview app.
 
-use tauri::menu::{Menu, MenuBuilder, MenuEvent, MenuItem, SubmenuBuilder};
+use tauri::menu::{Menu, MenuBuilder, MenuEvent, MenuItem, PredefinedMenuItem, SubmenuBuilder};
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 /// Create the application menu.
@@ -21,6 +21,17 @@ pub fn create_menu<R: Runtime>(app: &AppHandle<R>) -> Result<Menu<R>, tauri::Err
         .item(&settings_item)
         .separator()
         .item(&close_item)
+        .build()?;
+
+    // Edit menu (required on macOS for Cmd+C/V/X/A/Z to work)
+    let edit_menu = SubmenuBuilder::new(app, "Edit")
+        .item(&PredefinedMenuItem::undo(app, None)?)
+        .item(&PredefinedMenuItem::redo(app, None)?)
+        .separator()
+        .item(&PredefinedMenuItem::cut(app, None)?)
+        .item(&PredefinedMenuItem::copy(app, None)?)
+        .item(&PredefinedMenuItem::paste(app, None)?)
+        .item(&PredefinedMenuItem::select_all(app, None)?)
         .build()?;
 
     // View menu
@@ -75,6 +86,7 @@ pub fn create_menu<R: Runtime>(app: &AppHandle<R>) -> Result<Menu<R>, tauri::Err
     // Build the complete menu
     MenuBuilder::new(app)
         .item(&file_menu)
+        .item(&edit_menu)
         .item(&view_menu)
         .item(&theme_menu)
         .item(&help_menu)

@@ -2352,7 +2352,11 @@
         if (btn) btn.disabled = true;
 
         let hasOfflineResults = false;
+        let hasOnlineResults = false;
         let hasAiResults = false;
+
+        // Helper: returns true when we already have at least one source of results.
+        const hasAnyResults = () => hasOfflineResults || hasOnlineResults;
 
         // 1. Offline lookup (fast, in-memory)
         try {
@@ -2369,9 +2373,28 @@
             if (isStale()) { if (btn) btn.disabled = false; return; }
         }
 
-        // 2. AI lookup (slow, async) — only if configured
+        // 2. Online dictionary API (Free Dictionary)
         try {
-            if (hasOfflineResults) {
+            const onlineEntry = await invoke('lookup_word_online', { word });
+            if (isStale()) { if (btn) btn.disabled = false; return; }
+            if (onlineEntry) {
+                hasOnlineResults = true;
+                const onlineHtml = renderDictEntry(onlineEntry, 'online', onlineEntry.source || 'Online');
+                if (hasOfflineResults) {
+                    resultsEl.insertAdjacentHTML('beforeend', onlineHtml);
+                } else {
+                    resultsEl.innerHTML = onlineHtml;
+                }
+                wireUpDictTags(resultsEl);
+                wireUpPronounceButtons(resultsEl);
+            }
+        } catch (_err) {
+            if (isStale()) { if (btn) btn.disabled = false; return; }
+        }
+
+        // 3. AI lookup (slow, async) — only if configured
+        try {
+            if (hasAnyResults()) {
                 resultsEl.insertAdjacentHTML('beforeend',
                     '<div class="dict-ai-loading">Loading AI definition...</div>');
             }
@@ -2389,10 +2412,11 @@
             const aiLoadingEl = resultsEl.querySelector('.dict-ai-loading');
             if (aiLoadingEl) aiLoadingEl.remove();
 
-            if (hasOfflineResults) {
-                resultsEl.insertAdjacentHTML('beforeend', renderAiDictEntry(entry));
+            const aiHtml = renderDictEntry(entry, 'ai', 'AI');
+            if (hasAnyResults()) {
+                resultsEl.insertAdjacentHTML('beforeend', aiHtml);
             } else {
-                resultsEl.innerHTML = renderAiDictEntry(entry);
+                resultsEl.innerHTML = aiHtml;
             }
             wireUpDictTags(resultsEl);
             wireUpPronounceButtons(resultsEl);
@@ -2400,11 +2424,11 @@
             if (isStale()) { if (btn) btn.disabled = false; return; }
             const aiLoadingEl = resultsEl.querySelector('.dict-ai-loading');
             if (aiLoadingEl) aiLoadingEl.remove();
-            if (!hasOfflineResults) {
+            if (!hasAnyResults()) {
                 const errStr = String(err);
                 if (errStr.includes('not configured')) {
                     resultsEl.innerHTML = '<div class="dict-empty-state">'
-                        + '<p>No offline dictionaries matched.</p>'
+                        + '<p>No dictionaries matched.</p>'
                         + '<p>AI provider not configured. Set one in Settings.</p></div>';
                 } else {
                     resultsEl.innerHTML = `<div class="dict-error">${escapeHtml(errStr)}</div>`;
@@ -2415,7 +2439,7 @@
         }
 
         if (isStale()) return;
-        if (!hasOfflineResults && !hasAiResults) {
+        if (!hasAnyResults() && !hasAiResults) {
             resultsEl.innerHTML = '<div class="dict-empty-state">No results found</div>';
         }
     }
@@ -2430,9 +2454,15 @@
         }).join('');
     }
 
-    function renderAiDictEntry(entry) {
-        let html = '<div class="dict-ai-entry">';
-        html += '<div class="dict-source-badge ai">AI</div>';
+    /**
+     * Render a structured dictionary entry (used for both online and AI sources).
+     * @param {Object} entry - DictionaryEntry {word, phonetic, definitions, synonyms, antonyms}
+     * @param {string} badgeClass - CSS class for the source badge (e.g. 'ai', 'online')
+     * @param {string} badgeLabel - Display text for the source badge
+     */
+    function renderDictEntry(entry, badgeClass, badgeLabel) {
+        let html = `<div class="dict-entry">`;
+        html += `<div class="dict-source-badge ${escapeHtml(badgeClass)}">${escapeHtml(badgeLabel)}</div>`;
 
         // Word header with phonetic and pronounce button
         html += '<div class="dict-word-header">';

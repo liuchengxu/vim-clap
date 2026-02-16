@@ -196,6 +196,7 @@ fn main() {
             commands::terminal::resize_terminal,
             commands::terminal::kill_terminal,
             commands::dictionary::lookup_word,
+            commands::dictionary::lookup_word_online,
             commands::dictionary::lookup_word_offline,
             commands::dictionary::get_loaded_dictionaries,
             commands::dictionary::ask_ai,
