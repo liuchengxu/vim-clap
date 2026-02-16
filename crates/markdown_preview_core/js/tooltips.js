@@ -68,15 +68,26 @@ function showPathTooltip(element, fullPath, previewInfo = {}) {
         html += `<div class="path-tooltip-modified" title="${fullDate}">Modified ${relativeTime}</div>`;
     }
 
-    // Add digest (structural preview) if available
-    if (digest) {
-        const digestLines = digest.split('\n').map(line => {
-            if (line.startsWith('# ')) {
-                return `<div class="path-tooltip-digest-heading">${escapeHtml(line.slice(2))}</div>`;
-            }
-            return `<div class="path-tooltip-digest-text">${escapeHtml(line)}</div>`;
-        }).join('');
-        html += `<div class="path-tooltip-digest">${digestLines}</div>`;
+    // Add digest if available (digest is { text, source })
+    if (digest && digest.text) {
+        const isAi = digest.source === 'ai';
+
+        if (isAi) {
+            // AI summary: single paragraph, show with AI badge
+            html += `<div class="path-tooltip-digest path-tooltip-digest-ai">`;
+            html += `<span class="path-tooltip-ai-badge">AI</span>`;
+            html += `<span class="path-tooltip-digest-text">${escapeHtml(digest.text)}</span>`;
+            html += `</div>`;
+        } else {
+            // Text-based digest: multi-line with headings
+            const digestLines = digest.text.split('\n').map(line => {
+                if (line.startsWith('# ')) {
+                    return `<div class="path-tooltip-digest-heading">${escapeHtml(line.slice(2))}</div>`;
+                }
+                return `<div class="path-tooltip-digest-text">${escapeHtml(line)}</div>`;
+            }).join('');
+            html += `<div class="path-tooltip-digest">${digestLines}</div>`;
+        }
     }
 
     content.innerHTML = html;

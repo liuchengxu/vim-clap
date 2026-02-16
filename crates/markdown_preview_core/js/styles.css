@@ -362,6 +362,27 @@
         margin-top: 2px;
       }
 
+      .path-tooltip-digest-ai {
+        display: flex;
+        gap: 6px;
+        align-items: baseline;
+      }
+
+      .path-tooltip-digest-ai .path-tooltip-digest-text {
+        margin-top: 0;
+      }
+
+      .path-tooltip-ai-badge {
+        font-size: 9px;
+        font-weight: 700;
+        color: #8250df;
+        background: #f3e8ff;
+        padding: 1px 4px;
+        border-radius: 3px;
+        flex-shrink: 0;
+        letter-spacing: 0.5px;
+      }
+
       /* Symbol tooltip (Greek letters, math symbols) */
       .symbol-tooltip {
         position: fixed;
