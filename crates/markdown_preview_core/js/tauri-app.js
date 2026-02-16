@@ -2448,7 +2448,9 @@
         return results.map(r => {
             const sanitized = sanitizeHtml(r.html);
             return `<div class="dict-offline-entry">
-                <div class="dict-source-badge offline">${escapeHtml(r.dict_name)}</div>
+                <div class="dict-entry-header">
+                    <div class="dict-source-badge offline">${escapeHtml(r.dict_name)}</div>
+                </div>
                 <div class="dict-offline-content">${sanitized}</div>
             </div>`;
         }).join('');
@@ -2462,10 +2464,10 @@
      */
     function renderDictEntry(entry, badgeClass, badgeLabel) {
         let html = `<div class="dict-entry">`;
-        html += `<div class="dict-source-badge ${escapeHtml(badgeClass)}">${escapeHtml(badgeLabel)}</div>`;
 
-        // Word header with phonetic and pronounce button
+        // Word header with source badge, phonetic and pronounce button
         html += '<div class="dict-word-header">';
+        html += `<div class="dict-source-badge ${escapeHtml(badgeClass)}">${escapeHtml(badgeLabel)}</div>`;
         html += `<h1 class="dict-word-title">${escapeHtml(entry.word)}</h1>`;
         html += `<button class="dict-pronounce-btn" data-word="${escapeHtml(entry.word)}" title="Pronounce">&#x1f50a;</button>`;
         if (entry.phonetic) {

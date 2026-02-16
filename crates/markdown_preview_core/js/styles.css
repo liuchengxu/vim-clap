@@ -3045,6 +3045,7 @@ body.presentation-mode #reading-progress {
     .dict-source-badge.online { background: #0d2d1a; color: #3fb950; }
     .dict-source-badge.ai { background: #3d2e00; color: #d29922; }
     .dict-offline-entry { border-bottom-color: #30363d; }
+    .dict-entry { border-top-color: #30363d; }
     .dict-ai-loading { color: #8b949e; }
     .dict-dir-path { background: #0d1117; border-color: #30363d; color: #c9d1d9; }
     .btn-small { background: #21262d; border-color: #30363d; color: #c9d1d9; }
@@ -3053,7 +3054,7 @@ body.presentation-mode #reading-progress {
     .dict-word-count { color: #8b949e; }
 }
 
-/* Offline dictionary: source badges */
+/* Dictionary source badges (inline with word header) */
 .dict-source-badge {
     display: inline-flex;
     align-items: center;
@@ -3062,7 +3063,14 @@ body.presentation-mode #reading-progress {
     border-radius: 12px;
     font-size: 11px;
     font-weight: 600;
-    margin-bottom: 12px;
+    white-space: nowrap;
+}
+
+/* Header row for offline entries (badge only, no word title) */
+.dict-entry-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
 }
 .dict-source-badge.offline { background: #ddf4ff; color: #0969da; }
 .dict-source-badge.online { background: #dafbe1; color: #116329; }
@@ -3082,7 +3090,9 @@ body.presentation-mode #reading-progress {
     font-style: italic;
 }
 .dict-entry {
-    margin-top: 8px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #d0d7de;
 }
 
 /* Empty state when no results from any source */
