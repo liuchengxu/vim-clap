@@ -12,7 +12,7 @@ __pycache__
 target
 /bin
 # Auto-generated frontend files (built from markdown_preview_core/js sources)
-markdown_preview_app/frontend/index.html
+maple_desk/frontend/index.html
 testdata.txt
 publish.sh
 crates/Cargo.lock

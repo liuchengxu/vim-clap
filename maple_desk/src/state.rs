@@ -1,10 +1,13 @@
 //! Application state management with persistence.
 
+use crate::mdict_wrapper::MdictDictionary;
+use crate::stardict::{self, StarDictionary};
 use markdown_preview_core::frecency::FrecentItems;
 use markdown_preview_core::DocumentType;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque};
-use std::path::PathBuf;
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::path::{Path, PathBuf};
+use std::time::Instant;
 use tokio::sync::mpsc;
 
 /// Maximum number of recent files to keep
@@ -67,6 +70,12 @@ fn normalize_config_value(value: Option<String>) -> Option<String> {
         .filter(|s| !s.is_empty())
 }
 
+/// Remove duplicate directory paths, preserving first-occurrence order.
+fn dedup_dirs(dirs: Vec<String>) -> Vec<String> {
+    let mut seen = HashSet::new();
+    dirs.into_iter().filter(|d| seen.insert(d.clone())).collect()
+}
+
 /// Persisted configuration data
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct PersistedConfig {
@@ -82,6 +91,8 @@ struct PersistedConfig {
     ai_api_key: Option<String>,
     #[serde(default)]
     ollama_url: Option<String>,
+    #[serde(default)]
+    dictionary_dirs: Vec<String>,
 }
 
 /// Application state shared across commands.
@@ -115,6 +126,8 @@ pub struct AppState {
     ollama_url: Option<String>,
     /// Cached AI-generated summaries
     ai_summaries: AiSummaries,
+    /// Configured offline dictionary directories
+    dictionary_dirs: Vec<String>,
 }
 
 impl AppState {
@@ -136,6 +149,7 @@ impl AppState {
             ai_api_key: None,
             ollama_url: None,
             ai_summaries: AiSummaries::default(),
+            dictionary_dirs: Vec::new(),
         };
         state.load_config();
         state.load_path_history();
@@ -182,9 +196,11 @@ impl AppState {
                     self.github_token = config.github_token;
                     self.ai_api_key = config.ai_api_key;
                     self.ollama_url = config.ollama_url;
+                    self.dictionary_dirs = dedup_dirs(config.dictionary_dirs);
                     tracing::info!(
                         count = self.recent_files.len(),
                         ai_provider = ?self.ai_provider,
+                        dict_dirs = self.dictionary_dirs.len(),
                         "Loaded config"
                     );
                 }
@@ -223,6 +239,7 @@ impl AppState {
             github_token: self.github_token.clone(),
             ai_api_key: self.ai_api_key.clone(),
             ollama_url: self.ollama_url.clone(),
+            dictionary_dirs: self.dictionary_dirs.clone(),
         };
 
         match serde_json::to_string_pretty(&config) {
@@ -516,6 +533,17 @@ impl AppState {
         self.ollama_url.as_deref()
     }
 
+    /// Get the configured offline dictionary directories.
+    pub fn dictionary_dirs(&self) -> &[String] {
+        &self.dictionary_dirs
+    }
+
+    /// Set the offline dictionary directories and persist.
+    pub fn set_dictionary_dirs(&mut self, dirs: Vec<String>) {
+        self.dictionary_dirs = dedup_dirs(dirs);
+        self.save_config();
+    }
+
     /// Set the AI provider and model only (legacy, merge semantics).
     ///
     /// Preserves `github_token`, `ai_api_key`, `ollama_url`. Normalizes inputs.
@@ -664,6 +692,225 @@ impl AppState {
     }
 }
 
+// ========================================
+// Offline dictionary state (separate Arc<RwLock>)
+// ========================================
+
+/// A single hit from an offline dictionary (format-agnostic).
+pub struct OfflineLookupHit {
+    /// Ready-to-render HTML content.
+    pub html: String,
+}
+
+/// Unified wrapper for both StarDict and MDict dictionaries.
+pub enum OfflineDict {
+    StarDict(StarDictionary),
+    MDict(MdictDictionary),
+}
+
+impl OfflineDict {
+    /// Dictionary display name.
+    pub fn name(&self) -> &str {
+        match self {
+            Self::StarDict(d) => d.name(),
+            Self::MDict(d) => &d.name,
+        }
+    }
+
+    /// Number of words in this dictionary.
+    pub fn word_count(&self) -> usize {
+        match self {
+            Self::StarDict(d) => d.word_count(),
+            Self::MDict(d) => d.word_count,
+        }
+    }
+
+    /// Look up a word, returning HTML content if found.
+    pub fn lookup(&self, word: &str) -> Option<OfflineLookupHit> {
+        match self {
+            Self::StarDict(d) => {
+                let segments = d.lookup(word)?;
+                let html = stardict::segments_to_html(&segments);
+                Some(OfflineLookupHit { html })
+            }
+            Self::MDict(d) => {
+                let definition = d.lookup(word)?;
+                Some(OfflineLookupHit {
+                    html: definition.to_string(),
+                })
+            }
+        }
+    }
+}
+
+/// Result of scanning directories and loading dictionaries.
+pub struct DictLoadResult {
+    /// Successfully loaded dictionaries.
+    pub dicts: Vec<OfflineDict>,
+    /// Total number of candidate files found (`.ifo` + `.mdx`), whether they
+    /// loaded successfully or not. Zero means the directories contained no
+    /// dictionary files at all (legitimately empty).
+    pub candidates_found: usize,
+}
+
+/// Cooldown after a total-failure load before retrying (seconds).
+///
+/// Prevents repeated heavy I/O when a directory contains only corrupt files.
+/// Resets when dirs change via `update_dirs()`.
+const LOAD_FAILURE_COOLDOWN_SECS: u64 = 60;
+
+/// Managed state for offline dictionaries, stored in a separate `Arc<RwLock>`.
+///
+/// Never hold both `AppState` and `OfflineDictState` locks simultaneously.
+pub struct OfflineDictState {
+    /// Configured directories (mirrors AppState.dictionary_dirs).
+    dirs: Vec<String>,
+    /// Loaded dictionaries (both StarDict and MDict).
+    dicts: Vec<OfflineDict>,
+    /// Whether dicts have been loaded for the current `dirs` value.
+    loaded: bool,
+    /// Monotonic version counter, incremented on every `update_dirs()`.
+    dirs_version: u64,
+    /// Timestamp of the last total-failure load attempt for the current version.
+    /// Used to suppress repeated retries within `LOAD_FAILURE_COOLDOWN_SECS`.
+    failed_at: Option<(Instant, u64)>,
+}
+
+impl OfflineDictState {
+    /// Create a new state with the given directory list.
+    pub fn new(dirs: Vec<String>) -> Self {
+        Self {
+            dirs: dedup_dirs(dirs),
+            dicts: Vec::new(),
+            loaded: false,
+            dirs_version: 0,
+            failed_at: None,
+        }
+    }
+
+    /// Whether dictionaries are loaded and the dirs match.
+    pub fn is_loaded(&self) -> bool {
+        self.loaded
+    }
+
+    /// Get the current dirs snapshot and version.
+    pub fn dirs_snapshot(&self) -> (Vec<String>, u64) {
+        (self.dirs.clone(), self.dirs_version)
+    }
+
+    /// Get the loaded dictionaries.
+    pub fn dicts(&self) -> &[OfflineDict] {
+        &self.dicts
+    }
+
+    /// Update directories: increment version, mark as not loaded, clear failure cooldown.
+    pub fn update_dirs(&mut self, dirs: Vec<String>) {
+        self.dirs = dedup_dirs(dirs);
+        self.dirs_version += 1;
+        self.loaded = false;
+        self.failed_at = None;
+        self.dicts.clear();
+    }
+
+    /// Commit loaded dictionaries if the version still matches.
+    ///
+    /// Returns `true` if the commit succeeded (version matched).
+    pub fn commit_load(&mut self, dicts: Vec<OfflineDict>, for_version: u64) -> bool {
+        if self.dirs_version == for_version {
+            self.dicts = dicts;
+            self.loaded = true;
+            true
+        } else {
+            // Dirs changed during load — discard stale results
+            false
+        }
+    }
+
+    /// Record a total-failure load attempt for the given version.
+    pub fn record_load_failure(&mut self, for_version: u64) {
+        self.failed_at = Some((Instant::now(), for_version));
+    }
+
+    /// Whether a recent load failure is within the cooldown window for the
+    /// given version. Returns `true` if retrying should be suppressed.
+    pub fn is_in_failure_cooldown(&self, for_version: u64) -> bool {
+        match self.failed_at {
+            Some((at, version)) if version == for_version => {
+                at.elapsed().as_secs() < LOAD_FAILURE_COOLDOWN_SECS
+            }
+            _ => false,
+        }
+    }
+
+    /// Load dictionaries from the configured directories.
+    ///
+    /// Scans each dir for `.ifo` (StarDict) and `.mdx` (MDict) files.
+    /// Individual load failures are logged and skipped.
+    pub fn load_dicts_from_dirs(dirs: &[String]) -> DictLoadResult {
+        let mut dicts = Vec::new();
+        let mut candidates_found: usize = 0;
+
+        for dir_str in dirs {
+            let dir = Path::new(dir_str);
+            if !dir.is_dir() {
+                tracing::warn!(dir = %dir_str, "Dictionary directory does not exist or is not a directory");
+                continue;
+            }
+
+            // StarDict (.ifo files)
+            for ifo_path in stardict::scan_dir(dir) {
+                candidates_found += 1;
+                match StarDictionary::load(&ifo_path) {
+                    Ok(dict) => {
+                        tracing::info!(
+                            name = dict.name(),
+                            words = dict.word_count(),
+                            path = %ifo_path.display(),
+                            "Loaded StarDict dictionary"
+                        );
+                        dicts.push(OfflineDict::StarDict(dict));
+                    }
+                    Err(error) => {
+                        tracing::warn!(
+                            path = %ifo_path.display(),
+                            %error,
+                            "Failed to load StarDict dictionary"
+                        );
+                    }
+                }
+            }
+
+            // MDict (.mdx files)
+            for mdx_path in crate::mdict_wrapper::scan_dir(dir) {
+                candidates_found += 1;
+                match MdictDictionary::load(&mdx_path) {
+                    Ok(dict) => {
+                        tracing::info!(
+                            name = %dict.name,
+                            words = dict.word_count,
+                            path = %mdx_path.display(),
+                            "Loaded MDict dictionary"
+                        );
+                        dicts.push(OfflineDict::MDict(dict));
+                    }
+                    Err(error) => {
+                        tracing::warn!(
+                            path = %mdx_path.display(),
+                            %error,
+                            "Failed to load MDict dictionary"
+                        );
+                    }
+                }
+            }
+        }
+
+        DictLoadResult {
+            dicts,
+            candidates_found,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -794,5 +1041,6 @@ mod tests {
         assert!(config.github_token.is_none());
         assert!(config.ai_api_key.is_none());
         assert!(config.ollama_url.is_none());
+        assert!(config.dictionary_dirs.is_empty());
     }
 }

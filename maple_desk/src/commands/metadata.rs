@@ -1,7 +1,7 @@
 //! File metadata, preview info, title extraction, and supported extensions commands.
 
 use super::file::{get_git_branch, get_git_branch_url, get_git_last_author};
-use crate::state::AppState;
+use crate::state::{AppState, OfflineDictState};
 use markdown_preview_core::{calculate_document_stats, DocumentStats, DocumentType};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -506,6 +506,9 @@ pub struct AppConfig {
     pub ai_api_key: Option<String>,
     /// Ollama URL override.
     pub ollama_url: Option<String>,
+    /// Offline dictionary directories. `None` means unchanged, `Some(vec![])` clears all.
+    #[serde(default)]
+    pub dictionary_dirs: Option<Vec<String>>,
 }
 
 /// Get the full application configuration for the Settings dialog.
@@ -518,6 +521,7 @@ pub async fn get_app_config(state: State<'_, Arc<RwLock<AppState>>>) -> Result<A
         ai_model: state_guard.ai_model().map(String::from),
         ai_api_key: state_guard.ai_api_key().map(String::from),
         ollama_url: state_guard.ollama_url().map(String::from),
+        dictionary_dirs: Some(state_guard.dictionary_dirs().to_vec()),
     })
 }
 
@@ -525,10 +529,13 @@ pub async fn get_app_config(state: State<'_, Arc<RwLock<AppState>>>) -> Result<A
 ///
 /// Normalizes all inputs, clears AI summary cache if AI config changed,
 /// and triggers background re-summarization.
+///
+/// Lock ordering: never hold both `AppState` and `OfflineDictState` simultaneously.
 #[tauri::command]
 pub async fn set_app_config(
     config: AppConfig,
     state: State<'_, Arc<RwLock<AppState>>>,
+    dict_state: State<'_, Arc<RwLock<OfflineDictState>>>,
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     let ai_changed = {
@@ -541,6 +548,25 @@ pub async fn set_app_config(
             config.github_token,
         )
     };
+
+    // Handle dictionary_dirs if provided.
+    // Invalidate OfflineDictState FIRST so concurrent ensure_dicts_loaded() calls
+    // immediately see loaded=false. Then persist to AppState (disk). This eliminates
+    // the window where a lookup could observe is_loaded()=true against stale dirs
+    // while AppState already has new ones.
+    if let Some(dirs) = config.dictionary_dirs {
+        // Step 1: invalidate OfflineDictState (bumps version, sets loaded=false)
+        {
+            let mut dict_guard = dict_state.write().await;
+            dict_guard.update_dirs(dirs.clone());
+        }
+
+        // Step 2: persist to AppState (then drop lock)
+        {
+            let mut state_guard = state.write().await;
+            state_guard.set_dictionary_dirs(dirs);
+        }
+    }
 
     if ai_changed {
         let state_arc = state.inner().clone();

@@ -654,6 +654,21 @@
                                 <p class="settings-hint">Falls back to OLLAMA_URL env var. Default: http://localhost:11434</p>
                             </div>
                         </div>
+                        <div class="settings-section">
+                            <h4>Offline Dictionaries</h4>
+                            <div class="settings-field">
+                                <label>Dictionary Directories</label>
+                                <div id="settings-dict-dirs"></div>
+                                <button id="settings-add-dict-dir" class="btn-small" type="button">+ Add Directory</button>
+                                <p class="settings-hint">
+                                    Add folders containing StarDict (.ifo/.idx/.dict) or MDict (.mdx) files.
+                                </p>
+                            </div>
+                            <div id="settings-loaded-dicts-field" class="settings-field" style="display:none;">
+                                <label>Loaded Dictionaries</label>
+                                <div id="settings-dict-list"></div>
+                            </div>
+                        </div>
                     </div>
                     <div class="settings-footer">
                         <button id="settings-cancel" class="btn-cancel">Cancel</button>
@@ -816,6 +831,37 @@
 
         providerSelect.addEventListener('change', updateFieldVisibility);
 
+        // Dictionary directory management
+        let dictDirs = [];
+        const dictDirsContainer = document.getElementById('settings-dict-dirs');
+
+        function renderDictDirs() {
+            dictDirsContainer.innerHTML = dictDirs.map((dir, i) =>
+                `<div class="dict-dir-row">
+                    <span class="dict-dir-path">${escapeHtml(dir)}</span>
+                    <button class="dict-dir-remove" data-idx="${i}" type="button">&times;</button>
+                </div>`
+            ).join('');
+            dictDirsContainer.querySelectorAll('.dict-dir-remove').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    dictDirs.splice(parseInt(btn.dataset.idx), 1);
+                    renderDictDirs();
+                });
+            });
+        }
+
+        document.getElementById('settings-add-dict-dir').addEventListener('click', async () => {
+            try {
+                const selected = await window.__TAURI__.dialog.open({ directory: true, multiple: false });
+                if (selected && !dictDirs.includes(selected)) {
+                    dictDirs.push(selected);
+                    renderDictDirs();
+                }
+            } catch (e) {
+                console.error('Failed to open directory picker:', e);
+            }
+        });
+
         // Populate fields from backend
         try {
             const config = await invoke('get_app_config');
@@ -824,7 +870,26 @@
             document.getElementById('settings-ai-model').value = config.ai_model || '';
             document.getElementById('settings-ai-api-key').value = config.ai_api_key || '';
             document.getElementById('settings-ollama-url').value = config.ollama_url || '';
+            dictDirs = config.dictionary_dirs || [];
+            renderDictDirs();
             updateFieldVisibility();
+
+            // Show loaded dictionaries if any dirs are configured
+            if (dictDirs.length > 0) {
+                try {
+                    const loaded = await invoke('get_loaded_dictionaries');
+                    if (loaded.length > 0) {
+                        const listEl = document.getElementById('settings-dict-list');
+                        const fieldEl = document.getElementById('settings-loaded-dicts-field');
+                        fieldEl.style.display = '';
+                        listEl.innerHTML = loaded.map(d =>
+                            `<div class="dict-loaded-item">${escapeHtml(d.name)} <span class="dict-word-count">(${d.word_count.toLocaleString()} words)</span></div>`
+                        ).join('');
+                    }
+                } catch (e) {
+                    console.warn('Failed to load dictionaries:', e);
+                }
+            }
         } catch (e) {
             console.error('Failed to load config:', e);
         }
@@ -841,10 +906,27 @@
                 ai_model: document.getElementById('settings-ai-model').value.trim() || null,
                 ai_api_key: document.getElementById('settings-ai-api-key').value.trim() || null,
                 ollama_url: document.getElementById('settings-ollama-url').value.trim() || null,
+                dictionary_dirs: dictDirs,
             };
 
             try {
                 await invoke('set_app_config', { config });
+
+                // Refresh loaded dictionaries display after save
+                try {
+                    const loaded = await invoke('get_loaded_dictionaries');
+                    if (loaded.length > 0) {
+                        const listEl = document.getElementById('settings-dict-list');
+                        const fieldEl = document.getElementById('settings-loaded-dicts-field');
+                        if (fieldEl && listEl) {
+                            fieldEl.style.display = '';
+                            listEl.innerHTML = loaded.map(d =>
+                                `<div class="dict-loaded-item">${escapeHtml(d.name)} <span class="dict-word-count">(${d.word_count.toLocaleString()} words)</span></div>`
+                            ).join('');
+                        }
+                    }
+                } catch (_e) { /* non-fatal */ }
+
                 closeSettingsDialog();
             } catch (e) {
                 console.error('Failed to save settings:', e);
@@ -2168,6 +2250,99 @@
 
     let dictHistory = JSON.parse(localStorage.getItem('dictHistory') || '[]');
     let dictLastResult = null;
+    let lookupCounter = 0;
+
+    // AI dictionary response cache (avoids duplicate API calls)
+    const AI_CACHE_KEY = 'aiDictCache';
+
+    function getAiCache() {
+        try {
+            return JSON.parse(localStorage.getItem(AI_CACHE_KEY) || '{}');
+        } catch (_e) {
+            return {};
+        }
+    }
+
+    function getAiCachedEntry(word) {
+        const cache = getAiCache();
+        return cache[word.toLowerCase()] || null;
+    }
+
+    function setAiCachedEntry(word, entry) {
+        const cache = getAiCache();
+        cache[word.toLowerCase()] = entry;
+        localStorage.setItem(AI_CACHE_KEY, JSON.stringify(cache));
+    }
+
+    function getAiCacheSize() {
+        return Object.keys(getAiCache()).length;
+    }
+
+    function clearAiCache() {
+        localStorage.removeItem(AI_CACHE_KEY);
+    }
+
+    // AI request usage tracking
+    function loadAiUsageStats() {
+        try {
+            return JSON.parse(localStorage.getItem('aiUsageStats') || '{}');
+        } catch (_e) {
+            return {};
+        }
+    }
+
+    function saveAiUsageStats(stats) {
+        localStorage.setItem('aiUsageStats', JSON.stringify(stats));
+    }
+
+    function recordAiRequest() {
+        const stats = loadAiUsageStats();
+        const now = new Date();
+        const dayKey = now.toISOString().slice(0, 10);    // "2026-02-16"
+        const monthKey = now.toISOString().slice(0, 7);    // "2026-02"
+
+        stats.total = (stats.total || 0) + 1;
+        if (!stats.monthly) stats.monthly = {};
+        stats.monthly[monthKey] = (stats.monthly[monthKey] || 0) + 1;
+        if (!stats.daily) stats.daily = {};
+        stats.daily[dayKey] = (stats.daily[dayKey] || 0) + 1;
+
+        saveAiUsageStats(stats);
+        renderAiUsageStats();
+    }
+
+    function renderAiUsageStats() {
+        const el = document.getElementById('dict-ai-stats');
+        if (!el) return;
+
+        const stats = loadAiUsageStats();
+        const total = stats.total || 0;
+        if (total === 0) {
+            el.innerHTML = '';
+            return;
+        }
+
+        const now = new Date();
+        const dayKey = now.toISOString().slice(0, 10);
+        const monthKey = now.toISOString().slice(0, 7);
+        const today = (stats.daily && stats.daily[dayKey]) || 0;
+        const month = (stats.monthly && stats.monthly[monthKey]) || 0;
+
+        el.innerHTML = `<span class="ai-stats-label">AI requests:</span> `
+            + `<span class="ai-stats-value">${today} today</span>`
+            + `<span class="ai-stats-sep">/</span>`
+            + `<span class="ai-stats-value">${month} this month</span>`
+            + `<span class="ai-stats-sep">/</span>`
+            + `<span class="ai-stats-value">${total} total</span>`
+            + `<button class="ai-stats-reset" title="Reset counter">reset</button>`;
+
+        el.querySelector('.ai-stats-reset').addEventListener('click', () => {
+            if (confirm('Reset AI usage stats?')) {
+                localStorage.removeItem('aiUsageStats');
+                renderAiUsageStats();
+            }
+        });
+    }
 
     function initDictionary() {
         const input = document.getElementById('dict-word-input');
@@ -2186,46 +2361,109 @@
         });
 
         renderDictHistory();
+        renderAiUsageStats();
     }
 
     async function performLookup(word) {
         if (!word) return;
 
+        const thisLookupId = ++lookupCounter;
         const resultsEl = document.getElementById('dict-results');
         if (!resultsEl) return;
 
+        const isStale = () => thisLookupId !== lookupCounter;
+
         // Show loading
-        resultsEl.innerHTML = `
-            <div class="dict-loading">
-                <span class="dict-loading-spinner"></span>
-                Looking up "${escapeHtml(word)}"...
-            </div>
-        `;
+        resultsEl.innerHTML = '<div class="dict-loading"><span class="dict-loading-spinner"></span> Looking up...</div>';
+        addToDictHistory(word);
 
         const btn = document.getElementById('dict-lookup-btn');
         if (btn) btn.disabled = true;
 
+        let hasOfflineResults = false;
+        let hasAiResults = false;
+
+        // 1. Offline lookup (fast, in-memory)
         try {
+            const offlineResults = await invoke('lookup_word_offline', { word });
+            if (isStale()) { if (btn) btn.disabled = false; return; }
+            if (offlineResults.length > 0) {
+                hasOfflineResults = true;
+                resultsEl.innerHTML = `<div class="dict-word-header"><h1 class="dict-word-title">${escapeHtml(word)}</h1>`
+                    + `<button class="dict-pronounce-btn" data-word="${escapeHtml(word)}" title="Pronounce">&#x1f50a;</button></div>`
+                    + renderOfflineResults(offlineResults);
+                wireUpPronounceButtons(resultsEl);
+            }
+        } catch (_err) {
+            if (isStale()) { if (btn) btn.disabled = false; return; }
+        }
+
+        // 2. AI lookup (slow, async) — only if configured
+        try {
+            if (hasOfflineResults) {
+                resultsEl.insertAdjacentHTML('beforeend',
+                    '<div class="dict-ai-loading">Loading AI definition...</div>');
+            }
+
             const entry = await invoke('lookup_word', { word });
+            if (isStale()) { if (btn) btn.disabled = false; return; }
+
+            hasAiResults = true;
             dictLastResult = entry;
-            renderDictEntry(entry);
-            addToDictHistory(word);
+            recordAiRequest();
+
+            const aiLoadingEl = resultsEl.querySelector('.dict-ai-loading');
+            if (aiLoadingEl) aiLoadingEl.remove();
+
+            if (hasOfflineResults) {
+                resultsEl.insertAdjacentHTML('beforeend', renderAiDictEntry(entry));
+            } else {
+                resultsEl.innerHTML = renderAiDictEntry(entry);
+            }
+            wireUpDictTags(resultsEl);
+            wireUpPronounceButtons(resultsEl);
         } catch (err) {
-            resultsEl.innerHTML = `<div class="dict-error">${escapeHtml(String(err))}</div>`;
+            if (isStale()) { if (btn) btn.disabled = false; return; }
+            const aiLoadingEl = resultsEl.querySelector('.dict-ai-loading');
+            if (aiLoadingEl) aiLoadingEl.remove();
+            if (!hasOfflineResults) {
+                const errStr = String(err);
+                if (errStr.includes('not configured')) {
+                    resultsEl.innerHTML = '<div class="dict-empty-state">'
+                        + '<p>No offline dictionaries matched.</p>'
+                        + '<p>AI provider not configured. Set one in Settings.</p></div>';
+                } else {
+                    resultsEl.innerHTML = `<div class="dict-error">${escapeHtml(errStr)}</div>`;
+                }
+            }
         } finally {
             if (btn) btn.disabled = false;
         }
+
+        if (isStale()) return;
+        if (!hasOfflineResults && !hasAiResults) {
+            resultsEl.innerHTML = '<div class="dict-empty-state">No results found</div>';
+        }
     }
 
-    function renderDictEntry(entry) {
-        const resultsEl = document.getElementById('dict-results');
-        if (!resultsEl) return;
+    function renderOfflineResults(results) {
+        return results.map(r => {
+            const sanitized = sanitizeHtml(r.html);
+            return `<div class="dict-offline-entry">
+                <div class="dict-source-badge offline">${escapeHtml(r.dict_name)}</div>
+                <div class="dict-offline-content">${sanitized}</div>
+            </div>`;
+        }).join('');
+    }
 
-        let html = '';
+    function renderAiDictEntry(entry) {
+        let html = '<div class="dict-ai-entry">';
+        html += '<div class="dict-source-badge ai">AI</div>';
 
-        // Word header with phonetic
+        // Word header with phonetic and pronounce button
         html += '<div class="dict-word-header">';
         html += `<h1 class="dict-word-title">${escapeHtml(entry.word)}</h1>`;
+        html += `<button class="dict-pronounce-btn" data-word="${escapeHtml(entry.word)}" title="Pronounce">&#x1f50a;</button>`;
         if (entry.phonetic) {
             html += `<span class="dict-phonetic">${escapeHtml(entry.phonetic)}</span>`;
         }
@@ -2273,10 +2511,28 @@
             html += '</div>';
         }
 
-        resultsEl.innerHTML = html;
+        html += '</div>';
+        return html;
+    }
 
-        // Wire up clickable tags
-        resultsEl.querySelectorAll('.dict-tag[data-word]').forEach(tag => {
+    function pronounceWord(word) {
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(word);
+        utterance.lang = 'en-US';
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function wireUpPronounceButtons(container) {
+        container.querySelectorAll('.dict-pronounce-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                pronounceWord(btn.dataset.word);
+            });
+        });
+    }
+
+    function wireUpDictTags(container) {
+        container.querySelectorAll('.dict-tag[data-word]').forEach(tag => {
             tag.addEventListener('click', () => {
                 const tagWord = tag.dataset.word;
                 const input = document.getElementById('dict-word-input');

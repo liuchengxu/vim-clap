@@ -1,6 +1,10 @@
 // Tooltips - Symbol identification, link previews, and file path tooltips
 // Provides hover tooltips for Greek letters, math symbols, links, and recent file paths
 
+function renderInlineCode(text) {
+    return escapeHtml(text).replace(/`([^`]+)`/g, '<code>$1</code>');
+}
+
 // Custom tooltip for recent files
 let pathTooltip = null;
 let tooltipTimeout = null;
@@ -57,7 +61,7 @@ function showPathTooltip(element, fullPath, previewInfo = {}) {
     let html = '';
     if (title) {
         // Render backtick-wrapped text as inline code
-        const rendered = escapeHtml(title).replace(/`([^`]+)`/g, '<code>$1</code>');
+        const rendered = renderInlineCode(title);
         html += `<div class="path-tooltip-title">${rendered}</div>`;
     }
 
@@ -76,15 +80,15 @@ function showPathTooltip(element, fullPath, previewInfo = {}) {
             // AI summary: single paragraph, show with AI badge
             html += `<div class="path-tooltip-digest path-tooltip-digest-ai">`;
             html += `<span class="path-tooltip-ai-badge">AI</span>`;
-            html += `<span class="path-tooltip-digest-text">${escapeHtml(digest.text)}</span>`;
+            html += `<span class="path-tooltip-digest-text">${renderInlineCode(digest.text)}</span>`;
             html += `</div>`;
         } else {
             // Text-based digest: multi-line with headings
             const digestLines = digest.text.split('\n').map(line => {
                 if (line.startsWith('# ')) {
-                    return `<div class="path-tooltip-digest-heading">${escapeHtml(line.slice(2))}</div>`;
+                    return `<div class="path-tooltip-digest-heading">${renderInlineCode(line.slice(2))}</div>`;
                 }
-                return `<div class="path-tooltip-digest-text">${escapeHtml(line)}</div>`;
+                return `<div class="path-tooltip-digest-text">${renderInlineCode(line)}</div>`;
             }).join('');
             html += `<div class="path-tooltip-digest">${digestLines}</div>`;
         }

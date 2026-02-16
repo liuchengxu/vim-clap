@@ -20,12 +20,14 @@
 
 mod ai;
 mod commands;
+mod mdict_wrapper;
 mod menu;
+mod stardict;
 mod state;
 
 use futures::stream::StreamExt;
 use markdown_preview_core::DocumentType;
-use state::AppState;
+use state::{AppState, OfflineDictState};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -100,8 +102,31 @@ fn main() {
                 }
             });
 
+            // Initialize offline dictionary state from persisted config
+            let dict_dirs = {
+                // No lock needed yet — state not yet shared
+                Vec::new() // Will be populated from config after manage()
+            };
+            let offline_dict_state = Arc::new(RwLock::new(OfflineDictState::new(dict_dirs)));
+
             app.manage(Arc::new(RwLock::new(state)));
+            app.manage(offline_dict_state.clone());
+            app.manage(Arc::new(tokio::sync::Mutex::<()>::new(()))); // dict load serializer
             app.manage(commands::terminal::TerminalState::default());
+
+            // Sync dict dirs from persisted config into OfflineDictState
+            {
+                let state_arc: Arc<RwLock<AppState>> =
+                    app.state::<Arc<RwLock<AppState>>>().inner().clone();
+                let dirs = {
+                    let guard = state_arc.blocking_read();
+                    guard.dictionary_dirs().to_vec()
+                };
+                if !dirs.is_empty() {
+                    let mut dict_guard = offline_dict_state.blocking_write();
+                    dict_guard.update_dirs(dirs);
+                }
+            }
 
             // Set up the menu
             let menu = menu::create_menu(app.handle())?;
@@ -171,6 +196,8 @@ fn main() {
             commands::terminal::resize_terminal,
             commands::terminal::kill_terminal,
             commands::dictionary::lookup_word,
+            commands::dictionary::lookup_word_offline,
+            commands::dictionary::get_loaded_dictionaries,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

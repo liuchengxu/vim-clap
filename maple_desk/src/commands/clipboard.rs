@@ -11,7 +11,7 @@ pub async fn check_clipboard_for_markdown(app: tauri::AppHandle) -> Result<Optio
 
     let clipboard_text = match app.clipboard().read_text() {
         Ok(text) => {
-            tracing::debug!(text = %text, "Read clipboard text");
+            tracing::debug!(len = text.len(), "Read clipboard text");
             text
         }
         Err(e) => {
@@ -28,10 +28,11 @@ pub async fn check_clipboard_for_markdown(app: tauri::AppHandle) -> Result<Optio
     }
 
     let path = std::path::Path::new(text);
-    tracing::debug!(path = %path.display(), is_absolute = path.is_absolute(), exists = path.exists(), "Checking path");
+    let is_absolute = path.is_absolute();
+    tracing::debug!(is_absolute, "Checking clipboard as path");
 
     // Check if it looks like a file path and is a supported document
-    if path.is_absolute() && path.exists() {
+    if is_absolute && path.exists() {
         if let Some(doc_type) = DocumentType::from_path(path) {
             tracing::debug!(doc_type = ?doc_type, "Found supported document type");
             tracing::info!(path = %text, "Found supported document in clipboard");

@@ -1,11 +1,11 @@
-# Markdown Preview App
+# Maple Desk
 
-Standalone Tauri application for markdown preview.
+Multi-tool personal workspace: markdown preview, AI dictionary, and more.
 
 ## Project Structure
 
 ```
-markdown_preview_app/
+maple_desk/
 ├── src/              # Rust backend code
 ├── frontend/         # GENERATED - do not edit directly!
 └── build.rs          # Generates frontend/ from markdown_preview_core/js/
