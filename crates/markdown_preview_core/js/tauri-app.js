@@ -2252,36 +2252,6 @@
     let dictLastResult = null;
     let lookupCounter = 0;
 
-    // AI dictionary response cache (avoids duplicate API calls)
-    const AI_CACHE_KEY = 'aiDictCache';
-
-    function getAiCache() {
-        try {
-            return JSON.parse(localStorage.getItem(AI_CACHE_KEY) || '{}');
-        } catch (_e) {
-            return {};
-        }
-    }
-
-    function getAiCachedEntry(word) {
-        const cache = getAiCache();
-        return cache[word.toLowerCase()] || null;
-    }
-
-    function setAiCachedEntry(word, entry) {
-        const cache = getAiCache();
-        cache[word.toLowerCase()] = entry;
-        localStorage.setItem(AI_CACHE_KEY, JSON.stringify(cache));
-    }
-
-    function getAiCacheSize() {
-        return Object.keys(getAiCache()).length;
-    }
-
-    function clearAiCache() {
-        localStorage.removeItem(AI_CACHE_KEY);
-    }
-
     // AI request usage tracking
     function loadAiUsageStats() {
         try {
@@ -2405,12 +2375,15 @@
                     '<div class="dict-ai-loading">Loading AI definition...</div>');
             }
 
-            const entry = await invoke('lookup_word', { word });
+            const response = await invoke('lookup_word', { word });
             if (isStale()) { if (btn) btn.disabled = false; return; }
 
+            const entry = response;
             hasAiResults = true;
             dictLastResult = entry;
-            recordAiRequest();
+            if (!response.cached) {
+                recordAiRequest();
+            }
 
             const aiLoadingEl = resultsEl.querySelector('.dict-ai-loading');
             if (aiLoadingEl) aiLoadingEl.remove();

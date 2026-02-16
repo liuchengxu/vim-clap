@@ -1,5 +1,6 @@
 //! Application state management with persistence.
 
+use crate::ai::DictionaryEntry;
 use crate::mdict_wrapper::MdictDictionary;
 use crate::stardict::{self, StarDictionary};
 use markdown_preview_core::frecency::FrecentItems;
@@ -27,6 +28,9 @@ const SNAPSHOTS_FILE: &str = "file_snapshots.json";
 
 /// AI summaries cache file name
 const AI_SUMMARIES_FILE: &str = "ai_summaries.json";
+
+/// AI dictionary cache file name
+const DICT_CACHE_FILE: &str = "dict_cache.json";
 
 /// Maximum number of file snapshots to keep (aligned with recent files)
 const MAX_SNAPSHOTS: usize = MAX_RECENT_FILES;
@@ -61,6 +65,12 @@ pub struct AiSummaryEntry {
 struct AiSummaries {
     /// Map from file path to cached summary.
     summaries: HashMap<String, AiSummaryEntry>,
+}
+
+/// Persisted AI dictionary lookup cache.
+#[derive(Debug, Default, Serialize, Deserialize)]
+struct DictCache {
+    entries: HashMap<String, DictionaryEntry>,
 }
 
 /// Normalize a config value: trim whitespace, convert empty to None.
@@ -126,6 +136,8 @@ pub struct AppState {
     ollama_url: Option<String>,
     /// Cached AI-generated summaries
     ai_summaries: AiSummaries,
+    /// Cached AI dictionary lookups
+    dict_cache: DictCache,
     /// Configured offline dictionary directories
     dictionary_dirs: Vec<String>,
 }
@@ -149,12 +161,14 @@ impl AppState {
             ai_api_key: None,
             ollama_url: None,
             ai_summaries: AiSummaries::default(),
+            dict_cache: DictCache::default(),
             dictionary_dirs: Vec::new(),
         };
         state.load_config();
         state.load_path_history();
         state.load_snapshots();
         state.load_ai_summaries();
+        state.load_dict_cache();
         state
     }
 
@@ -555,6 +569,7 @@ impl AppState {
         let changed = self.ai_provider != provider || self.ai_model != model;
         if changed {
             self.clear_ai_summaries();
+            self.clear_dict_cache();
         }
         self.ai_provider = provider;
         self.ai_model = model;
@@ -587,6 +602,7 @@ impl AppState {
 
         if ai_changed {
             self.clear_ai_summaries();
+            self.clear_dict_cache();
         }
 
         self.ai_provider = ai_provider;
@@ -689,6 +705,84 @@ impl AppState {
             },
         );
         self.save_ai_summaries();
+    }
+
+    /// Get the dictionary cache file path.
+    fn dict_cache_path(&self) -> Option<PathBuf> {
+        self.config_dir
+            .as_ref()
+            .map(|dir| dir.join(DICT_CACHE_FILE))
+    }
+
+    /// Load dictionary cache from disk.
+    fn load_dict_cache(&mut self) {
+        let Some(path) = self.dict_cache_path() else {
+            return;
+        };
+
+        if !path.exists() {
+            return;
+        }
+
+        match std::fs::read_to_string(&path) {
+            Ok(content) => match serde_json::from_str::<DictCache>(&content) {
+                Ok(cache) => {
+                    tracing::info!(
+                        count = cache.entries.len(),
+                        "Loaded dictionary cache"
+                    );
+                    self.dict_cache = cache;
+                }
+                Err(error) => {
+                    tracing::warn!(%error, "Failed to parse dictionary cache file");
+                }
+            },
+            Err(error) => {
+                tracing::warn!(%error, "Failed to read dictionary cache file");
+            }
+        }
+    }
+
+    /// Save dictionary cache to disk.
+    fn save_dict_cache(&self) {
+        let Some(path) = self.dict_cache_path() else {
+            return;
+        };
+
+        if let Some(parent) = path.parent() {
+            if let Err(error) = std::fs::create_dir_all(parent) {
+                tracing::warn!(%error, "Failed to create config directory");
+                return;
+            }
+        }
+
+        match serde_json::to_string_pretty(&self.dict_cache) {
+            Ok(content) => {
+                if let Err(error) = std::fs::write(&path, content) {
+                    tracing::warn!(%error, "Failed to write dictionary cache file");
+                }
+            }
+            Err(error) => {
+                tracing::warn!(%error, "Failed to serialize dictionary cache");
+            }
+        }
+    }
+
+    /// Get a cached dictionary entry for a word (case-insensitive).
+    pub fn get_cached_dict_entry(&self, word: &str) -> Option<&DictionaryEntry> {
+        self.dict_cache.entries.get(&word.to_lowercase())
+    }
+
+    /// Store a dictionary entry in the cache and persist to disk.
+    pub fn set_cached_dict_entry(&mut self, word: String, entry: DictionaryEntry) {
+        self.dict_cache.entries.insert(word.to_lowercase(), entry);
+        self.save_dict_cache();
+    }
+
+    /// Clear all cached dictionary entries and persist.
+    pub fn clear_dict_cache(&mut self) {
+        self.dict_cache.entries.clear();
+        self.save_dict_cache();
     }
 }
 

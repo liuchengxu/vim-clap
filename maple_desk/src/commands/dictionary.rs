@@ -27,24 +27,47 @@ pub struct DictionaryInfo {
     pub word_count: usize,
 }
 
+/// Response from an AI dictionary lookup, indicating whether it was served from cache.
+#[derive(Serialize)]
+pub struct DictionaryLookupResponse {
+    /// The dictionary entry.
+    #[serde(flatten)]
+    pub entry: DictionaryEntry,
+    /// Whether this result came from the cache (no AI request made).
+    pub cached: bool,
+}
+
 /// Look up a word in the AI-powered dictionary.
 #[tauri::command]
 pub async fn lookup_word(
     word: String,
     state: State<'_, Arc<RwLock<AppState>>>,
-) -> Result<DictionaryEntry, String> {
+) -> Result<DictionaryLookupResponse, String> {
     let word = word.trim().to_string();
     if word.is_empty() {
         return Err("No word provided".to_string());
     }
 
+    // Check cache first (read lock)
+    {
+        let state_guard = state.read().await;
+        if let Some(cached) = state_guard.get_cached_dict_entry(&word) {
+            tracing::debug!(word = %word, "Dictionary cache hit");
+            return Ok(DictionaryLookupResponse {
+                entry: cached.clone(),
+                cached: true,
+            });
+        }
+    }
+
+    // Cache miss — build config and call AI
     let config = {
-        let state = state.read().await;
+        let state_guard = state.read().await;
         AiConfig::from_state(
-            state.ai_provider(),
-            state.ai_model(),
-            state.ai_api_key(),
-            state.ollama_url(),
+            state_guard.ai_provider(),
+            state_guard.ai_model(),
+            state_guard.ai_api_key(),
+            state_guard.ollama_url(),
         )
     };
 
@@ -52,9 +75,19 @@ pub async fn lookup_word(
         return Err("AI provider not configured. Set one in Settings (gear icon).".to_string());
     }
 
-    tracing::debug!(word = %word, "Looking up word in dictionary");
+    tracing::debug!(word = %word, "Dictionary cache miss — calling AI");
+    let entry = ai::lookup_word(&config, &word).await?;
 
-    ai::lookup_word(&config, &word).await
+    // Store in cache (write lock)
+    {
+        let mut state_guard = state.write().await;
+        state_guard.set_cached_dict_entry(word, entry.clone());
+    }
+
+    Ok(DictionaryLookupResponse {
+        entry,
+        cached: false,
+    })
 }
 
 /// Look up a word in all loaded offline dictionaries.
