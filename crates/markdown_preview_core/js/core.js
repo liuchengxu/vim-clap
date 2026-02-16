@@ -1512,31 +1512,24 @@ function switchTool(toolName) {
         tab.classList.toggle('active', tab.dataset.tool === toolName);
     });
 
-    // Toggle sidebar sections
-    const previewSidebar = document.getElementById('tool-preview-sidebar');
-    const dictSidebar = document.getElementById('tool-dictionary-sidebar');
-    if (previewSidebar) previewSidebar.style.display = toolName === 'preview' ? '' : 'none';
-    if (dictSidebar) dictSidebar.style.display = toolName === 'dictionary' ? '' : 'none';
-
-    // Toggle main content areas
-    const previewMain = document.getElementById('tool-preview-main');
-    const dictMain = document.getElementById('tool-dictionary-main');
-    if (previewMain) previewMain.style.display = toolName === 'preview' ? '' : 'none';
-    if (dictMain) dictMain.style.display = toolName === 'dictionary' ? '' : 'none';
+    // Toggle sidebar and main sections by convention: #tool-{name}-sidebar, #tool-{name}-main
+    document.querySelectorAll('[id^="tool-"][id$="-sidebar"]').forEach(el => {
+        const tool = el.id.replace('tool-', '').replace('-sidebar', '');
+        el.style.display = tool === toolName ? '' : 'none';
+    });
+    document.querySelectorAll('[id^="tool-"][id$="-main"]').forEach(el => {
+        const tool = el.id.replace('tool-', '').replace('-main', '');
+        el.style.display = tool === toolName ? '' : 'none';
+    });
 
     // Toggle preview-specific UI elements
     const tocPanel = document.getElementById('toc-panel');
-    const filePathBar = document.getElementById('file-path-bar');
-    const metadataBar = document.getElementById('file-metadata-bar');
-
     if (toolName === 'preview') {
-        // Restore TOC visibility from saved state
         const savedTOC = localStorage.getItem('tocMode');
         if (savedTOC && savedTOC !== 'off' && tocPanel) {
             tocPanel.style.display = '';
         }
     } else {
-        // Hide preview-specific elements
         if (tocPanel) tocPanel.style.display = 'none';
     }
 }

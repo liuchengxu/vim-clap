@@ -198,6 +198,7 @@ fn main() {
             commands::dictionary::lookup_word,
             commands::dictionary::lookup_word_offline,
             commands::dictionary::get_loaded_dictionaries,
+            commands::dictionary::ask_ai,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

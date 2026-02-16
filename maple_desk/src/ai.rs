@@ -458,6 +458,22 @@ pub async fn lookup_word(config: &AiConfig, word: &str) -> Result<DictionaryEntr
         .map_err(|e| format!("Failed to parse dictionary response: {e}"))
 }
 
+// ============================================================================
+// Ask AI (free-form Q&A)
+// ============================================================================
+
+/// The system prompt for the Ask AI tool.
+const ASK_AI_SYSTEM_PROMPT: &str =
+    "You are a helpful language assistant. You specialize in English language usage, \
+     grammar, expressions, idioms, and phrasing, but you can answer general questions too. \
+     Give clear, concise answers. Use examples when helpful. \
+     You may use markdown formatting for structure.";
+
+/// Send a free-form question to the AI and return the answer as text.
+pub async fn ask_ai(config: &AiConfig, question: &str) -> Result<String, String> {
+    ai_request(config, ASK_AI_SYSTEM_PROMPT, question, 1024).await
+}
+
 /// Strip optional markdown code fences (```json ... ```) from AI output.
 fn strip_code_fences(text: &str) -> &str {
     let trimmed = text.trim();

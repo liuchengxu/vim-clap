@@ -90,6 +90,34 @@ pub async fn lookup_word(
     })
 }
 
+/// Ask a free-form question to the AI.
+#[tauri::command]
+pub async fn ask_ai(
+    question: String,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<String, String> {
+    let question = question.trim().to_string();
+    if question.is_empty() {
+        return Err("No question provided".to_string());
+    }
+
+    let config = {
+        let state_guard = state.read().await;
+        AiConfig::from_state(
+            state_guard.ai_provider(),
+            state_guard.ai_model(),
+            state_guard.ai_api_key(),
+            state_guard.ollama_url(),
+        )
+    };
+
+    if !config.is_enabled() {
+        return Err("AI provider not configured. Set one in Settings (gear icon).".to_string());
+    }
+
+    ai::ask_ai(&config, &question).await
+}
+
 /// Look up a word in all loaded offline dictionaries.
 #[tauri::command]
 pub async fn lookup_word_offline(

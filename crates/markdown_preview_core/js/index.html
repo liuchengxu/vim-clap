@@ -68,6 +68,12 @@
                 </svg>
                 <span>Dict</span>
             </button>
+            <button class="tool-tab" data-tool="ask-ai" title="Ask AI (Ctrl+K)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span>AI</span>
+            </button>
         </div>
         <div id="tool-preview-sidebar">
         <div class="sidebar-section" id="recent-files-section">
@@ -121,6 +127,12 @@
             <div class="sidebar-section">
                 <h3>Lookup History</h3>
                 <div id="dict-history" class="recent-files"></div>
+            </div>
+        </div>
+        <div id="tool-ask-ai-sidebar" style="display:none">
+            <div class="sidebar-section">
+                <h3>Recent Questions</h3>
+                <div id="ask-ai-history" class="recent-files"></div>
             </div>
         </div>
     </div>
@@ -225,6 +237,26 @@
                 </div>
             </div>
         </div><!-- /tool-dictionary-main -->
+        <div id="tool-ask-ai-main" style="display:none">
+            <div class="ask-ai-container">
+                <div class="ask-ai-input-bar">
+                    <textarea id="ask-ai-input" class="ask-ai-input"
+                        placeholder="Ask anything — language questions, expressions, grammar..."
+                        rows="3" autocomplete="off" spellcheck="true"></textarea>
+                    <button id="ask-ai-btn" class="ask-ai-btn">Ask</button>
+                </div>
+                <div id="ask-ai-stats" class="dict-ai-stats"></div>
+                <div id="ask-ai-results" class="ask-ai-results">
+                    <div class="ask-ai-empty-state">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity: 0.3; margin-bottom: 12px;">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        <p>Ask a question and press Enter or click Ask</p>
+                        <p style="font-size: 12px; margin-top: 4px;">Great for language, expressions, grammar, or any general question</p>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /tool-ask-ai-main -->
     </div>
 
     <!-- PDF.js library (ES module that sets globalThis.pdfjsLib) -->
