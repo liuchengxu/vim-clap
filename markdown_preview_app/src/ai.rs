@@ -1,7 +1,8 @@
-//! AI-powered document summarization with configurable providers.
+//! AI-powered features with configurable providers.
 //!
-//! Supports Ollama (local), Anthropic, and OpenAI as summary providers.
-//! Falls back gracefully when no provider is configured or a request fails.
+//! Supports Ollama (local), Anthropic, and OpenAI as AI providers.
+//! Provides generic request helpers used by summarization, dictionary lookup,
+//! and future tools.
 
 use serde::{Deserialize, Serialize};
 
@@ -30,7 +31,7 @@ impl AiProvider {
         }
     }
 
-    /// Maximum concurrent summarization requests for this provider.
+    /// Maximum concurrent requests for this provider.
     pub fn max_concurrency(&self) -> usize {
         match self {
             // Ollama runs locally — limit to 1 to avoid resource contention
@@ -52,7 +53,7 @@ impl AiProvider {
     }
 }
 
-/// AI configuration for summary generation.
+/// AI configuration for provider access.
 pub struct AiConfig {
     /// Which provider to use.
     pub provider: AiProvider,
@@ -90,12 +91,12 @@ impl AiConfig {
             .unwrap_or_else(|| self.provider.default_model())
     }
 
-    /// Whether AI summarization is enabled.
+    /// Whether AI is enabled.
     pub fn is_enabled(&self) -> bool {
         self.provider != AiProvider::None
     }
 
-    /// Resolve API key: config value → env var → error.
+    /// Resolve API key: config value -> env var -> error.
     fn effective_api_key(&self, env_var: &str) -> Result<String, String> {
         self.api_key
             .as_deref()
@@ -111,7 +112,7 @@ impl AiConfig {
             .ok_or_else(|| format!("{env_var} not configured (set in Settings or environment)"))
     }
 
-    /// Resolve Ollama URL: config value → env var → default.
+    /// Resolve Ollama URL: config value -> env var -> default.
     fn effective_ollama_url(&self) -> String {
         self.ollama_url
             .as_deref()
@@ -128,6 +129,180 @@ impl AiConfig {
     }
 }
 
+// ============================================================================
+// Generic per-provider request helpers
+// ============================================================================
+
+/// Send a request to a local Ollama instance.
+async fn ollama_request(
+    model: &str,
+    system_prompt: &str,
+    user_content: &str,
+    base_url: &str,
+    timeout_secs: u64,
+) -> Result<String, String> {
+    let url = format!("{base_url}/api/generate");
+
+    let payload = serde_json::json!({
+        "model": model,
+        "system": system_prompt,
+        "prompt": user_content,
+        "stream": false
+    });
+
+    let response = reqwest::Client::new()
+        .post(&url)
+        .json(&payload)
+        .timeout(std::time::Duration::from_secs(timeout_secs))
+        .send()
+        .await
+        .map_err(|e| format!("Ollama request failed: {e}"))?;
+
+    if !response.status().is_success() {
+        return Err(format!("Ollama returned status {}", response.status()));
+    }
+
+    let body: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse Ollama response: {e}"))?;
+
+    body["response"]
+        .as_str()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| "Empty response from Ollama".to_string())
+}
+
+/// Send a request to the Anthropic API.
+async fn anthropic_request(
+    model: &str,
+    system_prompt: &str,
+    user_content: &str,
+    api_key: &str,
+    max_tokens: u32,
+    timeout_secs: u64,
+) -> Result<String, String> {
+    let payload = serde_json::json!({
+        "model": model,
+        "max_tokens": max_tokens,
+        "system": system_prompt,
+        "messages": [
+            {"role": "user", "content": user_content}
+        ]
+    });
+
+    let response = reqwest::Client::new()
+        .post("https://api.anthropic.com/v1/messages")
+        .header("x-api-key", api_key)
+        .header("anthropic-version", "2023-06-01")
+        .header("content-type", "application/json")
+        .json(&payload)
+        .timeout(std::time::Duration::from_secs(timeout_secs))
+        .send()
+        .await
+        .map_err(|e| format!("Anthropic request failed: {e}"))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(format!("Anthropic returned status {status}: {body}"));
+    }
+
+    let body: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse Anthropic response: {e}"))?;
+
+    body["content"][0]["text"]
+        .as_str()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| "Empty response from Anthropic".to_string())
+}
+
+/// Send a request to the OpenAI API.
+async fn openai_request(
+    model: &str,
+    system_prompt: &str,
+    user_content: &str,
+    api_key: &str,
+    max_tokens: u32,
+    timeout_secs: u64,
+) -> Result<String, String> {
+    let payload = serde_json::json!({
+        "model": model,
+        "max_tokens": max_tokens,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content}
+        ]
+    });
+
+    let response = reqwest::Client::new()
+        .post("https://api.openai.com/v1/chat/completions")
+        .header("Authorization", format!("Bearer {api_key}"))
+        .header("Content-Type", "application/json")
+        .json(&payload)
+        .timeout(std::time::Duration::from_secs(timeout_secs))
+        .send()
+        .await
+        .map_err(|e| format!("OpenAI request failed: {e}"))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(format!("OpenAI returned status {status}: {body}"));
+    }
+
+    let body: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse OpenAI response: {e}"))?;
+
+    body["choices"][0]["message"]["content"]
+        .as_str()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| "Empty response from OpenAI".to_string())
+}
+
+/// Send an AI request using the configured provider.
+///
+/// This is the primary entry point for any tool that needs AI text generation.
+/// Dispatches to the correct provider based on config, handling API key resolution.
+pub async fn ai_request(
+    config: &AiConfig,
+    system_prompt: &str,
+    user_content: &str,
+    max_tokens: u32,
+) -> Result<String, String> {
+    if !config.is_enabled() {
+        return Err("AI provider not configured".to_string());
+    }
+
+    match config.provider {
+        AiProvider::Ollama => {
+            let url = config.effective_ollama_url();
+            ollama_request(config.model(), system_prompt, user_content, &url, 60).await
+        }
+        AiProvider::Anthropic => {
+            let key = config.effective_api_key("ANTHROPIC_API_KEY")?;
+            anthropic_request(config.model(), system_prompt, user_content, &key, max_tokens, 30)
+                .await
+        }
+        AiProvider::OpenAi => {
+            let key = config.effective_api_key("OPENAI_API_KEY")?;
+            openai_request(config.model(), system_prompt, user_content, &key, max_tokens, 30).await
+        }
+        AiProvider::None => Err("AI provider not configured".to_string()),
+    }
+}
+
+// ============================================================================
+// Summarization
+// ============================================================================
+
 /// The system prompt used for summarization.
 const SUMMARY_SYSTEM_PROMPT: &str =
     "You are a document summarizer. Provide a concise 2-3 sentence summary of the following \
@@ -139,33 +314,14 @@ const MAX_CONTENT_LEN: usize = 3000;
 
 /// Generate a summary for markdown content.
 ///
-/// Returns `Ok(summary)` on success, `Err(message)` on failure,
-/// or `Ok` with empty content if the provider is disabled or content is empty.
+/// Returns `Ok(summary)` on success, `Err(message)` on failure.
 pub async fn summarize(config: &AiConfig, content: &str) -> Result<String, String> {
-    if !config.is_enabled() {
-        return Err("AI provider not configured".to_string());
-    }
-
     let prepared = prepare_content(content);
     if prepared.is_empty() {
         return Err("No content to summarize".to_string());
     }
 
-    let result = match config.provider {
-        AiProvider::Ollama => {
-            let url = config.effective_ollama_url();
-            summarize_ollama(config.model(), &prepared, &url).await
-        }
-        AiProvider::Anthropic => match config.effective_api_key("ANTHROPIC_API_KEY") {
-            Ok(key) => summarize_anthropic(config.model(), &prepared, &key).await,
-            Err(error) => return Err(error),
-        },
-        AiProvider::OpenAi => match config.effective_api_key("OPENAI_API_KEY") {
-            Ok(key) => summarize_openai(config.model(), &prepared, &key).await,
-            Err(error) => return Err(error),
-        },
-        AiProvider::None => return Err("AI provider not configured".to_string()),
-    };
+    let result = ai_request(config, SUMMARY_SYSTEM_PROMPT, &prepared, 256).await;
 
     match &result {
         Ok(summary) => {
@@ -235,115 +391,84 @@ fn prepare_content(content: &str) -> String {
     result
 }
 
-/// Summarize using a local Ollama instance.
-async fn summarize_ollama(model: &str, content: &str, base_url: &str) -> Result<String, String> {
-    let url = format!("{base_url}/api/generate");
+// ============================================================================
+// Dictionary
+// ============================================================================
 
-    let payload = serde_json::json!({
-        "model": model,
-        "prompt": format!("{SUMMARY_SYSTEM_PROMPT}\n\n{content}"),
-        "stream": false
-    });
-
-    let response = reqwest::Client::new()
-        .post(&url)
-        .json(&payload)
-        .timeout(std::time::Duration::from_secs(60))
-        .send()
-        .await
-        .map_err(|e| format!("Ollama request failed: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!("Ollama returned status {}", response.status()));
+/// The system prompt for dictionary lookups.
+const DICTIONARY_SYSTEM_PROMPT: &str = "\
+You are an English dictionary. Given a word, return a JSON object with this exact structure:
+{
+  \"word\": \"the word\",
+  \"phonetic\": \"IPA pronunciation\",
+  \"definitions\": [
+    {
+      \"part_of_speech\": \"noun/verb/adjective/etc\",
+      \"meaning\": \"definition text\",
+      \"example\": \"example sentence using the word\"
     }
+  ],
+  \"synonyms\": [\"word1\", \"word2\"],
+  \"antonyms\": [\"word1\", \"word2\"]
+}
+Include multiple definitions if the word has different parts of speech or meanings. \
+Provide 2-5 synonyms and antonyms when applicable (empty arrays if none). \
+Reply with ONLY the JSON object, no other text.";
 
-    let body: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse Ollama response: {e}"))?;
-
-    body["response"]
-        .as_str()
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| "Empty response from Ollama".to_string())
+/// A single definition entry.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DictionaryDefinition {
+    /// Part of speech (noun, verb, adjective, etc.)
+    pub part_of_speech: String,
+    /// The definition text.
+    pub meaning: String,
+    /// An example sentence.
+    #[serde(default)]
+    pub example: String,
 }
 
-/// Summarize using the Anthropic API.
-async fn summarize_anthropic(model: &str, content: &str, api_key: &str) -> Result<String, String> {
-    let payload = serde_json::json!({
-        "model": model,
-        "max_tokens": 256,
-        "system": SUMMARY_SYSTEM_PROMPT,
-        "messages": [
-            {"role": "user", "content": content}
-        ]
-    });
-
-    let response = reqwest::Client::new()
-        .post("https://api.anthropic.com/v1/messages")
-        .header("x-api-key", api_key)
-        .header("anthropic-version", "2023-06-01")
-        .header("content-type", "application/json")
-        .json(&payload)
-        .timeout(std::time::Duration::from_secs(30))
-        .send()
-        .await
-        .map_err(|e| format!("Anthropic request failed: {e}"))?;
-
-    if !response.status().is_success() {
-        let status = response.status();
-        let body = response.text().await.unwrap_or_default();
-        return Err(format!("Anthropic returned status {status}: {body}"));
-    }
-
-    let body: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse Anthropic response: {e}"))?;
-
-    body["content"][0]["text"]
-        .as_str()
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| "Empty response from Anthropic".to_string())
+/// A complete dictionary entry for a word.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DictionaryEntry {
+    /// The looked-up word.
+    pub word: String,
+    /// IPA phonetic transcription.
+    #[serde(default)]
+    pub phonetic: String,
+    /// List of definitions.
+    pub definitions: Vec<DictionaryDefinition>,
+    /// Synonyms.
+    #[serde(default)]
+    pub synonyms: Vec<String>,
+    /// Antonyms.
+    #[serde(default)]
+    pub antonyms: Vec<String>,
 }
 
-/// Summarize using the OpenAI API.
-async fn summarize_openai(model: &str, content: &str, api_key: &str) -> Result<String, String> {
-    let payload = serde_json::json!({
-        "model": model,
-        "max_tokens": 256,
-        "messages": [
-            {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
-            {"role": "user", "content": content}
-        ]
-    });
+/// Look up a word using the configured AI provider.
+///
+/// Returns a structured dictionary entry parsed from the AI's JSON response.
+pub async fn lookup_word(config: &AiConfig, word: &str) -> Result<DictionaryEntry, String> {
+    let raw = ai_request(config, DICTIONARY_SYSTEM_PROMPT, word, 1024).await?;
 
-    let response = reqwest::Client::new()
-        .post("https://api.openai.com/v1/chat/completions")
-        .header("Authorization", format!("Bearer {api_key}"))
-        .header("Content-Type", "application/json")
-        .json(&payload)
-        .timeout(std::time::Duration::from_secs(30))
-        .send()
-        .await
-        .map_err(|e| format!("OpenAI request failed: {e}"))?;
+    // Strip markdown code fences if the model wrapped the JSON
+    let json_str = strip_code_fences(&raw);
 
-    if !response.status().is_success() {
-        let status = response.status();
-        let body = response.text().await.unwrap_or_default();
-        return Err(format!("OpenAI returned status {status}: {body}"));
+    serde_json::from_str::<DictionaryEntry>(json_str)
+        .map_err(|e| format!("Failed to parse dictionary response: {e}"))
+}
+
+/// Strip optional markdown code fences (```json ... ```) from AI output.
+fn strip_code_fences(text: &str) -> &str {
+    let trimmed = text.trim();
+    if let Some(rest) = trimmed.strip_prefix("```") {
+        // Skip optional language tag on the first line
+        let rest = rest
+            .find('\n')
+            .map(|idx| &rest[idx + 1..])
+            .unwrap_or(rest);
+        rest.strip_suffix("```").unwrap_or(rest).trim()
+    } else {
+        trimmed
     }
-
-    let body: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse OpenAI response: {e}"))?;
-
-    body["choices"][0]["message"]["content"]
-        .as_str()
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| "Empty response from OpenAI".to_string())
 }

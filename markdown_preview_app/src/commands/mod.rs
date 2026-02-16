@@ -1,6 +1,7 @@
 //! Tauri IPC commands for the markdown preview app.
 
 pub mod clipboard;
+pub mod dictionary;
 pub mod diff;
 pub mod file;
 pub mod git;

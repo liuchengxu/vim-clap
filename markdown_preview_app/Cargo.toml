@@ -5,8 +5,8 @@
 members = ["."]
 
 [package]
-name = "markdown_preview_app"
-description = "Standalone markdown preview application with Tauri"
+name = "maple_desk"
+description = "Multi-tool personal workspace: markdown preview, AI dictionary, and more"
 version = "0.1.0"
 edition = "2021"
 authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]

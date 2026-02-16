@@ -1,17 +1,18 @@
-//! Standalone markdown preview application using Tauri.
+//! Maple Desk — multi-tool personal workspace using Tauri.
 //!
-//! This application provides a native desktop app for previewing markdown files
-//! with the same features as the vim-clap integration: GitHub Flavored Markdown,
-//! syntax highlighting, Mermaid diagrams, KaTeX math, and themes.
+//! Provides a native desktop app for previewing markdown files, looking up words
+//! in an AI dictionary, and more. Built on the same rendering engine as the
+//! vim-clap integration: GitHub Flavored Markdown, syntax highlighting,
+//! Mermaid diagrams, KaTeX math, and themes.
 //!
 //! # Usage
 //!
 //! ```bash
 //! # Open without a file (use File > Open or Cmd+O)
-//! markdown_preview_app
+//! maple_desk
 //!
 //! # Open with a specific file
-//! markdown_preview_app /path/to/file.md
+//! maple_desk /path/to/file.md
 //! ```
 
 // Prevents additional console window on Windows in release
@@ -36,12 +37,12 @@ fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive("markdown_preview_app=debug".parse().unwrap())
+                .add_directive("maple_desk=debug".parse().unwrap())
                 .add_directive("markdown_preview_core=debug".parse().unwrap()),
         )
         .init();
 
-    tracing::info!("Starting Markdown Preview App");
+    tracing::info!("Starting Maple Desk");
 
     // Parse command line arguments for initial file
     let initial_file = std::env::args()
@@ -63,6 +64,16 @@ fn main() {
             let config_dir = app.path().app_data_dir().ok();
             if let Some(ref dir) = config_dir {
                 tracing::info!(path = %dir.display(), "Using config directory");
+            }
+
+            // Migrate config from old app identity if needed
+            let old_config_dir = config_dir.as_ref().and_then(|new_dir| {
+                let parent = new_dir.parent()?;
+                let old_dir = parent.join("com.vimclap.markdown-preview");
+                old_dir.exists().then_some(old_dir)
+            });
+            if let (Some(ref new_dir), Some(old_dir)) = (&config_dir, old_config_dir) {
+                migrate_config_files(&old_dir, new_dir);
             }
 
             // Initialize state with config directory for persistence
@@ -159,6 +170,7 @@ fn main() {
             commands::terminal::write_terminal,
             commands::terminal::resize_terminal,
             commands::terminal::kill_terminal,
+            commands::dictionary::lookup_word,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -167,6 +179,52 @@ fn main() {
 /// Check if a path is a supported document file.
 fn is_supported_file(path: &std::path::Path) -> bool {
     DocumentType::from_path(path).is_some()
+}
+
+/// Migrate individual config files from the old app data directory to the new one.
+///
+/// Copies each known config file only if it exists in `old_dir` but not in `new_dir`,
+/// so partial migrations and pre-existing new dirs are handled safely.
+/// The old directory is left intact.
+fn migrate_config_files(old_dir: &std::path::Path, new_dir: &std::path::Path) {
+    const CONFIG_FILES: &[&str] = &[
+        "config.json",
+        "path_history.json",
+        "file_snapshots.json",
+        "ai_summaries.json",
+    ];
+
+    if let Err(error) = std::fs::create_dir_all(new_dir) {
+        tracing::warn!(%error, "Failed to create new config directory during migration");
+        return;
+    }
+
+    let mut migrated = 0u32;
+    for filename in CONFIG_FILES {
+        let src = old_dir.join(filename);
+        let dst = new_dir.join(filename);
+        if src.exists() && !dst.exists() {
+            match std::fs::copy(&src, &dst) {
+                Ok(_) => migrated += 1,
+                Err(error) => {
+                    tracing::warn!(
+                        file = %filename,
+                        %error,
+                        "Failed to migrate config file"
+                    );
+                }
+            }
+        }
+    }
+
+    if migrated > 0 {
+        tracing::info!(
+            migrated,
+            old = %old_dir.display(),
+            new = %new_dir.display(),
+            "Migrated config files from old app identity"
+        );
+    }
 }
 
 /// Get the file modification time in Unix millis.

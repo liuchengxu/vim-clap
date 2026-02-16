@@ -1,4 +1,4 @@
-// Markdown Preview - Tauri Mode (Standalone App)
+// Maple Desk - Tauri Mode (Standalone App)
 // This module handles Tauri IPC communication for the standalone application
 
 // Note: core.js must be loaded before this file
@@ -438,9 +438,9 @@
             try {
                 const urlPath = new URL(result.file_path).pathname;
                 const fileName = urlPath.split('/').pop() || 'Remote Markdown';
-                document.title = fileName + ' - Markdown Preview';
+                document.title = fileName + ' - Maple Desk';
             } catch {
-                document.title = 'Remote Markdown - Markdown Preview';
+                document.title = 'Remote Markdown - Maple Desk';
             }
         }
 
@@ -546,7 +546,7 @@
             // Update currentFilePath via the core module's setter
             window.MarkdownPreviewCore.setCurrentFilePath(result.file_path);
             updateFilePathBar(result.file_path, result.git_root);
-            document.title = getFileBasename(result.file_path) + ' - Markdown Preview';
+            document.title = getFileBasename(result.file_path) + ' - Maple Desk';
 
             // Refresh recent files from backend (backend already added the file)
             loadRecentFilesFromBackend();
@@ -917,6 +917,10 @@
 
         listen('menu-settings', () => {
             showSettingsDialog();
+        });
+
+        listen('menu-dictionary', () => {
+            openDictionaryWithSelection();
         });
 
         // Listen for initial file from command line argument
@@ -1504,6 +1508,7 @@
         registerShortcut('d', { ctrl: true }, () => toggleDiffOverlay(), { when: notInTerminal });
         registerShortcut('q', { ctrl: true }, () => quitApp(), { when: notInTerminal });
         registerShortcut('`', { ctrl: true }, () => toggleTerminalPanel());
+        registerShortcut('l', { ctrl: true }, () => openDictionaryWithSelection(), { when: notInTerminal });
 
         // Start the listener
         setupShortcutListener();
@@ -2157,6 +2162,179 @@
     }
 
     // Initialize on DOM ready
+    // ========================================
+    // Dictionary Tool
+    // ========================================
+
+    let dictHistory = JSON.parse(localStorage.getItem('dictHistory') || '[]');
+    let dictLastResult = null;
+
+    function initDictionary() {
+        const input = document.getElementById('dict-word-input');
+        const btn = document.getElementById('dict-lookup-btn');
+        if (!input || !btn) return;
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                performLookup(input.value.trim());
+            }
+        });
+
+        btn.addEventListener('click', () => {
+            performLookup(input.value.trim());
+        });
+
+        renderDictHistory();
+    }
+
+    async function performLookup(word) {
+        if (!word) return;
+
+        const resultsEl = document.getElementById('dict-results');
+        if (!resultsEl) return;
+
+        // Show loading
+        resultsEl.innerHTML = `
+            <div class="dict-loading">
+                <span class="dict-loading-spinner"></span>
+                Looking up "${escapeHtml(word)}"...
+            </div>
+        `;
+
+        const btn = document.getElementById('dict-lookup-btn');
+        if (btn) btn.disabled = true;
+
+        try {
+            const entry = await invoke('lookup_word', { word });
+            dictLastResult = entry;
+            renderDictEntry(entry);
+            addToDictHistory(word);
+        } catch (err) {
+            resultsEl.innerHTML = `<div class="dict-error">${escapeHtml(String(err))}</div>`;
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    function renderDictEntry(entry) {
+        const resultsEl = document.getElementById('dict-results');
+        if (!resultsEl) return;
+
+        let html = '';
+
+        // Word header with phonetic
+        html += '<div class="dict-word-header">';
+        html += `<h1 class="dict-word-title">${escapeHtml(entry.word)}</h1>`;
+        if (entry.phonetic) {
+            html += `<span class="dict-phonetic">${escapeHtml(entry.phonetic)}</span>`;
+        }
+        html += '</div>';
+
+        // Group definitions by part of speech
+        const grouped = {};
+        for (const def of entry.definitions) {
+            const pos = def.part_of_speech || 'other';
+            if (!grouped[pos]) grouped[pos] = [];
+            grouped[pos].push(def);
+        }
+
+        for (const [pos, defs] of Object.entries(grouped)) {
+            html += '<div class="dict-section">';
+            html += `<div class="dict-pos">${escapeHtml(pos)}</div>`;
+            for (const def of defs) {
+                html += '<div class="dict-definition">';
+                html += `<div class="dict-meaning">${escapeHtml(def.meaning)}</div>`;
+                if (def.example) {
+                    html += `<div class="dict-example">"${escapeHtml(def.example)}"</div>`;
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+        }
+
+        // Synonyms
+        if (entry.synonyms && entry.synonyms.length > 0) {
+            html += '<div class="dict-tags">';
+            html += '<span class="dict-tag-label">Synonyms:</span>';
+            for (const syn of entry.synonyms) {
+                html += `<span class="dict-tag" data-word="${escapeHtml(syn)}">${escapeHtml(syn)}</span>`;
+            }
+            html += '</div>';
+        }
+
+        // Antonyms
+        if (entry.antonyms && entry.antonyms.length > 0) {
+            html += '<div class="dict-tags">';
+            html += '<span class="dict-tag-label">Antonyms:</span>';
+            for (const ant of entry.antonyms) {
+                html += `<span class="dict-tag antonym" data-word="${escapeHtml(ant)}">${escapeHtml(ant)}</span>`;
+            }
+            html += '</div>';
+        }
+
+        resultsEl.innerHTML = html;
+
+        // Wire up clickable tags
+        resultsEl.querySelectorAll('.dict-tag[data-word]').forEach(tag => {
+            tag.addEventListener('click', () => {
+                const tagWord = tag.dataset.word;
+                const input = document.getElementById('dict-word-input');
+                if (input) input.value = tagWord;
+                performLookup(tagWord);
+            });
+        });
+    }
+
+    function addToDictHistory(word) {
+        // Remove duplicate if exists
+        dictHistory = dictHistory.filter(w => w.toLowerCase() !== word.toLowerCase());
+        // Add to front
+        dictHistory.unshift(word);
+        // Keep max 50
+        if (dictHistory.length > 50) dictHistory.length = 50;
+        localStorage.setItem('dictHistory', JSON.stringify(dictHistory));
+        renderDictHistory();
+    }
+
+    function renderDictHistory() {
+        const container = document.getElementById('dict-history');
+        if (!container) return;
+
+        if (dictHistory.length === 0) {
+            container.innerHTML = '<p style="color: #8b949e; font-size: 13px; padding: 8px;">No lookups yet</p>';
+            return;
+        }
+
+        container.innerHTML = dictHistory.map(word =>
+            `<div class="dict-history-item" data-word="${escapeHtml(word)}">${escapeHtml(word)}</div>`
+        ).join('');
+
+        container.querySelectorAll('.dict-history-item').forEach(el => {
+            el.addEventListener('click', () => {
+                const word = el.dataset.word;
+                const input = document.getElementById('dict-word-input');
+                if (input) input.value = word;
+                switchTool('dictionary');
+                performLookup(word);
+            });
+        });
+    }
+
+    function openDictionaryWithSelection() {
+        const selection = window.getSelection();
+        const selectedText = selection ? selection.toString().trim() : '';
+        switchTool('dictionary');
+        const input = document.getElementById('dict-word-input');
+        if (input) {
+            if (selectedText) {
+                input.value = selectedText;
+                performLookup(selectedText);
+            }
+            input.focus();
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', async function() {
         // Initialize core UI with file switch and remove callbacks
         initCoreUI({
@@ -2174,5 +2352,6 @@
         setupKeyboardShortcuts();
         setupVimNavigation();
         setupClipboardMonitoring();
+        initDictionary();
     });
 })();

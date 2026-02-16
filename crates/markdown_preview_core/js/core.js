@@ -1,4 +1,4 @@
-// Markdown Preview Core - Shared UI functionality
+// Maple Desk Core - Shared UI functionality
 // This module contains all UI-related functions shared between vim-clap (WebSocket) and Tauri modes
 
 // ============================================================================
@@ -1061,7 +1061,7 @@ function handleContentUpdate(message, options = {}) {
             renderRecentFiles();
         }
         updateFilePathBar(currentFilePath, message.git_root);
-        document.title = getFileBasename(currentFilePath) + ' - Markdown Preview';
+        document.title = getFileBasename(currentFilePath) + ' - Maple Desk';
 
         if (options.onFileOpened) {
             options.onFileOpened(currentFilePath);
@@ -1190,6 +1190,7 @@ function initCoreUI(options = {}) {
     applyZoom(zoomLevel);
 
     renderRecentFiles(options.onFileClick, options.onRemove);
+    initToolTabs();
     initFuzzyFinder();
 
     // Initialize new features
@@ -1496,6 +1497,63 @@ function setupShortcutListener() {
     });
 }
 
+// ============================================================================
+// Tool Navigation
+// ============================================================================
+
+let currentTool = localStorage.getItem('currentTool') || 'preview';
+
+function switchTool(toolName) {
+    currentTool = toolName;
+    localStorage.setItem('currentTool', toolName);
+
+    // Update tab active states
+    document.querySelectorAll('.tool-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.tool === toolName);
+    });
+
+    // Toggle sidebar sections
+    const previewSidebar = document.getElementById('tool-preview-sidebar');
+    const dictSidebar = document.getElementById('tool-dictionary-sidebar');
+    if (previewSidebar) previewSidebar.style.display = toolName === 'preview' ? '' : 'none';
+    if (dictSidebar) dictSidebar.style.display = toolName === 'dictionary' ? '' : 'none';
+
+    // Toggle main content areas
+    const previewMain = document.getElementById('tool-preview-main');
+    const dictMain = document.getElementById('tool-dictionary-main');
+    if (previewMain) previewMain.style.display = toolName === 'preview' ? '' : 'none';
+    if (dictMain) dictMain.style.display = toolName === 'dictionary' ? '' : 'none';
+
+    // Toggle preview-specific UI elements
+    const tocPanel = document.getElementById('toc-panel');
+    const filePathBar = document.getElementById('file-path-bar');
+    const metadataBar = document.getElementById('file-metadata-bar');
+
+    if (toolName === 'preview') {
+        // Restore TOC visibility from saved state
+        const savedTOC = localStorage.getItem('tocMode');
+        if (savedTOC && savedTOC !== 'off' && tocPanel) {
+            tocPanel.style.display = '';
+        }
+    } else {
+        // Hide preview-specific elements
+        if (tocPanel) tocPanel.style.display = 'none';
+    }
+}
+
+function initToolTabs() {
+    document.querySelectorAll('.tool-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            switchTool(tab.dataset.tool);
+        });
+    });
+
+    // Apply saved tool state
+    if (currentTool !== 'preview') {
+        switchTool(currentTool);
+    }
+}
+
 // Export for use in platform-specific modules (browser global scope)
 // These are needed because core.js uses 'let' which doesn't add to window
 window.MarkdownPreviewCore = {
@@ -1531,7 +1589,12 @@ window.MarkdownPreviewCore = {
     setupShortcutListener,
 
     // Sanitization
-    sanitizeHtml
+    sanitizeHtml,
+
+    // Tool navigation
+    switchTool,
+    initToolTabs,
+    getCurrentTool: () => currentTool
 };
 
 // Also expose commonly used functions directly for convenience
@@ -1567,3 +1630,5 @@ window.exitPresentationMode = exitPresentationMode;
 window.registerShortcut = registerShortcut;
 window.setupShortcutListener = setupShortcutListener;
 window.sanitizeHtml = sanitizeHtml;
+window.switchTool = switchTool;
+window.initToolTabs = initToolTabs;

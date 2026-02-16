@@ -45,10 +45,31 @@
 /*__STYLES_CSS__*/
 /*__THEMES_CSS__*/
     </style>
-    <title>Markdown Preview</title>
+    <title>Maple Desk</title>
 </head>
 <body>
     <div id="sidebar">
+        <div id="tool-tabs">
+            <button class="tool-tab active" data-tool="preview" title="Preview">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="8" y1="13" x2="16" y2="13"/>
+                    <line x1="8" y1="17" x2="16" y2="17"/>
+                    <line x1="8" y1="9" x2="10" y2="9"/>
+                </svg>
+                <span>Preview</span>
+            </button>
+            <button class="tool-tab" data-tool="dictionary" title="Dictionary (Ctrl+L)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    <text x="7" y="14" fill="currentColor" stroke="none" font-size="10" font-weight="700" font-family="serif">A</text>
+                </svg>
+                <span>Dict</span>
+            </button>
+        </div>
+        <div id="tool-preview-sidebar">
         <div class="sidebar-section" id="recent-files-section">
             <h3>Recent Previews</h3>
             <div id="recent-files" class="recent-files"></div>
@@ -95,6 +116,13 @@
                 </div>
             </div>
         </div>
+        </div><!-- /tool-preview-sidebar -->
+        <div id="tool-dictionary-sidebar" style="display:none">
+            <div class="sidebar-section">
+                <h3>Lookup History</h3>
+                <div id="dict-history" class="recent-files"></div>
+            </div>
+        </div>
     </div>
     <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
 
@@ -106,6 +134,7 @@
 
     <div id="main-content">
         <div id="reading-progress"></div>
+        <div id="tool-preview-main">
         <div class="file-path-bar" id="file-path-bar" title="Click to copy path"></div>
         <div class="file-metadata-bar" id="file-metadata-bar">
             <span class="metadata-item" id="metadata-modified" title="Last modified" style="position: relative;">
@@ -150,7 +179,7 @@
                     <path d="M12 18v-6"></path>
                     <path d="M9 15h6"></path>
                 </svg>
-                <h2 style="margin: 0 0 10px 0; font-weight: 500; color: #333;">Markdown Preview</h2>
+                <h2 style="margin: 0 0 10px 0; font-weight: 500; color: #333;">Maple Desk</h2>
                 <p style="margin: 0 0 24px 0; font-size: 14px;">Open a markdown file to preview</p>
                 <button id="welcome-open-btn" style="
                     padding: 12px 24px;
@@ -177,6 +206,24 @@
                 </p>
             </div>
         </article>
+        </div><!-- /tool-preview-main -->
+        <div id="tool-dictionary-main" style="display:none">
+            <div class="dict-container">
+                <div class="dict-input-bar">
+                    <input type="text" id="dict-word-input" class="dict-input" placeholder="Type a word to look up..." autocomplete="off" spellcheck="false">
+                    <button id="dict-lookup-btn" class="dict-lookup-btn">Look up</button>
+                </div>
+                <div id="dict-results" class="dict-results">
+                    <div class="dict-empty-state">
+                        <svg width="48" height="48" viewBox="0 0 16 16" fill="currentColor" style="opacity: 0.3; margin-bottom: 12px;">
+                            <path fill-rule="evenodd" d="M0 1.75A.75.75 0 0 1 .75 1h4.253c1.227 0 2.317.59 3 1.501A3.744 3.744 0 0 1 11.006 1h4.245a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75h-4.507a2.25 2.25 0 0 0-1.591.659l-.622.621a.75.75 0 0 1-1.06 0l-.622-.621A2.25 2.25 0 0 0 5.258 13H.75a.75.75 0 0 1-.75-.75Zm7.251 10.324.004-5.073-.002-2.253A2.25 2.25 0 0 0 5.003 2.5H1.5v9h3.757a3.75 3.75 0 0 1 1.994.574ZM8.755 4.75l-.004 7.322a3.752 3.752 0 0 1 1.992-.572H14.5v-9h-3.495a2.25 2.25 0 0 0-2.25 2.25Z"/>
+                        </svg>
+                        <p style="color: #8b949e; font-size: 14px;">Type a word and press Enter to look it up</p>
+                        <p style="color: #aaa; font-size: 12px; margin-top: 4px;">Uses your configured AI provider</p>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /tool-dictionary-main -->
     </div>
 
     <!-- PDF.js library (ES module that sets globalThis.pdfjsLib) -->

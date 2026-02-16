@@ -45,9 +45,13 @@ pub fn create_menu<R: Runtime>(app: &AppHandle<R>) -> Result<Menu<R>, tauri::Err
         Some("CmdOrCtrl+`"),
     )?;
 
+    let dictionary_item =
+        MenuItem::with_id(app, "dictionary", "Dictionary", true, None::<&str>)?;
+
     let view_menu = SubmenuBuilder::new(app, "View")
         .item(&reload_item)
         .item(&terminal_item)
+        .item(&dictionary_item)
         .separator()
         .item(&toc_menu)
         .build()?;
@@ -64,7 +68,7 @@ pub fn create_menu<R: Runtime>(app: &AppHandle<R>) -> Result<Menu<R>, tauri::Err
         .build()?;
 
     // Help menu
-    let about_item = MenuItem::with_id(app, "about", "About Markdown Preview", true, None::<&str>)?;
+    let about_item = MenuItem::with_id(app, "about", "About Maple Desk", true, None::<&str>)?;
 
     let help_menu = SubmenuBuilder::new(app, "Help").item(&about_item).build()?;
 
@@ -118,6 +122,9 @@ pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: &MenuEvent) {
         }
         "toggle_terminal" => {
             let _ = app.emit("menu-toggle-terminal", ());
+        }
+        "dictionary" => {
+            let _ = app.emit("menu-dictionary", ());
         }
         "settings" => {
             let _ = app.emit("menu-settings", ());
