@@ -24,7 +24,7 @@ members = [
     "crates/maple_derive",
     "crates/maple_lsp",
     "crates/maple_markdown",
-    # maple_desk is a separate workspace (has its own Cargo.toml with [workspace])
+    # mead is a separate workspace (has its own Cargo.toml with [workspace])
     "crates/markdown_preview_core",
     "crates/matcher",
     "crates/matcher/extracted_fzy",
@@ -40,7 +40,7 @@ members = [
     "crates/xtask",
 ]
 
-exclude = ["pythonx/clap/fuzzymatch-rs", "maple_desk"]
+exclude = ["pythonx/clap/fuzzymatch-rs", "mead"]
 
 default-members = ["crates/maple"]
 

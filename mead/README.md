@@ -1,11 +1,11 @@
-# Maple Desk
+# MEAD
 
-Multi-tool personal workspace: markdown preview, AI dictionary, and more.
+**M**arkdown **E**ditor with **A**I and **D**ictionary.
 
 ## Project Structure
 
 ```
-maple_desk/
+mead/
 ├── src/              # Rust backend code
 ├── frontend/         # GENERATED - do not edit directly!
 └── build.rs          # Generates frontend/ from markdown_preview_core/js/

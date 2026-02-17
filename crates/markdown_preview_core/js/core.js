@@ -1,4 +1,4 @@
-// Maple Desk Core - Shared UI functionality
+// MEAD Core - Shared UI functionality
 // This module contains all UI-related functions shared between vim-clap (WebSocket) and Tauri modes
 
 // ============================================================================
@@ -1061,7 +1061,7 @@ function handleContentUpdate(message, options = {}) {
             renderRecentFiles();
         }
         updateFilePathBar(currentFilePath, message.git_root);
-        document.title = getFileBasename(currentFilePath) + ' - Maple Desk';
+        document.title = getFileBasename(currentFilePath) + ' - MEAD';
 
         if (options.onFileOpened) {
             options.onFileOpened(currentFilePath);

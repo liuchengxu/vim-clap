@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Maple Desk",
+  "productName": "MEAD",
   "version": "0.1.0",
-  "identifier": "com.vimclap.maple-desk",
+  "identifier": "com.vimclap.mead",
   "build": {
     "beforeBuildCommand": "mkdir -p frontend && [ -f frontend/index.html ] || echo '<!DOCTYPE html><html><body>Building...</body></html>' > frontend/index.html",
     "beforeDevCommand": "mkdir -p frontend && [ -f frontend/index.html ] || echo '<!DOCTYPE html><html><body>Building...</body></html>' > frontend/index.html",
@@ -12,7 +12,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Maple Desk",
+        "title": "MEAD",
         "width": 1200,
         "height": 800,
         "minWidth": 400,
