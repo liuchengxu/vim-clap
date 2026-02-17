@@ -1239,6 +1239,10 @@ if (typeof window.__TAURI__ !== 'undefined') {
         registerShortcut('`', { ctrl: true }, () => toggleTerminalPanel());
         registerShortcut('l', { ctrl: true }, () => openDictionaryWithSelection(), { when: notInTerminal });
         registerShortcut('k', { ctrl: true }, () => openAskAiWithSelection(), { when: notInTerminal });
+        registerShortcut('=', { ctrl: true }, () => zoomIn(), { when: notInTerminal });
+        registerShortcut('+', { ctrl: true, shift: true }, () => zoomIn(), { when: notInTerminal });
+        registerShortcut('-', { ctrl: true }, () => zoomOut(), { when: notInTerminal });
+        registerShortcut('0', { ctrl: true }, () => resetZoom(), { when: notInTerminal });
 
         // Start the listener
         setupShortcutListener();
