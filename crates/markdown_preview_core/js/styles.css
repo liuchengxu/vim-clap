@@ -46,57 +46,74 @@
         cursor: col-resize !important;
       }
 
-      /* Tool Tabs */
-      #tool-tabs {
+      /* Activity Bar */
+      #activity-bar {
+        width: 48px;
+        min-width: 48px;
+        background: #2c2c2c;
         display: flex;
-        gap: 4px;
-        padding: 10px 20px;
-        border-bottom: 1px solid #d0d7de;
-        margin-bottom: 0;
+        flex-direction: column;
+        justify-content: space-between;
         flex-shrink: 0;
+        order: 0;
+        z-index: 1;
       }
 
-      .tool-tab {
+      .activity-icons,
+      .activity-icons-bottom {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .activity-icon {
+        width: 48px;
+        height: 48px;
         display: flex;
         align-items: center;
-        gap: 6px;
-        height: 30px;
-        padding: 0 12px;
+        justify-content: center;
         border: none;
-        border-radius: 6px;
         background: transparent;
-        color: #656d76;
-        font-size: 12px;
-        font-weight: 600;
-        font-family: inherit;
+        color: rgba(255, 255, 255, 0.5);
         cursor: pointer;
-        transition: all 0.15s;
         position: relative;
+        transition: color 0.15s;
       }
 
-      .tool-tab svg {
+      .activity-icon:hover {
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .activity-icon.active {
+        color: #ffffff;
+      }
+
+      .activity-icon.active::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 25%;
+        bottom: 25%;
+        width: 2px;
+        background: #ffffff;
+        border-radius: 0 1px 1px 0;
+      }
+
+      .activity-icon svg {
         flex-shrink: 0;
       }
 
-      .tool-tab:hover {
-        background: #f0f6fc;
-        color: #0969da;
+      /* Sidebar collapsed state */
+      #sidebar.collapsed {
+        width: 0 !important;
+        min-width: 0;
+        padding: 0;
+        overflow: hidden;
+        border-right: none;
       }
 
-      .tool-tab.active {
-        background: #ddf4ff;
-        color: #0969da;
-      }
-
-      .tool-tab.active::after {
-        content: '';
-        position: absolute;
-        bottom: -11px;
-        left: 25%;
-        right: 25%;
-        height: 2px;
-        background: #0969da;
-        border-radius: 1px;
+      #sidebar.collapsed + .sidebar-resize-handle {
+        display: none;
       }
 
       #tool-preview-sidebar,
@@ -111,26 +128,24 @@
       }
 
       @media (prefers-color-scheme: dark) {
-        #tool-tabs {
-          border-bottom-color: #30363d;
+        #activity-bar {
+          background: #1e1e1e;
         }
 
-        .tool-tab {
-          color: #8b949e;
+        .activity-icon {
+          color: rgba(255, 255, 255, 0.4);
         }
 
-        .tool-tab:hover {
-          background: #1c2128;
-          color: #58a6ff;
+        .activity-icon:hover {
+          color: rgba(255, 255, 255, 0.8);
         }
 
-        .tool-tab.active {
-          background: #1c2d41;
-          color: #58a6ff;
+        .activity-icon.active {
+          color: #ffffff;
         }
 
-        .tool-tab.active::after {
-          background: #58a6ff;
+        .activity-icon.active::before {
+          background: #ffffff;
         }
       }
 

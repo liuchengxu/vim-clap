@@ -1502,14 +1502,51 @@ function setupShortcutListener() {
 // ============================================================================
 
 let currentTool = localStorage.getItem('currentTool') || 'preview';
+let sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+
+function setSidebarCollapsed(collapsed) {
+    sidebarCollapsed = collapsed;
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+
+    if (collapsed) {
+        sidebar.classList.add('collapsed');
+    } else {
+        sidebar.classList.remove('collapsed');
+        // Restore saved width
+        const savedWidth = localStorage.getItem('sidebarWidth');
+        if (savedWidth) {
+            const width = parseInt(savedWidth);
+            if (width >= 180 && width <= 500) {
+                sidebar.style.width = width + 'px';
+            }
+        }
+    }
+    localStorage.setItem('sidebarCollapsed', collapsed);
+}
 
 function switchTool(toolName) {
+    const sidebar = document.getElementById('sidebar');
+
+    // Clicking the already-active tool toggles sidebar collapsed/expanded
+    if (toolName === currentTool && sidebar) {
+        setSidebarCollapsed(!sidebarCollapsed);
+        return;
+    }
+
     currentTool = toolName;
     localStorage.setItem('currentTool', toolName);
 
-    // Update tab active states
-    document.querySelectorAll('.tool-tab').forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.tool === toolName);
+    // If sidebar is collapsed, expand it when switching to a different tool
+    if (sidebarCollapsed) {
+        setSidebarCollapsed(false);
+    }
+
+    // Update activity icon active states + aria-pressed
+    document.querySelectorAll('.activity-icon[data-tool]').forEach(icon => {
+        const isActive = icon.dataset.tool === toolName;
+        icon.classList.toggle('active', isActive);
+        icon.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     });
 
     // Toggle sidebar and main sections by convention: #tool-{name}-sidebar, #tool-{name}-main
@@ -1535,11 +1572,27 @@ function switchTool(toolName) {
 }
 
 function initToolTabs() {
-    document.querySelectorAll('.tool-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-            switchTool(tab.dataset.tool);
+    // Bind activity icon click handlers
+    document.querySelectorAll('.activity-icon[data-tool]').forEach(icon => {
+        icon.addEventListener('click', () => {
+            switchTool(icon.dataset.tool);
         });
     });
+
+    // Wire settings button
+    const settingsBtn = document.getElementById('activity-settings-btn');
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', () => {
+            if (typeof window.showSettingsDialog === 'function') {
+                window.showSettingsDialog();
+            }
+        });
+    }
+
+    // Restore collapsed state
+    if (sidebarCollapsed) {
+        setSidebarCollapsed(true);
+    }
 
     // Apply saved tool state
     if (currentTool !== 'preview') {
@@ -1587,7 +1640,9 @@ window.MarkdownPreviewCore = {
     // Tool navigation
     switchTool,
     initToolTabs,
-    getCurrentTool: () => currentTool
+    setSidebarCollapsed,
+    getCurrentTool: () => currentTool,
+    isSidebarCollapsed: () => sidebarCollapsed
 };
 
 // Also expose commonly used functions directly for convenience
@@ -1625,3 +1680,4 @@ window.setupShortcutListener = setupShortcutListener;
 window.sanitizeHtml = sanitizeHtml;
 window.switchTool = switchTool;
 window.initToolTabs = initToolTabs;
+window.setSidebarCollapsed = setSidebarCollapsed;

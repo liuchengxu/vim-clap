@@ -1043,6 +1043,9 @@
         });
     }
 
+    // Expose settings dialog globally so the activity bar can call it
+    window.showSettingsDialog = showSettingsDialog;
+
     // ========================================
     // AI Summary Progress Indicator
     // ========================================
