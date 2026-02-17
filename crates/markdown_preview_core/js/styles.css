@@ -744,7 +744,7 @@
         overflow-y: auto;
       }
 
-      #main-content > .markdown-body {
+      #tool-preview-main > .markdown-body {
         flex: 0 1 auto;
         align-self: center;
       }
