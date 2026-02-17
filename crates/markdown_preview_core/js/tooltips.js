@@ -57,13 +57,14 @@ function showPathTooltip(element, fullPath, previewInfo = {}) {
 
     const { title, digest, modified_at } = previewInfo;
 
-    // Build tooltip content with optional title
+    // Build tooltip content
     let html = '';
     if (title) {
         // Render backtick-wrapped text as inline code
         const rendered = renderInlineCode(title);
         html += `<div class="path-tooltip-title">${rendered}</div>`;
     }
+    html += `<div class="path-tooltip-path">${escapeHtml(fullPath)}</div>`;
 
     // Add modification time if available
     if (modified_at) {

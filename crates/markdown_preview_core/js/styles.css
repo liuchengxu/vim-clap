@@ -260,7 +260,7 @@
       }
 
       .recent-file-item {
-        padding: 6px 8px;
+        padding: 6px 24px 6px 8px;
         margin: 4px 0;
         background: #ffffff;
         border: 1px solid #d0d7de;
@@ -429,6 +429,13 @@
         background: rgba(0, 0, 0, 0.08);
         padding: 1px 5px;
         border-radius: 4px;
+      }
+
+      .path-tooltip-path {
+        font-size: 11px;
+        color: #57606a;
+        word-break: break-all;
+        margin-top: 4px;
       }
 
       .path-tooltip-modified {
