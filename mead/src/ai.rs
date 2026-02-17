@@ -288,12 +288,27 @@ pub async fn ai_request(
         }
         AiProvider::Anthropic => {
             let key = config.effective_api_key("ANTHROPIC_API_KEY")?;
-            anthropic_request(config.model(), system_prompt, user_content, &key, max_tokens, 30)
-                .await
+            anthropic_request(
+                config.model(),
+                system_prompt,
+                user_content,
+                &key,
+                max_tokens,
+                30,
+            )
+            .await
         }
         AiProvider::OpenAi => {
             let key = config.effective_api_key("OPENAI_API_KEY")?;
-            openai_request(config.model(), system_prompt, user_content, &key, max_tokens, 30).await
+            openai_request(
+                config.model(),
+                system_prompt,
+                user_content,
+                &key,
+                max_tokens,
+                30,
+            )
+            .await
         }
         AiProvider::None => Err("AI provider not configured".to_string()),
     }
@@ -409,11 +424,31 @@ You are an English dictionary. Given a word, return a JSON object with this exac
     }
   ],
   \"synonyms\": [\"word1\", \"word2\"],
-  \"antonyms\": [\"word1\", \"word2\"]
+  \"antonyms\": [\"word1\", \"word2\"],
+  \"etymology\": \"Brief origin: language roots, morphemes, historical evolution (1-2 sentences)\",
+  \"mnemonic\": \"A short, vivid memory tip to help remember the word (1 sentence)\",
+  \"word_family\": [
+    {\"word\": \"derived_form\", \"part_of_speech\": \"noun\"}
+  ],
+  \"related_concepts\": [\"concept1\", \"concept2\"]
 }
 Include multiple definitions if the word has different parts of speech or meanings. \
 Provide 2-5 synonyms and antonyms when applicable (empty arrays if none). \
+etymology: concise origin with language roots (Latin, Greek, etc.) and key morphemes. \
+mnemonic: a vivid, memorable tip (association, visual image, or wordplay). \
+word_family: 3-6 derived/inflected forms (e.g. for \"happy\": happiness, unhappy, happily). \
+related_concepts: 3-6 thematically related words or concepts for a semantic map. \
 Reply with ONLY the JSON object, no other text.";
+
+/// A member of a word family (derived/related form).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WordFamilyMember {
+    /// The word form.
+    pub word: String,
+    /// Part of speech of this form.
+    #[serde(default)]
+    pub part_of_speech: String,
+}
 
 /// A single definition entry.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -443,13 +478,25 @@ pub struct DictionaryEntry {
     /// Antonyms.
     #[serde(default)]
     pub antonyms: Vec<String>,
+    /// Brief etymology / word origin.
+    #[serde(default)]
+    pub etymology: String,
+    /// Mnemonic tip for memorization.
+    #[serde(default)]
+    pub mnemonic: String,
+    /// Word family: derived and related forms.
+    #[serde(default)]
+    pub word_family: Vec<WordFamilyMember>,
+    /// Related concepts for a semantic map.
+    #[serde(default)]
+    pub related_concepts: Vec<String>,
 }
 
 /// Look up a word using the configured AI provider.
 ///
 /// Returns a structured dictionary entry parsed from the AI's JSON response.
 pub async fn lookup_word(config: &AiConfig, word: &str) -> Result<DictionaryEntry, String> {
-    let raw = ai_request(config, DICTIONARY_SYSTEM_PROMPT, word, 1024).await?;
+    let raw = ai_request(config, DICTIONARY_SYSTEM_PROMPT, word, 1536).await?;
 
     // Strip markdown code fences if the model wrapped the JSON
     let json_str = strip_code_fences(&raw);
@@ -479,10 +526,7 @@ fn strip_code_fences(text: &str) -> &str {
     let trimmed = text.trim();
     if let Some(rest) = trimmed.strip_prefix("```") {
         // Skip optional language tag on the first line
-        let rest = rest
-            .find('\n')
-            .map(|idx| &rest[idx + 1..])
-            .unwrap_or(rest);
+        let rest = rest.find('\n').map(|idx| &rest[idx + 1..]).unwrap_or(rest);
         rest.strip_suffix("```").unwrap_or(rest).trim()
     } else {
         trimmed

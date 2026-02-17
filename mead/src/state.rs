@@ -83,7 +83,9 @@ fn normalize_config_value(value: Option<String>) -> Option<String> {
 /// Remove duplicate directory paths, preserving first-occurrence order.
 fn dedup_dirs(dirs: Vec<String>) -> Vec<String> {
     let mut seen = HashSet::new();
-    dirs.into_iter().filter(|d| seen.insert(d.clone())).collect()
+    dirs.into_iter()
+        .filter(|d| seen.insert(d.clone()))
+        .collect()
 }
 
 /// Persisted configuration data
@@ -727,10 +729,7 @@ impl AppState {
         match std::fs::read_to_string(&path) {
             Ok(content) => match serde_json::from_str::<DictCache>(&content) {
                 Ok(cache) => {
-                    tracing::info!(
-                        count = cache.entries.len(),
-                        "Loaded dictionary cache"
-                    );
+                    tracing::info!(count = cache.entries.len(), "Loaded dictionary cache");
                     self.dict_cache = cache;
                 }
                 Err(error) => {

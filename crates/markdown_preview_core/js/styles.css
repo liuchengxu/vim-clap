@@ -3062,6 +3062,23 @@ body.presentation-mode #reading-progress {
     .dict-offline-entry { border-bottom-color: #30363d; }
     .dict-entry { border-top-color: #30363d; }
     .dict-ai-loading { color: #8b949e; }
+
+    /* Etymology dark mode */
+    .dict-etymology { background: #161b22; border-left-color: #58a6ff; }
+    .dict-etymology-label { color: #58a6ff; }
+    .dict-etymology-source { color: #8b949e; }
+    .dict-etymology-text { color: #c9d1d9; }
+
+    /* Mnemonic dark mode */
+    .dict-mnemonic { background: #2d2200; border-left-color: #d29922; }
+    .dict-mnemonic-label { color: #d29922; }
+    .dict-mnemonic-text { color: #c9d1d9; }
+
+    /* Diagram dark mode */
+    .dict-diagram-label { color: #58a6ff; }
+    .dict-word-family,
+    .dict-semantic-map { border-top-color: #30363d; }
+
     .dict-dir-path { background: #0d1117; border-color: #30363d; color: #c9d1d9; }
     .btn-small { background: #21262d; border-color: #30363d; color: #c9d1d9; }
     .dict-dir-remove { background: #21262d; border-color: #30363d; color: #c9d1d9; }
@@ -3108,6 +3125,79 @@ body.presentation-mode #reading-progress {
     margin-top: 20px;
     padding-top: 20px;
     border-top: 1px solid #d0d7de;
+}
+
+/* Etymology section */
+.dict-etymology {
+    background: #f6f8fa;
+    border-left: 3px solid #0969da;
+    border-radius: 0 6px 6px 0;
+    padding: 12px 16px;
+    margin-top: 16px;
+}
+.dict-etymology-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #0969da;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+}
+.dict-etymology-source {
+    font-weight: 400;
+    text-transform: none;
+    color: #656d76;
+    font-size: 11px;
+}
+.dict-etymology-text {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #24292f;
+}
+
+/* Mnemonic tip */
+.dict-mnemonic {
+    background: #fff8c5;
+    border-left: 3px solid #9a6700;
+    border-radius: 0 6px 6px 0;
+    padding: 12px 16px;
+    margin-top: 16px;
+}
+.dict-mnemonic-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #9a6700;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+}
+.dict-mnemonic-text {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #24292f;
+}
+
+/* Diagram sections (word family, semantic map) */
+.dict-word-family,
+.dict-semantic-map {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #d0d7de;
+}
+.dict-diagram-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #0969da;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+}
+.dict-diagram-container {
+    overflow-x: auto;
+}
+.dict-diagram-container svg {
+    max-width: 100%;
+    height: auto;
 }
 
 /* Empty state when no results from any source */

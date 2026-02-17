@@ -153,8 +153,8 @@ fn parse_ifo(ifo_path: &Path) -> Result<DictInfo, String> {
 /// Parse a `.idx` file into a sorted vector of `IndexEntry`.
 fn parse_idx(ifo_path: &Path, expected_count: usize) -> Result<Vec<IndexEntry>, String> {
     let idx_path = ifo_path.with_extension("idx");
-    let data = std::fs::read(&idx_path)
-        .map_err(|error| format!("Failed to read .idx file: {error}"))?;
+    let data =
+        std::fs::read(&idx_path).map_err(|error| format!("Failed to read .idx file: {error}"))?;
 
     let mut entries = Vec::with_capacity(expected_count);
     let mut cursor = 0;
@@ -178,7 +178,8 @@ fn parse_idx(ifo_path: &Path, expected_count: usize) -> Result<Vec<IndexEntry>, 
         let mut reader = &data[cursor..cursor + 8];
         let offset = reader
             .read_u32::<BigEndian>()
-            .map_err(|error| format!("Failed to read offset: {error}"))? as u64;
+            .map_err(|error| format!("Failed to read offset: {error}"))?
+            as u64;
         let size = reader
             .read_u32::<BigEndian>()
             .map_err(|error| format!("Failed to read size: {error}"))?;
@@ -208,8 +209,7 @@ fn load_dict_data(ifo_path: &Path) -> Result<Vec<u8>, String> {
     };
 
     if dict_path.exists() {
-        std::fs::read(&dict_path)
-            .map_err(|error| format!("Failed to read .dict file: {error}"))
+        std::fs::read(&dict_path).map_err(|error| format!("Failed to read .dict file: {error}"))
     } else if dict_dz_path.exists() {
         let compressed = std::fs::read(&dict_dz_path)
             .map_err(|error| format!("Failed to read .dict.dz file: {error}"))?;
@@ -261,8 +261,7 @@ fn parse_segments_mode_a(data: &[u8], sequence: &str) -> Vec<DefinitionSegment> 
             // Text type: null-terminated, but last segment may omit trailing null
             let content = if is_last {
                 // Last text segment: read to end
-                let content =
-                    String::from_utf8_lossy(&data[cursor..]).to_string();
+                let content = String::from_utf8_lossy(&data[cursor..]).to_string();
                 cursor = data.len();
                 content
             } else {
@@ -272,8 +271,7 @@ fn parse_segments_mode_a(data: &[u8], sequence: &str) -> Vec<DefinitionSegment> 
                     .position(|&b| b == 0)
                     .map(|p| cursor + p)
                     .unwrap_or(data.len());
-                let content =
-                    String::from_utf8_lossy(&data[cursor..end]).to_string();
+                let content = String::from_utf8_lossy(&data[cursor..end]).to_string();
                 cursor = if end < data.len() { end + 1 } else { end };
                 content
             };
@@ -286,9 +284,12 @@ fn parse_segments_mode_a(data: &[u8], sequence: &str) -> Vec<DefinitionSegment> 
             if cursor + 4 > data.len() {
                 break;
             }
-            let payload_size =
-                u32::from_be_bytes([data[cursor], data[cursor + 1], data[cursor + 2], data[cursor + 3]])
-                    as usize;
+            let payload_size = u32::from_be_bytes([
+                data[cursor],
+                data[cursor + 1],
+                data[cursor + 2],
+                data[cursor + 3],
+            ]) as usize;
             cursor += 4;
             // Skip binary content (WAV, PNG, etc.)
             cursor += payload_size.min(data.len().saturating_sub(cursor));
@@ -315,14 +316,12 @@ fn parse_segments_mode_b(data: &[u8]) -> Vec<DefinitionSegment> {
                 .map(|p| cursor + p);
             let (content, next_cursor) = match end {
                 Some(end_pos) => {
-                    let content =
-                        String::from_utf8_lossy(&data[cursor..end_pos]).to_string();
+                    let content = String::from_utf8_lossy(&data[cursor..end_pos]).to_string();
                     (content, end_pos + 1)
                 }
                 None => {
                     // Last segment, no null — read to end
-                    let content =
-                        String::from_utf8_lossy(&data[cursor..]).to_string();
+                    let content = String::from_utf8_lossy(&data[cursor..]).to_string();
                     (content, data.len())
                 }
             };
@@ -336,9 +335,12 @@ fn parse_segments_mode_b(data: &[u8]) -> Vec<DefinitionSegment> {
             if cursor + 4 > data.len() {
                 break;
             }
-            let payload_size =
-                u32::from_be_bytes([data[cursor], data[cursor + 1], data[cursor + 2], data[cursor + 3]])
-                    as usize;
+            let payload_size = u32::from_be_bytes([
+                data[cursor],
+                data[cursor + 1],
+                data[cursor + 2],
+                data[cursor + 3],
+            ]) as usize;
             cursor += 4;
             // Skip binary content
             cursor += payload_size.min(data.len().saturating_sub(cursor));

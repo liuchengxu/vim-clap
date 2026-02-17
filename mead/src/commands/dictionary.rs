@@ -120,6 +120,184 @@ pub async fn ask_ai(
 }
 
 // ---------------------------------------------------------------------------
+// Wiktionary etymology lookup
+// ---------------------------------------------------------------------------
+
+/// Result from a Wiktionary etymology lookup.
+#[derive(Serialize)]
+pub struct EtymologyResult {
+    /// Raw HTML of the etymology section (sanitized on the frontend via DOMPurify).
+    pub etymology_html: String,
+    /// Source label (always "Wiktionary").
+    pub source: String,
+}
+
+/// Top-level response from the Wiktionary parse API (sections query).
+#[derive(Deserialize)]
+struct WikiSectionsResponse {
+    #[serde(default)]
+    parse: Option<WikiParseSections>,
+}
+
+/// The `parse` object containing sections.
+#[derive(Deserialize)]
+struct WikiParseSections {
+    #[serde(default)]
+    sections: Vec<WikiSection>,
+}
+
+/// A single section from the Wiktionary parse API.
+#[derive(Deserialize)]
+struct WikiSection {
+    #[serde(default)]
+    line: String,
+    #[serde(default)]
+    index: String,
+}
+
+/// Top-level response from the Wiktionary parse API (text query).
+#[derive(Deserialize)]
+struct WikiTextResponse {
+    #[serde(default)]
+    parse: Option<WikiParseText>,
+}
+
+/// The `parse` object containing rendered text.
+#[derive(Deserialize)]
+struct WikiParseText {
+    #[serde(default)]
+    text: std::collections::HashMap<String, String>,
+}
+
+/// Strip MediaWiki wrapper markup from the etymology section HTML.
+///
+/// Removes the outer `<div class="mw-parser-output">`, heading tags, and HTML comments.
+fn clean_wiktionary_html(raw: &str) -> String {
+    let mut result = raw.to_string();
+
+    // Remove outer wrapper div
+    if let Some(start) = result.find("<div class=\"mw-parser-output\">") {
+        let end_tag = "</div>";
+        result = result[start + "<div class=\"mw-parser-output\">".len()..].to_string();
+        if let Some(last_div) = result.rfind(end_tag) {
+            result.truncate(last_div);
+        }
+    }
+
+    // Remove heading tags (h1-h6)
+    let heading_re =
+        regex::Regex::new(r"(?i)<h[1-6][^>]*>.*?</h[1-6]>").expect("valid heading regex");
+    result = heading_re.replace_all(&result, "").to_string();
+
+    // Remove HTML comments
+    let comment_re = regex::Regex::new(r"<!--.*?-->").expect("valid comment regex");
+    result = comment_re.replace_all(&result, "").to_string();
+
+    result.trim().to_string()
+}
+
+/// Look up the etymology of a word from Wiktionary.
+///
+/// Uses the MediaWiki parse API in two steps:
+/// 1. Fetch section list and find the first "Etymology" section.
+/// 2. Fetch the rendered HTML of that section.
+///
+/// Returns `Ok(None)` if the word or etymology section is not found.
+#[tauri::command]
+pub async fn lookup_etymology(word: String) -> Result<Option<EtymologyResult>, String> {
+    let word = word.trim().to_string();
+    if word.is_empty() {
+        return Err("No word provided".to_string());
+    }
+
+    let client = reqwest::Client::builder()
+        .user_agent("MEAD/1.0")
+        .timeout(std::time::Duration::from_secs(8))
+        .build()
+        .map_err(|error| format!("HTTP client error: {error}"))?;
+
+    // Step 1: Get sections list
+    let sections_resp = client
+        .get("https://en.wiktionary.org/w/api.php")
+        .query(&[
+            ("action", "parse"),
+            ("page", &word),
+            ("prop", "sections"),
+            ("format", "json"),
+        ])
+        .send()
+        .await
+        .map_err(|error| format!("Wiktionary sections request failed: {error}"))?;
+
+    if !sections_resp.status().is_success() {
+        return Ok(None);
+    }
+
+    let sections_body: WikiSectionsResponse = sections_resp
+        .json()
+        .await
+        .map_err(|error| format!("Failed to parse Wiktionary sections response: {error}"))?;
+
+    let sections = match sections_body.parse {
+        Some(p) => p.sections,
+        None => return Ok(None),
+    };
+
+    // Find the first Etymology section
+    let etym_index = sections
+        .iter()
+        .find(|s| s.line.starts_with("Etymology"))
+        .map(|s| s.index.clone());
+
+    let section_index = match etym_index {
+        Some(idx) => idx,
+        None => return Ok(None),
+    };
+
+    // Step 2: Fetch the etymology section text
+    let text_resp = client
+        .get("https://en.wiktionary.org/w/api.php")
+        .query(&[
+            ("action", "parse"),
+            ("page", &word),
+            ("prop", "text"),
+            ("section", &section_index),
+            ("format", "json"),
+        ])
+        .send()
+        .await
+        .map_err(|error| format!("Wiktionary text request failed: {error}"))?;
+
+    if !text_resp.status().is_success() {
+        return Ok(None);
+    }
+
+    let text_body: WikiTextResponse = text_resp
+        .json()
+        .await
+        .map_err(|error| format!("Failed to parse Wiktionary text response: {error}"))?;
+
+    let raw_html = match text_body.parse {
+        Some(p) => p.text.get("*").cloned().unwrap_or_default(),
+        None => return Ok(None),
+    };
+
+    if raw_html.is_empty() {
+        return Ok(None);
+    }
+
+    let cleaned = clean_wiktionary_html(&raw_html);
+    if cleaned.is_empty() {
+        return Ok(None);
+    }
+
+    Ok(Some(EtymologyResult {
+        etymology_html: cleaned,
+        source: "Wiktionary".to_string(),
+    }))
+}
+
+// ---------------------------------------------------------------------------
 // Free Dictionary API (dictionaryapi.dev) — online lookup
 // ---------------------------------------------------------------------------
 
@@ -210,6 +388,10 @@ fn free_dict_to_entry(word: String, raw: &[FreeDictEntry]) -> DictionaryEntry {
         definitions,
         synonyms,
         antonyms,
+        etymology: String::new(),
+        mnemonic: String::new(),
+        word_family: Vec::new(),
+        related_concepts: Vec::new(),
     }
 }
 
@@ -392,11 +574,10 @@ async fn ensure_dicts_loaded(
     }
 
     // Load on blocking thread (file I/O + decompression)
-    let result: DictLoadResult = tokio::task::spawn_blocking(move || {
-        OfflineDictState::load_dicts_from_dirs(&dirs)
-    })
-    .await
-    .map_err(|error| format!("Dictionary loading task failed: {error}"))?;
+    let result: DictLoadResult =
+        tokio::task::spawn_blocking(move || OfflineDictState::load_dicts_from_dirs(&dirs))
+            .await
+            .map_err(|error| format!("Dictionary loading task failed: {error}"))?;
 
     // All candidates failed: record failure with cooldown instead of marking loaded.
     // Retries are suppressed for LOAD_FAILURE_COOLDOWN_SECS, then the next lookup

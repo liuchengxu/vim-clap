@@ -5,8 +5,8 @@
 members = ["."]
 
 [package]
-name = "maple_desk"
-description = "Multi-tool personal workspace: markdown preview, AI dictionary, and more"
+name = "mead"
+description = "MEAD — Markdown Editor with AI and Dictionary"
 version = "0.1.0"
 edition = "2021"
 authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
@@ -28,6 +28,7 @@ futures = "0.3"
 lopdf = "0.34"
 mdict-parser = "0.1"
 portable-pty = "0.9"
+regex = "1"
 reqwest = { version = "0.12", features = ["json", "native-tls"], default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

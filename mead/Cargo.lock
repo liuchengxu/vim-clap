@@ -2344,33 +2344,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 
 [[package]]
-name = "maple_desk"
-version = "0.1.0"
-dependencies = [
- "byteorder",
- "dirs 5.0.1",
- "flate2",
- "futures",
- "lopdf",
- "markdown_preview_core",
- "mdict-parser",
- "portable-pty",
- "reqwest",
- "serde",
- "serde_json",
- "similar",
- "tauri",
- "tauri-build",
- "tauri-plugin-clipboard-manager",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-opener",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "markdown_preview_core"
 version = "0.1.0"
 dependencies = [
@@ -2452,6 +2425,34 @@ dependencies = [
  "ripemd",
  "salsa20",
  "xxhash-rust",
+]
+
+[[package]]
+name = "mead"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "dirs 5.0.1",
+ "flate2",
+ "futures",
+ "lopdf",
+ "markdown_preview_core",
+ "mdict-parser",
+ "portable-pty",
+ "regex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "similar",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-clipboard-manager",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-opener",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

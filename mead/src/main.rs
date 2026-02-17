@@ -1,4 +1,4 @@
-//! Maple Desk — multi-tool personal workspace using Tauri.
+//! MEAD — Markdown Editor with AI and Dictionary.
 //!
 //! Provides a native desktop app for previewing markdown files, looking up words
 //! in an AI dictionary, and more. Built on the same rendering engine as the
@@ -9,10 +9,10 @@
 //!
 //! ```bash
 //! # Open without a file (use File > Open or Cmd+O)
-//! maple_desk
+//! mead
 //!
 //! # Open with a specific file
-//! maple_desk /path/to/file.md
+//! mead /path/to/file.md
 //! ```
 
 // Prevents additional console window on Windows in release
@@ -39,12 +39,12 @@ fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive("maple_desk=debug".parse().unwrap())
+                .add_directive("mead=debug".parse().unwrap())
                 .add_directive("markdown_preview_core=debug".parse().unwrap()),
         )
         .init();
 
-    tracing::info!("Starting Maple Desk");
+    tracing::info!("Starting MEAD");
 
     // Parse command line arguments for initial file
     let initial_file = std::env::args()
@@ -68,14 +68,14 @@ fn main() {
                 tracing::info!(path = %dir.display(), "Using config directory");
             }
 
-            // Migrate config from old app identity if needed
-            let old_config_dir = config_dir.as_ref().and_then(|new_dir| {
-                let parent = new_dir.parent()?;
-                let old_dir = parent.join("com.vimclap.markdown-preview");
-                old_dir.exists().then_some(old_dir)
-            });
-            if let (Some(ref new_dir), Some(old_dir)) = (&config_dir, old_config_dir) {
-                migrate_config_files(&old_dir, new_dir);
+            // Migrate config from old app identities if needed
+            if let Some(ref new_dir) = config_dir {
+                let parent = new_dir.parent();
+                for old_id in ["com.vimclap.maple-desk", "com.vimclap.markdown-preview"] {
+                    if let Some(old_dir) = parent.map(|p| p.join(old_id)).filter(|d| d.exists()) {
+                        migrate_config_files(&old_dir, new_dir);
+                    }
+                }
             }
 
             // Initialize state with config directory for persistence
@@ -198,6 +198,7 @@ fn main() {
             commands::dictionary::lookup_word,
             commands::dictionary::lookup_word_online,
             commands::dictionary::lookup_word_offline,
+            commands::dictionary::lookup_etymology,
             commands::dictionary::get_loaded_dictionaries,
             commands::dictionary::ask_ai,
         ])

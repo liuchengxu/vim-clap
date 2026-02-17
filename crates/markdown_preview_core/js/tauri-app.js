@@ -1,4 +1,4 @@
-// Maple Desk - Tauri Mode (Standalone App)
+// MEAD - Tauri Mode (Standalone App)
 // This module handles Tauri IPC communication for the standalone application
 
 // Note: core.js must be loaded before this file
@@ -438,9 +438,9 @@
             try {
                 const urlPath = new URL(result.file_path).pathname;
                 const fileName = urlPath.split('/').pop() || 'Remote Markdown';
-                document.title = fileName + ' - Maple Desk';
+                document.title = fileName + ' - MEAD';
             } catch {
-                document.title = 'Remote Markdown - Maple Desk';
+                document.title = 'Remote Markdown - MEAD';
             }
         }
 
@@ -546,7 +546,7 @@
             // Update currentFilePath via the core module's setter
             window.MarkdownPreviewCore.setCurrentFilePath(result.file_path);
             updateFilePathBar(result.file_path, result.git_root);
-            document.title = getFileBasename(result.file_path) + ' - Maple Desk';
+            document.title = getFileBasename(result.file_path) + ' - MEAD';
 
             // Refresh recent files from backend (backend already added the file)
             loadRecentFilesFromBackend();
@@ -2376,11 +2376,18 @@
             if (isStale()) { if (btn) btn.disabled = false; return; }
         }
 
-        // 2. Online dictionary API (Free Dictionary)
+        // 2. Online dictionary + Wiktionary etymology (parallel)
+        let etymologyHtml = null;
         try {
-            const onlineEntry = await invoke('lookup_word_online', { word });
+            const [onlineResult, etymResult] = await Promise.allSettled([
+                invoke('lookup_word_online', { word }),
+                invoke('lookup_etymology', { word }),
+            ]);
             if (isStale()) { if (btn) btn.disabled = false; return; }
-            if (onlineEntry) {
+
+            // Process online dictionary result
+            if (onlineResult.status === 'fulfilled' && onlineResult.value) {
+                const onlineEntry = onlineResult.value;
                 hasOnlineResults = true;
                 const onlineHtml = renderDictEntry(onlineEntry, 'online', onlineEntry.source || 'Online');
                 if (hasOfflineResults) {
@@ -2390,6 +2397,16 @@
                 }
                 wireUpDictTags(resultsEl);
                 wireUpPronounceButtons(resultsEl);
+            }
+
+            // Process Wiktionary etymology result
+            if (etymResult.status === 'fulfilled' && etymResult.value) {
+                etymologyHtml = etymResult.value.etymology_html;
+                const etymSection = '<div class="dict-etymology dict-etymology-wiktionary">'
+                    + '<div class="dict-etymology-label">Etymology <span class="dict-etymology-source">'
+                    + `(${escapeHtml(etymResult.value.source)})</span></div>`
+                    + `<div class="dict-etymology-text">${sanitizeHtml(etymologyHtml)}</div></div>`;
+                resultsEl.insertAdjacentHTML('beforeend', etymSection);
             }
         } catch (_err) {
             if (isStale()) { if (btn) btn.disabled = false; return; }
@@ -2423,6 +2440,18 @@
             }
             wireUpDictTags(resultsEl);
             wireUpPronounceButtons(resultsEl);
+
+            // Show AI etymology fallback if Wiktionary section is absent or empty
+            const wikiEtymEl = resultsEl.querySelector('.dict-etymology-wiktionary .dict-etymology-text');
+            const wikiEtymHasContent = wikiEtymEl && wikiEtymEl.textContent.trim().length > 0;
+            if (!wikiEtymHasContent) {
+                const emptyWiki = resultsEl.querySelector('.dict-etymology-wiktionary');
+                if (emptyWiki) emptyWiki.remove();
+                resultsEl.querySelectorAll('.dict-etymology-ai').forEach(el => el.style.display = '');
+            }
+
+            // Render Mermaid diagrams
+            await renderDictDiagrams(resultsEl);
         } catch (err) {
             if (isStale()) { if (btn) btn.disabled = false; return; }
             const aiLoadingEl = resultsEl.querySelector('.dict-ai-loading');
@@ -2520,8 +2549,138 @@
             html += '</div>';
         }
 
+        // Mnemonic tip
+        if (entry.mnemonic) {
+            html += '<div class="dict-mnemonic">'
+                + '<div class="dict-mnemonic-label">Memory Tip</div>'
+                + `<div class="dict-mnemonic-text">${escapeHtml(entry.mnemonic)}</div></div>`;
+        }
+
+        // AI etymology fallback (hidden by default, shown if Wiktionary has none)
+        if (entry.etymology) {
+            html += '<div class="dict-etymology dict-etymology-ai" style="display:none">'
+                + '<div class="dict-etymology-label">Etymology <span class="dict-etymology-source">(AI)</span></div>'
+                + `<div class="dict-etymology-text">${escapeHtml(entry.etymology)}</div></div>`;
+        }
+
+        // Word Family diagram placeholder
+        if (entry.word_family && entry.word_family.length > 0) {
+            const familyJson = escapeHtml(JSON.stringify(entry.word_family));
+            html += `<div class="dict-word-family" data-word="${escapeHtml(entry.word)}" data-family="${familyJson}"></div>`;
+        }
+
+        // Semantic Map diagram placeholder
+        const hasSyns = entry.synonyms && entry.synonyms.length > 0;
+        const hasAnts = entry.antonyms && entry.antonyms.length > 0;
+        const hasRelated = entry.related_concepts && entry.related_concepts.length > 0;
+        if (hasSyns || hasAnts || hasRelated) {
+            const synsJson = escapeHtml(JSON.stringify(entry.synonyms || []));
+            const antsJson = escapeHtml(JSON.stringify(entry.antonyms || []));
+            const relJson = escapeHtml(JSON.stringify(entry.related_concepts || []));
+            html += `<div class="dict-semantic-map" data-word="${escapeHtml(entry.word)}" data-synonyms="${synsJson}" data-antonyms="${antsJson}" data-related="${relJson}"></div>`;
+        }
+
         html += '</div>';
         return html;
+    }
+
+    // -----------------------------------------------------------------------
+    // Mermaid diagram helpers for dictionary memory aids
+    // -----------------------------------------------------------------------
+
+    /** Escape text for safe use as a Mermaid node label (wrap in quotes, escape inner quotes). */
+    function mermaidEscape(text) {
+        return '"' + String(text).replace(/"/g, '#quot;') + '"';
+    }
+
+    /** Render a Mermaid diagram definition into an SVG string. Returns '' on failure. */
+    async function renderMermaidDiagram(id, definition) {
+        if (!window.mermaid || !window.mermaid.render) return '';
+        try {
+            const { svg } = await window.mermaid.render(id, definition);
+            return svg;
+        } catch (_e) {
+            return '';
+        }
+    }
+
+    /** Build a Mermaid graph LR definition for a word family. */
+    function buildWordFamilyGraph(rootWord, family) {
+        let def = 'graph LR\n';
+        const rootId = 'root';
+        def += `  ${rootId}[${mermaidEscape(rootWord)}]\n`;
+        family.forEach((member, i) => {
+            const nodeId = `f${i}`;
+            const label = member.part_of_speech
+                ? `${member.word} (${member.part_of_speech})`
+                : member.word;
+            def += `  ${rootId} --> ${nodeId}[${mermaidEscape(label)}]\n`;
+        });
+        return def;
+    }
+
+    /** Build a Mermaid mindmap definition for a semantic map. */
+    function buildSemanticMindmap(word, synonyms, antonyms, relatedConcepts) {
+        let def = 'mindmap\n';
+        def += `  root((${mermaidEscape(word)}))\n`;
+        if (synonyms.length > 0) {
+            def += '    Synonyms\n';
+            for (const s of synonyms) {
+                def += `      ${mermaidEscape(s)}\n`;
+            }
+        }
+        if (antonyms.length > 0) {
+            def += '    Antonyms\n';
+            for (const a of antonyms) {
+                def += `      ${mermaidEscape(a)}\n`;
+            }
+        }
+        if (relatedConcepts.length > 0) {
+            def += '    Related\n';
+            for (const r of relatedConcepts) {
+                def += `      ${mermaidEscape(r)}\n`;
+            }
+        }
+        return def;
+    }
+
+    /** Find diagram placeholders inside `container` and render Mermaid SVGs into them. */
+    async function renderDictDiagrams(container) {
+        let diagramIdx = 0;
+
+        // Word Family diagrams
+        for (const el of container.querySelectorAll('.dict-word-family[data-family]')) {
+            const word = el.dataset.word || '';
+            let family;
+            try { family = JSON.parse(el.dataset.family); } catch (_e) { continue; }
+            if (!Array.isArray(family) || family.length === 0) continue;
+
+            const def = buildWordFamilyGraph(word, family);
+            const svg = await renderMermaidDiagram(`dict-wf-${diagramIdx++}`, def);
+            if (svg) {
+                el.innerHTML = '<div class="dict-diagram-label">Word Family</div>'
+                    + `<div class="dict-diagram-container">${svg}</div>`;
+            }
+        }
+
+        // Semantic Map diagrams
+        for (const el of container.querySelectorAll('.dict-semantic-map[data-word]')) {
+            const word = el.dataset.word || '';
+            let synonyms, antonyms, related;
+            try {
+                synonyms = JSON.parse(el.dataset.synonyms || '[]');
+                antonyms = JSON.parse(el.dataset.antonyms || '[]');
+                related = JSON.parse(el.dataset.related || '[]');
+            } catch (_e) { continue; }
+            if (synonyms.length === 0 && antonyms.length === 0 && related.length === 0) continue;
+
+            const def = buildSemanticMindmap(word, synonyms, antonyms, related);
+            const svg = await renderMermaidDiagram(`dict-sm-${diagramIdx++}`, def);
+            if (svg) {
+                el.innerHTML = '<div class="dict-diagram-label">Semantic Map</div>'
+                    + `<div class="dict-diagram-container">${svg}</div>`;
+            }
+        }
     }
 
     function pronounceWord(word) {
