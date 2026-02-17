@@ -1528,9 +1528,11 @@ function setSidebarCollapsed(collapsed) {
 function switchTool(toolName) {
     const sidebar = document.getElementById('sidebar');
 
-    // Clicking the already-active tool toggles sidebar collapsed/expanded
+    // Clicking the already-active tool ensures sidebar is visible
     if (toolName === currentTool && sidebar) {
-        setSidebarCollapsed(!sidebarCollapsed);
+        if (sidebarCollapsed) {
+            setSidebarCollapsed(false);
+        }
         return;
     }
 
