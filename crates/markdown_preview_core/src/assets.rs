@@ -9,13 +9,21 @@
 //! - `search.js`: Fuzzy finder for searching headings and full text
 //! - `diff.js`: Diff overlay for showing changes since last view
 //! - `websocket-app.js`: WebSocket communication for vim-clap mode
-//! - `tauri-app.js`: Tauri IPC for standalone app mode
 
 /// HTML template with placeholders for CSS and JS.
 pub const HTML_TEMPLATE: &str = include_str!("../js/index.html");
 
 /// Main CSS styles.
 pub const STYLES_CSS: &str = include_str!("../js/styles.css");
+
+/// Fuzzy finder CSS styles.
+pub const FUZZY_FINDER_CSS: &str = include_str!("../js/fuzzy-finder.css");
+
+/// Presentation mode CSS styles.
+pub const PRESENTATION_CSS: &str = include_str!("../js/presentation.css");
+
+/// Diff overlay CSS styles.
+pub const DIFF_CSS: &str = include_str!("../js/diff.css");
 
 /// Theme CSS styles.
 pub const THEMES_CSS: &str = include_str!("../js/themes.css");
@@ -35,15 +43,9 @@ pub const DIFF_JS: &str = include_str!("../js/diff.js");
 /// WebSocket JavaScript - vim-clap mode communication.
 pub const WEBSOCKET_APP_JS: &str = include_str!("../js/websocket-app.js");
 
-/// Tauri JavaScript - standalone app mode communication.
-pub const TAURI_APP_JS: &str = include_str!("../js/tauri-app.js");
-
 /// Options for building the HTML page.
 #[derive(Debug, Clone, Default)]
-pub struct AssetOptions {
-    /// If true, include Tauri-specific JavaScript.
-    pub tauri: bool,
-}
+pub struct AssetOptions;
 
 /// Provides access to embedded assets.
 pub struct Assets;
@@ -89,11 +91,6 @@ impl Assets {
         WEBSOCKET_APP_JS
     }
 
-    /// Get the Tauri JavaScript (standalone app mode).
-    pub fn tauri_app_js() -> &'static str {
-        TAURI_APP_JS
-    }
-
     /// Build the complete HTML page with inlined CSS and JS.
     ///
     /// This replaces placeholder comments in the template with actual content:
@@ -101,24 +98,20 @@ impl Assets {
     /// - `/*__THEMES_CSS__*/` -> themes.css content
     /// - `/*__APP_JS__*/` -> combined JavaScript content
     ///
-    /// The JavaScript is built from modular files:
-    /// - For WebSocket mode (default): core.js + tooltips.js + search.js + diff.js + websocket-app.js
-    /// - For Tauri mode: core.js + tooltips.js + search.js + diff.js + tauri-app.js
-    pub fn build_html(options: &AssetOptions) -> String {
+    /// JavaScript modules: core.js + tooltips.js + search.js + diff.js + websocket-app.js
+    pub fn build_html(_options: &AssetOptions) -> String {
         let mut html = HTML_TEMPLATE.to_string();
 
-        // Inline CSS
-        html = html.replace("/*__STYLES_CSS__*/", STYLES_CSS);
-        html = html.replace("/*__THEMES_CSS__*/", THEMES_CSS);
+        // Inline CSS: base styles + feature styles + themes
+        let css = format!(
+            "{STYLES_CSS}\n\n{FUZZY_FINDER_CSS}\n\n{PRESENTATION_CSS}\n\n{DIFF_CSS}\n\n{THEMES_CSS}"
+        );
+        html = html.replace("/*__STYLES_CSS__*/", &css);
+        html = html.replace("/*__THEMES_CSS__*/", "");
 
-        // Build JavaScript based on mode
-        let js = if options.tauri {
-            // Tauri mode: core + tooltips + search + diff + tauri-app
-            format!("{CORE_JS}\n\n{TOOLTIPS_JS}\n\n{SEARCH_JS}\n\n{DIFF_JS}\n\n{TAURI_APP_JS}")
-        } else {
-            // WebSocket mode: core + tooltips + search + diff + websocket-app
-            format!("{CORE_JS}\n\n{TOOLTIPS_JS}\n\n{SEARCH_JS}\n\n{DIFF_JS}\n\n{WEBSOCKET_APP_JS}")
-        };
+        // Build JavaScript: core + tooltips + search + diff + websocket-app
+        let js =
+            format!("{CORE_JS}\n\n{TOOLTIPS_JS}\n\n{SEARCH_JS}\n\n{DIFF_JS}\n\n{WEBSOCKET_APP_JS}");
 
         html = html.replace("/*__APP_JS__*/", &js);
 
@@ -139,6 +132,9 @@ mod tests {
     #[test]
     fn test_styles_exist() {
         assert!(!STYLES_CSS.is_empty());
+        assert!(!FUZZY_FINDER_CSS.is_empty());
+        assert!(!PRESENTATION_CSS.is_empty());
+        assert!(!DIFF_CSS.is_empty());
         assert!(!THEMES_CSS.is_empty());
     }
 
@@ -149,7 +145,6 @@ mod tests {
         assert!(!SEARCH_JS.is_empty());
         assert!(!DIFF_JS.is_empty());
         assert!(!WEBSOCKET_APP_JS.is_empty());
-        assert!(!TAURI_APP_JS.is_empty());
     }
 
     #[test]
@@ -169,14 +164,6 @@ mod tests {
     }
 
     #[test]
-    fn test_tauri_js_has_required_functions() {
-        // Tauri mode should have Tauri IPC
-        assert!(TAURI_APP_JS.contains("__TAURI__"));
-        assert!(TAURI_APP_JS.contains("invoke"));
-        assert!(TAURI_APP_JS.contains("initCoreUI"));
-    }
-
-    #[test]
     fn test_build_html_websocket_mode() {
         let html = Assets::build_html(&AssetOptions::default());
 
@@ -188,24 +175,5 @@ mod tests {
         // Should contain core and websocket code
         assert!(html.contains("function initCoreUI"));
         assert!(html.contains("WebSocket"));
-
-        // Should NOT contain Tauri-specific code (outside of __TAURI__ check)
-        // The tauri-app.js checks for __TAURI__ and returns early if not present
-    }
-
-    #[test]
-    fn test_build_html_tauri_mode() {
-        let html = Assets::build_html(&AssetOptions {
-            tauri: true,
-            ..Default::default()
-        });
-
-        // Should contain core and Tauri code
-        assert!(html.contains("function initCoreUI"));
-        assert!(html.contains("__TAURI__"));
-        assert!(html.contains("invoke"));
-
-        // Should NOT contain WebSocket code
-        assert!(!html.contains("new WebSocket"));
     }
 }

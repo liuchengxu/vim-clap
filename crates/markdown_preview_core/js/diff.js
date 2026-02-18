@@ -3,7 +3,7 @@
 
 /**
  * Store the current diff result for later display.
- * Called by tauri-app.js after fetching diff from backend.
+ * Called after fetching diff from backend.
  */
 function setCurrentDiff(diff) {
     currentDiff = diff;

@@ -1,5 +1,4 @@
-// MEAD Core - Shared UI functionality
-// This module contains all UI-related functions shared between vim-clap (WebSocket) and Tauri modes
+// Core - Shared UI functionality for markdown preview
 
 // ============================================================================
 // State Variables
@@ -1182,7 +1181,7 @@ function handleContentUpdate(message, options = {}) {
             renderRecentFiles();
         }
         updateFilePathBar(currentFilePath, message.git_root);
-        document.title = getFileBasename(currentFilePath) + ' - MEAD';
+        document.title = getFileBasename(currentFilePath) + ' - Markdown Preview';
 
         if (options.onFileOpened) {
             options.onFileOpened(currentFilePath);

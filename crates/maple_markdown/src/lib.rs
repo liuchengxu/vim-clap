@@ -118,7 +118,7 @@ async fn ws_handler(
             handle_websocket(ws, msg_rx, watcher_rx, disconnect_tx, base_dir).await
         })
     } else {
-        let html = Assets::build_html(&markdown_preview_core::assets::AssetOptions::default());
+        let html = Assets::build_html(&markdown_preview_core::assets::AssetOptions);
         let mut headers = HeaderMap::new();
         headers.insert(
             header::CACHE_CONTROL,
