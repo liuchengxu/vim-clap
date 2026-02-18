@@ -370,6 +370,7 @@ fn free_dict_to_entry(word: String, raw: &[FreeDictEntry]) -> DictionaryEntry {
                 definitions.push(DictionaryDefinition {
                     part_of_speech: meaning.part_of_speech.clone(),
                     meaning: def.definition.clone(),
+                    meaning_zh: String::new(),
                     example: def.example.clone().unwrap_or_default(),
                 });
                 synonyms.extend(def.synonyms.iter().cloned());

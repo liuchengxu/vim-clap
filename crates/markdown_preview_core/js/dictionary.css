@@ -219,6 +219,13 @@
     line-height: 1.6;
 }
 
+.dict-meaning-zh {
+    font-size: 13px;
+    color: #656d76;
+    line-height: 1.5;
+    margin-top: 2px;
+}
+
 .dict-example {
     font-size: 14px;
     color: #656d76;
@@ -352,6 +359,10 @@
 
     .dict-meaning {
         color: #c9d1d9;
+    }
+
+    .dict-meaning-zh {
+        color: #8b949e;
     }
 
     .dict-example {

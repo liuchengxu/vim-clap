@@ -267,6 +267,9 @@
             for (const def of defs) {
                 html += '<div class="dict-definition">';
                 html += `<div class="dict-meaning">${escapeHtml(def.meaning)}</div>`;
+                if (def.meaning_zh) {
+                    html += `<div class="dict-meaning-zh">${escapeHtml(def.meaning_zh)}</div>`;
+                }
                 if (def.example) {
                     html += `<div class="dict-example">"${escapeHtml(def.example)}"</div>`;
                 }

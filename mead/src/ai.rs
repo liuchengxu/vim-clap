@@ -462,6 +462,7 @@ You are an English dictionary. Given a word, return a JSON object with this exac
     {
       \"part_of_speech\": \"noun/verb/adjective/etc\",
       \"meaning\": \"definition text\",
+      \"meaning_zh\": \"中文释义\",
       \"example\": \"example sentence using the word\"
     }
   ],
@@ -475,6 +476,7 @@ You are an English dictionary. Given a word, return a JSON object with this exac
   \"related_concepts\": [\"concept1\", \"concept2\"]
 }
 Include multiple definitions if the word has different parts of speech or meanings. \
+meaning_zh: a concise Chinese translation/explanation of each definition to aid understanding. \
 Provide 2-5 synonyms and antonyms when applicable (empty arrays if none). \
 etymology: concise origin with language roots (Latin, Greek, etc.) and key morphemes. \
 mnemonic: a vivid, memorable tip (association, visual image, or wordplay). \
@@ -499,6 +501,9 @@ pub struct DictionaryDefinition {
     pub part_of_speech: String,
     /// The definition text.
     pub meaning: String,
+    /// Chinese translation/explanation of the definition.
+    #[serde(default)]
+    pub meaning_zh: String,
     /// An example sentence.
     #[serde(default)]
     pub example: String,
