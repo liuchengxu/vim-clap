@@ -5,7 +5,7 @@
 
 use tokio::process::Command;
 
-/// Parsed SCP-style SSH path: `[user@]host:/absolute/path`.
+/// Parsed SCP-style SSH path: `[user@]host:/absolute/path` or `[user@]host:~/relative/path`.
 #[derive(Debug, Clone)]
 pub struct SshTarget {
     pub user: Option<String>,
@@ -47,8 +47,8 @@ fn validate_host(host: &str) -> Result<(), String> {
 }
 
 fn validate_path(path: &str) -> Result<(), String> {
-    if !path.starts_with('/') {
-        return Err("Remote path must be absolute (start with /)".to_string());
+    if !path.starts_with('/') && !path.starts_with("~/") {
+        return Err("Remote path must be absolute (start with /) or home-relative (~/...)".to_string());
     }
     if path.contains('\0') {
         return Err("Remote path must not contain null bytes".to_string());
@@ -67,6 +67,21 @@ fn validate_path(path: &str) -> Result<(), String> {
 /// Wraps in single quotes, escaping any embedded single quotes.
 fn shell_escape(s: &str) -> String {
     format!("'{}'", s.replace('\'', "'\\''"))
+}
+
+/// Shell-escape a remote path, preserving tilde expansion.
+///
+/// For `~/...` paths, the `~` is left unquoted so the remote shell expands it
+/// to `$HOME`, while the rest is single-quoted for safety:
+/// `~/'.claude/plans/file.md'`
+///
+/// For absolute paths, delegates to `shell_escape`.
+fn shell_escape_path(path: &str) -> String {
+    if let Some(rest) = path.strip_prefix("~/") {
+        format!("~/{}", shell_escape(rest))
+    } else {
+        shell_escape(path)
+    }
 }
 
 // ========================================
@@ -154,7 +169,7 @@ async fn run_ssh(mut cmd: Command) -> Result<String, String> {
 pub async fn read_file(user: Option<&str>, host: &str, path: &str) -> Result<String, String> {
     validate_path(path)?;
     let mut cmd = ssh_command(user, host)?;
-    cmd.arg(format!("cat -- {}", shell_escape(path)));
+    cmd.arg(format!("cat -- {}", shell_escape_path(path)));
     run_ssh(cmd).await
 }
 
@@ -167,8 +182,8 @@ pub async fn stat_mtime(user: Option<&str>, host: &str, path: &str) -> Result<u6
     // GNU stat first, BSD stat fallback
     cmd.arg(format!(
         "stat -c %Y -- {} 2>/dev/null || stat -f %m -- {} 2>/dev/null",
-        shell_escape(path),
-        shell_escape(path)
+        shell_escape_path(path),
+        shell_escape_path(path)
     ));
 
     let output = run_ssh(cmd).await?;
@@ -190,7 +205,7 @@ pub async fn stat_mtime(user: Option<&str>, host: &str, path: &str) -> Result<u6
 pub async fn list_dir(user: Option<&str>, host: &str, path: &str) -> Result<Vec<String>, String> {
     validate_path(path)?;
     let mut cmd = ssh_command(user, host)?;
-    cmd.arg(format!("ls -1pA -- {}", shell_escape(path)));
+    cmd.arg(format!("ls -1pA -- {}", shell_escape_path(path)));
 
     let output = run_ssh(cmd).await?;
     Ok(output
@@ -205,7 +220,7 @@ pub async fn git_branch(user: Option<&str>, host: &str, dir: &str) -> Option<Str
     let mut cmd = ssh_command(user, host).ok()?;
     cmd.arg(format!(
         "git -C {} rev-parse --abbrev-ref HEAD",
-        shell_escape(dir)
+        shell_escape_path(dir)
     ));
     run_ssh(cmd)
         .await
@@ -224,8 +239,8 @@ pub async fn git_last_author(
     let mut cmd = ssh_command(user, host).ok()?;
     cmd.arg(format!(
         "git -C {} log -1 --format=%an -- {}",
-        shell_escape(dir),
-        shell_escape(file_path)
+        shell_escape_path(dir),
+        shell_escape_path(file_path)
     ));
     run_ssh(cmd)
         .await
@@ -239,7 +254,7 @@ pub async fn git_remote_url(user: Option<&str>, host: &str, dir: &str) -> Option
     let mut cmd = ssh_command(user, host).ok()?;
     cmd.arg(format!(
         "git -C {} remote get-url origin",
-        shell_escape(dir)
+        shell_escape_path(dir)
     ));
     run_ssh(cmd)
         .await
@@ -253,7 +268,7 @@ pub async fn git_root(user: Option<&str>, host: &str, dir: &str) -> Option<Strin
     let mut cmd = ssh_command(user, host).ok()?;
     cmd.arg(format!(
         "git -C {} rev-parse --show-toplevel",
-        shell_escape(dir)
+        shell_escape_path(dir)
     ));
     run_ssh(cmd)
         .await
@@ -280,14 +295,14 @@ pub fn git_branch_url_from_remote(remote_url: &str, branch: &str) -> Option<Stri
 // Path parsing
 // ========================================
 
-/// Check if a string is an SSH path (SCP-style: `[user@]host:/absolute/path`).
+/// Check if a string is an SSH path (SCP-style: `[user@]host:/path` or `[user@]host:~/path`).
 pub fn is_ssh_path(input: &str) -> bool {
     parse_ssh_path(input).is_some()
 }
 
 /// Parse an SCP-style SSH path into its components.
 ///
-/// Format: `[user@]host:/absolute/path`
+/// Format: `[user@]host:/absolute/path` or `[user@]host:~/relative/path`
 ///
 /// Returns `None` if the input is not a valid SSH path.
 pub fn parse_ssh_path(input: &str) -> Option<SshTarget> {
@@ -296,11 +311,13 @@ pub fn parse_ssh_path(input: &str) -> Option<SshTarget> {
         return None;
     }
 
-    // Find the first `:` followed by `/`
-    let colon_pos = input.find(":/")?;
+    // Find the first `:` followed by `/` or `~`
+    let colon_pos = input
+        .find(":/")
+        .or_else(|| input.find(":~"))?;
 
     let user_host = &input[..colon_pos];
-    let path = &input[colon_pos + 1..]; // includes leading /
+    let path = &input[colon_pos + 1..]; // includes leading / or ~/
 
     // Validate path
     if validate_path(path).is_err() {
@@ -364,6 +381,24 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_ssh_path_with_tilde() {
+        let target =
+            parse_ssh_path("xlc@100.114.210.42:~/.claude/plans/dreamy-doodling-dragonfly.md")
+                .unwrap();
+        assert_eq!(target.user.as_deref(), Some("xlc"));
+        assert_eq!(target.host, "100.114.210.42");
+        assert_eq!(target.path, "~/.claude/plans/dreamy-doodling-dragonfly.md");
+    }
+
+    #[test]
+    fn test_parse_ssh_path_tilde_without_user() {
+        let target = parse_ssh_path("myserver:~/notes/readme.md").unwrap();
+        assert!(target.user.is_none());
+        assert_eq!(target.host, "myserver");
+        assert_eq!(target.path, "~/notes/readme.md");
+    }
+
+    #[test]
     fn test_parse_ssh_path_rejects_urls() {
         assert!(parse_ssh_path("https://github.com/foo/bar").is_none());
         assert!(parse_ssh_path("http://localhost:8080/path").is_none());
@@ -388,6 +423,8 @@ mod tests {
     fn test_is_ssh_path() {
         assert!(is_ssh_path("user@host:/path/file.md"));
         assert!(is_ssh_path("host:/path/file.md"));
+        assert!(is_ssh_path("user@host:~/path/file.md"));
+        assert!(is_ssh_path("host:~/path/file.md"));
         assert!(!is_ssh_path("/local/path/file.md"));
         assert!(!is_ssh_path("https://example.com"));
     }
@@ -403,9 +440,26 @@ mod tests {
     }
 
     #[test]
+    fn test_shell_escape_path_absolute() {
+        assert_eq!(shell_escape_path("/simple/path"), "'/simple/path'");
+    }
+
+    #[test]
+    fn test_shell_escape_path_tilde() {
+        // ~ must stay unquoted for remote shell expansion, rest is single-quoted
+        assert_eq!(
+            shell_escape_path("~/.claude/plans/file.md"),
+            "~/'.claude/plans/file.md'"
+        );
+        assert_eq!(shell_escape_path("~/notes/readme.md"), "~/'notes/readme.md'");
+    }
+
+    #[test]
     fn test_validate_path() {
         assert!(validate_path("/valid/path").is_ok());
         assert!(validate_path("/path with spaces").is_ok());
+        assert!(validate_path("~/home-relative").is_ok());
+        assert!(validate_path("~/.claude/plans/file.md").is_ok());
         assert!(validate_path("relative/path").is_err());
         assert!(validate_path("/path\0with_null").is_err());
         assert!(validate_path("/path\nwith_newline").is_err());

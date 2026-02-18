@@ -1267,6 +1267,84 @@
         }
       }
 
+      /* Auto-scroll metadata bar button — pushed to the right edge */
+      .metadata-autoscroll {
+        margin-left: auto;
+      }
+
+      /* Floating auto-scroll control pill */
+      .autoscroll-float {
+        display: none;
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        z-index: 9999;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid #d0d7de;
+        border-radius: 20px;
+        padding: 4px 6px;
+        align-items: center;
+        gap: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        font-size: 12px;
+        color: #24292f;
+        user-select: none;
+      }
+
+      .autoscroll-float.visible {
+        display: inline-flex;
+      }
+
+      .autoscroll-float-btn {
+        width: 26px;
+        height: 26px;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.1s ease;
+      }
+
+      .autoscroll-float-btn:hover {
+        background-color: rgba(0, 0, 0, 0.08);
+      }
+
+      #autoscroll-float-pause:hover {
+        background-color: rgba(207, 34, 46, 0.1);
+        color: #cf222e;
+      }
+
+      .autoscroll-float-speed {
+        min-width: 30px;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+        font-weight: 500;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .autoscroll-float {
+          background: rgba(22, 27, 34, 0.95);
+          border-color: #30363d;
+          color: #c9d1d9;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        .autoscroll-float-btn:hover {
+          background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        #autoscroll-float-pause:hover {
+          background-color: rgba(248, 81, 73, 0.15);
+          color: #f85149;
+        }
+      }
+
       @media (prefers-color-scheme: dark) {
         .file-metadata-bar {
           background: #161b22;

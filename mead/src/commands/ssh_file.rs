@@ -117,8 +117,8 @@ pub async fn complete_ssh_path(partial: String) -> Result<Vec<PathCompletion>, S
         (None, user_host)
     };
 
-    // Remote path must start with /
-    if !remote_part.starts_with('/') {
+    // Remote path must start with / or ~/
+    if !remote_part.starts_with('/') && !remote_part.starts_with("~/") {
         return Ok(Vec::new());
     }
 
@@ -130,7 +130,7 @@ pub async fn complete_ssh_path(partial: String) -> Result<Vec<PathCompletion>, S
         let parent = remote_path
             .parent()
             .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|| "/".to_string());
+            .unwrap_or_else(|| "~/".to_string());
         let file_name = remote_path
             .file_name()
             .map(|s| s.to_string_lossy().to_string())

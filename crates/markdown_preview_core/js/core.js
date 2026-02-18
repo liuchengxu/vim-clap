@@ -1025,6 +1025,127 @@ function triggerFileChangedAnimation() {
     }, 1200);
 }
 
+// ============================================================================
+// Auto-scroll
+// ============================================================================
+
+const autoScroll = {
+    active: false,
+    speed: 1,        // pixels per tick
+    intervalId: null,
+    pausedByUser: false,
+    TICK_MS: 30,     // ~33 fps
+    MIN_SPEED: 0.5,
+    MAX_SPEED: 5,
+    SPEED_STEP: 0.5,
+};
+
+function toggleAutoScroll() {
+    if (autoScroll.active) {
+        stopAutoScroll();
+    } else {
+        startAutoScroll();
+    }
+}
+
+function startAutoScroll() {
+    const container = document.getElementById('main-content');
+    if (!container) return;
+
+    autoScroll.active = true;
+    autoScroll.pausedByUser = false;
+    updateAutoScrollUI();
+
+    autoScroll.intervalId = setInterval(() => {
+        // Stop if we've reached the bottom
+        const atBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 1;
+        if (atBottom) {
+            stopAutoScroll();
+            return;
+        }
+        container.scrollTop += autoScroll.speed;
+    }, autoScroll.TICK_MS);
+
+    // Listen for user scroll to auto-pause
+    container.addEventListener('wheel', onUserScroll);
+    container.addEventListener('mousedown', onUserScroll);
+    container.addEventListener('touchstart', onUserScroll);
+}
+
+function stopAutoScroll() {
+    autoScroll.active = false;
+    if (autoScroll.intervalId) {
+        clearInterval(autoScroll.intervalId);
+        autoScroll.intervalId = null;
+    }
+    const container = document.getElementById('main-content');
+    if (container) {
+        container.removeEventListener('wheel', onUserScroll);
+        container.removeEventListener('mousedown', onUserScroll);
+        container.removeEventListener('touchstart', onUserScroll);
+    }
+    updateAutoScrollUI();
+}
+
+function onUserScroll() {
+    if (autoScroll.active) {
+        stopAutoScroll();
+        autoScroll.pausedByUser = true;
+    }
+}
+
+function adjustAutoScrollSpeed(delta) {
+    const newSpeed = autoScroll.speed + delta;
+    autoScroll.speed = Math.max(autoScroll.MIN_SPEED, Math.min(autoScroll.MAX_SPEED, newSpeed));
+    updateAutoScrollUI();
+}
+
+function updateAutoScrollUI() {
+    // Floating pill
+    const pill = document.getElementById('autoscroll-float');
+    const speedEl = document.getElementById('autoscroll-float-speed');
+    if (pill) {
+        if (autoScroll.active) {
+            pill.classList.add('visible');
+        } else {
+            pill.classList.remove('visible');
+        }
+    }
+    if (speedEl) {
+        speedEl.textContent = autoScroll.speed.toFixed(1) + 'x';
+    }
+}
+
+// Wire up click handlers once the DOM is ready
+function initAutoScroll() {
+    // Metadata bar button — starts auto-scroll
+    const metaBtn = document.getElementById('metadata-autoscroll');
+    if (metaBtn) {
+        metaBtn.addEventListener('click', toggleAutoScroll);
+    }
+
+    // Floating pill buttons
+    const pauseBtn = document.getElementById('autoscroll-float-pause');
+    if (pauseBtn) {
+        pauseBtn.addEventListener('click', () => stopAutoScroll());
+    }
+    const slowerBtn = document.getElementById('autoscroll-float-slower');
+    if (slowerBtn) {
+        slowerBtn.addEventListener('click', () => adjustAutoScrollSpeed(-autoScroll.SPEED_STEP));
+    }
+    const fasterBtn = document.getElementById('autoscroll-float-faster');
+    if (fasterBtn) {
+        fasterBtn.addEventListener('click', () => adjustAutoScrollSpeed(autoScroll.SPEED_STEP));
+    }
+}
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAutoScroll);
+} else {
+    initAutoScroll();
+}
+
 // Fuzzy Finder is in search.js
 
 // ============================================================================

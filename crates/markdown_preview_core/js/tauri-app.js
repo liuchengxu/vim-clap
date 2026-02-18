@@ -169,11 +169,11 @@ if (typeof window.__TAURI__ !== 'undefined') {
         return str.startsWith('http://') || str.startsWith('https://');
     }
 
-    // Check if a string is an SSH path (SCP-style: [user@]host:/path)
+    // Check if a string is an SSH path (SCP-style: [user@]host:/path or [user@]host:~/path)
     function isSshPath(str) {
         if (!str || str.startsWith('http://') || str.startsWith('https://')) return false;
-        // Match [user@]host:/path — host must start with alphanumeric
-        return /^(?:[a-zA-Z0-9][a-zA-Z0-9._-]*@)?[a-zA-Z0-9][a-zA-Z0-9._-]*:\//.test(str);
+        // Match [user@]host:/path or [user@]host:~/path — host must start with alphanumeric
+        return /^(?:[a-zA-Z0-9][a-zA-Z0-9._-]*@)?[a-zA-Z0-9][a-zA-Z0-9._-]*:(?:\/|~\/)/.test(str);
     }
 
     // Open a URL
@@ -512,6 +512,9 @@ if (typeof window.__TAURI__ !== 'undefined') {
 
     // Handle file opened result
     function handleFileOpened(result) {
+        // Stop auto-scroll when opening a new file
+        if (autoScroll.active) stopAutoScroll();
+
         const content = document.getElementById('content');
 
         // Get document type (required field from backend)
@@ -618,14 +621,14 @@ if (typeof window.__TAURI__ !== 'undefined') {
         }
     }
 
-    // Switch to a different file
+    // Switch to a different file (from recent previews sidebar, TOC links, etc.)
     async function switchToFile(filePath) {
         const current = window.MarkdownPreviewCore.getCurrentFilePath();
         if (filePath === current) {
             return;
         }
 
-        await openFile(filePath);
+        await openPathOrUrl(filePath);
         console.log(`Switched to: ${filePath}`);
     }
 
@@ -1288,6 +1291,7 @@ if (typeof window.__TAURI__ !== 'undefined') {
         registerShortcut('+', { ctrl: true, shift: true }, () => zoomIn(), { when: notInTerminal });
         registerShortcut('-', { ctrl: true }, () => zoomOut(), { when: notInTerminal });
         registerShortcut('0', { ctrl: true }, () => resetZoom(), { when: notInTerminal });
+        registerShortcut('s', { ctrl: true, shift: true }, () => toggleAutoScroll(), { when: notInTerminal });
 
         // Start the listener
         setupShortcutListener();
@@ -1321,6 +1325,18 @@ if (typeof window.__TAURI__ !== 'undefined') {
                         console.error('Failed to copy:', err);
                     }
                 }
+            }
+
+            // Auto-scroll speed: +/- keys (no modifier) while scrolling
+            if (autoScroll.active && (e.key === '=' || e.key === '+')) {
+                e.preventDefault();
+                adjustAutoScrollSpeed(autoScroll.SPEED_STEP);
+                return;
+            }
+            if (autoScroll.active && e.key === '-') {
+                e.preventDefault();
+                adjustAutoScrollSpeed(-autoScroll.SPEED_STEP);
+                return;
             }
 
             // Escape priority chain

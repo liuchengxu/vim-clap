@@ -437,7 +437,7 @@
                         const item = autocompleteState.items[autocompleteState.selectedIndex];
                         if (item && !item.is_dir) {
                             closePathInput();
-                            await openFile(item.path);
+                            await openPathOrUrl(item.path);
                             return;
                         } else if (item && item.is_dir) {
                             selectAutocompleteItem(autocompleteState.selectedIndex);
