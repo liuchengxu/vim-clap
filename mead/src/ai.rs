@@ -174,7 +174,16 @@ async fn ollama_request(
         .ok_or_else(|| "Empty response from Ollama".to_string())
 }
 
+/// Whether the given key is a Claude OAuth setup token (vs a regular API key).
+fn is_oauth_token(key: &str) -> bool {
+    key.contains("sk-ant-oat")
+}
+
 /// Send a request to the Anthropic API.
+///
+/// Automatically detects whether `api_key` is a regular API key or an OAuth setup
+/// token (from `claude setup-token`) and adjusts auth headers and system prompt
+/// accordingly. OAuth tokens require Claude Code identity headers to be accepted.
 async fn anthropic_request(
     model: &str,
     system_prompt: &str,
@@ -183,20 +192,46 @@ async fn anthropic_request(
     max_tokens: u32,
     timeout_secs: u64,
 ) -> Result<String, String> {
+    let oauth = is_oauth_token(api_key);
+
+    // OAuth tokens require the Claude Code identity in the system prompt.
+    let effective_system = if oauth {
+        format!(
+            "You are Claude Code, Anthropic's official CLI for Claude.\n\n{system_prompt}"
+        )
+    } else {
+        system_prompt.to_string()
+    };
+
     let payload = serde_json::json!({
         "model": model,
         "max_tokens": max_tokens,
-        "system": system_prompt,
+        "system": effective_system,
         "messages": [
             {"role": "user", "content": user_content}
         ]
     });
 
-    let response = reqwest::Client::new()
+    let mut request = reqwest::Client::new()
         .post("https://api.anthropic.com/v1/messages")
-        .header("x-api-key", api_key)
         .header("anthropic-version", "2023-06-01")
-        .header("content-type", "application/json")
+        .header("content-type", "application/json");
+
+    if oauth {
+        // OAuth tokens use Bearer auth and must present Claude Code identity headers.
+        request = request
+            .header("Authorization", format!("Bearer {api_key}"))
+            .header(
+                "anthropic-beta",
+                "claude-code-20250219,oauth-2025-04-20",
+            )
+            .header("user-agent", "claude-cli/2.1.2 (external, cli)")
+            .header("x-app", "cli");
+    } else {
+        request = request.header("x-api-key", api_key);
+    }
+
+    let response = request
         .json(&payload)
         .timeout(std::time::Duration::from_secs(timeout_secs))
         .send()
@@ -206,6 +241,13 @@ async fn anthropic_request(
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
+        if oauth && status == reqwest::StatusCode::UNAUTHORIZED {
+            return Err(
+                "Anthropic OAuth token expired or invalid. \
+                 Run `claude setup-token` to generate a new one and paste it in Settings."
+                    .to_string(),
+            );
+        }
         return Err(format!("Anthropic returned status {status}: {body}"));
     }
 

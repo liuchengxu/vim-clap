@@ -39,8 +39,8 @@
                             </div>
                             <div class="settings-field" id="settings-api-key-field" style="display:none;">
                                 <label for="settings-ai-api-key">API Key</label>
-                                <input type="password" id="settings-ai-api-key" placeholder="sk-... or anthropic key" autocomplete="off" spellcheck="false">
-                                <p class="settings-hint">Falls back to ANTHROPIC_API_KEY / OPENAI_API_KEY env var.</p>
+                                <input type="password" id="settings-ai-api-key" placeholder="sk-..." autocomplete="off" spellcheck="false">
+                                <p class="settings-hint" id="settings-api-key-hint"></p>
                             </div>
                             <div class="settings-field" id="settings-ollama-url-field" style="display:none;">
                                 <label for="settings-ollama-url">Ollama URL</label>
@@ -216,11 +216,22 @@
         const apiKeyField = document.getElementById('settings-api-key-field');
         const ollamaUrlField = document.getElementById('settings-ollama-url-field');
 
+        const apiKeyInput = document.getElementById('settings-ai-api-key');
+        const apiKeyHint = document.getElementById('settings-api-key-hint');
+
         function updateFieldVisibility() {
             const provider = providerSelect.value;
             modelField.style.display = provider ? '' : 'none';
             apiKeyField.style.display = (provider === 'anthropic' || provider === 'openai') ? '' : 'none';
             ollamaUrlField.style.display = provider === 'ollama' ? '' : 'none';
+
+            if (provider === 'anthropic') {
+                apiKeyInput.placeholder = 'sk-ant-api03-... or sk-ant-oat01-...';
+                apiKeyHint.textContent = 'API key (sk-ant-api03-…) or setup token from `claude setup-token` (sk-ant-oat01-…). Falls back to ANTHROPIC_API_KEY env var.';
+            } else if (provider === 'openai') {
+                apiKeyInput.placeholder = 'sk-...';
+                apiKeyHint.textContent = 'Falls back to OPENAI_API_KEY env var.';
+            }
         }
 
         providerSelect.addEventListener('change', updateFieldVisibility);
