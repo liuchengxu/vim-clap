@@ -48,7 +48,9 @@ fn validate_host(host: &str) -> Result<(), String> {
 
 fn validate_path(path: &str) -> Result<(), String> {
     if !path.starts_with('/') && !path.starts_with("~/") {
-        return Err("Remote path must be absolute (start with /) or home-relative (~/...)".to_string());
+        return Err(
+            "Remote path must be absolute (start with /) or home-relative (~/...)".to_string(),
+        );
     }
     if path.contains('\0') {
         return Err("Remote path must not contain null bytes".to_string());
@@ -312,9 +314,7 @@ pub fn parse_ssh_path(input: &str) -> Option<SshTarget> {
     }
 
     // Find the first `:` followed by `/` or `~`
-    let colon_pos = input
-        .find(":/")
-        .or_else(|| input.find(":~"))?;
+    let colon_pos = input.find(":/").or_else(|| input.find(":~"))?;
 
     let user_host = &input[..colon_pos];
     let path = &input[colon_pos + 1..]; // includes leading / or ~/
@@ -451,7 +451,10 @@ mod tests {
             shell_escape_path("~/.claude/plans/file.md"),
             "~/'.claude/plans/file.md'"
         );
-        assert_eq!(shell_escape_path("~/notes/readme.md"), "~/'notes/readme.md'");
+        assert_eq!(
+            shell_escape_path("~/notes/readme.md"),
+            "~/'notes/readme.md'"
+        );
     }
 
     #[test]

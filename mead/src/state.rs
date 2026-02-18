@@ -32,6 +32,12 @@ const AI_SUMMARIES_FILE: &str = "ai_summaries.json";
 /// AI dictionary cache file name
 const DICT_CACHE_FILE: &str = "dict_cache.json";
 
+/// Online dictionary cache file name
+const ONLINE_DICT_CACHE_FILE: &str = "online_dict_cache.json";
+
+/// Etymology cache file name
+const ETYMOLOGY_CACHE_FILE: &str = "etymology_cache.json";
+
 /// Maximum number of file snapshots to keep (aligned with recent files)
 const MAX_SNAPSHOTS: usize = MAX_RECENT_FILES;
 
@@ -71,6 +77,40 @@ struct AiSummaries {
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct DictCache {
     entries: HashMap<String, DictionaryEntry>,
+}
+
+/// A cached online dictionary lookup result.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CachedOnlineLookup {
+    /// The structured dictionary entry.
+    pub entry: DictionaryEntry,
+    /// Human-readable source name (e.g. "Wiktionary").
+    pub source: String,
+}
+
+/// Persisted online dictionary lookup cache.
+///
+/// `None` values represent negative cache entries (word not found).
+#[derive(Debug, Default, Serialize, Deserialize)]
+struct OnlineDictCache {
+    entries: HashMap<String, Option<CachedOnlineLookup>>,
+}
+
+/// A cached etymology lookup result.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CachedEtymology {
+    /// Cleaned HTML of the etymology section.
+    pub etymology_html: String,
+    /// Source label (e.g. "Wiktionary").
+    pub source: String,
+}
+
+/// Persisted etymology lookup cache.
+///
+/// `None` values represent negative cache entries (no etymology found).
+#[derive(Debug, Default, Serialize, Deserialize)]
+struct EtymologyCache {
+    entries: HashMap<String, Option<CachedEtymology>>,
 }
 
 /// Normalize a config value: trim whitespace, convert empty to None.
@@ -142,6 +182,10 @@ pub struct AppState {
     ai_summaries: AiSummaries,
     /// Cached AI dictionary lookups
     dict_cache: DictCache,
+    /// Cached online dictionary lookups (Free Dictionary API)
+    online_dict_cache: OnlineDictCache,
+    /// Cached etymology lookups (Wiktionary)
+    etymology_cache: EtymologyCache,
     /// Configured offline dictionary directories
     dictionary_dirs: Vec<String>,
 }
@@ -167,6 +211,8 @@ impl AppState {
             ollama_url: None,
             ai_summaries: AiSummaries::default(),
             dict_cache: DictCache::default(),
+            online_dict_cache: OnlineDictCache::default(),
+            etymology_cache: EtymologyCache::default(),
             dictionary_dirs: Vec::new(),
         };
         state.load_config();
@@ -174,6 +220,8 @@ impl AppState {
         state.load_snapshots();
         state.load_ai_summaries();
         state.load_dict_cache();
+        state.load_online_dict_cache();
+        state.load_etymology_cache();
         state
     }
 
@@ -789,6 +837,177 @@ impl AppState {
     pub fn clear_dict_cache(&mut self) {
         self.dict_cache.entries.clear();
         self.save_dict_cache();
+    }
+
+    // ------------------------------------------------------------------
+    // Online dictionary cache (Free Dictionary API)
+    // ------------------------------------------------------------------
+
+    /// Get the online dictionary cache file path.
+    fn online_dict_cache_path(&self) -> Option<PathBuf> {
+        self.config_dir
+            .as_ref()
+            .map(|dir| dir.join(ONLINE_DICT_CACHE_FILE))
+    }
+
+    /// Load online dictionary cache from disk.
+    fn load_online_dict_cache(&mut self) {
+        let Some(path) = self.online_dict_cache_path() else {
+            return;
+        };
+
+        if !path.exists() {
+            return;
+        }
+
+        match std::fs::read_to_string(&path) {
+            Ok(content) => match serde_json::from_str::<OnlineDictCache>(&content) {
+                Ok(cache) => {
+                    tracing::info!(
+                        count = cache.entries.len(),
+                        "Loaded online dictionary cache"
+                    );
+                    self.online_dict_cache = cache;
+                }
+                Err(error) => {
+                    tracing::warn!(%error, "Failed to parse online dictionary cache file");
+                }
+            },
+            Err(error) => {
+                tracing::warn!(%error, "Failed to read online dictionary cache file");
+            }
+        }
+    }
+
+    /// Save online dictionary cache to disk.
+    fn save_online_dict_cache(&self) {
+        let Some(path) = self.online_dict_cache_path() else {
+            return;
+        };
+
+        if let Some(parent) = path.parent() {
+            if let Err(error) = std::fs::create_dir_all(parent) {
+                tracing::warn!(%error, "Failed to create config directory");
+                return;
+            }
+        }
+
+        match serde_json::to_string_pretty(&self.online_dict_cache) {
+            Ok(content) => {
+                if let Err(error) = std::fs::write(&path, content) {
+                    tracing::warn!(%error, "Failed to write online dictionary cache file");
+                }
+            }
+            Err(error) => {
+                tracing::warn!(%error, "Failed to serialize online dictionary cache");
+            }
+        }
+    }
+
+    /// Get a cached online dictionary lookup (case-insensitive).
+    ///
+    /// Returns `None` if the word was never looked up (cache miss).
+    /// Returns `Some(None)` for a negative cache entry (word not found).
+    /// Returns `Some(Some(..))` for a positive cache hit.
+    pub fn get_cached_online_lookup(&self, word: &str) -> Option<Option<&CachedOnlineLookup>> {
+        self.online_dict_cache
+            .entries
+            .get(&word.to_lowercase())
+            .map(|opt| opt.as_ref())
+    }
+
+    /// Store an online dictionary lookup result in the cache and persist.
+    ///
+    /// Pass `None` for a negative cache entry (word not found).
+    pub fn set_cached_online_lookup(&mut self, word: String, result: Option<CachedOnlineLookup>) {
+        self.online_dict_cache
+            .entries
+            .insert(word.to_lowercase(), result);
+        self.save_online_dict_cache();
+    }
+
+    // ------------------------------------------------------------------
+    // Etymology cache (Wiktionary)
+    // ------------------------------------------------------------------
+
+    /// Get the etymology cache file path.
+    fn etymology_cache_path(&self) -> Option<PathBuf> {
+        self.config_dir
+            .as_ref()
+            .map(|dir| dir.join(ETYMOLOGY_CACHE_FILE))
+    }
+
+    /// Load etymology cache from disk.
+    fn load_etymology_cache(&mut self) {
+        let Some(path) = self.etymology_cache_path() else {
+            return;
+        };
+
+        if !path.exists() {
+            return;
+        }
+
+        match std::fs::read_to_string(&path) {
+            Ok(content) => match serde_json::from_str::<EtymologyCache>(&content) {
+                Ok(cache) => {
+                    tracing::info!(count = cache.entries.len(), "Loaded etymology cache");
+                    self.etymology_cache = cache;
+                }
+                Err(error) => {
+                    tracing::warn!(%error, "Failed to parse etymology cache file");
+                }
+            },
+            Err(error) => {
+                tracing::warn!(%error, "Failed to read etymology cache file");
+            }
+        }
+    }
+
+    /// Save etymology cache to disk.
+    fn save_etymology_cache(&self) {
+        let Some(path) = self.etymology_cache_path() else {
+            return;
+        };
+
+        if let Some(parent) = path.parent() {
+            if let Err(error) = std::fs::create_dir_all(parent) {
+                tracing::warn!(%error, "Failed to create config directory");
+                return;
+            }
+        }
+
+        match serde_json::to_string_pretty(&self.etymology_cache) {
+            Ok(content) => {
+                if let Err(error) = std::fs::write(&path, content) {
+                    tracing::warn!(%error, "Failed to write etymology cache file");
+                }
+            }
+            Err(error) => {
+                tracing::warn!(%error, "Failed to serialize etymology cache");
+            }
+        }
+    }
+
+    /// Get a cached etymology lookup (case-insensitive).
+    ///
+    /// Returns `None` if the word was never looked up (cache miss).
+    /// Returns `Some(None)` for a negative cache entry (no etymology found).
+    /// Returns `Some(Some(..))` for a positive cache hit.
+    pub fn get_cached_etymology(&self, word: &str) -> Option<Option<&CachedEtymology>> {
+        self.etymology_cache
+            .entries
+            .get(&word.to_lowercase())
+            .map(|opt| opt.as_ref())
+    }
+
+    /// Store an etymology lookup result in the cache and persist.
+    ///
+    /// Pass `None` for a negative cache entry (no etymology found).
+    pub fn set_cached_etymology(&mut self, word: String, result: Option<CachedEtymology>) {
+        self.etymology_cache
+            .entries
+            .insert(word.to_lowercase(), result);
+        self.save_etymology_cache();
     }
 }
 

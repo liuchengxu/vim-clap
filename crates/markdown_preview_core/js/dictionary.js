@@ -69,6 +69,19 @@
         const btn = document.getElementById('dict-lookup-btn');
         if (!input || !btn) return;
 
+        // Create refresh button (hidden until first lookup)
+        const refreshBtn = document.createElement('button');
+        refreshBtn.id = 'dict-refresh-btn';
+        refreshBtn.className = 'dict-refresh-btn';
+        refreshBtn.title = 'Re-fetch from all sources';
+        refreshBtn.innerHTML = '&#x21bb;';
+        refreshBtn.style.display = 'none';
+        btn.insertAdjacentElement('afterend', refreshBtn);
+        refreshBtn.addEventListener('click', () => {
+            const word = input.value.trim();
+            if (word) performLookup(word, true);
+        });
+
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -84,7 +97,7 @@
         renderAiUsageStats();
     }
 
-    async function performLookup(word) {
+    async function performLookup(word, refresh = false) {
         if (!word) return;
 
         const thisLookupId = ++lookupCounter;
@@ -124,35 +137,46 @@
 
         // 2. Online dictionary + Wiktionary etymology (parallel)
         let etymologyHtml = null;
+        let etymologyCached = false;
         try {
             const [onlineResult, etymResult] = await Promise.allSettled([
-                invoke('lookup_word_online', { word }),
-                invoke('lookup_etymology', { word }),
+                invoke('lookup_word_online', { word, refresh }),
+                invoke('lookup_etymology', { word, refresh }),
             ]);
             if (isStale()) { if (btn) btn.disabled = false; return; }
 
-            // Process online dictionary result
+            // Process online dictionary result (new shape: { result, cached })
             if (onlineResult.status === 'fulfilled' && onlineResult.value) {
-                const onlineEntry = onlineResult.value;
-                hasOnlineResults = true;
-                const onlineHtml = renderDictEntry(onlineEntry, 'online', onlineEntry.source || 'Online');
-                if (hasOfflineResults) {
-                    resultsEl.insertAdjacentHTML('beforeend', onlineHtml);
-                } else {
-                    resultsEl.innerHTML = onlineHtml;
+                const onlineResp = onlineResult.value;
+                if (onlineResp.result) {
+                    const onlineEntry = onlineResp.result;
+                    hasOnlineResults = true;
+                    const onlineHtml = renderDictEntry(onlineEntry, 'online', onlineEntry.source || 'Online', onlineResp.cached);
+                    if (hasOfflineResults) {
+                        resultsEl.insertAdjacentHTML('beforeend', onlineHtml);
+                    } else {
+                        resultsEl.innerHTML = onlineHtml;
+                    }
+                    wireUpDictTags(resultsEl);
+                    wireUpPronounceButtons(resultsEl);
                 }
-                wireUpDictTags(resultsEl);
-                wireUpPronounceButtons(resultsEl);
             }
 
-            // Process Wiktionary etymology result
+            // Process Wiktionary etymology result (new shape: { result, cached })
             if (etymResult.status === 'fulfilled' && etymResult.value) {
-                etymologyHtml = etymResult.value.etymology_html;
-                const etymSection = '<div class="dict-etymology dict-etymology-wiktionary">'
-                    + '<div class="dict-etymology-label">Etymology <span class="dict-etymology-source">'
-                    + `(${escapeHtml(etymResult.value.source)})</span></div>`
-                    + `<div class="dict-etymology-text">${sanitizeHtml(etymologyHtml)}</div></div>`;
-                resultsEl.insertAdjacentHTML('beforeend', etymSection);
+                const etymResp = etymResult.value;
+                etymologyCached = etymResp.cached;
+                if (etymResp.result) {
+                    etymologyHtml = etymResp.result.etymology_html;
+                    const cachedTag = etymResp.cached
+                        ? ' <span class="dict-cached-badge">cached</span>'
+                        : '';
+                    const etymSection = '<div class="dict-etymology dict-etymology-wiktionary">'
+                        + '<div class="dict-etymology-label">Etymology <span class="dict-etymology-source">'
+                        + `(${escapeHtml(etymResp.result.source)})</span>${cachedTag}</div>`
+                        + `<div class="dict-etymology-text">${sanitizeHtml(etymologyHtml)}</div></div>`;
+                    resultsEl.insertAdjacentHTML('beforeend', etymSection);
+                }
             }
         } catch (_err) {
             if (isStale()) { if (btn) btn.disabled = false; return; }
@@ -165,7 +189,7 @@
                     '<div class="dict-ai-loading">Loading AI definition...</div>');
             }
 
-            const response = await invoke('lookup_word', { word });
+            const response = await invoke('lookup_word', { word, refresh });
             if (isStale()) { if (btn) btn.disabled = false; return; }
 
             const entry = response;
@@ -178,7 +202,7 @@
             const aiLoadingEl = resultsEl.querySelector('.dict-ai-loading');
             if (aiLoadingEl) aiLoadingEl.remove();
 
-            const aiHtml = renderDictEntry(entry, 'ai', 'AI');
+            const aiHtml = renderDictEntry(entry, 'ai', 'AI', response.cached);
             if (hasAnyResults()) {
                 resultsEl.insertAdjacentHTML('beforeend', aiHtml);
             } else {
@@ -220,6 +244,12 @@
         if (!hasAnyResults() && !hasAiResults) {
             resultsEl.innerHTML = '<div class="dict-empty-state">No results found</div>';
         }
+
+        // Show the refresh button in the input bar
+        if (!isStale()) {
+            const refreshBtn = document.getElementById('dict-refresh-btn');
+            if (refreshBtn) refreshBtn.style.display = '';
+        }
     }
 
     function renderOfflineResults(results) {
@@ -239,13 +269,17 @@
      * @param {Object} entry - DictionaryEntry {word, phonetic, definitions, synonyms, antonyms}
      * @param {string} badgeClass - CSS class for the source badge (e.g. 'ai', 'online')
      * @param {string} badgeLabel - Display text for the source badge
+     * @param {boolean} [cached=false] - Whether this result was served from cache
      */
-    function renderDictEntry(entry, badgeClass, badgeLabel) {
+    function renderDictEntry(entry, badgeClass, badgeLabel, cached) {
         let html = `<div class="dict-entry">`;
 
         // Word header with source badge, phonetic and pronounce button
         html += '<div class="dict-word-header">';
         html += `<div class="dict-source-badge ${escapeHtml(badgeClass)}">${escapeHtml(badgeLabel)}</div>`;
+        if (cached) {
+            html += '<span class="dict-cached-badge">cached</span>';
+        }
         html += `<h1 class="dict-word-title">${escapeHtml(entry.word)}</h1>`;
         html += `<button class="dict-pronounce-btn" data-word="${escapeHtml(entry.word)}" title="Pronounce">&#x1f50a;</button>`;
         if (entry.phonetic) {

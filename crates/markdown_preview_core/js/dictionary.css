@@ -299,6 +299,45 @@
     color: #0969da;
 }
 
+/* Refresh button in input bar */
+.dict-refresh-btn {
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 18px;
+    color: #656d76;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.dict-refresh-btn:hover {
+    background: #eaeef2;
+    color: #24292f;
+    border-color: #afb8c1;
+}
+.dict-refresh-btn:active {
+    background: #d0d7de;
+}
+
+/* Cached badge (pill, shown per-source when result is from cache) */
+.dict-cached-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: #656d76;
+    background: #eaeef2;
+    border-radius: 10px;
+    padding: 1px 7px;
+    vertical-align: middle;
+}
+
 /* Dark mode for dictionary */
 @media (prefers-color-scheme: dark) {
     .dict-ai-stats {
@@ -425,6 +464,24 @@
     .dict-offline-entry + .dict-offline-entry { border-top-color: #30363d; }
     .dict-entry { border-top-color: #30363d; }
     .dict-ai-loading { color: #8b949e; }
+
+    .dict-refresh-btn {
+        background: #21262d;
+        border-color: #30363d;
+        color: #8b949e;
+    }
+    .dict-refresh-btn:hover {
+        background: #30363d;
+        color: #e6edf3;
+        border-color: #484f58;
+    }
+    .dict-refresh-btn:active {
+        background: #484f58;
+    }
+    .dict-cached-badge {
+        color: #8b949e;
+        background: #21262d;
+    }
 
     /* Etymology dark mode */
     .dict-etymology { background: #161b22; border-left-color: #58a6ff; }

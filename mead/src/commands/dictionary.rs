@@ -8,7 +8,9 @@ use tauri::State;
 use tokio::sync::RwLock;
 
 use crate::ai::{self, AiConfig, DictionaryDefinition, DictionaryEntry};
-use crate::state::{AppState, DictLoadResult, OfflineDictState};
+use crate::state::{
+    AppState, CachedEtymology, CachedOnlineLookup, DictLoadResult, OfflineDictState,
+};
 
 /// Type alias for the managed dictionary load serializer.
 type DictLoadMutex = Arc<tokio::sync::Mutex<()>>;
@@ -42,18 +44,20 @@ pub struct DictionaryLookupResponse {
 #[tauri::command]
 pub async fn lookup_word(
     word: String,
+    refresh: Option<bool>,
     state: State<'_, Arc<RwLock<AppState>>>,
 ) -> Result<DictionaryLookupResponse, String> {
     let word = word.trim().to_string();
     if word.is_empty() {
         return Err("No word provided".to_string());
     }
+    let refresh = refresh.unwrap_or(false);
 
-    // Check cache first (read lock)
-    {
+    // Check cache first (read lock), unless refresh requested
+    if !refresh {
         let state_guard = state.read().await;
         if let Some(cached) = state_guard.get_cached_dict_entry(&word) {
-            tracing::debug!(word = %word, "Dictionary cache hit");
+            tracing::debug!(word = %word, "AI dictionary cache hit");
             return Ok(DictionaryLookupResponse {
                 entry: cached.clone(),
                 cached: true,
@@ -61,7 +65,7 @@ pub async fn lookup_word(
         }
     }
 
-    // Cache miss — build config and call AI
+    // Cache miss or refresh — build config and call AI
     let config = {
         let state_guard = state.read().await;
         AiConfig::from_state(
@@ -76,7 +80,7 @@ pub async fn lookup_word(
         return Err("AI provider not configured. Set one in Settings (gear icon).".to_string());
     }
 
-    tracing::debug!(word = %word, "Dictionary cache miss — calling AI");
+    tracing::debug!(word = %word, "AI dictionary cache miss — calling AI");
     let entry = ai::lookup_word(&config, &word).await?;
 
     // Store in cache (write lock)
@@ -123,12 +127,21 @@ pub async fn ask_ai(
 // Wiktionary etymology lookup
 // ---------------------------------------------------------------------------
 
-/// Result from a Wiktionary etymology lookup.
+/// Response wrapper for etymology lookups, always carrying cache status.
 #[derive(Serialize)]
-pub struct EtymologyResult {
+pub struct EtymologyResponse {
+    /// The etymology result, if found.
+    pub result: Option<EtymologyInner>,
+    /// Whether this response was served from cache.
+    pub cached: bool,
+}
+
+/// Inner etymology result data.
+#[derive(Serialize)]
+pub struct EtymologyInner {
     /// Raw HTML of the etymology section (sanitized on the frontend via DOMPurify).
     pub etymology_html: String,
-    /// Source label (always "Wiktionary").
+    /// Source label (e.g. "Wiktionary").
     pub source: String,
 }
 
@@ -202,13 +215,35 @@ fn clean_wiktionary_html(raw: &str) -> String {
 /// 1. Fetch section list and find the first "Etymology" section.
 /// 2. Fetch the rendered HTML of that section.
 ///
-/// Returns `Ok(None)` if the word or etymology section is not found.
+/// Returns a response wrapper with `cached: bool` and optional result.
 #[tauri::command]
-pub async fn lookup_etymology(word: String) -> Result<Option<EtymologyResult>, String> {
+pub async fn lookup_etymology(
+    word: String,
+    refresh: Option<bool>,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<EtymologyResponse, String> {
     let word = word.trim().to_string();
     if word.is_empty() {
         return Err("No word provided".to_string());
     }
+    let refresh = refresh.unwrap_or(false);
+
+    // Check cache first, unless refresh requested
+    if !refresh {
+        let state_guard = state.read().await;
+        if let Some(cached) = state_guard.get_cached_etymology(&word) {
+            tracing::debug!(word = %word, "Etymology cache hit");
+            return Ok(EtymologyResponse {
+                result: cached.map(|c| EtymologyInner {
+                    etymology_html: c.etymology_html.clone(),
+                    source: c.source.clone(),
+                }),
+                cached: true,
+            });
+        }
+    }
+
+    tracing::debug!(word = %word, "Etymology cache miss — fetching from Wiktionary");
 
     let client = reqwest::Client::builder()
         .user_agent("MEAD/1.0")
@@ -230,7 +265,13 @@ pub async fn lookup_etymology(word: String) -> Result<Option<EtymologyResult>, S
         .map_err(|error| format!("Wiktionary sections request failed: {error}"))?;
 
     if !sections_resp.status().is_success() {
-        return Ok(None);
+        // Store negative cache and return
+        let mut state_guard = state.write().await;
+        state_guard.set_cached_etymology(word, None);
+        return Ok(EtymologyResponse {
+            result: None,
+            cached: false,
+        });
     }
 
     let sections_body: WikiSectionsResponse = sections_resp
@@ -240,18 +281,31 @@ pub async fn lookup_etymology(word: String) -> Result<Option<EtymologyResult>, S
 
     let sections = match sections_body.parse {
         Some(p) => p.sections,
-        None => return Ok(None),
+        None => {
+            let mut state_guard = state.write().await;
+            state_guard.set_cached_etymology(word, None);
+            return Ok(EtymologyResponse {
+                result: None,
+                cached: false,
+            });
+        }
     };
 
     // Find the first Etymology section
-    let etym_index = sections
+    let section_index = match sections
         .iter()
         .find(|s| s.line.starts_with("Etymology"))
-        .map(|s| s.index.clone());
-
-    let section_index = match etym_index {
+        .map(|s| s.index.clone())
+    {
         Some(idx) => idx,
-        None => return Ok(None),
+        None => {
+            let mut state_guard = state.write().await;
+            state_guard.set_cached_etymology(word, None);
+            return Ok(EtymologyResponse {
+                result: None,
+                cached: false,
+            });
+        }
     };
 
     // Step 2: Fetch the etymology section text
@@ -269,7 +323,12 @@ pub async fn lookup_etymology(word: String) -> Result<Option<EtymologyResult>, S
         .map_err(|error| format!("Wiktionary text request failed: {error}"))?;
 
     if !text_resp.status().is_success() {
-        return Ok(None);
+        let mut state_guard = state.write().await;
+        state_guard.set_cached_etymology(word, None);
+        return Ok(EtymologyResponse {
+            result: None,
+            cached: false,
+        });
     }
 
     let text_body: WikiTextResponse = text_resp
@@ -279,32 +338,71 @@ pub async fn lookup_etymology(word: String) -> Result<Option<EtymologyResult>, S
 
     let raw_html = match text_body.parse {
         Some(p) => p.text.get("*").cloned().unwrap_or_default(),
-        None => return Ok(None),
+        None => {
+            let mut state_guard = state.write().await;
+            state_guard.set_cached_etymology(word, None);
+            return Ok(EtymologyResponse {
+                result: None,
+                cached: false,
+            });
+        }
     };
 
     if raw_html.is_empty() {
-        return Ok(None);
+        let mut state_guard = state.write().await;
+        state_guard.set_cached_etymology(word, None);
+        return Ok(EtymologyResponse {
+            result: None,
+            cached: false,
+        });
     }
 
     let cleaned = clean_wiktionary_html(&raw_html);
     if cleaned.is_empty() {
-        return Ok(None);
+        let mut state_guard = state.write().await;
+        state_guard.set_cached_etymology(word, None);
+        return Ok(EtymologyResponse {
+            result: None,
+            cached: false,
+        });
     }
 
-    Ok(Some(EtymologyResult {
+    let entry = CachedEtymology {
         etymology_html: cleaned,
         source: "Wiktionary".to_string(),
-    }))
+    };
+
+    // Store in cache
+    {
+        let mut state_guard = state.write().await;
+        state_guard.set_cached_etymology(word, Some(entry.clone()));
+    }
+
+    Ok(EtymologyResponse {
+        result: Some(EtymologyInner {
+            etymology_html: entry.etymology_html,
+            source: entry.source,
+        }),
+        cached: false,
+    })
 }
 
 // ---------------------------------------------------------------------------
 // Free Dictionary API (dictionaryapi.dev) — online lookup
 // ---------------------------------------------------------------------------
 
-/// Response from an online dictionary lookup, pairing the structured entry
-/// with the original source name (e.g. "Wiktionary").
+/// Response wrapper for online dictionary lookups, always carrying cache status.
 #[derive(Serialize)]
-pub struct OnlineLookupResult {
+pub struct OnlineLookupResponse {
+    /// The lookup result, if the word was found.
+    pub result: Option<OnlineLookupInner>,
+    /// Whether this response was served from cache.
+    pub cached: bool,
+}
+
+/// Inner online lookup result data.
+#[derive(Serialize)]
+pub struct OnlineLookupInner {
     /// The dictionary entry (same shape as AI lookups).
     #[serde(flatten)]
     pub entry: DictionaryEntry,
@@ -423,15 +521,36 @@ fn source_name_from_url(url: &str) -> Option<String> {
 
 /// Look up a word using the Free Dictionary API (dictionaryapi.dev).
 ///
-/// Returns an [`OnlineLookupResult`] containing the structured entry and the
-/// original source name (e.g. "Wiktionary").
-/// Returns `None` when the word is not found (HTTP 404).
+/// Returns an [`OnlineLookupResponse`] with the structured entry, source name,
+/// and cache status. Caches both positive and negative (404) results.
 #[tauri::command]
-pub async fn lookup_word_online(word: String) -> Result<Option<OnlineLookupResult>, String> {
+pub async fn lookup_word_online(
+    word: String,
+    refresh: Option<bool>,
+    state: State<'_, Arc<RwLock<AppState>>>,
+) -> Result<OnlineLookupResponse, String> {
     let word = word.trim().to_string();
     if word.is_empty() {
         return Err("No word provided".to_string());
     }
+    let refresh = refresh.unwrap_or(false);
+
+    // Check cache first, unless refresh requested
+    if !refresh {
+        let state_guard = state.read().await;
+        if let Some(cached) = state_guard.get_cached_online_lookup(&word) {
+            tracing::debug!(word = %word, "Online dictionary cache hit");
+            return Ok(OnlineLookupResponse {
+                result: cached.map(|c| OnlineLookupInner {
+                    entry: c.entry.clone(),
+                    source: c.source.clone(),
+                }),
+                cached: true,
+            });
+        }
+    }
+
+    tracing::debug!(word = %word, "Online dictionary cache miss — fetching from API");
 
     let url = format!("https://api.dictionaryapi.dev/api/v2/entries/en/{word}");
 
@@ -447,7 +566,13 @@ pub async fn lookup_word_online(word: String) -> Result<Option<OnlineLookupResul
         .map_err(|error| format!("Network error: {error}"))?;
 
     if response.status() == reqwest::StatusCode::NOT_FOUND {
-        return Ok(None);
+        // Negative cache: word not found
+        let mut state_guard = state.write().await;
+        state_guard.set_cached_online_lookup(word, None);
+        return Ok(OnlineLookupResponse {
+            result: None,
+            cached: false,
+        });
     }
 
     if !response.status().is_success() {
@@ -463,7 +588,12 @@ pub async fn lookup_word_online(word: String) -> Result<Option<OnlineLookupResul
         .map_err(|error| format!("Failed to parse Free Dictionary response: {error}"))?;
 
     if entries.is_empty() {
-        return Ok(None);
+        let mut state_guard = state.write().await;
+        state_guard.set_cached_online_lookup(word, None);
+        return Ok(OnlineLookupResponse {
+            result: None,
+            cached: false,
+        });
     }
 
     let source = entries
@@ -472,10 +602,22 @@ pub async fn lookup_word_online(word: String) -> Result<Option<OnlineLookupResul
         .find_map(|u| source_name_from_url(u))
         .unwrap_or_else(|| "Free Dictionary".to_string());
 
-    Ok(Some(OnlineLookupResult {
-        entry: free_dict_to_entry(word, &entries),
-        source,
-    }))
+    let entry = free_dict_to_entry(word.clone(), &entries);
+    let cached_entry = CachedOnlineLookup {
+        entry: entry.clone(),
+        source: source.clone(),
+    };
+
+    // Store in cache
+    {
+        let mut state_guard = state.write().await;
+        state_guard.set_cached_online_lookup(word, Some(cached_entry));
+    }
+
+    Ok(OnlineLookupResponse {
+        result: Some(OnlineLookupInner { entry, source }),
+        cached: false,
+    })
 }
 
 /// Look up a word in all loaded offline dictionaries.
