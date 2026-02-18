@@ -15,6 +15,7 @@ members = [
     "crates/code_tools",
     "crates/dirs",
     "crates/filter",
+    "crates/frecency",
     "crates/icon",
     "crates/maple",
     "crates/maple_config",
@@ -23,6 +24,7 @@ members = [
     "crates/maple_derive",
     "crates/maple_lsp",
     "crates/maple_markdown",
+    "crates/markdown_preview_core",
     "crates/matcher",
     "crates/matcher/extracted_fzy",
     "crates/paths",
@@ -97,12 +99,14 @@ cli = { path = "crates/cli" }
 code_tools = { path = "crates/code_tools" }
 dirs = { path = "crates/dirs" }
 filter = { path = "crates/filter" }
+frecency = { path = "crates/frecency" }
 icon = { path = "crates/icon" }
 maple_config = { path = "crates/maple_config" }
 maple_core = { path = "crates/maple_core" }
 maple_derive = { path = "crates/maple_derive" }
 maple_lsp = { path = "crates/maple_lsp" }
 maple_markdown = { path = "crates/maple_markdown" }
+markdown_preview_core = { path = "crates/markdown_preview_core" }
 matcher = { path = "crates/matcher" }
 paths = { path = "crates/paths" }
 pattern = { path = "crates/pattern" }

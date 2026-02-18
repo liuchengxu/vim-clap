@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;0,7..72,700;1,7..72,400;1,7..72,500&family=Merriweather:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown.min.css" >
+    <!-- GitHub Alerts styling from markdown-it-github-alerts
+         Source: https://github.com/antfu/markdown-it-github-alerts
+         These styles are extracted from GitHub's official alert implementation -->
+    <link rel="stylesheet" href="https://unpkg.com/markdown-it-github-alerts@0.3.0/styles/github-base.css">
+    <link rel="stylesheet" href="https://unpkg.com/markdown-it-github-alerts@0.3.0/styles/github-colors-light.css">
+    <link rel="stylesheet" href="https://unpkg.com/markdown-it-github-alerts@0.3.0/styles/github-colors-dark-media.css">
+    <!-- Code highlight -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- and it's easy to individually load additional languages -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/go.min.js"></script>
+
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+
+    <!-- KaTeX Auto-render extension + KaTeX main -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+    <!-- DOMPurify for HTML sanitization -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.3.1/dist/purify.min.js"></script>
+
+    <!-- Mermaid -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: false });
+        window.mermaid = mermaid;
+    </script>
+
+    <style>
+/*__STYLES_CSS__*/
+/*__THEMES_CSS__*/
+    </style>
+    <title>Markdown Preview</title>
+</head>
+<body>
+    <div id="activity-bar">
+        <div class="activity-icons">
+            <button class="activity-icon active" data-tool="preview" title="Preview"
+                    aria-label="Preview" aria-pressed="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="8" y1="13" x2="16" y2="13"/>
+                    <line x1="8" y1="17" x2="16" y2="17"/>
+                    <line x1="8" y1="9" x2="10" y2="9"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+    <div id="sidebar">
+        <div id="tool-preview-sidebar">
+        <div class="sidebar-section" id="recent-files-section">
+            <h3>Recent Previews</h3>
+            <div id="recent-files" class="recent-files"></div>
+        </div>
+        <div id="recent-files-resize-handle" class="section-resize-handle"></div>
+        <div class="sidebar-section">
+            <h3>Display Options</h3>
+            <div class="option-group">
+                <label class="option-label">Font Family</label>
+                <select id="font-family" class="option-select">
+                    <option value="default">GitHub (Default)</option>
+                    <option value="inter">Inter</option>
+                    <option value="merriweather">Merriweather</option>
+                    <option value="ibm-plex">IBM Plex Sans</option>
+                    <option value="literata">Literata</option>
+                    <option value="serif">Serif (LaTeX-like)</option>
+                    <option value="mono">Monospace</option>
+                    <option value="system">System UI</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label class="option-label">Reading Mode</label>
+                <select id="reader-mode" class="option-select">
+                    <option value="off">Normal</option>
+                    <option value="on">Reader Mode</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label class="option-label">Content Width</label>
+                <select id="content-width" class="option-select">
+                    <option value="narrow">Narrow (650px)</option>
+                    <option value="default" selected>Default (980px)</option>
+                    <option value="wide">Wide (1200px)</option>
+                    <option value="full">Full Width</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label class="option-label">Zoom</label>
+                <div class="zoom-controls">
+                    <button id="zoom-out-btn" class="zoom-btn" title="Zoom Out (Ctrl+-)">−</button>
+                    <span id="zoom-level-display" class="zoom-display">100%</span>
+                    <button id="zoom-in-btn" class="zoom-btn" title="Zoom In (Ctrl++)">+</button>
+                    <button id="zoom-reset-btn" class="zoom-btn zoom-reset" title="Reset Zoom (Ctrl+0)">Reset</button>
+                </div>
+            </div>
+        </div>
+        </div><!-- /tool-preview-sidebar -->
+    </div>
+    <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+
+    <div id="toc-panel" class="toc-panel">
+        <div class="toc-header">Table of Contents</div>
+        <nav id="toc-content" class="toc-content"></nav>
+        <div class="toc-resize-handle"></div>
+    </div>
+
+    <div id="main-content">
+        <div id="reading-progress"></div>
+        <div id="tool-preview-main">
+        <div class="file-path-bar" id="file-path-bar" title="Click to copy path"></div>
+        <div class="file-metadata-bar" id="file-metadata-bar">
+            <span class="metadata-item" id="metadata-modified" title="Last modified" style="position: relative;">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0zm7-3.25v2.992l2.028.812a.75.75 0 0 1-.557 1.392l-2.5-1A.75.75 0 0 1 7 8.25v-3.5a.75.75 0 0 1 1.5 0z"/>
+                </svg>
+                <span id="modified-time">-</span>
+                <span class="metadata-refresh-dot" id="metadata-refresh-dot"></span>
+            </span>
+            <span class="metadata-item" id="metadata-readtime" title="Estimated read time">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                    <path fill-rule="evenodd" d="M14.5 2.25v10H8.75V4.625a2.375 2.375 0 0 1 2.375-2.375zM8 2.333A3.87 3.87 0 0 1 11.125.75h3.501C15.387.75 16 1.367 16 2.125v10.25c0 .76-.616 1.375-1.375 1.375H8.75v1.5h-1.5v-1.5H1.375C.615 13.75 0 13.134 0 12.375V2.125C0 1.366.615.75 1.375.75h3.5A3.87 3.87 0 0 1 8 2.333m-.75 9.917V4.625A2.375 2.375 0 0 0 4.875 2.25H1.5v10zm6-8H10.5v1.5h2.75zm0 2.5H10.5v1.5h2.75z"/>
+                </svg>
+                <span id="read-time">-</span>
+            </span>
+            <span class="metadata-item" id="metadata-branch" title="Git branch">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                    <path fill-rule="evenodd" d="M11.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm-2.25.75a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.492 2.492 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25zM4.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zM3.5 3.25a.75.75 0 1 1 1.5 0 .75.75 0 0 1-1.5 0z"/>
+                </svg>
+                <span id="git-branch">-</span>
+            </span>
+            <span class="metadata-item" id="metadata-author" title="Last commit author">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10.5 5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0zm.061 3.073a4 4 0 1 0-5.123 0 6.004 6.004 0 0 0-3.431 5.142.75.75 0 0 0 1.498.07 4.5 4.5 0 0 1 8.99 0 .75.75 0 1 0 1.498-.07 6.005 6.005 0 0 0-3.432-5.142z"/>
+                </svg>
+                <span id="git-author">-</span>
+            </span>
+            <span class="metadata-item" id="metadata-words" title="Word count">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                    <path fill-rule="evenodd" d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 9 4.25V1.5Zm6.75.062V4.25c0 .138.112.25.25.25h2.688l-.011-.013-2.914-2.914-.013-.011Z"/>
+                    <path d="M5.5 9.75A.75.75 0 0 1 6.25 9h3.5a.75.75 0 0 1 0 1.5h-3.5a.75.75 0 0 1-.75-.75ZM6.25 12a.75.75 0 0 0 0 1.5h3.5a.75.75 0 0 0 0-1.5h-3.5Z"/>
+                </svg>
+                <span id="word-count">-</span>
+            </span>
+            <span class="metadata-item metadata-autoscroll clickable" id="metadata-autoscroll" title="Auto-scroll (Ctrl+Shift+S)">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm4.879-2.773 4.264 2.559a.25.25 0 0 1 0 .428L6.379 10.773A.25.25 0 0 1 6 10.56V5.44a.25.25 0 0 1 .379-.213Z"/>
+                </svg>
+                <span>Auto</span>
+            </span>
+        </div>
+        <article class="markdown-body" id="content">
+            <!-- Welcome screen - shown when no file is open, replaced when content loads -->
+            <div id="welcome-screen" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 70vh; color: #666; text-align: center;">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 20px; opacity: 0.5;">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <path d="M12 18v-6"></path>
+                    <path d="M9 15h6"></path>
+                </svg>
+                <h2 style="margin: 0 0 10px 0; font-weight: 500; color: #333;">Markdown Preview</h2>
+                <p style="margin: 0 0 24px 0; font-size: 14px;">Open a markdown file in Vim to preview</p>
+            </div>
+        </article>
+        </div><!-- /tool-preview-main -->
+    </div>
+
+    <script>
+/*__APP_JS__*/
+    </script>
+
+    <div id="toast" class="toast">
+        <div class="toast-title">Copied!</div>
+        <div class="toast-path"></div>
+    </div>
+
+    <!-- Fuzzy Finder Modal -->
+    <div id="fuzzy-finder" class="fuzzy-finder-overlay">
+        <div class="fuzzy-finder-container">
+            <div class="fuzzy-finder-header">
+                <div class="fuzzy-finder-input-wrapper">
+                    <svg class="fuzzy-finder-icon" viewBox="0 0 16 16" width="16" height="16">
+                        <path fill-rule="evenodd" d="M11.5 7a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04z"></path>
+                    </svg>
+                    <input type="text" id="fuzzy-input" class="fuzzy-finder-input" placeholder="Search headings..." autocomplete="off" spellcheck="false">
+                    <div class="fuzzy-finder-mode-toggle">
+                        <button id="fuzzy-mode-headings" class="fuzzy-mode-btn active" title="Search headings only">H</button>
+                        <button id="fuzzy-mode-text" class="fuzzy-mode-btn" title="Search full text">T</button>
+                    </div>
+                </div>
+                <div class="fuzzy-finder-hint">
+                    <span class="key">↑↓</span> navigate
+                    <span class="key">Enter</span> jump
+                    <span class="key">Esc</span> close
+                    <span class="key">Tab</span> toggle mode
+                </div>
+            </div>
+            <div id="fuzzy-results" class="fuzzy-finder-results"></div>
+            <div class="fuzzy-finder-footer">
+                <span id="fuzzy-result-count">0 results</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Lightbox Overlay -->
+    <div id="lightbox-overlay">
+        <img id="lightbox-img" src="" alt="Full size image">
+        <button class="lightbox-close" onclick="closeLightbox()" title="Close (Esc)">&times;</button>
+    </div>
+
+    <!-- Presentation Mode Container -->
+    <div id="presentation-container">
+        <div id="presentation-slides"></div>
+        <div class="presentation-controls">
+            <button class="presentation-nav-btn" onclick="prevSlide()" title="Previous slide (←)">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <span class="presentation-counter" id="slide-counter">1 / 1</span>
+            <button class="presentation-nav-btn" onclick="nextSlide()" title="Next slide (→)">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </button>
+            <button class="presentation-exit-btn" onclick="exitPresentationMode()" title="Exit presentation (Esc)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                Exit
+            </button>
+        </div>
+    </div>
+    <!-- Auto-scroll floating control (hidden by default, shown during auto-scroll) -->
+    <div class="autoscroll-float" id="autoscroll-float">
+        <button class="autoscroll-float-btn" id="autoscroll-float-pause" title="Pause (Ctrl+Shift+S)">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M4.5 2.5A.5.5 0 0 1 5 2h1a.5.5 0 0 1 .5.5v11a.5.5 0 0 1-.5.5H5a.5.5 0 0 1-.5-.5Zm5 0A.5.5 0 0 1 10 2h1a.5.5 0 0 1 .5.5v11a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5Z"/>
+            </svg>
+        </button>
+        <button class="autoscroll-float-btn" id="autoscroll-float-slower" title="Slower (-)">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M2 7.75A.75.75 0 0 1 2.75 7h10.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 7.75Z"/>
+            </svg>
+        </button>
+        <span class="autoscroll-float-speed" id="autoscroll-float-speed">1.0x</span>
+        <button class="autoscroll-float-btn" id="autoscroll-float-faster" title="Faster (+)">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"/>
+            </svg>
+        </button>
+    </div>
+</body>
+</html>

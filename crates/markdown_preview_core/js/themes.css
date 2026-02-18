@@ -63,6 +63,38 @@
       body.theme-dark .recent-file-path {
         color: rgba(255, 255, 255, .4);
       }
+      body.theme-dark .recent-file-icon-md {
+        color: #409eff;
+      }
+      body.theme-dark .recent-file-icon-pdf {
+        color: #f85149;
+      }
+      body.theme-dark .path-tooltip-content {
+        background: #424344;
+        color: rgba(255, 255, 255, .5);
+        border-color: #363839;
+      }
+      body.theme-dark .path-tooltip-sep {
+        color: rgba(255, 255, 255, .3);
+      }
+      body.theme-dark .path-tooltip-file {
+        color: rgba(255, 255, 255, .6);
+      }
+      body.theme-dark .path-tooltip-title {
+        color: #7ee787;
+        background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
+      }
+      body.theme-dark .path-tooltip-path {
+        color: rgba(255, 255, 255, .5);
+      }
+      body.theme-dark .path-tooltip-modified {
+        color: rgba(255, 255, 255, .4);
+        border-top-color: #363839;
+      }
+      body.theme-dark .path-tooltip-digest {
+        color: rgba(255, 255, 255, .6);
+        border-top-color: #363839;
+      }
       body.theme-dark #toc-panel {
         background: #1e1e1e;
         border-color: #363839;
@@ -149,6 +181,9 @@
       body.theme-dark .markdown-body img {
         background-color: transparent;
       }
+      body.theme-dark .heading-anchor {
+        color: #409eff;
+      }
 
       /* Theme: Material Dark */
       body.theme-material-dark {
@@ -207,6 +242,38 @@
       }
       body.theme-material-dark .recent-file-path {
         color: rgba(255, 255, 255, .4);
+      }
+      body.theme-material-dark .recent-file-icon-md {
+        color: #82aaff;
+      }
+      body.theme-material-dark .recent-file-icon-pdf {
+        color: #f07178;
+      }
+      body.theme-material-dark .path-tooltip-content {
+        background: #273038;
+        color: rgba(255, 255, 255, .5);
+        border-color: #4f585e;
+      }
+      body.theme-material-dark .path-tooltip-sep {
+        color: rgba(255, 255, 255, .3);
+      }
+      body.theme-material-dark .path-tooltip-file {
+        color: rgba(255, 255, 255, .6);
+      }
+      body.theme-material-dark .path-tooltip-title {
+        color: #fff;
+        background: linear-gradient(135deg, #f48237 0%, #ff9f43 100%);
+      }
+      body.theme-material-dark .path-tooltip-path {
+        color: rgba(255, 255, 255, .5);
+      }
+      body.theme-material-dark .path-tooltip-modified {
+        color: rgba(255, 255, 255, .4);
+        border-top-color: #4f585e;
+      }
+      body.theme-material-dark .path-tooltip-digest {
+        color: rgba(255, 255, 255, .6);
+        border-top-color: #4f585e;
       }
       body.theme-material-dark #toc-panel {
         background: #1a2129;
@@ -291,6 +358,9 @@
       body.theme-material-dark .markdown-body hr {
         background-color: #4f585e;
       }
+      body.theme-material-dark .heading-anchor {
+        color: #f48237;
+      }
 
       /* Theme: One Dark */
       body.theme-one-dark {
@@ -349,6 +419,38 @@
       }
       body.theme-one-dark .recent-file-path {
         color: #5c6370;
+      }
+      body.theme-one-dark .recent-file-icon-md {
+        color: #61afef;
+      }
+      body.theme-one-dark .recent-file-icon-pdf {
+        color: #e06c75;
+      }
+      body.theme-one-dark .path-tooltip-content {
+        background: #2c313a;
+        color: #7f848e;
+        border-color: #3a3f4b;
+      }
+      body.theme-one-dark .path-tooltip-sep {
+        color: #5c6370;
+      }
+      body.theme-one-dark .path-tooltip-file {
+        color: #9da5b4;
+      }
+      body.theme-one-dark .path-tooltip-title {
+        color: #fff;
+        background: linear-gradient(135deg, #528bff 0%, #61afef 100%);
+      }
+      body.theme-one-dark .path-tooltip-path {
+        color: #7f848e;
+      }
+      body.theme-one-dark .path-tooltip-modified {
+        color: #5c6370;
+        border-top-color: #3a3f4b;
+      }
+      body.theme-one-dark .path-tooltip-digest {
+        color: #9da5b4;
+        border-top-color: #3a3f4b;
       }
       body.theme-one-dark #toc-panel {
         background: #21252b;
@@ -440,6 +542,9 @@
       body.theme-one-dark .markdown-body hr {
         background-color: #3a3f4b;
       }
+      body.theme-one-dark .heading-anchor {
+        color: #61afef;
+      }
 
       /* Theme: Ulysses (Light) */
       body.theme-ulysses {
@@ -498,6 +603,12 @@
       }
       body.theme-ulysses .recent-file-path {
         color: rgba(101, 101, 101, .4);
+      }
+      body.theme-ulysses .recent-file-icon-md {
+        color: rgb(12, 139, 186);
+      }
+      body.theme-ulysses .recent-file-icon-pdf {
+        color: #d14;
       }
       body.theme-ulysses #toc-panel {
         background: #f8f8f8;
@@ -583,6 +694,9 @@
       body.theme-ulysses .markdown-body hr {
         background-color: #e5e5e5;
       }
+      body.theme-ulysses .heading-anchor {
+        color: rgb(12, 139, 186);
+      }
 
       /* Theme: GitHub Dark (explicit dark mode) */
       body.theme-github-dark {
@@ -647,6 +761,38 @@
       }
       body.theme-github-dark .recent-file-item:hover .recent-file-path {
         color: #8b949e;
+      }
+      body.theme-github-dark .recent-file-icon-md {
+        color: #58a6ff;
+      }
+      body.theme-github-dark .recent-file-icon-pdf {
+        color: #f85149;
+      }
+      body.theme-github-dark .path-tooltip-content {
+        background: #21262d;
+        color: #8b949e;
+        border-color: #30363d;
+      }
+      body.theme-github-dark .path-tooltip-sep {
+        color: #6e7781;
+      }
+      body.theme-github-dark .path-tooltip-file {
+        color: #a8b1bb;
+      }
+      body.theme-github-dark .path-tooltip-title {
+        color: #7ee787;
+        background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
+      }
+      body.theme-github-dark .path-tooltip-path {
+        color: #8b949e;
+      }
+      body.theme-github-dark .path-tooltip-modified {
+        color: #6e7781;
+        border-top-color: #30363d;
+      }
+      body.theme-github-dark .path-tooltip-digest {
+        color: #8b949e;
+        border-top-color: #30363d;
       }
       body.theme-github-dark .markdown-body.show-line-numbers > *::before,
       body.theme-github-dark .markdown-body.show-line-numbers-both > *::before {
@@ -797,4 +943,7 @@
       }
       body.theme-github-dark .markdown-body pre code {
         background-color: transparent;
+      }
+      body.theme-github-dark .heading-anchor {
+        color: #58a6ff;
       }

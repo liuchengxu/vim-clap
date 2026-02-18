@@ -40,6 +40,7 @@ webbrowser = { workspace = true }
 
 code_tools = { workspace = true }
 dirs = { workspace = true }
+frecency = { workspace = true }
 maple_config = { workspace = true }
 maple_derive = { workspace = true }
 maple_markdown = { workspace = true }
