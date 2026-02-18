@@ -1717,9 +1717,12 @@ function initToolTabs() {
         setSidebarCollapsed(true);
     }
 
-    // Apply saved tool state
+    // Apply saved tool state — temporarily reset currentTool so switchTool
+    // runs the full show/hide logic instead of hitting the early return.
     if (currentTool !== 'preview') {
-        switchTool(currentTool);
+        const savedTool = currentTool;
+        currentTool = null;
+        switchTool(savedTool);
     }
 }
 
