@@ -6,7 +6,7 @@ pub static GTAGS_EXISTS: Lazy<bool> = Lazy::new(|| gtags_executable_exists().unw
 
 /// Directory for `GTAGS`/`GRTAGS`.
 pub static GTAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
-    let gtags_dir = Dirs::project().data_dir().join("gtags");
+    let gtags_dir = Dirs::data_dir().join("gtags");
 
     std::fs::create_dir_all(&gtags_dir).expect("Couldn't create gtags directory for vim-clap");
 

@@ -69,14 +69,14 @@ pub fn cache_metadata_path() -> Option<&'static PathBuf> {
 
 /// Returns a `PathBuf` using given file name under the project data directory.
 pub fn generate_data_file_path(filename: &str) -> std::io::Result<PathBuf> {
-    let data_dir = Dirs::project().data_dir();
+    let data_dir = Dirs::data_dir();
     std::fs::create_dir_all(data_dir)?;
     Ok(data_dir.join(filename))
 }
 
 /// Returns a `PathBuf` using given file name under the project cache directory.
 pub fn generate_cache_file_path(filename: impl AsRef<Path>) -> std::io::Result<PathBuf> {
-    let cache_dir = Dirs::project().cache_dir();
+    let cache_dir = Dirs::cache_dir();
     std::fs::create_dir_all(cache_dir)?;
     Ok(cache_dir.join(filename))
 }
