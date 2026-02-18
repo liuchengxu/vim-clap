@@ -196,9 +196,7 @@ async fn anthropic_request(
 
     // OAuth tokens require the Claude Code identity in the system prompt.
     let effective_system = if oauth {
-        format!(
-            "You are Claude Code, Anthropic's official CLI for Claude.\n\n{system_prompt}"
-        )
+        format!("You are Claude Code, Anthropic's official CLI for Claude.\n\n{system_prompt}")
     } else {
         system_prompt.to_string()
     };
@@ -221,10 +219,7 @@ async fn anthropic_request(
         // OAuth tokens use Bearer auth and must present Claude Code identity headers.
         request = request
             .header("Authorization", format!("Bearer {api_key}"))
-            .header(
-                "anthropic-beta",
-                "claude-code-20250219,oauth-2025-04-20",
-            )
+            .header("anthropic-beta", "claude-code-20250219,oauth-2025-04-20")
             .header("user-agent", "claude-cli/2.1.2 (external, cli)")
             .header("x-app", "cli");
     } else {
@@ -242,11 +237,9 @@ async fn anthropic_request(
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
         if oauth && status == reqwest::StatusCode::UNAUTHORIZED {
-            return Err(
-                "Anthropic OAuth token expired or invalid. \
+            return Err("Anthropic OAuth token expired or invalid. \
                  Run `claude setup-token` to generate a new one and paste it in Settings."
-                    .to_string(),
-            );
+                .to_string());
         }
         return Err(format!("Anthropic returned status {status}: {body}"));
     }

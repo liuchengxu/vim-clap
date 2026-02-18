@@ -22,6 +22,7 @@ mod ai;
 mod commands;
 mod mdict_wrapper;
 mod menu;
+pub mod ssh;
 mod stardict;
 mod state;
 
@@ -201,6 +202,9 @@ fn main() {
             commands::dictionary::lookup_etymology,
             commands::dictionary::get_loaded_dictionaries,
             commands::dictionary::ask_ai,
+            commands::ssh_file::open_ssh_file,
+            commands::ssh_file::complete_ssh_path,
+            commands::ssh_file::watch_ssh_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -257,15 +261,7 @@ fn migrate_config_files(old_dir: &std::path::Path, new_dir: &std::path::Path) {
     }
 }
 
-/// Get the file modification time in Unix millis.
-async fn get_file_mtime(path: &std::path::Path) -> Option<u64> {
-    tokio::fs::metadata(path)
-        .await
-        .ok()
-        .and_then(|m| m.modified().ok())
-        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-        .map(|d| d.as_millis() as u64)
-}
+use commands::get_file_mtime;
 
 /// Background task: generate AI summaries for recent files that are missing or stale.
 async fn generate_recent_file_summaries(

@@ -13,9 +13,12 @@
         currentGitRoot: null // Git root of current file
     };
 
-    // Fetch path completions from backend
+    // Fetch path completions from backend (local or SSH)
     async function fetchCompletions(partial) {
         try {
+            if (typeof isSshPath === 'function' && isSshPath(partial)) {
+                return await invoke('complete_ssh_path', { partial });
+            }
             return await invoke('complete_path', { partial });
         } catch (e) {
             console.error('Failed to fetch completions:', e);
@@ -186,12 +189,12 @@
             modal.innerHTML = `
                 <div class="path-input-container">
                     <div class="path-input-header">
-                        <label>Open file or URL</label>
-                        <span class="path-input-hint">Type path to autocomplete, or paste a GitHub URL</span>
+                        <label>Open file, URL, or SSH path</label>
+                        <span class="path-input-hint">Type path, paste GitHub URL, or enter user@host:/path</span>
                     </div>
                     <div class="path-input-wrapper">
                         <input type="text" id="path-input-field" class="path-input-field"
-                               placeholder="/path/to/file.md or https://github.com/..." autocomplete="off" spellcheck="false">
+                               placeholder="/path/to/file.md, https://..., or user@host:/path" autocomplete="off" spellcheck="false">
                         <div id="path-autocomplete" class="path-autocomplete"></div>
                     </div>
                     <div class="path-input-footer">

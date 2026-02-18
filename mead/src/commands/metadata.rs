@@ -1,6 +1,6 @@
 //! File metadata, preview info, title extraction, and supported extensions commands.
 
-use super::file::{get_git_branch, get_git_branch_url, get_git_last_author};
+use super::git::{get_git_branch, get_git_branch_url, get_git_last_author};
 use crate::state::{AppState, OfflineDictState};
 use markdown_preview_core::{calculate_document_stats, DocumentStats, DocumentType};
 use std::collections::HashMap;
@@ -64,26 +64,74 @@ pub struct FilePreviewInfo {
     pub modified_at: Option<u64>,
 }
 
-/// Refresh metadata for the currently open file.
+/// Refresh metadata for the currently open file (local or SSH).
 /// Returns updated modification time, git info, and document stats.
 #[tauri::command]
 pub async fn refresh_file_metadata(
     state: State<'_, Arc<RwLock<AppState>>>,
 ) -> Result<Option<FileMetadata>, String> {
-    let state = state.read().await;
-    let Some(ref current_file) = state.current_file else {
+    let state_guard = state.read().await;
+
+    // SSH path takes priority
+    if let Some(ref ssh_path) = state_guard.current_ssh_path {
+        let target = crate::ssh::parse_ssh_path(ssh_path)
+            .ok_or_else(|| format!("Invalid SSH path in state: {ssh_path}"))?;
+
+        let content = crate::ssh::read_file(target.user.as_deref(), &target.host, &target.path)
+            .await
+            .map_err(|e| format!("Failed to read remote file: {e}"))?;
+
+        let modified_at =
+            crate::ssh::stat_mtime(target.user.as_deref(), &target.host, &target.path)
+                .await
+                .ok();
+
+        let stats = calculate_document_stats(&content);
+
+        let parent = std::path::Path::new(&target.path)
+            .parent()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| "/".to_string());
+
+        let git_branch =
+            crate::ssh::git_branch(target.user.as_deref(), &target.host, &parent).await;
+        let git_branch_url = if let Some(ref branch) = git_branch {
+            if let Some(remote_url) =
+                crate::ssh::git_remote_url(target.user.as_deref(), &target.host, &parent).await
+            {
+                crate::ssh::git_branch_url_from_remote(&remote_url, branch)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        let git_last_author = crate::ssh::git_last_author(
+            target.user.as_deref(),
+            &target.host,
+            &parent,
+            &target.path,
+        )
+        .await;
+
+        return Ok(Some(FileMetadata {
+            modified_at,
+            stats,
+            git_branch,
+            git_branch_url,
+            git_last_author,
+        }));
+    }
+
+    // Local file path
+    let Some(ref current_file) = state_guard.current_file else {
         return Ok(None);
     };
 
     let path_str = current_file.to_string_lossy().to_string();
 
     // Get file modification time
-    let modified_at = tokio::fs::metadata(current_file)
-        .await
-        .ok()
-        .and_then(|m| m.modified().ok())
-        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-        .map(|d| d.as_millis() as u64);
+    let modified_at = super::get_file_mtime(current_file).await;
 
     // Read the file to get updated stats
     let content = tokio::fs::read_to_string(current_file)
@@ -342,12 +390,7 @@ pub async fn get_file_preview_info(
     let path_buf = std::path::Path::new(&path);
 
     // Get modification time
-    let modified_at = tokio::fs::metadata(path_buf)
-        .await
-        .ok()
-        .and_then(|m| m.modified().ok())
-        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-        .map(|d| d.as_millis() as u64);
+    let modified_at = super::get_file_mtime(path_buf).await;
 
     // Check for cached AI summary (mtime must match)
     let ai_digest = if let Some(mtime) = modified_at {

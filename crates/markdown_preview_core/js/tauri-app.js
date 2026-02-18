@@ -136,8 +136,10 @@ if (typeof window.__TAURI__ !== 'undefined') {
                 // Add to path history (use canonical path from result)
                 if (result.file_path) {
                     addToPathHistory(result.file_path);
-                    // Fetch diff for the file (async, don't block)
-                    fetchFileDiff(result.file_path);
+                    // Fetch diff for the file (async, don't block) — skip for SSH paths
+                    if (!isSshPath(result.file_path)) {
+                        fetchFileDiff(result.file_path);
+                    }
                 }
                 return result;
             }
@@ -167,6 +169,13 @@ if (typeof window.__TAURI__ !== 'undefined') {
         return str.startsWith('http://') || str.startsWith('https://');
     }
 
+    // Check if a string is an SSH path (SCP-style: [user@]host:/path)
+    function isSshPath(str) {
+        if (!str || str.startsWith('http://') || str.startsWith('https://')) return false;
+        // Match [user@]host:/path — host must start with alphanumeric
+        return /^(?:[a-zA-Z0-9][a-zA-Z0-9._-]*@)?[a-zA-Z0-9][a-zA-Z0-9._-]*:\//.test(str);
+    }
+
     // Open a URL
     async function openUrl(url) {
         try {
@@ -190,6 +199,23 @@ if (typeof window.__TAURI__ !== 'undefined') {
                 console.error('Failed to open URL:', e);
                 showToast('Failed to open URL: ' + (e.message || e));
             }
+        }
+        return null;
+    }
+
+    // Open a file via SSH
+    async function openSshFile(sshPath) {
+        try {
+            showToast('Connecting via SSH...');
+            const result = await invoke('open_ssh_file', { path: sshPath });
+            if (result && (result.html || result.output)) {
+                handleFileOpened(result);
+                addToPathHistory(sshPath);
+                return result;
+            }
+        } catch (e) {
+            console.error('Failed to open SSH file:', e);
+            showToast('SSH error: ' + (e.message || e));
         }
         return null;
     }
@@ -450,10 +476,12 @@ if (typeof window.__TAURI__ !== 'undefined') {
         showToast('Loaded from URL');
     }
 
-    // Open a path or URL (auto-detects)
+    // Open a path, URL, or SSH path (auto-detects)
     async function openPathOrUrl(input) {
         if (isUrl(input)) {
             return await openUrl(input);
+        } else if (isSshPath(input)) {
+            return await openSshFile(input);
         } else {
             return await openFile(input);
         }
@@ -548,9 +576,15 @@ if (typeof window.__TAURI__ !== 'undefined') {
             loadRecentFilesFromBackend();
 
             // Start watching the file for changes
-            invoke('watch_file', { path: result.file_path }).catch(e => {
-                console.error('Failed to watch file:', e);
-            });
+            if (isSshPath(result.file_path)) {
+                invoke('watch_ssh_file', { path: result.file_path }).catch(e => {
+                    console.error('Failed to watch SSH file:', e);
+                });
+            } else {
+                invoke('watch_file', { path: result.file_path }).catch(e => {
+                    console.error('Failed to watch file:', e);
+                });
+            }
         }
 
         // Update metadata bar
@@ -653,6 +687,17 @@ if (typeof window.__TAURI__ !== 'undefined') {
         listen('open-initial-file', async (event) => {
             console.log('Opening initial file:', event.payload);
             await openFile(event.payload);
+        });
+
+        // Listen for SSH watch error/recovery events
+        listen('ssh-watch-error', (event) => {
+            console.warn('SSH watcher error:', event.payload);
+            showToast('SSH connection lost — retrying...');
+        });
+
+        listen('ssh-watch-recovered', () => {
+            console.log('SSH watcher recovered');
+            showToast('SSH connection restored');
         });
 
         // Listen for AI summary progress events

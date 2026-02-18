@@ -18,7 +18,13 @@
                             <h4>GitHub</h4>
                             <div class="settings-field">
                                 <label for="settings-github-token">Personal Access Token</label>
-                                <input type="password" id="settings-github-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+                                <div class="settings-password-wrapper">
+                                    <input type="password" id="settings-github-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+                                    <button type="button" class="settings-toggle-vis" data-target="settings-github-token" title="Toggle visibility">
+                                        <svg class="eye-icon" viewBox="0 0 16 16" width="16" height="16"><path d="M8 3C4.5 3 1.6 5.1.3 8c1.3 2.9 4.2 5 7.7 5s6.4-2.1 7.7-5C14.4 5.1 11.5 3 8 3zm0 8.3a3.3 3.3 0 1 1 0-6.6 3.3 3.3 0 0 1 0 6.6zm0-5.3a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" fill="currentColor"/></svg>
+                                        <svg class="eye-off-icon" viewBox="0 0 16 16" width="16" height="16" style="display:none"><path d="M14.5 1.5l-13 13m3.1-4.9A3.3 3.3 0 0 1 8 4.7m3.4 1.9A3.3 3.3 0 0 1 8 11.3M.3 8c1.3-2.9 4.2-5 7.7-5 1.2 0 2.3.3 3.3.7m2.4 1.7c1 1 1.7 2 2 2.6-1.3 2.9-4.2 5-7.7 5-1.2 0-2.3-.3-3.3-.7" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                                    </button>
+                                </div>
                                 <p class="settings-hint">Used for accessing private repositories. Falls back to GITHUB_TOKEN env var.</p>
                             </div>
                         </div>
@@ -39,7 +45,13 @@
                             </div>
                             <div class="settings-field" id="settings-api-key-field" style="display:none;">
                                 <label for="settings-ai-api-key">API Key</label>
-                                <input type="password" id="settings-ai-api-key" placeholder="sk-..." autocomplete="off" spellcheck="false">
+                                <div class="settings-password-wrapper">
+                                    <input type="password" id="settings-ai-api-key" placeholder="sk-..." autocomplete="off" spellcheck="false">
+                                    <button type="button" class="settings-toggle-vis" data-target="settings-ai-api-key" title="Toggle visibility">
+                                        <svg class="eye-icon" viewBox="0 0 16 16" width="16" height="16"><path d="M8 3C4.5 3 1.6 5.1.3 8c1.3 2.9 4.2 5 7.7 5s6.4-2.1 7.7-5C14.4 5.1 11.5 3 8 3zm0 8.3a3.3 3.3 0 1 1 0-6.6 3.3 3.3 0 0 1 0 6.6zm0-5.3a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" fill="currentColor"/></svg>
+                                        <svg class="eye-off-icon" viewBox="0 0 16 16" width="16" height="16" style="display:none"><path d="M14.5 1.5l-13 13m3.1-4.9A3.3 3.3 0 0 1 8 4.7m3.4 1.9A3.3 3.3 0 0 1 8 11.3M.3 8c1.3-2.9 4.2-5 7.7-5 1.2 0 2.3.3 3.3.7m2.4 1.7c1 1 1.7 2 2 2.6-1.3 2.9-4.2 5-7.7 5-1.2 0-2.3-.3-3.3-.7" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                                    </button>
+                                </div>
                                 <p class="settings-hint" id="settings-api-key-hint"></p>
                             </div>
                             <div class="settings-field" id="settings-ollama-url-field" style="display:none;">
@@ -162,6 +174,30 @@
                     color: #9ca3af;
                     margin: 4px 0 0 0;
                 }
+                .settings-password-wrapper {
+                    position: relative;
+                    display: flex;
+                    align-items: center;
+                }
+                .settings-password-wrapper input {
+                    padding-right: 36px;
+                }
+                .settings-toggle-vis {
+                    position: absolute;
+                    right: 6px;
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    padding: 4px;
+                    color: #9ca3af;
+                    display: flex;
+                    align-items: center;
+                    border-radius: 4px;
+                }
+                .settings-toggle-vis:hover {
+                    color: #6b7280;
+                    background: rgba(0,0,0,0.05);
+                }
                 .settings-footer {
                     padding: 12px 20px;
                     background: #f6f8fa;
@@ -204,6 +240,8 @@
                     .settings-field input,
                     .settings-field select { background: #2d2d2d; border-color: #444; color: #fff; }
                     .settings-hint { color: #6b7280; }
+                    .settings-toggle-vis { color: #6b7280; }
+                    .settings-toggle-vis:hover { color: #9ca3af; background: rgba(255,255,255,0.08); }
                     .settings-footer { background: #252525; border-color: #333; }
                     .settings-footer .btn-cancel { background: #333; border-color: #444; color: #fff; }
                 }
@@ -235,6 +273,24 @@
         }
 
         providerSelect.addEventListener('change', updateFieldVisibility);
+
+        // Toggle password visibility
+        dialog.querySelectorAll('.settings-toggle-vis').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const input = document.getElementById(btn.dataset.target);
+                const eyeIcon = btn.querySelector('.eye-icon');
+                const eyeOffIcon = btn.querySelector('.eye-off-icon');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    eyeIcon.style.display = 'none';
+                    eyeOffIcon.style.display = '';
+                } else {
+                    input.type = 'password';
+                    eyeIcon.style.display = '';
+                    eyeOffIcon.style.display = 'none';
+                }
+            });
+        });
 
         // Dictionary directory management
         let dictDirs = [];

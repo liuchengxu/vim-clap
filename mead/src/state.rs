@@ -109,8 +109,10 @@ struct PersistedConfig {
 
 /// Application state shared across commands.
 pub struct AppState {
-    /// Currently open file path
+    /// Currently open file path (local files only).
     pub current_file: Option<PathBuf>,
+    /// Currently open SSH path (set when SSH file is open, cleared for local files).
+    pub current_ssh_path: Option<String>,
     /// Type of the currently open document (reserved for future use)
     #[allow(dead_code)]
     pub current_document_type: Option<DocumentType>,
@@ -150,6 +152,7 @@ impl AppState {
     pub fn new(config_dir: Option<PathBuf>) -> Self {
         let mut state = Self {
             current_file: None,
+            current_ssh_path: None,
             current_document_type: None,
             recent_files: VecDeque::new(),
             path_history: FrecentItems::with_max_entries(MAX_PATH_HISTORY),
@@ -205,7 +208,10 @@ impl AppState {
                         .recent_files
                         .into_iter()
                         .map(PathBuf::from)
-                        .filter(|p| p.exists())
+                        .filter(|p| {
+                            let s = p.to_string_lossy();
+                            crate::ssh::is_ssh_path(&s) || p.exists()
+                        })
                         .collect();
                     self.ai_provider = config.ai_provider;
                     self.ai_model = config.ai_model;
@@ -339,9 +345,10 @@ impl AppState {
                     history.refresh_scores();
                     history.retain(|entry| {
                         let path = std::path::Path::new(&entry.item);
-                        // Keep if it's a URL or an existing file
+                        // Keep if it's a URL, SSH path, or an existing file
                         entry.item.starts_with("http://")
                             || entry.item.starts_with("https://")
+                            || crate::ssh::is_ssh_path(&entry.item)
                             || path.exists()
                     });
                     self.path_history = history;

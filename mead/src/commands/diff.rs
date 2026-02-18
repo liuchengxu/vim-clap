@@ -59,12 +59,8 @@ pub async fn get_file_diff(
         .map_err(|e| format!("Failed to read file: {e}"))?;
 
     // Get current file modification time
-    let current_time = tokio::fs::metadata(&path)
+    let current_time = super::get_file_mtime(std::path::Path::new(&path))
         .await
-        .ok()
-        .and_then(|m| m.modified().ok())
-        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-        .map(|d| d.as_millis() as u64)
         .unwrap_or(0);
 
     // Get previous snapshot and compute diff
