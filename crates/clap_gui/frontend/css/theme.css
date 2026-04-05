@@ -195,3 +195,47 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--surface1); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--overlay0); }
+
+/* Prism.js overrides for Catppuccin */
+.preview-pane code[class*="language-"],
+.preview-pane pre[class*="language-"] {
+  background: none;
+  text-shadow: none;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.preview-line .token.comment,
+.preview-line .token.prolog,
+.preview-line .token.doctype,
+.preview-line .token.cdata { color: var(--overlay0); }
+
+.preview-line .token.punctuation { color: var(--subtext1); }
+
+.preview-line .token.property,
+.preview-line .token.tag,
+.preview-line .token.boolean,
+.preview-line .token.number,
+.preview-line .token.constant,
+.preview-line .token.symbol { color: var(--peach); }
+
+.preview-line .token.selector,
+.preview-line .token.attr-name,
+.preview-line .token.string,
+.preview-line .token.char,
+.preview-line .token.builtin { color: var(--green); }
+
+.preview-line .token.operator,
+.preview-line .token.entity,
+.preview-line .token.url { color: var(--blue); }
+
+.preview-line .token.atrule,
+.preview-line .token.attr-value,
+.preview-line .token.keyword { color: var(--mauve); }
+
+.preview-line .token.function,
+.preview-line .token.class-name { color: var(--blue); }
+
+.preview-line .token.regex,
+.preview-line .token.important,
+.preview-line .token.variable { color: var(--yellow); }
