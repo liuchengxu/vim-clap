@@ -1,4 +1,5 @@
 const { invoke } = window.__TAURI__.core;
+const { listen } = window.__TAURI__.event;
 
 let currentMode = 'files';
 let results = [];
@@ -12,7 +13,7 @@ function setMode(mode) {
   const input = document.getElementById('search-input');
   input.placeholder = mode === 'files' ? 'Search files...' : 'Search content...';
   if (input.value) {
-    runSearch(input.value);
+    startSearch(input.value);
   } else {
     clearResults();
   }
@@ -23,8 +24,36 @@ function clearResults() {
   selectedIndex = 0;
   document.getElementById('results-pane').innerHTML = '';
   document.getElementById('preview-pane').innerHTML = '<div class="preview-empty">No file selected</div>';
-  document.getElementById('status-count').textContent = '0 results';
+  updateStatusCount(0, 0, true);
 }
+
+function updateStatusCount(matched, processed, finished) {
+  const status = document.getElementById('status-count');
+  if (finished) {
+    status.textContent = `${matched} result${matched !== 1 ? 's' : ''}`;
+  } else {
+    status.textContent = `${matched} results (searching... ${processed} files)`;
+  }
+}
+
+// Listen for progressive search results from backend
+listen('search-results', (event) => {
+  const payload = event.payload;
+  const isFiles = payload.type === 'files';
+
+  results = payload.results;
+  if (selectedIndex >= results.length) {
+    selectedIndex = Math.max(0, results.length - 1);
+  }
+
+  renderResults(isFiles);
+  updateStatusCount(payload.total_matched, payload.total_processed, payload.finished);
+
+  // Load preview for the first result when search completes or on first batch
+  if (results.length > 0 && (payload.finished || selectedIndex === 0)) {
+    loadPreview(results[selectedIndex]);
+  }
+});
 
 document.querySelectorAll('.mode-tab').forEach(tab => {
   tab.addEventListener('click', () => setMode(tab.dataset.mode));

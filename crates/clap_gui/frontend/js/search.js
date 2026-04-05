@@ -2,32 +2,25 @@ let searchTimeout = null;
 
 function debounceSearch(query) {
   if (searchTimeout) clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(() => runSearch(query), 50);
+  searchTimeout = setTimeout(() => startSearch(query), 50);
 }
 
-async function runSearch(query) {
+// Fire-and-forget: kicks off a search, results arrive via 'search-results' event
+async function startSearch(query) {
   if (!query) {
     clearResults();
     return;
   }
 
   try {
-    if (currentMode === 'files') {
-      results = await invoke('search_files', { query });
-    } else {
-      results = await invoke('search_grep', { query });
-    }
-    selectedIndex = 0;
-    renderResults();
-    if (results.length > 0) {
-      loadPreview(results[0]);
-    }
+    await invoke('start_search', { query, mode: currentMode });
   } catch (e) {
     console.error('Search error:', e);
   }
 }
 
-function renderResults() {
+// Render results — called from the event listener in app.js
+function renderResults(isFiles) {
   const pane = document.getElementById('results-pane');
   pane.innerHTML = '';
 
@@ -36,7 +29,7 @@ function renderResults() {
     el.className = 'result-item' + (index === selectedIndex ? ' selected' : '');
     el.dataset.index = index;
 
-    if (currentMode === 'files') {
+    if (isFiles) {
       el.innerHTML = renderFileResult(result);
     } else {
       el.innerHTML = renderGrepResult(result);
@@ -44,7 +37,7 @@ function renderResults() {
 
     el.addEventListener('click', () => {
       selectedIndex = index;
-      renderResults();
+      renderResults(isFiles);
       loadPreview(result);
     });
 
@@ -54,9 +47,6 @@ function renderResults() {
 
     pane.appendChild(el);
   });
-
-  document.getElementById('status-count').textContent =
-    `${results.length} result${results.length !== 1 ? 's' : ''}`;
 
   const selected = pane.querySelector('.selected');
   if (selected) selected.scrollIntoView({ block: 'nearest' });

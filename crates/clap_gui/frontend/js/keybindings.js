@@ -20,7 +20,7 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     if (results.length > 0) {
       selectedIndex = Math.max(0, selectedIndex - 1);
-      renderResults();
+      renderResults(currentMode === 'files');
       loadPreview(results[selectedIndex]);
     }
     return;
@@ -30,7 +30,7 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     if (results.length > 0) {
       selectedIndex = Math.min(results.length - 1, selectedIndex + 1);
-      renderResults();
+      renderResults(currentMode === 'files');
       loadPreview(results[selectedIndex]);
     }
     return;

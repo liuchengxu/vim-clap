@@ -24,9 +24,8 @@ fn main() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
-            commands::files::search_files,
-            commands::files::refresh_file_cache,
-            commands::grep::search_grep,
+            commands::search::start_search,
+            commands::search::refresh_file_cache,
             commands::preview::preview_file,
             commands::action::open_in_editor,
         ])
