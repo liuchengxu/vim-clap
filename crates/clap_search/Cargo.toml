@@ -1,0 +1,21 @@
+[package]
+name = "clap_search"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "Reusable streaming fuzzy search engine for vim-clap"
+
+[dependencies]
+grep-regex = { workspace = true }
+grep-searcher = { workspace = true }
+grep-matcher = { workspace = true }
+ignore = { workspace = true }
+parking_lot = { workspace = true }
+rayon = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true }
+
+filter = { workspace = true }
+icon = { workspace = true }
+matcher = { workspace = true }
+types = { workspace = true }

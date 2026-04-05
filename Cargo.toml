@@ -38,6 +38,7 @@ members = [
     "crates/utils",
     "crates/xtask",
     "crates/clap_gui/src-tauri",
+    "crates/clap_search",
 ]
 
 exclude = ["pythonx/clap/fuzzymatch-rs"]
@@ -96,6 +97,7 @@ which = "5.0.0"
 unicode-width = "0.1.4"
 
 # Local deps
+clap_search = { path = "crates/clap_search" }
 cli = { path = "crates/cli" }
 code_tools = { path = "crates/code_tools" }
 dirs = { path = "crates/dirs" }
