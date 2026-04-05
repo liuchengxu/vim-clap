@@ -1,0 +1,36 @@
+[package]
+name = "clap-gui"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "clap-gui"
+path = "src/main.rs"
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-clipboard-manager = "2"
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+toml = { workspace = true }
+tracing = { workspace = true }
+ignore = { workspace = true }
+grep-searcher = { workspace = true }
+grep-regex = { workspace = true }
+grep-matcher = { workspace = true }
+rayon = { workspace = true }
+parking_lot = { workspace = true }
+directories = { workspace = true }
+
+# Workspace crates
+matcher = { workspace = true }
+filter = { workspace = true }
+icon = { workspace = true }
+paths = { workspace = true }
+types = { workspace = true }
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }

@@ -37,6 +37,7 @@ members = [
     "crates/upgrade",
     "crates/utils",
     "crates/xtask",
+    "crates/clap_gui/src-tauri",
 ]
 
 exclude = ["pythonx/clap/fuzzymatch-rs"]
