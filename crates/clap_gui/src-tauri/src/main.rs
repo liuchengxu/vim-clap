@@ -21,7 +21,12 @@ fn main() {
 
     tauri::Builder::default()
         .manage(app_state)
-        .invoke_handler(tauri::generate_handler![commands::files::search_files,])
+        .invoke_handler(tauri::generate_handler![
+            commands::files::search_files,
+            commands::grep::search_grep,
+            commands::preview::preview_file,
+            commands::action::open_in_editor,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running clap-gui");
 }
