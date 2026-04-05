@@ -29,26 +29,41 @@ pub async fn search_files(
 
     let cwd = state.cwd.read().clone();
     let max_results = state.config.search.max_results;
-    let hidden = state.config.search.hidden_files;
-    let gitignore = state.config.search.respect_gitignore;
     let stop_signal = state.new_search();
 
-    let mut builder = ignore::WalkBuilder::new(&cwd);
-    builder.hidden(!hidden).git_ignore(gitignore);
+    // Use cached file list if available, otherwise walk and cache
+    let items = match state.get_cached_files(&cwd) {
+        Some(cached) => cached,
+        None => {
+            let hidden = state.config.search.hidden_files;
+            let gitignore = state.config.search.respect_gitignore;
 
-    let items: Vec<Arc<dyn ClapItem>> = builder
-        .build()
-        .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.file_type().map_or(false, |ft| ft.is_file()))
-        .take_while(|_| !stop_signal.load(Ordering::Relaxed))
-        .filter_map(|entry| {
-            entry
-                .path()
-                .strip_prefix(&cwd)
-                .ok()
-                .map(|p| Arc::new(p.to_string_lossy().to_string()) as Arc<dyn ClapItem>)
-        })
-        .collect();
+            let mut builder = ignore::WalkBuilder::new(&cwd);
+            builder.hidden(!hidden).git_ignore(gitignore);
+
+            let items: Vec<Arc<dyn ClapItem>> = builder
+                .build()
+                .filter_map(|entry| entry.ok())
+                .filter(|entry| entry.file_type().map_or(false, |ft| ft.is_file()))
+                .take_while(|_| !stop_signal.load(Ordering::Relaxed))
+                .filter_map(|entry| {
+                    entry
+                        .path()
+                        .strip_prefix(&cwd)
+                        .ok()
+                        .map(|p| Arc::new(p.to_string_lossy().to_string()) as Arc<dyn ClapItem>)
+                })
+                .collect();
+
+            if is_cancelled(&stop_signal) {
+                return Ok(Vec::new());
+            }
+
+            // Cache for subsequent keystrokes
+            state.set_cached_files(cwd.clone(), items.clone());
+            items
+        }
+    };
 
     if is_cancelled(&stop_signal) {
         return Ok(Vec::new());
@@ -77,6 +92,12 @@ pub async fn search_files(
         .collect();
 
     Ok(results)
+}
+
+/// Invalidate the file cache so the next search re-walks the filesystem.
+#[tauri::command]
+pub fn refresh_file_cache(state: State<'_, AppState>) {
+    state.invalidate_file_cache();
 }
 
 fn is_cancelled(signal: &Arc<AtomicBool>) -> bool {

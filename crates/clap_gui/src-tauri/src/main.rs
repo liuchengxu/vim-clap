@@ -25,6 +25,7 @@ fn main() {
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             commands::files::search_files,
+            commands::files::refresh_file_cache,
             commands::grep::search_grep,
             commands::preview::preview_file,
             commands::action::open_in_editor,
