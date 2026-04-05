@@ -1,4 +1,6 @@
 use serde::Serialize;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize)]
@@ -17,21 +19,26 @@ pub async fn preview_file(
     let path = PathBuf::from(&path);
     let max_lines = max_lines.unwrap_or(50);
 
-    let content = std::fs::read_to_string(&path)
-        .map_err(|e| format!("Failed to read {}: {e}", path.display()))?;
+    let file = File::open(&path)
+        .map_err(|e| format!("Failed to open {}: {e}", path.display()))?;
+    let reader = BufReader::new(file);
 
-    let all_lines: Vec<String> = content.lines().map(String::from).collect();
-    let total = all_lines.len();
-
-    let (start, end) = if let Some(target) = line {
-        let target = target.saturating_sub(1);
+    // Determine the window of lines to read
+    let start = if let Some(target) = line {
+        let target = target.saturating_sub(1); // 0-indexed
         let half = max_lines / 2;
-        let start = target.saturating_sub(half);
-        let end = (start + max_lines).min(total);
-        (start, end)
+        target.saturating_sub(half)
     } else {
-        (0, max_lines.min(total))
+        0
     };
+
+    let lines: Vec<String> = reader
+        .lines()
+        .enumerate()
+        .skip(start)
+        .take(max_lines)
+        .filter_map(|(_, l)| l.ok())
+        .collect();
 
     let language = path
         .extension()
@@ -40,8 +47,8 @@ pub async fn preview_file(
         .to_string();
 
     Ok(PreviewContent {
-        lines: all_lines[start..end].to_vec(),
-        start_line: start + 1,
+        lines,
+        start_line: start + 1, // 1-indexed for display
         language,
     })
 }

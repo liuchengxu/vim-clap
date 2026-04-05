@@ -2,12 +2,14 @@ use grep_regex::RegexMatcher;
 use grep_searcher::sinks::UTF8;
 use grep_searcher::Searcher;
 use ignore::WalkBuilder;
-use matcher::MatcherBuilder;
+use matcher::{MatchScope, MatcherBuilder};
+use parking_lot::Mutex;
 use rayon::prelude::*;
 use serde::Serialize;
-use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
+use std::sync::Arc;
 use tauri::State;
-use types::{ClapItem, MatchScope, Query};
+use types::{ClapItem, Query};
 
 use crate::state::AppState;
 
@@ -20,7 +22,7 @@ pub struct GrepResult {
     pub score: i32,
 }
 
-#[derive(Clone)]
+#[derive(Debug)]
 struct GrepLine {
     text: String,
     path: String,
@@ -71,7 +73,7 @@ pub async fn search_grep(
             path,
             UTF8(|line_number, line_content| {
                 let trimmed = line_content.trim_end().to_string();
-                lines.lock().unwrap().push(GrepLine {
+                lines.lock().push(GrepLine {
                     text: format!("{rel_path}:{line_number}:{trimmed}"),
                     path: rel_path.clone(),
                     line_number,
@@ -81,9 +83,17 @@ pub async fn search_grep(
         );
     });
 
+    // After par_iter completes, we're the sole owner of the Arc
     let collected = Arc::try_unwrap(grep_lines)
-        .map(|m| m.into_inner().unwrap())
-        .unwrap_or_else(|arc| arc.lock().unwrap().clone());
+        .expect("par_iter complete, sole Arc owner")
+        .into_inner();
+
+    // Build a HashMap for O(1) lookup from display text -> index
+    let lookup: HashMap<&str, usize> = collected
+        .iter()
+        .enumerate()
+        .map(|(i, gl)| (gl.text.as_str(), i))
+        .collect();
 
     let items: Vec<Arc<dyn ClapItem>> = collected
         .iter()
@@ -103,7 +113,8 @@ pub async fn search_grep(
         .into_iter()
         .filter_map(|item| {
             let text = item.display_text().to_string();
-            collected.iter().find(|gl| gl.text == text).map(|gl| {
+            lookup.get(text.as_str()).map(|&idx| {
+                let gl = &collected[idx];
                 let line_content = gl
                     .text
                     .splitn(3, ':')

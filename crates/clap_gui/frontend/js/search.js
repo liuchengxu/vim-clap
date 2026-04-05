@@ -67,16 +67,17 @@ function renderFileResult(result) {
   const parts = result.display_path.split('/');
   const dir = parts.length > 1 ? parts.slice(0, -1).join('/') + '/' : '';
   return `
-    <span class="result-icon">${result.icon}</span>
+    <span class="result-icon">${escapeHtml(result.icon)}</span>
     <span class="result-text">${highlighted}</span>
     <span class="result-path-dim">${escapeHtml(dir)}</span>
   `;
 }
 
 function renderGrepResult(result) {
+  const highlighted = highlightMatches(result.line_content, result.match_indices);
   return `
     <span class="result-line-number">${result.line_number}</span>
-    <span class="result-text">${escapeHtml(result.line_content)}</span>
+    <span class="result-text">${highlighted}</span>
   `;
 }
 
