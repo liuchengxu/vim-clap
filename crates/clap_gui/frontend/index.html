@@ -3,11 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <title>clap-gui</title>
-  <style>
-    body { background: #1e1e2e; color: #cdd6f4; font-family: monospace; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-  </style>
+  <link rel="stylesheet" href="css/theme.css">
 </head>
 <body>
-  <h1>clap-gui</h1>
+  <div class="titlebar">
+    <span class="titlebar-title" id="titlebar-title">clap-gui</span>
+    <span class="titlebar-pin" id="pin-btn" title="Pin window (Cmd+P)">&#128204;</span>
+  </div>
+
+  <div class="mode-tabs">
+    <button class="mode-tab active" data-mode="files">Files</button>
+    <button class="mode-tab" data-mode="grep">Grep</button>
+  </div>
+
+  <div class="search-container">
+    <span class="search-icon">&#128269;</span>
+    <input class="search-input" id="search-input" type="text" placeholder="Search files..." autofocus>
+  </div>
+
+  <div class="main-content">
+    <div class="results-pane" id="results-pane"></div>
+    <div class="preview-pane" id="preview-pane">
+      <div class="preview-empty">No file selected</div>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <span id="status-count">0 results</span>
+    <span>Enter: open · Cmd+Enter: copy · Tab: mode · Cmd+P: pin</span>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script src="js/search.js"></script>
+  <script src="js/preview.js"></script>
+  <script src="js/keybindings.js"></script>
 </body>
 </html>
