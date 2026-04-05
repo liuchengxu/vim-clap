@@ -20,6 +20,8 @@ fn main() {
     let app_state = AppState::new(cwd, config);
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             commands::files::search_files,
