@@ -2,6 +2,7 @@ use icon::file_icon;
 use matcher::{MatchScope, MatcherBuilder};
 use rayon::prelude::*;
 use serde::Serialize;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tauri::State;
 use types::{ClapItem, Query};
@@ -30,8 +31,8 @@ pub async fn search_files(
     let max_results = state.config.search.max_results;
     let hidden = state.config.search.hidden_files;
     let gitignore = state.config.search.respect_gitignore;
+    let stop_signal = state.new_search();
 
-    // Collect file paths using the `ignore` crate (respects .gitignore)
     let mut builder = ignore::WalkBuilder::new(&cwd);
     builder.hidden(!hidden).git_ignore(gitignore);
 
@@ -39,6 +40,7 @@ pub async fn search_files(
         .build()
         .filter_map(|entry| entry.ok())
         .filter(|entry| entry.file_type().map_or(false, |ft| ft.is_file()))
+        .take_while(|_| !stop_signal.load(Ordering::Relaxed))
         .filter_map(|entry| {
             entry
                 .path()
@@ -48,7 +50,10 @@ pub async fn search_files(
         })
         .collect();
 
-    // Build matcher and filter in parallel
+    if is_cancelled(&stop_signal) {
+        return Ok(Vec::new());
+    }
+
     let matcher = MatcherBuilder::new()
         .match_scope(MatchScope::FileName)
         .build(Query::from(query.as_str()));
@@ -72,4 +77,8 @@ pub async fn search_files(
         .collect();
 
     Ok(results)
+}
+
+fn is_cancelled(signal: &Arc<AtomicBool>) -> bool {
+    signal.load(Ordering::Relaxed)
 }

@@ -7,6 +7,7 @@ use parking_lot::Mutex;
 use rayon::prelude::*;
 use serde::Serialize;
 use std::collections::HashMap;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use tauri::State;
 use types::{ClapItem, Query};
@@ -24,9 +25,12 @@ pub struct GrepResult {
 
 #[derive(Debug)]
 struct GrepLine {
+    /// Full text in grep format: `path:line:col:content`
     text: String,
     path: String,
     line_number: u64,
+    /// Byte offset where the line content starts in `text`
+    content_offset: usize,
 }
 
 #[tauri::command]
@@ -42,6 +46,7 @@ pub async fn search_grep(
     let max_results = state.config.search.max_results;
     let hidden = state.config.search.hidden_files;
     let gitignore = state.config.search.respect_gitignore;
+    let stop_signal = state.new_search();
 
     let regex_matcher =
         RegexMatcher::new(&query).map_err(|e| format!("Invalid pattern: {e}"))?;
@@ -57,7 +62,12 @@ pub async fn search_grep(
         .filter(|e| e.file_type().map_or(false, |ft| ft.is_file()))
         .collect();
 
+    let stop = stop_signal.clone();
     entries.par_iter().for_each(|entry| {
+        if stop.load(Ordering::Relaxed) {
+            return;
+        }
+
         let mut searcher = Searcher::new();
         let path = entry.path();
         let rel_path = path
@@ -73,17 +83,29 @@ pub async fn search_grep(
             path,
             UTF8(|line_number, line_content| {
                 let trimmed = line_content.trim_end().to_string();
+                // Format: path:line:col:content (col=1, matches extract_grep_pattern regex)
+                let text = format!("{rel_path}:{line_number}:1:{trimmed}");
+                let content_offset = rel_path.len()
+                    + 1 // ':'
+                    + line_number.to_string().len()
+                    + 1 // ':'
+                    + 1 // '1' (column)
+                    + 1; // ':'
                 lines.lock().push(GrepLine {
-                    text: format!("{rel_path}:{line_number}:{trimmed}"),
+                    text,
                     path: rel_path.clone(),
                     line_number,
+                    content_offset,
                 });
                 Ok(true)
             }),
         );
     });
 
-    // After par_iter completes, we're the sole owner of the Arc
+    if stop_signal.load(Ordering::Relaxed) {
+        return Ok(Vec::new());
+    }
+
     let collected = Arc::try_unwrap(grep_lines)
         .expect("par_iter complete, sole Arc owner")
         .into_inner();
@@ -115,17 +137,18 @@ pub async fn search_grep(
             let text = item.display_text().to_string();
             lookup.get(text.as_str()).map(|&idx| {
                 let gl = &collected[idx];
-                let line_content = gl
-                    .text
-                    .splitn(3, ':')
-                    .nth(2)
-                    .unwrap_or("")
-                    .to_string();
+                let line_content = &gl.text[gl.content_offset..];
+                // Shift match indices from full-text coords to line_content coords
+                let match_indices: Vec<usize> = item
+                    .indices
+                    .iter()
+                    .filter_map(|&i| i.checked_sub(gl.content_offset))
+                    .collect();
                 GrepResult {
                     path: cwd.join(&gl.path).to_string_lossy().to_string(),
                     line_number: gl.line_number,
-                    line_content,
-                    match_indices: item.indices.clone(),
+                    line_content: line_content.to_string(),
+                    match_indices,
                     score: item.rank[0],
                 }
             })
