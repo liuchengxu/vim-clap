@@ -1,22 +1,6 @@
-let lastCtrlCTime = 0;
-
 document.addEventListener('keydown', (e) => {
   const input = document.getElementById('search-input');
   const isMeta = e.metaKey || e.ctrlKey;
-
-  // Cmd+Q: quit
-  if (e.key === 'q' && e.metaKey) {
-    e.preventDefault();
-    window.__TAURI__.window.getCurrentWindow().close();
-    return;
-  }
-
-  // Ctrl+D: close the app (like terminal EOF)
-  if (e.key === 'd' && e.ctrlKey && !e.metaKey) {
-    e.preventDefault();
-    window.__TAURI__.window.getCurrentWindow().close();
-    return;
-  }
 
   if (e.key === 'Tab') {
     e.preventDefault();
@@ -100,6 +84,11 @@ async function copyResult(result) {
     console.error('Failed to copy:', e);
   }
 }
+
+// Close button
+document.getElementById('close-btn').addEventListener('click', () => {
+  window.__TAURI__.window.getCurrentWindow().close();
+});
 
 let isPinned = false;
 

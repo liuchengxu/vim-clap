@@ -44,6 +44,17 @@ body {
   margin-left: auto;
 }
 
+.titlebar-close {
+  color: var(--overlay0);
+  font-size: 14px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  padding: 0 4px;
+  border-radius: 4px;
+}
+
+.titlebar-close:hover { color: var(--red); background: var(--surface0); }
+
 .titlebar-pin {
   color: var(--overlay0);
   font-size: 14px;
