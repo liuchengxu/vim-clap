@@ -85,9 +85,9 @@ async function copyResult(result) {
   }
 }
 
-// Close button
+// Close button — fully quits the app
 document.getElementById('close-btn').addEventListener('click', () => {
-  invoke('quit_app');
+  invoke('force_quit');
 });
 
 let isPinned = false;

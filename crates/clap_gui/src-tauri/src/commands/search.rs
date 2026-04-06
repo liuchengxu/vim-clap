@@ -80,6 +80,11 @@ pub fn get_cwd(state: State<'_, AppState>) -> String {
 }
 
 #[tauri::command]
-pub fn quit_app() {
+pub fn quit_app(window: tauri::WebviewWindow) {
+    let _ = window.hide();
+}
+
+#[tauri::command]
+pub fn force_quit() {
     std::process::exit(0);
 }

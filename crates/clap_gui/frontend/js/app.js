@@ -63,6 +63,14 @@ document.querySelectorAll('.mode-tab').forEach(tab => {
   tab.addEventListener('click', () => setMode(tab.dataset.mode));
 });
 
+// Reset state when window is re-shown via global hotkey
+listen('window-shown', () => {
+  const input = document.getElementById('search-input');
+  input.value = '';
+  input.focus();
+  clearResults();
+});
+
 // Show cwd in titlebar on load
 (async () => {
   try {

@@ -45,11 +45,12 @@ fn main() {
             commands::search::refresh_file_cache,
             commands::search::get_cwd,
             commands::search::quit_app,
+            commands::search::force_quit,
             commands::preview::preview_file,
             commands::action::open_in_editor,
         ])
         .setup(move |app| {
-            use tauri::Manager;
+            use tauri::{Emitter, Manager};
             use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 
             if let Some(window) = app.get_webview_window("main") {
@@ -76,12 +77,30 @@ fn main() {
                 // Register global hotkey to toggle window visibility.
                 if let Ok(shortcut) = hotkey.parse::<Shortcut>() {
                     let win = window.clone();
-                    let _ = app.global_shortcut().on_shortcut(shortcut, move |_app, _shortcut, _event| {
+                    let _ = app.global_shortcut().on_shortcut(shortcut, move |_app, _shortcut, event| {
+                        if event.state != tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                            return;
+                        }
                         if win.is_visible().unwrap_or(false) {
                             let _ = win.hide();
                         } else {
+                            // Re-center before showing.
+                            if let Some(monitor) = win.current_monitor().ok().flatten() {
+                                let screen = monitor.size();
+                                let scale = monitor.scale_factor();
+                                let screen_w = screen.width as f64 / scale;
+                                let screen_h = screen.height as f64 / scale;
+                                if let Ok(size) = win.outer_size() {
+                                    let w = size.width as f64 / scale;
+                                    let h = size.height as f64 / scale;
+                                    let x = ((screen_w - w) / 2.0).round();
+                                    let y = ((screen_h - h) / 2.0).round();
+                                    let _ = win.set_position(tauri::LogicalPosition::new(x, y));
+                                }
+                            }
                             let _ = win.show();
                             let _ = win.set_focus();
+                            let _ = win.emit("window-shown", ());
                         }
                     });
                 }
