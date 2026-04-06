@@ -58,3 +58,16 @@ listen('search-results', (event) => {
 document.querySelectorAll('.mode-tab').forEach(tab => {
   tab.addEventListener('click', () => setMode(tab.dataset.mode));
 });
+
+// Show cwd in titlebar on load
+(async () => {
+  try {
+    const cwd = await invoke('get_cwd');
+    // Show last 2 path components for brevity, e.g. "plugged/vim-clap"
+    const parts = cwd.replace(/\/$/, '').split('/');
+    const short = parts.length > 2 ? parts.slice(-2).join('/') : cwd;
+    document.getElementById('titlebar-title').textContent = `clap-gui — ${short}`;
+  } catch (e) {
+    console.error('Failed to get cwd:', e);
+  }
+})();

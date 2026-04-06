@@ -73,3 +73,8 @@ pub async fn start_search(
 pub fn refresh_file_cache(state: State<'_, AppState>) {
     state.file_cache().invalidate();
 }
+
+#[tauri::command]
+pub fn get_cwd(state: State<'_, AppState>) -> String {
+    state.cwd.read().to_string_lossy().to_string()
+}

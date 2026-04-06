@@ -43,6 +43,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::search::start_search,
             commands::search::refresh_file_cache,
+            commands::search::get_cwd,
             commands::preview::preview_file,
             commands::action::open_in_editor,
         ])
