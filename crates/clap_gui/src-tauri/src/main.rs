@@ -48,13 +48,11 @@ fn main() {
             commands::action::open_in_editor,
         ])
         .setup(|app| {
-            // On macOS, set activation policy to Accessory so the app
-            // overlays on top of the current space instead of switching
-            // to its own space. This makes it behave like Spotlight.
-            #[cfg(target_os = "macos")]
-            {
-                use tauri::ActivationPolicy;
-                app.set_activation_policy(ActivationPolicy::Accessory);
+            use tauri::Manager;
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_always_on_top(true);
+                let _ = window.set_visible_on_all_workspaces(true);
+                let _ = window.set_focus();
             }
             Ok(())
         })
