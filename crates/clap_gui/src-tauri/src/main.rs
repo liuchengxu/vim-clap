@@ -6,6 +6,21 @@ mod state;
 
 use state::AppState;
 use std::path::PathBuf;
+use std::process::Command;
+
+/// Detect the git repository root from the current directory.
+fn git_repo_root() -> Option<PathBuf> {
+    Command::new("git")
+        .args(["rev-parse", "--show-toplevel"])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .and_then(|o| {
+            String::from_utf8(o.stdout)
+                .ok()
+                .map(|s| PathBuf::from(s.trim()))
+        })
+}
 
 fn main() {
     let config = config::load_config();
@@ -15,7 +30,9 @@ fn main() {
         .get(1)
         .filter(|a| !a.starts_with('-'))
         .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+        .unwrap_or_else(|| git_repo_root().unwrap_or_else(|| {
+            std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+        }));
 
     let app_state = AppState::new(cwd, config);
 
