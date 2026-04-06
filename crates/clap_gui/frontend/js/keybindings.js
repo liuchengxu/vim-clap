@@ -11,18 +11,10 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // Ctrl+C: first press cancels search/clears, double press exits
-  if (e.key === 'c' && e.ctrlKey && !e.metaKey) {
+  // Ctrl+D: close the app (like terminal EOF)
+  if (e.key === 'd' && e.ctrlKey && !e.metaKey) {
     e.preventDefault();
-    const now = Date.now();
-    if (now - lastCtrlCTime < 500) {
-      window.__TAURI__.window.getCurrentWindow().close();
-    } else {
-      // Cancel current search and clear
-      input.value = '';
-      clearResults();
-    }
-    lastCtrlCTime = now;
+    window.__TAURI__.window.getCurrentWindow().close();
     return;
   }
 
