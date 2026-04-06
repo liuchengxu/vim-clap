@@ -12,6 +12,9 @@ document.addEventListener('keydown', (e) => {
     if (input.value) {
       input.value = '';
       clearResults();
+    } else {
+      // Input already empty — close the window
+      window.__TAURI__.window.getCurrentWindow().close();
     }
     return;
   }
