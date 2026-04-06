@@ -49,11 +49,31 @@ fn main() {
         ])
         .setup(|app| {
             use tauri::Manager;
+            use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
+
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_always_on_top(true);
                 let _ = window.set_visible_on_all_workspaces(true);
                 let _ = window.set_focus();
             }
+
+            // Register quit shortcuts at the OS level (bypasses webview)
+            let app_handle = app.handle().clone();
+            let quit_handler = move |_app: &tauri::AppHandle, shortcut: &Shortcut, _event| {
+                let quit_shortcuts = ["super+q", "ctrl+d"];
+                let shortcut_str = shortcut.to_string().to_lowercase();
+                if quit_shortcuts.iter().any(|s| shortcut_str.contains(s) || shortcut_str == *s) {
+                    std::process::exit(0);
+                }
+            };
+
+            if let Ok(s) = "super+q".parse::<Shortcut>() {
+                let _ = app.global_shortcut().on_shortcut(s, quit_handler.clone());
+            }
+            if let Ok(s) = "ctrl+d".parse::<Shortcut>() {
+                let _ = app.global_shortcut().on_shortcut(s, quit_handler);
+            }
+
             Ok(())
         })
         .run(tauri::generate_context!())
