@@ -7,6 +7,16 @@ mod state;
 use state::AppState;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::Arc;
+
+/// Shared visibility state so quit_app can "hide" the window.
+pub struct WindowVisibility {
+    visible: AtomicBool,
+    /// Stored logical size to restore after un-hiding.
+    width: AtomicU32,
+    height: AtomicU32,
+}
 
 /// Detect the git repository root from the current directory.
 fn git_repo_root() -> Option<PathBuf> {
@@ -20,6 +30,78 @@ fn git_repo_root() -> Option<PathBuf> {
                 .ok()
                 .map(|s| PathBuf::from(s.trim()))
         })
+}
+
+/// Hide the window. On Linux, shrinks to 1x1 to keep the event loop and
+/// global key grabs alive. On other platforms, uses native hide.
+fn hide_window(win: &tauri::WebviewWindow, vis: &WindowVisibility) {
+    if vis.visible.load(Ordering::Relaxed) {
+        // Save current physical size before hiding.
+        if let Ok(size) = win.outer_size() {
+            vis.width.store(size.width, Ordering::Relaxed);
+            vis.height.store(size.height, Ordering::Relaxed);
+        }
+
+        if cfg!(target_os = "linux") {
+            let _ = win.set_always_on_top(false);
+            let _ = win.set_size(tauri::PhysicalSize::new(1u32, 1u32));
+        } else {
+            let _ = win.hide();
+        }
+
+        vis.visible.store(false, Ordering::Relaxed);
+    }
+}
+
+/// Show the window centered on screen.
+fn show_window(win: &tauri::WebviewWindow, vis: &WindowVisibility) {
+    use tauri::Emitter;
+
+    let w = vis.width.load(Ordering::Relaxed);
+    let h = vis.height.load(Ordering::Relaxed);
+
+    if cfg!(target_os = "linux") {
+        let _ = win.set_size(tauri::PhysicalSize::new(w, h));
+        let _ = win.set_always_on_top(true);
+    } else {
+        let _ = win.show();
+    }
+
+    // Center on screen.
+    if let Some(monitor) = win.current_monitor().ok().flatten() {
+        let screen = monitor.size();
+        let scale = monitor.scale_factor();
+        let screen_w = screen.width as f64 / scale;
+        let screen_h = screen.height as f64 / scale;
+        let lw = w as f64 / scale;
+        let lh = h as f64 / scale;
+        let x = ((screen_w - lw) / 2.0).round();
+        let y = ((screen_h - lh) / 2.0).round();
+        let _ = win.set_position(tauri::LogicalPosition::new(x, y));
+    }
+
+    vis.visible.store(true, Ordering::Relaxed);
+
+    // On Linux, window managers block focus stealing. Use xdotool to force it.
+    let win2 = win.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let _ = win2.set_focus();
+
+        if cfg!(target_os = "linux") {
+            // Use wmctrl to force-activate by PID — more reliable than xdotool on many WMs.
+            let pid = std::process::id().to_string();
+            let _ = Command::new("wmctrl")
+                .args(["-x", "-a", "clap-gui"])
+                .status();
+            // Fallback: xdotool by PID.
+            let _ = Command::new("xdotool")
+                .args(["search", "--pid", &pid, "--onlyvisible", "windowactivate"])
+                .status();
+        }
+
+        let _ = win2.emit("window-shown", ());
+    });
 }
 
 fn main() {
@@ -50,7 +132,7 @@ fn main() {
             commands::action::open_in_editor,
         ])
         .setup(move |app| {
-            use tauri::{Emitter, Manager};
+            use tauri::Manager;
             use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 
             if let Some(window) = app.get_webview_window("main") {
@@ -74,33 +156,31 @@ fn main() {
                 let _ = window.set_visible_on_all_workspaces(true);
                 let _ = window.set_focus();
 
+                // Initialize visibility state (stored as physical pixels).
+                let win_size = window.outer_size().unwrap_or(tauri::PhysicalSize::new(800, 500));
+
+                let win_vis = Arc::new(WindowVisibility {
+                    visible: AtomicBool::new(true),
+                    width: AtomicU32::new(win_size.width),
+                    height: AtomicU32::new(win_size.height),
+                });
+                app.manage(win_vis.clone());
+
                 // Register global hotkey to toggle window visibility.
+                if let Err(e) = hotkey.parse::<Shortcut>() {
+                    eprintln!("Failed to parse hotkey '{hotkey}': {e}");
+                }
                 if let Ok(shortcut) = hotkey.parse::<Shortcut>() {
                     let win = window.clone();
+                    let wv = win_vis.clone();
                     let _ = app.global_shortcut().on_shortcut(shortcut, move |_app, _shortcut, event| {
                         if event.state != tauri_plugin_global_shortcut::ShortcutState::Pressed {
                             return;
                         }
-                        if win.is_visible().unwrap_or(false) {
-                            let _ = win.hide();
+                        if wv.visible.load(Ordering::Relaxed) {
+                            hide_window(&win, &wv);
                         } else {
-                            // Re-center before showing.
-                            if let Some(monitor) = win.current_monitor().ok().flatten() {
-                                let screen = monitor.size();
-                                let scale = monitor.scale_factor();
-                                let screen_w = screen.width as f64 / scale;
-                                let screen_h = screen.height as f64 / scale;
-                                if let Ok(size) = win.outer_size() {
-                                    let w = size.width as f64 / scale;
-                                    let h = size.height as f64 / scale;
-                                    let x = ((screen_w - w) / 2.0).round();
-                                    let y = ((screen_h - h) / 2.0).round();
-                                    let _ = win.set_position(tauri::LogicalPosition::new(x, y));
-                                }
-                            }
-                            let _ = win.show();
-                            let _ = win.set_focus();
-                            let _ = win.emit("window-shown", ());
+                            show_window(&win, &wv);
                         }
                     });
                 }

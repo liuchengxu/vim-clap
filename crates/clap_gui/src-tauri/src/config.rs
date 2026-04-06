@@ -52,7 +52,7 @@ impl Default for WindowConfig {
         Self {
             width: 800,
             height: 500,
-            hotkey: "CmdOrCtrl+Shift+P".to_string(),
+            hotkey: "Ctrl+Backquote".to_string(),
         }
     }
 }

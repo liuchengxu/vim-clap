@@ -80,8 +80,11 @@ pub fn get_cwd(state: State<'_, AppState>) -> String {
 }
 
 #[tauri::command]
-pub fn quit_app(window: tauri::WebviewWindow) {
-    let _ = window.hide();
+pub fn quit_app(
+    window: tauri::WebviewWindow,
+    vis: tauri::State<'_, std::sync::Arc<crate::WindowVisibility>>,
+) {
+    crate::hide_window(&window, &vis);
 }
 
 #[tauri::command]

@@ -67,8 +67,16 @@ document.querySelectorAll('.mode-tab').forEach(tab => {
 listen('window-shown', () => {
   const input = document.getElementById('search-input');
   input.value = '';
-  input.focus();
   clearResults();
+  // Aggressively focus the input — webview may need multiple attempts after restore.
+  const focusInput = () => {
+    input.focus();
+    input.click();
+  };
+  focusInput();
+  setTimeout(focusInput, 100);
+  setTimeout(focusInput, 250);
+  setTimeout(focusInput, 500);
 });
 
 // Show cwd in titlebar on load
