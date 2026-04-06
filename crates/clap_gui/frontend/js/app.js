@@ -79,11 +79,10 @@ listen('window-shown', () => {
   setTimeout(focusInput, 500);
 });
 
-// Show cwd in titlebar on load
-(async () => {
+// Update titlebar with current cwd
+async function refreshCwdDisplay() {
   try {
     const cwd = await invoke('get_cwd');
-    // Replace home dir with ~ for brevity
     const home = cwd.match(/^(\/Users\/[^/]+|\/home\/[^/]+)/);
     const display = home ? cwd.replace(home[0], '~') : cwd;
     document.getElementById('titlebar-title').textContent = display;
@@ -91,4 +90,10 @@ listen('window-shown', () => {
   } catch (e) {
     console.error('Failed to get cwd:', e);
   }
-})();
+}
+
+// Show cwd in titlebar on load
+refreshCwdDisplay();
+
+// Refresh titlebar when cwd changes (e.g., detected from active terminal)
+listen('cwd-changed', () => refreshCwdDisplay());

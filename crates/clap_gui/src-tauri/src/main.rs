@@ -18,6 +18,78 @@ pub struct WindowVisibility {
     height: AtomicU32,
 }
 
+/// Resolve the cwd of the active terminal window on Linux.
+///
+/// 1. Gets the active window's PID via xdotool
+/// 2. Finds the deepest child process (the shell/agent running in the terminal)
+/// 3. Reads /proc/<pid>/cwd to get its working directory
+/// 4. Optionally resolves to git repo root if inside one
+#[cfg(target_os = "linux")]
+fn active_terminal_cwd() -> Option<PathBuf> {
+    // Get active window PID.
+    let output = Command::new("xdotool")
+        .args(["getactivewindow", "getwindowpid"])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let root_pid: u32 = String::from_utf8_lossy(&output.stdout).trim().parse().ok()?;
+
+    // Walk process tree to find the deepest child (the foreground shell/agent).
+    let leaf_pid = find_deepest_child(root_pid);
+
+    // Read cwd from /proc.
+    let cwd = std::fs::read_link(format!("/proc/{leaf_pid}/cwd")).ok()?;
+
+    // Try to resolve to git repo root.
+    let git_root = Command::new("git")
+        .args(["rev-parse", "--show-toplevel"])
+        .current_dir(&cwd)
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .map(|s| PathBuf::from(s.trim()));
+
+    Some(git_root.unwrap_or(cwd))
+}
+
+/// Find the deepest single-child descendant of a process.
+/// Stops at the first process with 0 or 2+ children.
+#[cfg(target_os = "linux")]
+fn find_deepest_child(pid: u32) -> u32 {
+    let mut current = pid;
+    loop {
+        let children_path = format!("/proc/{current}/task/{current}/children");
+        let children = match std::fs::read_to_string(&children_path) {
+            Ok(s) => s,
+            Err(_) => break,
+        };
+        let child_pids: Vec<u32> = children
+            .split_whitespace()
+            .filter_map(|s| s.parse().ok())
+            .collect();
+        if child_pids.len() == 1 {
+            current = child_pids[0];
+        } else if child_pids.is_empty() {
+            break;
+        } else {
+            // Multiple children — pick the one with the newest start time (likely foreground).
+            let newest = child_pids.into_iter().max_by_key(|&p| {
+                std::fs::metadata(format!("/proc/{p}"))
+                    .and_then(|m| m.modified())
+                    .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
+            });
+            match newest {
+                Some(p) => { current = p; }
+                None => break,
+            }
+        }
+    }
+    current
+}
+
 /// Detect the git repository root from the current directory.
 fn git_repo_root() -> Option<PathBuf> {
     Command::new("git")
@@ -101,6 +173,7 @@ fn show_window(win: &tauri::WebviewWindow, vis: &WindowVisibility) {
         }
 
         let _ = win2.emit("window-shown", ());
+        let _ = win2.emit("cwd-changed", ());
     });
 }
 
@@ -173,6 +246,7 @@ fn main() {
                 if let Ok(shortcut) = hotkey.parse::<Shortcut>() {
                     let win = window.clone();
                     let wv = win_vis.clone();
+                    let app_handle = app.handle().clone();
                     let _ = app.global_shortcut().on_shortcut(shortcut, move |_app, _shortcut, event| {
                         if event.state != tauri_plugin_global_shortcut::ShortcutState::Pressed {
                             return;
@@ -180,6 +254,17 @@ fn main() {
                         if wv.visible.load(Ordering::Relaxed) {
                             hide_window(&win, &wv);
                         } else {
+                            // Detect the active terminal's cwd before we steal focus.
+                            #[cfg(target_os = "linux")]
+                            if let Some(new_cwd) = active_terminal_cwd() {
+                                let state: tauri::State<'_, AppState> = app_handle.state();
+                                let mut cwd = state.cwd.write();
+                                if *cwd != new_cwd {
+                                    *cwd = new_cwd;
+                                    state.file_cache().invalidate();
+                                }
+                            }
+
                             show_window(&win, &wv);
                         }
                     });
