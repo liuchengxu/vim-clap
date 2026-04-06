@@ -47,6 +47,17 @@ fn main() {
             commands::preview::preview_file,
             commands::action::open_in_editor,
         ])
+        .setup(|app| {
+            // On macOS, set activation policy to Accessory so the app
+            // overlays on top of the current space instead of switching
+            // to its own space. This makes it behave like Spotlight.
+            #[cfg(target_os = "macos")]
+            {
+                use tauri::ActivationPolicy;
+                app.set_activation_policy(ActivationPolicy::Accessory);
+            }
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running clap-gui");
 }
