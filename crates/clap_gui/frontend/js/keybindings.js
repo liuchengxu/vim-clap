@@ -1,6 +1,30 @@
+let lastCtrlCTime = 0;
+
 document.addEventListener('keydown', (e) => {
   const input = document.getElementById('search-input');
   const isMeta = e.metaKey || e.ctrlKey;
+
+  // Cmd+Q: quit
+  if (e.key === 'q' && e.metaKey) {
+    e.preventDefault();
+    window.__TAURI__.window.getCurrentWindow().close();
+    return;
+  }
+
+  // Ctrl+C: first press cancels search/clears, double press exits
+  if (e.key === 'c' && e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    const now = Date.now();
+    if (now - lastCtrlCTime < 500) {
+      window.__TAURI__.window.getCurrentWindow().close();
+    } else {
+      // Cancel current search and clear
+      input.value = '';
+      clearResults();
+    }
+    lastCtrlCTime = now;
+    return;
+  }
 
   if (e.key === 'Tab') {
     e.preventDefault();
