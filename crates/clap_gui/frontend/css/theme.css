@@ -20,7 +20,7 @@
 body {
   background: var(--base);
   color: var(--text);
-  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+  font-family: 'FiraCode Nerd Font', 'FiraCode Nerd Font Mono', 'Symbols Nerd Font', 'SF Mono', 'Fira Code', monospace;
   font-size: 13px;
   overflow: hidden;
   height: 100vh;
