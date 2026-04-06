@@ -145,6 +145,15 @@ body {
 .result-text .match { color: var(--yellow); font-weight: bold; }
 .result-path-dim { color: var(--overlay0); font-size: 11px; margin-left: auto; flex-shrink: 0; }
 
+.result-grep-path {
+  color: var(--blue);
+  font-size: 11px;
+  flex-shrink: 0;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .result-line-number {
   color: var(--peach);
   font-size: 11px;

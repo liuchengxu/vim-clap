@@ -3,6 +3,8 @@
   "description": "Default capabilities for clap-gui",
   "windows": ["*"],
   "permissions": [
-    "core:default"
+    "core:default",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister"
   ]
 }

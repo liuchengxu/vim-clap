@@ -66,6 +66,7 @@ function renderFileResult(result) {
 function renderGrepResult(result) {
   const highlighted = highlightMatches(result.line_content, result.match_indices);
   return `
+    <span class="result-grep-path">${escapeHtml(result.display_path)}</span>
     <span class="result-line-number">${result.line_number}</span>
     <span class="result-text">${highlighted}</span>
   `;

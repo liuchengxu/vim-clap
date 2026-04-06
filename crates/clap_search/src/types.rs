@@ -12,6 +12,7 @@ pub struct FileResult {
 #[derive(Debug, Clone, Serialize)]
 pub struct GrepResultItem {
     pub path: String,
+    pub display_path: String,
     pub line_number: u64,
     pub line_content: String,
     pub match_indices: Vec<usize>,

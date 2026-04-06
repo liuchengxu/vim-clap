@@ -219,6 +219,7 @@ fn filter_and_format_grep(
                     .collect();
                 GrepResultItem {
                     path: cwd.join(&gl.path).to_string_lossy().to_string(),
+                    display_path: gl.path.clone(),
                     line_number: gl.line_number,
                     line_content: line_content.to_string(),
                     match_indices,
