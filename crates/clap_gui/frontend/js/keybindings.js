@@ -14,7 +14,7 @@ document.addEventListener('keydown', (e) => {
       clearResults();
     } else {
       // Input already empty — close the window
-      window.__TAURI__.window.getCurrentWindow().close();
+      invoke('quit_app');
     }
     return;
   }
@@ -87,7 +87,7 @@ async function copyResult(result) {
 
 // Close button
 document.getElementById('close-btn').addEventListener('click', () => {
-  window.__TAURI__.window.getCurrentWindow().close();
+  invoke('quit_app');
 });
 
 let isPinned = false;
@@ -97,11 +97,6 @@ async function togglePin() {
   const btn = document.getElementById('pin-btn');
   btn.classList.toggle('active', isPinned);
 
-  try {
-    const currentWindow = window.__TAURI__.window.getCurrentWindow();
-    await currentWindow.setDecorations(isPinned);
-    await currentWindow.setResizable(isPinned);
-  } catch (e) {
-    console.error('Pin toggle error:', e);
-  }
+  // Pin toggle is visual-only for now (Tauri window API not available in webview)
+  // TODO: add Tauri command for pin/unpin when needed
 }

@@ -78,3 +78,8 @@ pub fn refresh_file_cache(state: State<'_, AppState>) {
 pub fn get_cwd(state: State<'_, AppState>) -> String {
     state.cwd.read().to_string_lossy().to_string()
 }
+
+#[tauri::command]
+pub fn quit_app() {
+    std::process::exit(0);
+}
