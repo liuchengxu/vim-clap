@@ -63,10 +63,11 @@ document.querySelectorAll('.mode-tab').forEach(tab => {
 (async () => {
   try {
     const cwd = await invoke('get_cwd');
-    // Show last 2 path components for brevity, e.g. "plugged/vim-clap"
-    const parts = cwd.replace(/\/$/, '').split('/');
-    const short = parts.length > 2 ? parts.slice(-2).join('/') : cwd;
-    document.getElementById('titlebar-title').textContent = `clap-gui — ${short}`;
+    // Replace home dir with ~ for brevity
+    const home = cwd.match(/^(\/Users\/[^/]+|\/home\/[^/]+)/);
+    const display = home ? cwd.replace(home[0], '~') : cwd;
+    document.getElementById('titlebar-title').textContent = display;
+    document.getElementById('titlebar-title').title = cwd;
   } catch (e) {
     console.error('Failed to get cwd:', e);
   }
