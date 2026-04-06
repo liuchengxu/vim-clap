@@ -1,6 +1,7 @@
 use grep_regex::RegexMatcher;
 use grep_searcher::sinks::UTF8;
 use grep_searcher::Searcher;
+use icon::file_icon;
 use ignore::WalkBuilder;
 use matcher::{MatchScope, MatcherBuilder};
 use parking_lot::Mutex;
@@ -9,11 +10,32 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use types::{ClapItem, Query};
+use types::{ClapItem, Query, SearchTerm};
 
 use crate::{GrepResultItem, SearchConfig, SearchPayload, SearchSink};
 
 const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
+
+/// Extract a regex pattern for the initial grep pass from the query string.
+///
+/// Strips extended search syntax prefixes (`'`, `^`, `$`, `"`) and skips
+/// inverse terms (`!`), then joins the remaining plain texts with `|` so
+/// any matching term produces a candidate line for the matcher stage.
+fn grep_pattern_from_query(query: &str) -> Option<String> {
+    let parts: Vec<String> = query
+        .split_whitespace()
+        .map(SearchTerm::from)
+        .filter(|t| !t.is_inverse_term())
+        .map(|t| regex::escape(&t.text))
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join("|"))
+    }
+}
 
 #[derive(Debug)]
 struct GrepLine {
@@ -34,7 +56,11 @@ pub async fn run_grep_search(
     config: SearchConfig,
     stop: Arc<AtomicBool>,
 ) {
-    let regex_matcher = match RegexMatcher::new(&query) {
+    let grep_pattern = match grep_pattern_from_query(&query) {
+        Some(p) => p,
+        None => return,
+    };
+    let regex_matcher = match RegexMatcher::new(&grep_pattern) {
         Ok(m) => m,
         Err(_) => return,
     };
@@ -220,6 +246,7 @@ fn filter_and_format_grep(
                 GrepResultItem {
                     path: cwd.join(&gl.path).to_string_lossy().to_string(),
                     display_path: gl.path.clone(),
+                    icon: file_icon(&gl.path).to_string(),
                     line_number: gl.line_number,
                     line_content: line_content.to_string(),
                     match_indices,

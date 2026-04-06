@@ -10,6 +10,7 @@ grep-regex = { workspace = true }
 grep-searcher = { workspace = true }
 grep-matcher = { workspace = true }
 ignore = { workspace = true }
+regex = { workspace = true }
 parking_lot = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }

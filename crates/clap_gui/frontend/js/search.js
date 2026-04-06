@@ -24,6 +24,11 @@ function renderResults(isFiles) {
   const pane = document.getElementById('results-pane');
   pane.innerHTML = '';
 
+  if (results.length === 0) {
+    pane.innerHTML = '<div class="results-empty">No results found</div>';
+    return;
+  }
+
   results.forEach((result, index) => {
     const el = document.createElement('div');
     el.className = 'result-item' + (index === selectedIndex ? ' selected' : '');
@@ -66,6 +71,7 @@ function renderFileResult(result) {
 function renderGrepResult(result) {
   const highlighted = highlightMatches(result.line_content, result.match_indices);
   return `
+    <span class="result-icon">${escapeHtml(result.icon)}</span>
     <span class="result-grep-path">${escapeHtml(result.display_path)}</span>
     <span class="result-line-number">${result.line_number}</span>
     <span class="result-text">${highlighted}</span>

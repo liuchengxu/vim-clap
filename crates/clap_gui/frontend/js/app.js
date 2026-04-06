@@ -49,9 +49,13 @@ listen('search-results', (event) => {
   renderResults(isFiles);
   updateStatusCount(payload.total_matched, payload.total_processed, payload.finished);
 
-  // Load preview for the first result when search completes or on first batch
-  if (results.length > 0 && (payload.finished || selectedIndex === 0)) {
-    loadPreview(results[selectedIndex]);
+  if (results.length > 0) {
+    // Load preview for the first result when search completes or on first batch
+    if (payload.finished || selectedIndex === 0) {
+      loadPreview(results[selectedIndex]);
+    }
+  } else {
+    document.getElementById('preview-pane').innerHTML = '<div class="preview-empty">No file selected</div>';
   }
 });
 

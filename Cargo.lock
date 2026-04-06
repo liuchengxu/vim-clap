@@ -648,6 +648,7 @@ dependencies = [
  "matcher",
  "parking_lot",
  "rayon",
+ "regex",
  "serde",
  "tokio",
  "types",

@@ -194,6 +194,15 @@ body {
   user-select: none;
 }
 
+.results-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--overlay0);
+  font-size: 12px;
+}
+
 .preview-empty {
   display: flex;
   align-items: center;
